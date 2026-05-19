@@ -60,31 +60,30 @@ class WebhookController extends CashierWebhookController
     }
 
     /**
-     * Cashier handles its own subscriptions table for this event.
-     * We piggyback to update current_period_ends_at and status in our table.
+     * Sync our tenant_subscriptions record when Stripe confirms the subscription exists.
+     *
+     * Note: we do NOT call parent:: here. Cashier's parent handler looks up the billable
+     * by stripe_id, but checkout.session.completed and customer.subscription.created fire
+     * nearly simultaneously — stripe_id may not be written to tenants yet when this runs.
+     * Our tenant_subscriptions table is the source of truth; Cashier's subscriptions table
+     * is not used for our subscription status checks.
      */
     public function handleCustomerSubscriptionCreated(array $payload): Response
     {
-        $result       = parent::handleCustomerSubscriptionCreated($payload);
         $subscription = $payload['data']['object'];
-
         $this->syncSubscriptionStatus($subscription);
-
-        return $result;
+        return $this->successMethod();
     }
 
     /**
      * Sync status and renewal date when Stripe updates the subscription
-     * (e.g. plan change, renewal, payment failure → past_due).
+     * (e.g. renewal, payment failure → past_due, plan change).
      */
     public function handleCustomerSubscriptionUpdated(array $payload): Response
     {
-        $result       = parent::handleCustomerSubscriptionUpdated($payload);
         $subscription = $payload['data']['object'];
-
         $this->syncSubscriptionStatus($subscription);
-
-        return $result;
+        return $this->successMethod();
     }
 
     /**
@@ -92,7 +91,6 @@ class WebhookController extends CashierWebhookController
      */
     public function handleCustomerSubscriptionDeleted(array $payload): Response
     {
-        $result       = parent::handleCustomerSubscriptionDeleted($payload);
         $subscription = $payload['data']['object'];
 
         TenantSubscription::where('stripe_subscription_id', $subscription['id'])
@@ -100,7 +98,7 @@ class WebhookController extends CashierWebhookController
 
         Log::info("customer.subscription.deleted: {$subscription['id']}");
 
-        return $result;
+        return $this->successMethod();
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
