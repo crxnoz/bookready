@@ -1,0 +1,109 @@
+export type DayOfWeek =
+  | 'Sunday'
+  | 'Monday'
+  | 'Tuesday'
+  | 'Wednesday'
+  | 'Thursday'
+  | 'Friday'
+  | 'Saturday'
+
+export interface Business {
+  name: string
+  tagline: string
+  description: string
+  phone: string
+  email: string
+  address: string
+  city: string
+  state: string
+  zip: string
+  instagram?: string
+  logoUrl?: string
+}
+
+export interface Service {
+  id: string
+  name: string
+  description: string
+  duration: number // minutes
+  price: number
+  category: string
+}
+
+export interface StaffMember {
+  id: string
+  name: string
+  title: string
+  bio: string
+  specialties: string[]
+  imageUrl?: string
+}
+
+export interface GalleryImage {
+  id: string
+  url: string
+  alt: string
+}
+
+export interface HoursEntry {
+  day: DayOfWeek
+  open: string
+  close: string
+  closed: boolean
+}
+
+export interface Policy {
+  id: string
+  title: string
+  content: string
+}
+
+export interface FAQ {
+  id: string
+  question: string
+  answer: string
+}
+
+export interface TenantData {
+  id: string
+  slug: string
+  subdomain: string
+  template: 'the-fade-room'
+  business: Business
+  services: Service[]
+  staff: StaffMember[]
+  gallery: GalleryImage[]
+  hours: HoursEntry[]
+  policies: Policy[]
+  faqs: FAQ[]
+}
+
+// Auth
+export interface AuthUser {
+  id: number
+  name: string
+  email: string
+  tenant_id: string
+  is_owner: boolean
+}
+
+export interface RegisterPayload {
+  owner_name: string
+  email: string
+  password: string
+  password_confirmation: string
+  business_name: string
+  template: string
+}
+
+export interface LoginPayload {
+  email: string
+  password: string
+}
+
+export interface AuthResponse {
+  token: string
+  tenant_id: string
+  domain: string
+  user: AuthUser
+}

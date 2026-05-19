@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+web/node_modules/
+vendor/
+
+# Env files
+.env
+.env.*
+!.env.example
+web/.env.local
+web/.env*.local
+
+# Laravel
+/storage/*.key
+/storage/logs/*.log
+/bootstrap/cache/*.php
+
+# Next.js
+.next/
+web/.next/
+out/
+web/out/
+
+# Build/cache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-store/
+.DS_Store
+Thumbs.db
