@@ -28,3 +28,7 @@ yarn-error.log*
 .pnpm-store/
 .DS_Store
 Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+web/tsconfig.tsbuildinfo
