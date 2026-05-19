@@ -78,6 +78,26 @@ export interface TenantData {
   faqs: FAQ[]
 }
 
+// Billing / Stripe checkout
+export type BillingCycle = 'monthly' | 'quarterly' | 'annual'
+
+export interface CheckoutPayload {
+  billing_cycle: BillingCycle
+  template_slug: string
+}
+
+export interface CheckoutResponse {
+  checkout_url: string
+}
+
+export interface CheckoutSessionData {
+  id: string
+  status: string
+  payment_status: string
+  customer: string | null
+  subscription: string | null
+}
+
 // Public tenant lookup
 export interface PublicSite {
   tenant_id: string

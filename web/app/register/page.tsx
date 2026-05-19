@@ -1,13 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { register } from '@/lib/api'
 import { setToken, setTenantId } from '@/lib/auth'
 
-export default function RegisterPage() {
+const TEMPLATE_KEY = 'br_template'
+
+function RegisterForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const templateSlug = searchParams.get('template') ?? 'thefaderoom'
+
   const [form, setForm] = useState({
     owner_name: '',
     email: '',
@@ -42,7 +47,9 @@ export default function RegisterPage() {
       setToken(res.token)
       const tenantId = res.tenant_id ?? res.user.tenant_id
       setTenantId(tenantId)
-      router.push('/editor/business')
+      // Persist selected template for the checkout page
+      localStorage.setItem(TEMPLATE_KEY, templateSlug)
+      router.push(`/checkout?template=${templateSlug}`)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Registration failed.')
     } finally {
@@ -157,6 +164,14 @@ export default function RegisterPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   )
 }
 

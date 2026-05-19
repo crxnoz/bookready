@@ -6,55 +6,82 @@ use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Laravel\Cashier\Cashier;
 
 class BillingController extends Controller
 {
     /**
-     * Available subscription plans.
-     * Keep in sync with your Stripe product/price IDs.
-     */
-    public function plans(): JsonResponse
-    {
-        return response()->json([
-            [
-                'id'          => 'starter',
-                'name'        => 'Starter',
-                'price'       => 29,
-                'interval'    => 'month',
-                'stripe_price' => config('services.stripe.prices.starter'),
-                'features'    => ['1 template', 'Unlimited bookings', 'Custom domain'],
-            ],
-            [
-                'id'          => 'pro',
-                'name'        => 'Pro',
-                'price'       => 59,
-                'interval'    => 'month',
-                'stripe_price' => config('services.stripe.prices.pro'),
-                'features'    => ['All templates', 'Priority support', 'Analytics'],
-            ],
-        ]);
-    }
-
-    /**
-     * Create a Stripe Checkout session for the authenticated tenant.
+     * Create a Stripe Checkout Session in subscription mode.
+     *
+     * TODO: Stripe webhooks must become the source of truth for activating subscriptions.
+     * Wire these events later in a dedicated WebhookController:
+     *   - checkout.session.completed
+     *   - customer.subscription.created
+     *   - customer.subscription.updated
+     *   - customer.subscription.deleted
      */
     public function checkout(Request $request): JsonResponse
     {
-        $request->validate([
-            'price_id'    => ['required', 'string'],
-            'success_url' => ['required', 'url'],
-            'cancel_url'  => ['required', 'url'],
+        $data = $request->validate([
+            'billing_cycle'  => ['required', 'string', 'in:monthly,quarterly,annual'],
+            'template_slug'  => ['required', 'string', 'regex:/^[a-z0-9]+$/'],
         ]);
 
-        $tenant = Tenant::find($request->user()->tenant_id);
+        $priceMap = [
+            'monthly'   => env('STRIPE_PRICE_MONTHLY'),
+            'quarterly' => env('STRIPE_PRICE_QUARTERLY'),
+            'annual'    => env('STRIPE_PRICE_ANNUAL'),
+        ];
 
-        $session = $tenant->newSubscription('default', $request->price_id)
+        $priceId = $priceMap[$data['billing_cycle']] ?? null;
+
+        if (! $priceId) {
+            return response()->json([
+                'message' => "Stripe price not configured for billing_cycle '{$data['billing_cycle']}'.",
+            ], 500);
+        }
+
+        $user   = $request->user();
+        $tenant = Tenant::find($user->tenant_id);
+
+        $frontendUrl = rtrim(env('FRONTEND_URL', 'http://app.daysbookings.site'), '/');
+        $successUrl  = "{$frontendUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}";
+        $cancelUrl   = "{$frontendUrl}/checkout?cancelled=1";
+
+        $session = $tenant->newSubscription('default', $priceId)
             ->checkout([
-                'success_url' => $request->success_url,
-                'cancel_url'  => $request->cancel_url,
+                'success_url' => $successUrl,
+                'cancel_url'  => $cancelUrl,
+                'metadata'    => [
+                    'user_id'       => (string) $user->id,
+                    'tenant_id'     => $tenant->id,
+                    'template_slug' => $data['template_slug'],
+                    'billing_cycle' => $data['billing_cycle'],
+                ],
             ]);
 
         return response()->json(['checkout_url' => $session->url]);
+    }
+
+    /**
+     * Retrieve a Stripe Checkout Session by ID.
+     * Used on the success page to confirm payment status.
+     *
+     * TODO: Do not use this as the subscription activation trigger.
+     * Webhook events are the reliable source of truth.
+     */
+    public function checkoutSession(Request $request, string $sessionId): JsonResponse
+    {
+        $stripe  = Cashier::stripe();
+        $session = $stripe->checkout->sessions->retrieve($sessionId);
+
+        return response()->json([
+            'id'             => $session->id,
+            'status'         => $session->status,
+            'payment_status' => $session->payment_status,
+            'customer'       => $session->customer,
+            'subscription'   => $session->subscription,
+        ]);
     }
 
     /**
@@ -62,8 +89,8 @@ class BillingController extends Controller
      */
     public function portal(Request $request): JsonResponse
     {
-        $tenant     = Tenant::find($request->user()->tenant_id);
-        $portalUrl  = $tenant->billingPortalUrl(config('app.url'));
+        $tenant    = Tenant::find($request->user()->tenant_id);
+        $portalUrl = $tenant->billingPortalUrl(config('app.url'));
 
         return response()->json(['url' => $portalUrl]);
     }
@@ -79,5 +106,4 @@ class BillingController extends Controller
             'subscription' => $tenant->subscription('default'),
         ]);
     }
-
 }

@@ -1,4 +1,14 @@
-import { AuthResponse, AuthUser, LoginPayload, PublicSite, RegisterPayload, TenantData } from './types'
+import {
+  AuthResponse,
+  AuthUser,
+  BillingCycle,
+  CheckoutResponse,
+  CheckoutSessionData,
+  LoginPayload,
+  PublicSite,
+  RegisterPayload,
+  TenantData,
+} from './types'
 import { getToken } from './auth'
 import { mockTenant } from './mockTenant'
 
@@ -54,6 +64,22 @@ export async function logout(): Promise<void> {
 
 export async function getPublicSite(slug: string): Promise<PublicSite> {
   return request<PublicSite>(`/public/sites/${slug}`)
+}
+
+// ── Billing ───────────────────────────────────────────────────────────────────
+
+export async function createCheckoutSession(
+  billingCycle: BillingCycle,
+  templateSlug: string,
+): Promise<CheckoutResponse> {
+  return request<CheckoutResponse>('/billing/checkout', {
+    method: 'POST',
+    body: JSON.stringify({ billing_cycle: billingCycle, template_slug: templateSlug }),
+  })
+}
+
+export async function getCheckoutSession(sessionId: string): Promise<CheckoutSessionData> {
+  return request<CheckoutSessionData>(`/billing/checkout-session/${sessionId}`)
 }
 
 // ── Editor ────────────────────────────────────────────────────────────────────

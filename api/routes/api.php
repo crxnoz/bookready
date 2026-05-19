@@ -34,10 +34,11 @@ Route::prefix('v1')->group(function () {
 
     // ── Billing / subscription management ─────────────────────────────────
     Route::middleware('auth:sanctum')->prefix('billing')->group(function () {
-        Route::get('plans',           [BillingController::class, 'plans']);
-        Route::post('checkout',       [BillingController::class, 'checkout']);
-        Route::get('portal',          [BillingController::class, 'portal']);
-        Route::get('subscription',    [BillingController::class, 'subscription']);
+        Route::get('plans',                              [BillingController::class, 'plans']);
+        Route::post('checkout',                          [BillingController::class, 'checkout']);
+        Route::get('checkout-session/{sessionId}',       [BillingController::class, 'checkoutSession']);
+        Route::get('portal',                             [BillingController::class, 'portal']);
+        Route::get('subscription',                       [BillingController::class, 'subscription']);
     });
 
     // ── Stripe webhook (no auth, no CSRF) — routed directly to Cashier ────
