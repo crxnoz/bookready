@@ -1,15 +1,18 @@
-'use client'
+"use client";
 
-import { EditorProvider } from '@/lib/editorContext'
-import EditorSidebar from './EditorSidebar'
-import LivePreview from './LivePreview'
+import { EditorProvider } from "@/lib/editorContext";
+import EditorSidebar from "./EditorSidebar";
+import LivePreview from "./LivePreview";
 
 interface Props {
-  children: React.ReactNode
-  slug: string
+  children: React.ReactNode;
+  slug?: string;
 }
 
-export default function EditorShell({ children, slug }: Props) {
+export default function EditorShell({
+  children,
+  slug = "the-fade-room",
+}: Props) {
   return (
     <EditorProvider>
       <div className="flex h-screen overflow-hidden bg-cream">
@@ -27,5 +30,5 @@ export default function EditorShell({ children, slug }: Props) {
         </div>
       </div>
     </EditorProvider>
-  )
+  );
 }

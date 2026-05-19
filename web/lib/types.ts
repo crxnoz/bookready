@@ -55,7 +55,7 @@ export interface HoursEntry {
 export interface Policy {
   id: string
   title: string
-  content: string
+  content: string  // maps to 'content' column in tenant DB
 }
 
 export interface FAQ {
@@ -93,7 +93,7 @@ export interface RegisterPayload {
   password: string
   password_confirmation: string
   business_name: string
-  template: string
+  template?: string
 }
 
 export interface LoginPayload {
@@ -103,7 +103,7 @@ export interface LoginPayload {
 
 export interface AuthResponse {
   token: string
-  tenant_id: string
-  domain: string
+  tenant_id?: string  // present on register, absent on login (use user.tenant_id instead)
+  domain?: string
   user: AuthUser
 }

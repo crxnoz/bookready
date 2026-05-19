@@ -44,10 +44,10 @@ function PolicyRow({
             />
             <Textarea
               label="Policy Body"
-              value={policy.body}
+              value={policy.content}
               rows={4}
               placeholder="Describe this policy in plain language..."
-              onChange={e => onChange({ body: e.target.value })}
+              onChange={e => onChange({ content: e.target.value })}
             />
           </div>
           <button
@@ -121,7 +121,7 @@ export default function PoliciesEditor() {
   function addPolicy() {
     updatePolicies([
       ...data.policies,
-      { id: Date.now().toString(), title: '', body: '' },
+      { id: Date.now().toString(), title: '', content: '' },
     ])
   }
 

@@ -1,5 +1,5 @@
-import EditorShell from '@/components/editor/EditorShell'
+import EditorGuard from '@/components/editor/EditorGuard'
 
 export default function EditorLayout({ children }: { children: React.ReactNode }) {
-  return <EditorShell>{children}</EditorShell>
+  return <EditorGuard>{children}</EditorGuard>
 }

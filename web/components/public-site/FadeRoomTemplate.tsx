@@ -229,7 +229,7 @@ function Hero({ business }: { business: TenantData['business'] }) {
 }
 
 function Services({ services }: { services: TenantData['services'] }) {
-  const categories = [...new Set(services.map(s => s.category))]
+  const categories = Array.from(new Set(services.map(s => s.category)))
 
   return (
     <section id="services" style={{ background: C.surface }}>

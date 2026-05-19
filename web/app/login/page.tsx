@@ -2,9 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { login } from '@/lib/api'
+import { setToken, setTenantId } from '@/lib/auth'
 
 export default function LoginPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -16,8 +19,10 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const res = await login({ email, password })
-      // TODO: store token, redirect to editor
-      console.log('login success', res)
+      setToken(res.token)
+      const tenantId = res.tenant_id ?? res.user.tenant_id
+      setTenantId(tenantId)
+      router.push('/editor/business')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed.')
     } finally {
@@ -28,7 +33,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-cream flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        {/* Wordmark */}
         <div className="mb-10 text-center">
           <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-near-black">
             BookReady

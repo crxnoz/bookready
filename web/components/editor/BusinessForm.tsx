@@ -15,7 +15,7 @@ export default function BusinessForm() {
   async function handleSave() {
     setIsSaving(true)
     try {
-      await saveBusiness('mock-token', b)
+      await saveBusiness(b)
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
     } finally {

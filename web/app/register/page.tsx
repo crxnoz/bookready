@@ -2,51 +2,47 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { register } from '@/lib/api'
+import { setToken, setTenantId } from '@/lib/auth'
 
 export default function RegisterPage() {
+  const router = useRouter()
   const [form, setForm] = useState({
-    name: '',
+    owner_name: '',
     email: '',
     password: '',
-    businessName: '',
-    slug: '',
+    password_confirmation: '',
+    business_name: '',
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   function set(key: keyof typeof form) {
-    return (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value
-      setForm(prev => {
-        const next = { ...prev, [key]: value }
-        // Auto-derive slug from business name
-        if (key === 'businessName') {
-          next.slug = value
-            .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, '')
-            .trim()
-            .replace(/\s+/g, '-')
-        }
-        return next
-      })
-    }
+    return (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm(prev => ({ ...prev, [key]: e.target.value }))
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (form.password !== form.password_confirmation) {
+      setError('Passwords do not match.')
+      return
+    }
     setError('')
     setLoading(true)
     try {
       const res = await register({
-        name: form.name,
+        owner_name: form.owner_name,
         email: form.email,
         password: form.password,
-        business_name: form.businessName,
-        slug: form.slug,
+        password_confirmation: form.password_confirmation,
+        business_name: form.business_name,
       })
-      // TODO: store token, redirect to checkout
-      console.log('register success', res)
+      setToken(res.token)
+      const tenantId = res.tenant_id ?? res.user.tenant_id
+      setTenantId(tenantId)
+      router.push('/editor/business')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Registration failed.')
     } finally {
@@ -57,7 +53,6 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-cream flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
-        {/* Wordmark */}
         <div className="mb-10 text-center">
           <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-near-black">
             BookReady
@@ -84,8 +79,8 @@ export default function RegisterPage() {
                 type="text"
                 required
                 autoComplete="name"
-                value={form.name}
-                onChange={set('name')}
+                value={form.owner_name}
+                onChange={set('owner_name')}
                 className={inputCls}
                 placeholder="Alex Carter"
               />
@@ -95,28 +90,11 @@ export default function RegisterPage() {
               <input
                 type="text"
                 required
-                value={form.businessName}
-                onChange={set('businessName')}
+                value={form.business_name}
+                onChange={set('business_name')}
                 className={inputCls}
                 placeholder="The Fade Room"
               />
-            </Field>
-
-            <Field
-              label="Your URL"
-              hint={form.slug ? `${form.slug}.bookready.app` : 'Auto-generated from name'}
-            >
-              <div className="flex items-center border border-[rgba(18,18,18,0.15)] bg-cream">
-                <input
-                  type="text"
-                  required
-                  value={form.slug}
-                  onChange={set('slug')}
-                  className="flex-1 bg-transparent px-4 py-2.5 text-sm text-near-black placeholder:text-[#b0a99f] focus:outline-none"
-                  placeholder="the-fade-room"
-                />
-                <span className="pr-3 text-xs text-muted-text whitespace-nowrap">.bookready.app</span>
-              </div>
             </Field>
 
             <Field label="Email">
@@ -141,6 +119,19 @@ export default function RegisterPage() {
                 onChange={set('password')}
                 className={inputCls}
                 placeholder="Min. 8 characters"
+              />
+            </Field>
+
+            <Field label="Confirm Password">
+              <input
+                type="password"
+                required
+                autoComplete="new-password"
+                minLength={8}
+                value={form.password_confirmation}
+                onChange={set('password_confirmation')}
+                className={inputCls}
+                placeholder="Repeat your password"
               />
             </Field>
 
@@ -172,15 +163,7 @@ export default function RegisterPage() {
 const inputCls =
   'w-full bg-cream border border-[rgba(18,18,18,0.15)] px-4 py-2.5 text-sm text-near-black placeholder:text-[#b0a99f] focus:outline-none focus:ring-2 focus:ring-near-black/10'
 
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string
-  hint?: string
-  children: React.ReactNode
-}) {
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="block text-[10px] font-bold tracking-[0.18em] uppercase text-near-black mb-1.5">
