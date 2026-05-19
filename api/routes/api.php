@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\BillingController;
+use App\Http\Controllers\Api\PublicSiteController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Cashier\Http\Controllers\WebhookController as CashierWebhookController;
 
@@ -16,6 +17,9 @@ use Laravel\Cashier\Http\Controllers\WebhookController as CashierWebhookControll
 */
 
 Route::prefix('v1')->group(function () {
+
+    // ── Public tenant lookup (no auth) ────────────────────────────────────
+    Route::get('public/sites/{slug}', [PublicSiteController::class, 'show']);
 
     // ── Authentication (central) ───────────────────────────────────────────
     Route::prefix('auth')->group(function () {

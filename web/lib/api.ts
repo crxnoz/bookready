@@ -1,4 +1,4 @@
-import { AuthResponse, AuthUser, LoginPayload, RegisterPayload, TenantData } from './types'
+import { AuthResponse, AuthUser, LoginPayload, PublicSite, RegisterPayload, TenantData } from './types'
 import { getToken } from './auth'
 import { mockTenant } from './mockTenant'
 
@@ -52,10 +52,8 @@ export async function logout(): Promise<void> {
 
 // ── Public ────────────────────────────────────────────────────────────────────
 
-export async function getPublicSite(slug: string): Promise<TenantData> {
-  // TODO: return request<TenantData>(`/public/sites/${slug}`)
-  console.log('[api] getPublicSite stub', slug)
-  return Promise.resolve(mockTenant)
+export async function getPublicSite(slug: string): Promise<PublicSite> {
+  return request<PublicSite>(`/public/sites/${slug}`)
 }
 
 // ── Editor ────────────────────────────────────────────────────────────────────

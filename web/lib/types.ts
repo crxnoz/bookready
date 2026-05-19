@@ -78,6 +78,16 @@ export interface TenantData {
   faqs: FAQ[]
 }
 
+// Public tenant lookup
+export interface PublicSite {
+  tenant_id: string
+  slug: string
+  domain: string | null
+  business_name: string | null
+  plan: string
+  status: string
+}
+
 // Auth
 export interface AuthUser {
   id: number

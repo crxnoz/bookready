@@ -21,8 +21,9 @@ class TenantProvisioningService
 
         $tenant = DB::transaction(function () use ($data, $slug) {
             $tenant = Tenant::create([
-                'id'   => $slug,
-                'plan' => 'trial',
+                'id'            => $slug,
+                'plan'          => 'trial',
+                'business_name' => $data['business_name'], // stored in tenants.data JSON
             ]);
 
             $baseDomain = env('APP_DOMAIN', 'bookready.app');
@@ -104,12 +105,14 @@ class TenantProvisioningService
      */
     private function generateSlug(string $name): string
     {
-        $base = Str::slug($name);
+        // Lowercase letters and numbers only — no dashes, spaces, or special chars
+        $base = preg_replace('/[^a-z0-9]/', '', strtolower($name));
+        $base = $base ?: 'tenant';
         $slug = $base;
         $i    = 1;
 
         while (Tenant::find($slug)) {
-            $slug = "{$base}-{$i}";
+            $slug = "{$base}{$i}";
             $i++;
         }
 
