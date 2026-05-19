@@ -4,8 +4,8 @@ use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\PublicSiteController;
+use App\Http\Controllers\Api\WebhookController;
 use Illuminate\Support\Facades\Route;
-use Laravel\Cashier\Http\Controllers\WebhookController as CashierWebhookController;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,6 +41,7 @@ Route::prefix('v1')->group(function () {
         Route::get('subscription',                       [BillingController::class, 'subscription']);
     });
 
-    // ── Stripe webhook (no auth, no CSRF) — routed directly to Cashier ────
-    Route::post('webhooks/stripe', [CashierWebhookController::class, 'handleWebhook']);
+    // ── Stripe webhook (no auth, no CSRF) ────────────────────────────────
+    // Signature verified by Cashier using STRIPE_WEBHOOK_SECRET
+    Route::post('webhooks/stripe', [WebhookController::class, 'handleWebhook']);
 });

@@ -42,10 +42,10 @@ function SuccessContent() {
           </div>
 
           <h1 className="text-xl font-bold text-near-black tracking-tight mb-2">
-            You&apos;re all set!
+            Payment received.
           </h1>
           <p className="text-sm text-muted-text mb-6">
-            Your subscription is active. Time to build your booking site.
+            We&apos;re setting up your workspace. Head to the editor to get started.
           </p>
 
           {/* Session details */}
