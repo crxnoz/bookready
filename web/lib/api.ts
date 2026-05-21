@@ -2,6 +2,7 @@ import {
   AuthResponse,
   AuthUser,
   BillingCycle,
+  BusinessProfile,
   CheckoutResponse,
   CheckoutSessionData,
   LoginPayload,
@@ -93,6 +94,17 @@ export async function getEditorData(): Promise<TenantData> {
 export async function saveBusiness(data: TenantData['business']): Promise<void> {
   // TODO: return request('/editor/business', { method: 'PATCH', body: JSON.stringify(data) })
   console.log('[api] saveBusiness stub', data)
+}
+
+export async function getEditorBusiness(): Promise<BusinessProfile> {
+  return request<BusinessProfile>('/editor/business')
+}
+
+export async function updateEditorBusiness(data: Partial<BusinessProfile>): Promise<BusinessProfile> {
+  return request<BusinessProfile>('/editor/business', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
 }
 
 export async function saveServices(data: TenantData['services']): Promise<void> {

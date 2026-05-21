@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\BillingController;
+use App\Http\Controllers\Api\Editor\BusinessProfileController;
 use App\Http\Controllers\Api\PublicSiteController;
 use App\Http\Controllers\Api\WebhookController;
 use Illuminate\Support\Facades\Route;
@@ -39,6 +40,12 @@ Route::prefix('v1')->group(function () {
         Route::get('checkout-session/{sessionId}',       [BillingController::class, 'checkoutSession']);
         Route::get('portal',                             [BillingController::class, 'portal']);
         Route::get('subscription',                       [BillingController::class, 'subscription']);
+    });
+
+    // ── Editor (central routes, manual tenancy init) ──────────────────────
+    Route::middleware('auth:sanctum')->prefix('editor')->group(function () {
+        Route::get('business',  [BusinessProfileController::class, 'show']);
+        Route::patch('business', [BusinessProfileController::class, 'update']);
     });
 
     // ── Stripe webhook (no auth, no CSRF) ────────────────────────────────

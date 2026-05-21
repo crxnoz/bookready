@@ -98,6 +98,23 @@ export interface CheckoutSessionData {
   subscription: string | null
 }
 
+// Business profile (editor + public)
+export interface BusinessProfile {
+  id?: number
+  business_name: string | null
+  tagline: string | null
+  business_type: string | null
+  public_email: string | null
+  public_phone: string | null
+  address_line: string | null
+  city: string | null
+  state: string | null
+  zip: string | null
+  instagram_url: string | null
+  booking_enabled: boolean
+  site_status: string
+}
+
 // Public tenant lookup
 export interface PublicSite {
   tenant_id: string
@@ -106,6 +123,7 @@ export interface PublicSite {
   business_name: string | null
   plan: string
   status: string
+  profile?: BusinessProfile | null
 }
 
 // Auth

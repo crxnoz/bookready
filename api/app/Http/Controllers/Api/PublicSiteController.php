@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\BusinessProfile;
 use App\Models\Tenant;
 use Illuminate\Http\JsonResponse;
 
@@ -24,13 +25,18 @@ class PublicSiteController extends Controller
 
         $domain = $tenant->domains()->first();
 
+        tenancy()->initialize($tenant);
+        $profile = BusinessProfile::first();
+        tenancy()->end();
+
         return response()->json([
             'tenant_id'     => $tenant->id,
             'slug'          => $tenant->id,
             'domain'        => $domain?->domain,
-            'business_name' => $tenant->business_name,
+            'business_name' => $profile?->business_name ?? $tenant->business_name,
             'plan'          => $tenant->plan,
             'status'        => 'active',
+            'profile'       => $profile,
         ]);
     }
 }

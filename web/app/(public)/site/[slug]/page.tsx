@@ -23,16 +23,27 @@ export default async function PublicSitePage({ params }: Props) {
 }
 
 function Placeholder({ site, baseDomain }: { site: PublicSite; baseDomain: string }) {
+  const p = site.profile
+  const displayName = p?.business_name ?? site.business_name ?? site.slug
+
   return (
     <div style={styles.page}>
       <div style={styles.card}>
         <p style={styles.eyebrow}>BookReady — Public Site</p>
 
-        <h1 style={styles.heading}>{site.business_name ?? site.slug}</h1>
+        <h1 style={styles.heading}>{displayName}</h1>
+
+        {p?.tagline && (
+          <p style={{ fontSize: 14, color: '#6B7280', marginBottom: 6 }}>{p.tagline}</p>
+        )}
 
         <p style={styles.subdomain}>
           {site.slug}.{baseDomain}
         </p>
+
+        {p?.business_type && (
+          <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 20 }}>{p.business_type}</p>
+        )}
 
         <div style={styles.notice}>
           <p style={styles.noticeTitle}>Public site placeholder</p>
@@ -43,6 +54,15 @@ function Placeholder({ site, baseDomain }: { site: PublicSite; baseDomain: strin
         </div>
 
         <dl style={styles.meta}>
+          {p?.public_phone && <MetaRow label="Phone" value={p.public_phone} />}
+          {p?.public_email && <MetaRow label="Email" value={p.public_email} />}
+          {p?.address_line && (
+            <MetaRow
+              label="Address"
+              value={[p.address_line, p.city, p.state, p.zip].filter(Boolean).join(', ')}
+            />
+          )}
+          {p?.instagram_url && <MetaRow label="Instagram" value={p.instagram_url} />}
           <MetaRow label="Tenant ID" value={site.tenant_id} />
           <MetaRow label="Domain" value={site.domain ?? '—'} />
           <MetaRow label="Plan" value={site.plan} />
