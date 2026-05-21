@@ -3,6 +3,7 @@ import {
   AuthResponse,
   AuthUser,
   AvailabilityData,
+  AvailableSlot,
   BillingCycle,
   BusinessPolicy,
   BusinessProfile,
@@ -12,6 +13,7 @@ import {
   Customer,
   HoursEntry,
   LoginPayload,
+  PublicAvailabilityResponse,
   PublicBookingPayload,
   PublicBookingResponse,
   PublicSite,
@@ -75,6 +77,24 @@ export async function logout(): Promise<void> {
 
 export async function getPublicSite(slug: string): Promise<PublicSite> {
   return request<PublicSite>(`/public/sites/${slug}`)
+}
+
+export async function getPublicAvailability(
+  slug: string,
+  serviceId: number,
+  date: string,
+): Promise<PublicAvailabilityResponse> {
+  const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
+  const qs   = new URLSearchParams({ service_id: String(serviceId), date }).toString()
+  const res  = await fetch(`${base}/public/sites/${slug}/availability?${qs}`, {
+    headers: { Accept: 'application/json' },
+    cache:   'no-store',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }))
+    throw new Error(err.message ?? 'Failed to load availability')
+  }
+  return res.json() as Promise<PublicAvailabilityResponse>
 }
 
 export async function createPublicAppointment(

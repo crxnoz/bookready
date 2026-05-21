@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
+use App\Services\SlotGenerator;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,7 +25,6 @@ class PublicBookingController extends Controller
         }
 
         $tenant = Tenant::find($slug);
-
         if (! $tenant) {
             return response()->json(['message' => 'Site not found'], 404);
         }
@@ -39,11 +39,15 @@ class PublicBookingController extends Controller
             'notes'            => 'nullable|string|max:5000',
         ]);
 
+        $serviceId = (int)    $validated['service_id'];
+        $date      =          $validated['appointment_date'];
+        $startTime = substr($validated['start_time'], 0, 5);
+
         tenancy()->initialize($tenant);
 
-        // Only allow booking active services
+        // ── Load data ────────────────────────────────────────────────────
         $service = DB::table('services')
-            ->where('id', (int) $validated['service_id'])
+            ->where('id', $serviceId)
             ->where('is_active', true)
             ->first();
 
@@ -52,26 +56,48 @@ class PublicBookingController extends Controller
             return response()->json(['message' => 'Service not found or unavailable'], 422);
         }
 
+        $dayOfWeek    = (int) Carbon::parse($date)->dayOfWeek;
+        $hoursRow     = DB::table('hours')->where('day_of_week', $dayOfWeek)->first();
+        $settings     = DB::table('booking_settings')->first();
+        $appointments = DB::table('appointments')
+            ->where('appointment_date', $date)
+            ->whereNotIn('status', ['cancelled'])
+            ->get()
+            ->map(fn ($r) => [
+                'start_time' => substr($r->start_time, 0, 5),
+                'end_time'   => substr($r->end_time,   0, 5),
+            ])
+            ->all();
+
+        // ── Re-verify slot is still available (anti-double-booking) ──────
+        $result = SlotGenerator::generate(
+            date:         $date,
+            service:      $service,
+            hoursRow:     $hoursRow,
+            settings:     $settings,
+            appointments: $appointments,
+            appTimezone:  config('app.timezone'),
+        );
+
+        if (! SlotGenerator::containsSlot($result['slots'], $startTime)) {
+            tenancy()->end();
+            return response()->json(['message' => 'This time is no longer available.'], 422);
+        }
+
+        // ── Calculate end time ───────────────────────────────────────────
         $duration = (int) $service->duration;
-        $endTime  = Carbon::createFromFormat('H:i', substr($validated['start_time'], 0, 5))
+        $endTime  = Carbon::createFromFormat('H:i', $startTime)
             ->addMinutes($duration)
             ->format('H:i');
 
+        // ── Find or create client ────────────────────────────────────────
         $clientId = $this->findOrCreateClient(
             $validated['customer_name'],
             $validated['customer_email'] ?? null,
             $validated['customer_phone'] ?? null,
         );
 
-        // TODO: validate against business hours
-        // TODO: enforce minimum_notice_minutes
-        // TODO: apply buffer_before / buffer_after minutes
-        // TODO: check for appointment conflicts
-        // TODO: enforce max_appointments_per_day
-        // TODO: check blocked dates
-        // TODO: apply slot_release rules
-        // TODO: check staff availability
-
+        // ── Insert appointment ───────────────────────────────────────────
         $id = DB::table('appointments')->insertGetId([
             'client_id'                => $clientId,
             'service_id'               => (int) $service->id,
@@ -81,8 +107,8 @@ class PublicBookingController extends Controller
             'service_name'             => $service->name,
             'service_price'            => $service->price,
             'service_duration_minutes' => $duration,
-            'appointment_date'         => $validated['appointment_date'],
-            'start_time'               => $validated['start_time'],
+            'appointment_date'         => $date,
+            'start_time'               => $startTime,
             'end_time'                 => $endTime,
             'status'                   => 'pending',
             'notes'                    => $validated['notes'] ?? null,
@@ -91,17 +117,16 @@ class PublicBookingController extends Controller
             'updated_at'               => now(),
         ]);
 
-        $row = DB::table('appointments')->find($id);
-
         // Serialize to plain array before ending tenancy
+        $row = DB::table('appointments')->find($id);
         $appointment = [
             'id'               => (int) $row->id,
-            'service_name'     => $row->service_name,
-            'appointment_date' => $row->appointment_date,
+            'service_name'     =>       $row->service_name,
+            'appointment_date' =>       $row->appointment_date,
             'start_time'       => substr($row->start_time, 0, 5),
-            'end_time'         => substr($row->end_time, 0, 5),
-            'status'           => $row->status,
-            'customer_name'    => $row->customer_name,
+            'end_time'         => substr($row->end_time,   0, 5),
+            'status'           =>       $row->status,
+            'customer_name'    =>       $row->customer_name,
         ];
 
         tenancy()->end();

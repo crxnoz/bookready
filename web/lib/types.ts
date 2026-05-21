@@ -226,6 +226,25 @@ export interface UpdateAppointmentPayload {
   internal_notes?: string | null
 }
 
+// Public availability
+export interface AvailableSlot {
+  start_time: string   // "HH:MM"
+  end_time: string     // "HH:MM"
+  label: string        // "10:00 AM"
+}
+
+export interface PublicAvailabilityResponse {
+  date: string
+  service: {
+    id: number
+    name: string
+    duration_minutes: number
+    price: number
+  }
+  slots: AvailableSlot[]
+  message: string | null
+}
+
 // Public booking
 export interface PublicBookingPayload {
   service_id: number
