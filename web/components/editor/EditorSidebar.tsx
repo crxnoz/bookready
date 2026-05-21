@@ -3,15 +3,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  Building2,
   Calendar,
-  Scissors,
-  Clock,
-  FileText,
-  Image,
+  CreditCard,
+  Globe,
+  LayoutDashboard,
+  Settings,
   Users,
-  Palette,
-  LayoutTemplate,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
@@ -24,29 +21,94 @@ interface NavItem {
   status: Status
   statusLabel: string
   disabled?: boolean
+  exactMatch?: boolean
+  subPaths?: string[]
 }
 
+// Paths that belong to each section — used for active state when on a sub-page
+const WEBSITE_PATHS = [
+  '/editor/business',
+  '/editor/gallery',
+  '/editor/policies',
+  '/editor/branding',
+  '/editor/template',
+]
+
+const BOOKINGS_PATHS = [
+  '/editor/services',
+  '/editor/availability',
+  '/editor/hours',
+  '/editor/appointments',
+  '/editor/staff',
+]
+
 const NAV: NavItem[] = [
-  { href: '/editor/business',      label: 'Business',      icon: Building2,      status: 'complete',    statusLabel: 'Complete'      },
-  { href: '/editor/services',      label: 'Services',      icon: Scissors,       status: 'complete',    statusLabel: 'Complete'      },
-  { href: '/editor/availability',  label: 'Availability',  icon: Clock,          status: 'needs-setup', statusLabel: 'Needs setup'   },
-  { href: '/editor/policies',      label: 'Policies',      icon: FileText,       status: 'needs-setup', statusLabel: 'Needs setup'   },
-  { href: '/editor/appointments',  label: 'Appointments',  icon: Calendar,       status: 'complete',    statusLabel: 'Live'          },
-  { href: '/editor/gallery',       label: 'Gallery',       icon: Image,          status: 'soon',        statusLabel: 'Coming soon',  disabled: true },
-  { href: '/editor/staff',         label: 'Staff',         icon: Users,          status: 'soon',        statusLabel: 'Coming soon',  disabled: true },
-  { href: '#',                     label: 'Branding',      icon: Palette,        status: 'soon',        statusLabel: 'Coming soon',  disabled: true },
-  { href: '#',                     label: 'Template',      icon: LayoutTemplate, status: 'info',        statusLabel: 'The Fade Room', disabled: true },
+  {
+    href: '/editor',
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+    status: 'complete',
+    statusLabel: 'Overview',
+    exactMatch: true,
+  },
+  {
+    href: '/editor/website',
+    label: 'Website',
+    icon: Globe,
+    status: 'complete',
+    statusLabel: 'Live',
+    subPaths: WEBSITE_PATHS,
+  },
+  {
+    href: '/editor/bookings',
+    label: 'Bookings',
+    icon: Calendar,
+    status: 'complete',
+    statusLabel: 'Live',
+    subPaths: BOOKINGS_PATHS,
+  },
+  {
+    href: '#',
+    label: 'Customers',
+    icon: Users,
+    status: 'soon',
+    statusLabel: 'Soon',
+    disabled: true,
+  },
+  {
+    href: '#',
+    label: 'Payments',
+    icon: CreditCard,
+    status: 'soon',
+    statusLabel: 'Soon',
+    disabled: true,
+  },
+  {
+    href: '#',
+    label: 'Settings',
+    icon: Settings,
+    status: 'soon',
+    statusLabel: 'Soon',
+    disabled: true,
+  },
 ]
 
 const BADGE: Record<Status, string> = {
-  complete:     'bg-white border border-[rgba(18,18,18,0.12)] text-[rgba(18,18,18,0.6)]',
-  'needs-setup':'bg-blush border-transparent text-[rgba(18,18,18,0.7)]',
-  soon:         'bg-lavender border-transparent text-[rgba(18,18,18,0.5)]',
-  info:         'bg-white border border-[rgba(18,18,18,0.12)] text-[rgba(18,18,18,0.5)]',
+  complete:      'bg-white border border-[rgba(18,18,18,0.12)] text-[rgba(18,18,18,0.6)]',
+  'needs-setup': 'bg-blush border-transparent text-[rgba(18,18,18,0.7)]',
+  soon:          'bg-lavender border-transparent text-[rgba(18,18,18,0.5)]',
+  info:          'bg-white border border-[rgba(18,18,18,0.12)] text-[rgba(18,18,18,0.5)]',
 }
 
 export default function EditorSidebar({ slug: _slug }: { slug: string }) {
   const path = usePathname()
+
+  function isActive(item: NavItem): boolean {
+    if (item.href === '#') return false
+    if (item.exactMatch) return path === item.href
+    if (path === item.href || path.startsWith(item.href + '/')) return true
+    return item.subPaths?.some(sp => path === sp || path.startsWith(sp + '/')) ?? false
+  }
 
   return (
     <aside
@@ -60,22 +122,23 @@ export default function EditorSidebar({ slug: _slug }: { slug: string }) {
     >
       {/* Label — desktop only */}
       <p className="hidden xl:block px-5 pt-4 pb-2 text-[9px] font-bold tracking-[0.2em] uppercase text-muted-text flex-shrink-0">
-        Site Sections
+        BookReady
       </p>
 
       {/* Nav items */}
       <div className="flex flex-row xl:flex-col gap-0.5 p-1.5 xl:p-2 flex-1 xl:flex-none">
-        {NAV.map(({ href, label, icon: Icon, status, statusLabel, disabled }) => {
-          const active = href !== '#' && (path === href || path.startsWith(href))
+        {NAV.map((item) => {
+          const { href, label, icon: Icon, status, statusLabel, disabled } = item
+          const active = isActive(item)
           return (
             <Link
               key={label}
               href={disabled ? '#' : href}
-              onClick={disabled ? e => e.preventDefault() : undefined}
+              onClick={disabled ? (e) => e.preventDefault() : undefined}
               className={cn(
                 'flex items-center border transition-colors select-none',
                 // Mobile: compact vertical stack (icon above label)
-                'flex-col gap-1 px-3 py-2.5 min-w-[60px] whitespace-nowrap',
+                'flex-col gap-1 px-3 py-2.5 min-w-[64px] whitespace-nowrap',
                 // xl: horizontal row with badge
                 'xl:flex-row xl:gap-2.5 xl:px-3 xl:py-2.5 xl:min-w-0 xl:w-full',
                 active
