@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { login } from '@/lib/api'
 import { setToken, setTenantId } from '@/lib/auth'
+import AuthShell from '@/components/auth/AuthShell'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -31,74 +32,84 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-cream flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-10 text-center">
-          <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-near-black">
-            BookReady
-          </span>
-        </div>
-
-        <div className="bg-white border border-[rgba(18,18,18,0.10)] p-8">
-          <h1 className="text-xl font-bold text-near-black tracking-tight mb-1">
-            Welcome back
-          </h1>
-          <p className="text-xs text-muted-text mb-7">Sign in to your dashboard.</p>
-
-          {error && (
-            <div className="mb-5 px-4 py-3 bg-red-50 border border-red-200 text-xs text-red-700">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-[10px] font-bold tracking-[0.18em] uppercase text-near-black mb-1.5">
-                Email
-              </label>
-              <input
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="w-full bg-cream border border-[rgba(18,18,18,0.15)] px-4 py-2.5 text-sm text-near-black placeholder:text-[#b0a99f] focus:outline-none focus:ring-2 focus:ring-near-black/10"
-                placeholder="you@yourbusiness.com"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold tracking-[0.18em] uppercase text-near-black mb-1.5">
-                Password
-              </label>
-              <input
-                type="password"
-                required
-                autoComplete="current-password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="w-full bg-cream border border-[rgba(18,18,18,0.15)] px-4 py-2.5 text-sm text-near-black placeholder:text-[#b0a99f] focus:outline-none focus:ring-2 focus:ring-near-black/10"
-                placeholder="••••••••"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-near-black text-white text-[11px] font-bold tracking-[0.18em] uppercase py-3 hover:bg-[#2a2a2a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Signing in…' : 'Sign In'}
-            </button>
-          </form>
-        </div>
-
-        <p className="text-center text-xs text-muted-text mt-5">
-          Don&apos;t have an account?{' '}
-          <Link href="/register" className="text-near-black font-semibold underline underline-offset-2">
-            Get started
-          </Link>
+    <AuthShell>
+      {/* Heading */}
+      <div className="mb-8">
+        <h1 className="text-[28px] font-bold text-near-black tracking-tight leading-tight mb-2">
+          Welcome back.
+        </h1>
+        <p className="text-sm text-muted-text leading-relaxed">
+          Log in to manage your bookings, website, and clients.
         </p>
       </div>
+
+      {/* Error */}
+      {error && (
+        <div className="mb-5 px-4 py-3 bg-red-50 border border-red-200 text-xs text-red-700">
+          {error}
+        </div>
+      )}
+
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <AuthField label="Email">
+          <input
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            className={inputCls}
+            placeholder="you@yourbusiness.com"
+          />
+        </AuthField>
+
+        <AuthField label="Password">
+          <input
+            type="password"
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            className={inputCls}
+            placeholder="••••••••"
+          />
+        </AuthField>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className={submitCls}
+        >
+          {loading ? 'Logging in…' : 'Log in'}
+        </button>
+      </form>
+
+      {/* Footer link */}
+      <p className="text-xs text-muted-text mt-6">
+        Don&apos;t have an account?{' '}
+        <Link href="/register" className="text-near-black font-semibold underline underline-offset-2 hover:text-[#2a2a2a]">
+          Get started free
+        </Link>
+      </p>
+    </AuthShell>
+  )
+}
+
+function AuthField({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+  return (
+    <div>
+      <label className="block text-[10px] font-bold tracking-[0.18em] uppercase text-near-black mb-1.5">
+        {label}
+      </label>
+      {children}
+      {hint && <p className="mt-1.5 text-[10px] text-muted-text">{hint}</p>}
     </div>
   )
 }
+
+const inputCls =
+  'w-full bg-white border border-[rgba(18,18,18,0.15)] px-4 py-3 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black transition-colors'
+
+const submitCls =
+  'w-full bg-near-black text-white text-[11px] font-bold tracking-[0.18em] uppercase py-3.5 mt-2 hover:bg-[#2a2a2a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
