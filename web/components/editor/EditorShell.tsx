@@ -1,14 +1,101 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
+import Link from 'next/link'
 import { EditorProvider, useEditor } from '@/lib/editorContext'
-import EditorSidebar from './EditorSidebar'
 import LivePreview from './LivePreview'
 import FadeRoomTemplate from '@/components/public-site/FadeRoomTemplate'
 import { getTenantId } from '@/lib/auth'
-import { ExternalLink, Copy, ChevronDown, ChevronUp, Smartphone, Monitor } from 'lucide-react'
+import { ChevronDown, ChevronUp, Smartphone, Monitor } from 'lucide-react'
+import { cn } from '@/lib/cn'
 
-// ── Mobile preview panel (shown below form on < xl) ──────────────────────────
+// ── Section nav config ────────────────────────────────────────────────────────
+
+const WEBSITE_NAV = [
+  { href: '/editor/website',  label: 'Overview',      exact: true },
+  { href: '/editor/business', label: 'Business Info' },
+  { href: '/editor/policies', label: 'Policies' },
+  { href: '/editor/gallery',  label: 'Gallery',    disabled: true },
+  { href: '/editor/branding', label: 'Branding',   disabled: true },
+  { href: '/editor/template', label: 'Template',   disabled: true },
+] as const
+
+const BOOKINGS_NAV = [
+  { href: '/editor/bookings',      label: 'Overview',      exact: true },
+  { href: '/editor/services',      label: 'Services' },
+  { href: '/editor/availability',  label: 'Availability' },
+  { href: '/editor/appointments',  label: 'Appointments' },
+  { href: '/editor/staff',         label: 'Staff',      disabled: true },
+] as const
+
+const WEBSITE_PATHS = [
+  '/editor/website',
+  '/editor/business',
+  '/editor/policies',
+  '/editor/gallery',
+  '/editor/branding',
+  '/editor/template',
+]
+
+const BOOKINGS_PATHS = [
+  '/editor/bookings',
+  '/editor/services',
+  '/editor/availability',
+  '/editor/hours',
+  '/editor/appointments',
+  '/editor/staff',
+]
+
+// ── Section tab strip ─────────────────────────────────────────────────────────
+
+type NavItem = {
+  href: string
+  label: string
+  exact?: boolean
+  disabled?: boolean
+}
+
+function SectionNav({ nav, path }: { nav: readonly NavItem[]; path: string }) {
+  return (
+    <div className="flex flex-row overflow-x-auto border-b border-[rgba(18,18,18,0.10)] bg-white flex-shrink-0">
+      <div className="flex flex-row px-2 gap-0 min-w-max">
+        {nav.map(({ href, label, exact, disabled }) => {
+          if (disabled) {
+            return (
+              <span
+                key={label}
+                className="px-3 py-3 text-[11px] font-medium text-[rgba(18,18,18,0.28)] whitespace-nowrap cursor-default flex-shrink-0"
+              >
+                {label}
+              </span>
+            )
+          }
+          const active = exact
+            ? path === href
+            : path === href || path.startsWith(href + '/')
+          return (
+            <Link
+              key={label}
+              href={href}
+              className={cn(
+                'px-3 py-3 text-[11px] font-medium whitespace-nowrap flex-shrink-0',
+                'border-b-2 -mb-px transition-colors',
+                active
+                  ? 'border-near-black text-near-black font-semibold'
+                  : 'border-transparent text-[rgba(18,18,18,0.6)] hover:text-near-black',
+              )}
+            >
+              {label}
+            </Link>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── Mobile preview panel (website section only) ───────────────────────────────
 
 type DeviceMode = 'mobile' | 'desktop'
 
@@ -19,7 +106,6 @@ function MobilePreviewPanel() {
 
   const MOBILE_W = 390
   const DESKTOP_W = 1280
-  // Both previews fit inside a 340px wide area (phone screen minus padding)
   const mobileScale = 320 / MOBILE_W
   const desktopScale = 320 / DESKTOP_W
 
@@ -35,7 +121,6 @@ function MobilePreviewPanel() {
 
       {open && (
         <div className="px-4 pb-5">
-          {/* Mode toggle */}
           <div className="flex gap-1.5 mb-4">
             {(['mobile', 'desktop'] as DeviceMode[]).map(m => (
               <button
@@ -53,10 +138,8 @@ function MobilePreviewPanel() {
             ))}
           </div>
 
-          {/* Preview */}
           <div className="overflow-x-auto">
             {mode === 'mobile' ? (
-              // Phone frame
               <div
                 style={{
                   display: 'inline-block',
@@ -80,7 +163,6 @@ function MobilePreviewPanel() {
                 </div>
               </div>
             ) : (
-              // Desktop (browser frame, scrollable)
               <div
                 style={{
                   display: 'inline-block',
@@ -113,72 +195,58 @@ function MobilePreviewPanel() {
 // ── Shell ─────────────────────────────────────────────────────────────────────
 
 export default function EditorShell({ children }: { children: React.ReactNode }) {
-  const [slug, setSlug] = useState('')
+  const path = usePathname()
+  const [_slug, setSlug] = useState('')
 
   useEffect(() => {
     const id = getTenantId()
     if (id) setSlug(id)
   }, [])
 
-  function handleCopy() {
-    navigator.clipboard?.writeText(`http://${slug}.bkrdy.me`).catch(() => {})
-  }
+  const isWebsite  = WEBSITE_PATHS.some(p => path === p || path.startsWith(p + '/'))
+  const isBookings = BOOKINGS_PATHS.some(p => path === p || path.startsWith(p + '/'))
+
+  const sectionLabel = isWebsite ? 'Website' : isBookings ? 'Bookings' : 'Editor'
 
   return (
     <EditorProvider>
       {/* Topbar */}
-      <div className="flex items-center justify-between gap-3 border-b border-[rgba(18,18,18,0.10)] bg-white px-4 py-3 flex-shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text hidden sm:block">
-            Website
-          </p>
-          <span className="text-[rgba(18,18,18,0.25)] hidden sm:block">/</span>
-          <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-near-black">
-            Editor
-          </p>
-        </div>
-
-        {slug && (
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <a
-              href={`http://${slug}.bkrdy.me`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-1.5 text-[11px] text-muted-text hover:text-near-black font-medium transition-colors"
-            >
-              <ExternalLink size={11} />
-              {slug}.bkrdy.me
-            </a>
-            <button
-              onClick={handleCopy}
-              className="flex items-center gap-1.5 border border-[rgba(18,18,18,0.12)] px-2.5 py-1.5 text-[10px] font-bold tracking-[0.10em] uppercase text-near-black hover:bg-cream transition-colors"
-            >
-              <Copy size={11} />
-              Copy
-            </button>
-          </div>
-        )}
+      <div className="flex items-center border-b border-[rgba(18,18,18,0.10)] bg-white px-4 py-3 flex-shrink-0">
+        <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">
+          {sectionLabel}
+        </p>
       </div>
 
-      {/* Main — stacked on mobile, 3-col on xl */}
+      {/* Section tab nav */}
+      {isWebsite  && <SectionNav nav={WEBSITE_NAV}  path={path} />}
+      {isBookings && <SectionNav nav={BOOKINGS_NAV} path={path} />}
+
+      {/* Content row */}
       <div className="flex flex-col xl:flex-row flex-1 min-h-0">
 
-        {/* Section nav — horizontal strip on mobile, vertical sidebar on xl */}
-        <EditorSidebar slug={slug} />
-
-        {/* Form column — full-width on mobile, 420px fixed on xl */}
-        <div className="flex-1 xl:flex-none xl:w-[420px] flex flex-col overflow-hidden bg-white xl:border-r xl:border-[rgba(18,18,18,0.10)]">
+        {/* Main content column */}
+        <div
+          className={cn(
+            'flex flex-col overflow-hidden bg-white',
+            isWebsite
+              ? 'flex-1 xl:flex-none xl:w-[420px] xl:border-r xl:border-[rgba(18,18,18,0.10)]'
+              : 'flex-1',
+          )}
+        >
           <div className="flex-1 overflow-y-auto">
             {children}
           </div>
-          {/* Mobile-only collapsible preview */}
-          <MobilePreviewPanel />
+
+          {/* Collapsible mobile preview — website only */}
+          {isWebsite && <MobilePreviewPanel />}
         </div>
 
-        {/* Live preview — xl only */}
-        <div className="hidden xl:flex flex-1 min-w-0 overflow-hidden">
-          <LivePreview />
-        </div>
+        {/* Live preview — website only, xl screens only */}
+        {isWebsite && (
+          <div className="hidden xl:flex flex-1 min-w-0 overflow-hidden">
+            <LivePreview />
+          </div>
+        )}
       </div>
     </EditorProvider>
   )
