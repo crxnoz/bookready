@@ -171,6 +171,13 @@ export interface PublicSite {
 // Appointments & Customers
 export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show'
 
+export interface CustomerAppointmentSummary {
+  date: string
+  service_name: string
+  status: string
+  start_time?: string
+}
+
 export interface Customer {
   id: number
   name: string
@@ -178,6 +185,10 @@ export interface Customer {
   phone: string | null
   notes: string | null
   last_appointment_at: string | null
+  appointment_count: number
+  upcoming_appointment_count: number
+  last_appointment: CustomerAppointmentSummary | null
+  next_appointment: CustomerAppointmentSummary | null
   created_at: string
   updated_at: string
 }

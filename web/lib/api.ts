@@ -268,6 +268,18 @@ export async function deleteEditorAppointment(id: number): Promise<void> {
   await request(`/editor/appointments/${id}`, { method: 'DELETE' })
 }
 
-export async function getEditorCustomers(): Promise<Customer[]> {
-  return request<Customer[]>('/editor/customers')
+export async function getEditorCustomers(params?: {
+  search?: string
+  limit?: number
+}): Promise<Customer[]> {
+  const qs = params
+    ? '?' + new URLSearchParams(
+        Object.fromEntries(
+          Object.entries(params)
+            .filter(([, v]) => v !== undefined && v !== '')
+            .map(([k, v]) => [k, String(v)])
+        )
+      ).toString()
+    : ''
+  return request<Customer[]>(`/editor/customers${qs}`)
 }

@@ -47,6 +47,8 @@ const BOOKINGS_PATHS = [
   '/editor/staff',
 ]
 
+const CUSTOMERS_PATHS = ['/editor/customers']
+
 // ── Section tab strip ─────────────────────────────────────────────────────────
 
 type NavItem = {
@@ -203,10 +205,11 @@ export default function EditorShell({ children }: { children: React.ReactNode })
     if (id) setSlug(id)
   }, [])
 
-  const isWebsite  = WEBSITE_PATHS.some(p => path === p || path.startsWith(p + '/'))
-  const isBookings = BOOKINGS_PATHS.some(p => path === p || path.startsWith(p + '/'))
+  const isWebsite   = WEBSITE_PATHS.some(p => path === p || path.startsWith(p + '/'))
+  const isBookings  = BOOKINGS_PATHS.some(p => path === p || path.startsWith(p + '/'))
+  const isCustomers = CUSTOMERS_PATHS.some(p => path === p || path.startsWith(p + '/'))
 
-  const sectionLabel = isWebsite ? 'Website' : isBookings ? 'Bookings' : 'Editor'
+  const sectionLabel = isWebsite ? 'Website' : isBookings ? 'Bookings' : isCustomers ? 'Customers' : 'Editor'
 
   return (
     <EditorProvider>
