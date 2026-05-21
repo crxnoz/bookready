@@ -193,6 +193,20 @@ export interface Customer {
   updated_at: string
 }
 
+export interface CustomerCreatePayload {
+  name: string
+  email?: string
+  phone?: string
+  notes?: string
+}
+
+export interface CustomerUpdatePayload {
+  name: string
+  email?: string | null
+  phone?: string | null
+  notes?: string | null
+}
+
 export interface Appointment {
   id: number
   customer_id: number | null

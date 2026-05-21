@@ -11,6 +11,8 @@ import {
   CheckoutSessionData,
   CreateAppointmentPayload,
   Customer,
+  CustomerCreatePayload,
+  CustomerUpdatePayload,
   HoursEntry,
   LoginPayload,
   PublicAvailabilityResponse,
@@ -282,4 +284,18 @@ export async function getEditorCustomers(params?: {
       ).toString()
     : ''
   return request<Customer[]>(`/editor/customers${qs}`)
+}
+
+export async function createEditorCustomer(data: CustomerCreatePayload): Promise<Customer> {
+  return request<Customer>('/editor/customers', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateEditorCustomer(id: number, data: CustomerUpdatePayload): Promise<Customer> {
+  return request<Customer>(`/editor/customers/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
 }

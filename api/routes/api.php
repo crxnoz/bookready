@@ -77,7 +77,9 @@ Route::prefix('v1')->group(function () {
         Route::patch('appointments/{appointment}',   [AppointmentsController::class, 'update']);
         Route::delete('appointments/{appointment}',  [AppointmentsController::class, 'destroy']);
 
-        Route::get('customers', [CustomersController::class, 'index']);
+        Route::get('customers',              [CustomersController::class, 'index']);
+        Route::post('customers',             [CustomersController::class, 'store']);
+        Route::patch('customers/{customer}', [CustomersController::class, 'update']);
     });
 
     // ── Stripe webhook (no auth, no CSRF) ────────────────────────────────
