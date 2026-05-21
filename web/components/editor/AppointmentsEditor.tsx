@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import {
   Calendar,
   CheckCircle,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Plus,
   Scissors,
@@ -26,13 +28,17 @@ import type {
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Date helpers ──────────────────────────────────────────────────────────────
+
+const DAY_ABBR = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+function todayStr(): string {
+  return new Date().toISOString().slice(0, 10)
+}
 
 function fmt12(time: string): string {
   const [h, m] = time.split(':').map(Number)
-  const period = h >= 12 ? 'PM' : 'AM'
-  const hour = h % 12 || 12
-  return `${hour}:${String(m).padStart(2, '0')} ${period}`
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`
 }
 
 function fmtDate(date: string): string {
@@ -43,38 +49,84 @@ function fmtDate(date: string): string {
   })
 }
 
-function todayStr(): string {
-  return new Date().toISOString().slice(0, 10)
+function fmtShort(d: Date): string {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-function getWeekBounds(): [string, string] {
+/** Returns Mon-Sun date strings for the given week offset from now */
+function getWeekDays(offset: number): string[] {
   const d = new Date()
   const dow = (d.getDay() + 6) % 7 // 0 = Mon
   const start = new Date(d)
-  start.setDate(d.getDate() - dow)
-  const end = new Date(start)
-  end.setDate(start.getDate() + 6)
-  return [start.toISOString().slice(0, 10), end.toISOString().slice(0, 10)]
+  start.setDate(d.getDate() - dow + offset * 7)
+  return Array.from({ length: 7 }, (_, i) => {
+    const day = new Date(start)
+    day.setDate(start.getDate() + i)
+    return day.toISOString().slice(0, 10)
+  })
 }
 
-function getMonthBounds(): [string, string] {
+function weekLabel(days: string[]): string {
+  const a = new Date(days[0] + 'T00:00:00')
+  const b = new Date(days[6] + 'T00:00:00')
+  if (a.getFullYear() === b.getFullYear()) {
+    return `${fmtShort(a)} – ${fmtShort(b)}, ${a.getFullYear()}`
+  }
+  return `${fmtShort(a)}, ${a.getFullYear()} – ${fmtShort(b)}, ${b.getFullYear()}`
+}
+
+/** Returns [monthStart, monthEnd] as YYYY-MM-DD strings */
+function getMonthBounds(offset: number): [string, string] {
   const d = new Date()
+  d.setDate(1)
+  d.setMonth(d.getMonth() + offset)
   const y = d.getFullYear()
   const mo = d.getMonth()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const start = `${y}-${pad(mo + 1)}-01`
-  const lastDay = new Date(y, mo + 1, 0).getDate()
-  const end = `${y}-${pad(mo + 1)}-${pad(lastDay)}`
-  return [start, end]
+  const p = (n: number) => String(n).padStart(2, '0')
+  return [`${y}-${p(mo + 1)}-01`, `${y}-${p(mo + 1)}-${p(new Date(y, mo + 1, 0).getDate())}`]
 }
 
-function groupByDate(appts: Appointment[]): [string, Appointment[]][] {
-  const map = new Map<string, Appointment[]>()
-  for (const a of appts) {
-    if (!map.has(a.appointment_date)) map.set(a.appointment_date, [])
-    map.get(a.appointment_date)!.push(a)
-  }
-  return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))
+function monthLabel(offset: number): string {
+  const d = new Date()
+  d.setDate(1)
+  d.setMonth(d.getMonth() + offset)
+  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+}
+
+type CalendarCell = { date: string } | null
+
+/** Builds the month grid (array of 7-cell week rows) */
+function getMonthGrid(offset: number): CalendarCell[][] {
+  const d = new Date()
+  d.setDate(1)
+  d.setMonth(d.getMonth() + offset)
+  const yr = d.getFullYear()
+  const mo = d.getMonth()
+  const p = (n: number) => String(n).padStart(2, '0')
+  const firstDow = (new Date(yr, mo, 1).getDay() + 6) % 7
+  const dim = new Date(yr, mo + 1, 0).getDate()
+  const cells: CalendarCell[] = [
+    ...Array.from({ length: firstDow }, (): null => null),
+    ...Array.from({ length: dim }, (_, i) => ({ date: `${yr}-${p(mo + 1)}-${p(i + 1)}` })),
+  ]
+  while (cells.length % 7 !== 0) cells.push(null)
+  const weeks: CalendarCell[][] = []
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7))
+  return weeks
+}
+
+/** Returns the current week's [start, end] bounds */
+function currentWeekBounds(): [string, string] {
+  const days = getWeekDays(0)
+  return [days[0], days[6]]
+}
+
+function apptStatusChipCls(status: string): string {
+  if (status === 'confirmed') return 'bg-lavender border-transparent text-near-black'
+  if (status === 'completed') return 'bg-near-black border-near-black text-white'
+  if (status === 'no_show')   return 'bg-white border-[rgba(18,18,18,0.12)] text-near-black'
+  if (status === 'cancelled') return 'bg-white border-[rgba(18,18,18,0.12)] text-muted-text'
+  return 'bg-blush border-transparent text-near-black' // pending
 }
 
 // ── Status badge ─────────────────────────────────────────────────────────────
@@ -145,6 +197,8 @@ export default function AppointmentsEditor() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('upcoming')
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [monthOffset, setMonthOffset] = useState(0)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm())
@@ -163,20 +217,25 @@ export default function AppointmentsEditor() {
   }, [])
 
   const today = todayStr()
-  const [weekStart, weekEnd] = getWeekBounds()
-  const [monthStart, monthEnd] = getMonthBounds()
 
+  // Derived range data
+  const weekDays    = getWeekDays(weekOffset)
+  const monthGrid   = getMonthGrid(monthOffset)
+  const [monthStart, monthEnd] = getMonthBounds(monthOffset)
+
+  // Stats always show current (offset-0) week
+  const [cwStart, cwEnd] = currentWeekBounds()
   const stats = {
     today:     appointments.filter(a => a.appointment_date === today && a.status !== 'cancelled').length,
     pending:   appointments.filter(a => a.status === 'pending').length,
-    thisWeek:  appointments.filter(a => a.appointment_date >= weekStart && a.appointment_date <= weekEnd && a.status !== 'cancelled').length,
+    thisWeek:  appointments.filter(a => a.appointment_date >= cwStart && a.appointment_date <= cwEnd && a.status !== 'cancelled').length,
     completed: appointments.filter(a => a.status === 'completed').length,
   }
 
   const filtered = appointments
     .filter(a => {
       if (filter === 'today')    return a.appointment_date === today
-      if (filter === 'week')     return a.appointment_date >= weekStart && a.appointment_date <= weekEnd && a.status !== 'cancelled'
+      if (filter === 'week')     return weekDays.includes(a.appointment_date) && a.status !== 'cancelled'
       if (filter === 'month')    return a.appointment_date >= monthStart && a.appointment_date <= monthEnd && a.status !== 'cancelled'
       if (filter === 'pending')  return a.status === 'pending'
       if (filter === 'upcoming') return a.appointment_date >= today && a.status !== 'cancelled'
@@ -184,7 +243,26 @@ export default function AppointmentsEditor() {
     })
     .sort((a, b) => a.appointment_date.localeCompare(b.appointment_date) || a.start_time.localeCompare(b.start_time))
 
-  const grouped = (filter === 'week' || filter === 'month') ? groupByDate(filtered) : null
+  // ── Navigation ──────────────────────────────────────────────────────────────
+
+  function navPrev() {
+    if (filter === 'week')  setWeekOffset(o => o - 1)
+    if (filter === 'month') setMonthOffset(o => o - 1)
+  }
+  function navNext() {
+    if (filter === 'week')  setWeekOffset(o => o + 1)
+    if (filter === 'month') setMonthOffset(o => o + 1)
+  }
+  function navToday() {
+    setWeekOffset(0)
+    setMonthOffset(0)
+  }
+
+  const navLabel = filter === 'week'
+    ? weekLabel(weekDays)
+    : filter === 'month'
+    ? monthLabel(monthOffset)
+    : ''
 
   // ── Form helpers ──────────────────────────────────────────────────────────
 
@@ -218,10 +296,8 @@ export default function AppointmentsEditor() {
       setFormError('Please fill in all required fields.')
       return
     }
-
     setSaving(true)
     setFormError(null)
-
     try {
       if (editId !== null) {
         const updated = await updateEditorAppointment(editId, {
@@ -355,48 +431,34 @@ export default function AppointmentsEditor() {
                 <X size={16} />
               </button>
             </div>
-
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
               {formError && (
                 <p className="text-xs text-red-600 bg-red-50 border border-red-200 px-3 py-2">{formError}</p>
               )}
-
-              {/* Client info */}
               <div className="space-y-3">
                 <p className="text-[9px] font-bold tracking-[0.16em] uppercase text-muted-text">Client</p>
                 <input
-                  type="text"
-                  placeholder="Full name *"
-                  value={form.customer_name}
-                  onChange={e => setField('customer_name', e.target.value)}
-                  required
+                  type="text" placeholder="Full name *" required
+                  value={form.customer_name} onChange={e => setField('customer_name', e.target.value)}
                   className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <input
-                    type="email"
-                    placeholder="Email"
-                    value={form.customer_email}
-                    onChange={e => setField('customer_email', e.target.value)}
+                    type="email" placeholder="Email"
+                    value={form.customer_email} onChange={e => setField('customer_email', e.target.value)}
                     className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
                   />
                   <input
-                    type="tel"
-                    placeholder="Phone"
-                    value={form.customer_phone}
-                    onChange={e => setField('customer_phone', e.target.value)}
+                    type="tel" placeholder="Phone"
+                    value={form.customer_phone} onChange={e => setField('customer_phone', e.target.value)}
                     className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
                   />
                 </div>
               </div>
-
-              {/* Service */}
               <div className="space-y-3">
                 <p className="text-[9px] font-bold tracking-[0.16em] uppercase text-muted-text">Service</p>
                 <select
-                  value={form.service_id}
-                  onChange={e => setField('service_id', e.target.value)}
-                  required
+                  required value={form.service_id} onChange={e => setField('service_id', e.target.value)}
                   className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black appearance-none"
                 >
                   <option value="">Select a service *</option>
@@ -412,41 +474,32 @@ export default function AppointmentsEditor() {
                   </p>
                 )}
               </div>
-
-              {/* Date & time */}
               <div className="space-y-3">
                 <p className="text-[9px] font-bold tracking-[0.16em] uppercase text-muted-text">Date &amp; Time</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[10px] text-muted-text mb-1">Date *</label>
                     <input
-                      type="date"
-                      value={form.appointment_date}
-                      onChange={e => setField('appointment_date', e.target.value)}
-                      required
+                      type="date" required
+                      value={form.appointment_date} onChange={e => setField('appointment_date', e.target.value)}
                       className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black"
                     />
                   </div>
                   <div>
                     <label className="block text-[10px] text-muted-text mb-1">Start time *</label>
                     <input
-                      type="time"
-                      value={form.start_time}
-                      onChange={e => setField('start_time', e.target.value)}
-                      required
+                      type="time" required
+                      value={form.start_time} onChange={e => setField('start_time', e.target.value)}
                       className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black"
                     />
                   </div>
                 </div>
               </div>
-
-              {/* Status (edit only) */}
               {editId !== null && (
                 <div className="space-y-2">
                   <p className="text-[9px] font-bold tracking-[0.16em] uppercase text-muted-text">Status</p>
                   <select
-                    value={form.status}
-                    onChange={e => setField('status', e.target.value as AppointmentStatus)}
+                    value={form.status} onChange={e => setField('status', e.target.value as AppointmentStatus)}
                     className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black"
                   >
                     <option value="pending">Pending</option>
@@ -457,31 +510,24 @@ export default function AppointmentsEditor() {
                   </select>
                 </div>
               )}
-
-              {/* Notes */}
               <div className="space-y-2">
                 <p className="text-[9px] font-bold tracking-[0.16em] uppercase text-muted-text">Notes</p>
                 <textarea
                   placeholder="Optional note for this appointment"
-                  value={form.notes}
-                  onChange={e => setField('notes', e.target.value)}
+                  value={form.notes} onChange={e => setField('notes', e.target.value)}
                   rows={3}
                   className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black resize-none"
                 />
               </div>
-
-              {/* Buttons */}
               <div className="flex gap-3 pt-1">
                 <button
-                  type="submit"
-                  disabled={saving}
+                  type="submit" disabled={saving}
                   className="flex-1 bg-near-black text-white py-2.5 text-xs font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors disabled:opacity-50"
                 >
                   {saving ? 'Saving…' : editId !== null ? 'Save Changes' : 'Create Appointment'}
                 </button>
                 <button
-                  type="button"
-                  onClick={closeForm}
+                  type="button" onClick={closeForm}
                   className="border border-[rgba(18,18,18,0.15)] bg-white px-4 py-2.5 text-xs font-semibold text-near-black hover:bg-cream transition-colors"
                 >
                   Cancel
@@ -516,7 +562,36 @@ export default function AppointmentsEditor() {
           ))}
         </div>
 
-        {/* Appointments list */}
+        {/* Week / Month navigation */}
+        {(filter === 'week' || filter === 'month') && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={navPrev}
+              className="border border-[rgba(18,18,18,0.12)] bg-white p-2 hover:bg-cream transition-colors flex-shrink-0"
+              aria-label="Previous"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <p className="flex-1 text-center text-sm font-semibold text-near-black truncate">
+              {navLabel}
+            </p>
+            <button
+              onClick={navToday}
+              className="border border-[rgba(18,18,18,0.12)] bg-white px-3 py-2 text-[10px] font-bold text-near-black hover:bg-cream transition-colors flex-shrink-0"
+            >
+              Today
+            </button>
+            <button
+              onClick={navNext}
+              className="border border-[rgba(18,18,18,0.12)] bg-white p-2 hover:bg-cream transition-colors flex-shrink-0"
+              aria-label="Next"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
+
+        {/* Content */}
         {loading ? (
           <div className="bg-white border border-[rgba(18,18,18,0.10)] px-5 py-12 text-center text-sm text-muted-text">
             Loading appointments…
@@ -525,6 +600,10 @@ export default function AppointmentsEditor() {
           <div className="bg-white border border-[rgba(18,18,18,0.10)] px-5 py-8 text-center text-sm text-red-500">
             {error}
           </div>
+        ) : filter === 'week' ? (
+          <WeekGridView weekDays={weekDays} appointments={filtered} today={today} />
+        ) : filter === 'month' ? (
+          <MonthCalendarView monthGrid={monthGrid} appointments={filtered} today={today} />
         ) : filtered.length === 0 ? (
           <div className="bg-white border border-[rgba(18,18,18,0.10)] px-5 py-12 text-center">
             <Calendar size={24} className="text-muted-text mx-auto mb-3" />
@@ -543,35 +622,6 @@ export default function AppointmentsEditor() {
               </button>
             )}
           </div>
-        ) : grouped ? (
-          <div className="space-y-5">
-            {grouped.map(([date, appts]) => (
-              <div key={date}>
-                <div className="flex items-center gap-2 mb-2">
-                  <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
-                    {fmtDate(date)}
-                  </p>
-                  {date === today && (
-                    <span className="text-[9px] font-bold bg-near-black text-white px-1.5 py-0.5">
-                      Today
-                    </span>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  {appts.map(appt => (
-                    <AppointmentCard
-                      key={appt.id}
-                      appt={appt}
-                      busy={actionLoading === appt.id}
-                      onEdit={() => openEdit(appt)}
-                      onStatus={status => handleStatusUpdate(appt.id, status)}
-                      onCancel={() => handleCancel(appt.id)}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
         ) : (
           <div className="space-y-2">
             {filtered.map(appt => (
@@ -589,6 +639,267 @@ export default function AppointmentsEditor() {
 
       </div>
     </div>
+  )
+}
+
+// ── Week grid view ────────────────────────────────────────────────────────────
+
+function WeekGridView({
+  weekDays,
+  appointments,
+  today,
+}: {
+  weekDays: string[]
+  appointments: Appointment[]
+  today: string
+}) {
+  return (
+    <>
+      {/* Desktop: 7-column grid */}
+      <div className="hidden sm:grid grid-cols-7 border border-[rgba(18,18,18,0.10)] overflow-hidden">
+        {weekDays.map((date, i) => {
+          const dayAppts = appointments
+            .filter(a => a.appointment_date === date)
+            .sort((a, b) => a.start_time.localeCompare(b.start_time))
+          const isToday = date === today
+          return (
+            <div
+              key={date}
+              className={cn(
+                'border-r last:border-r-0 border-[rgba(18,18,18,0.08)] flex flex-col',
+                isToday ? 'bg-[#F8F6F2]' : 'bg-white',
+              )}
+            >
+              {/* Day header */}
+              <div className={cn(
+                'py-2.5 text-center border-b border-[rgba(18,18,18,0.06)] flex-shrink-0',
+                isToday ? 'bg-near-black' : '',
+              )}>
+                <p className={cn('text-[8px] font-bold tracking-[0.10em] uppercase', isToday ? 'text-white/60' : 'text-muted-text')}>
+                  {DAY_ABBR[i]}
+                </p>
+                <p className={cn('text-sm font-bold leading-none mt-0.5', isToday ? 'text-white' : 'text-near-black')}>
+                  {new Date(date + 'T00:00:00').getDate()}
+                </p>
+              </div>
+              {/* Appointment chips */}
+              <div className="p-1 space-y-0.5 flex-1 min-h-[120px]">
+                {dayAppts.length === 0 ? (
+                  <p className="text-[8px] text-muted-text text-center py-4">—</p>
+                ) : dayAppts.map(a => (
+                  <div
+                    key={a.id}
+                    className={cn(
+                      'px-1 py-1 text-[8px] leading-tight border overflow-hidden',
+                      apptStatusChipCls(a.status),
+                    )}
+                    title={`${fmt12(a.start_time)} · ${a.customer_name} · ${a.service_name}`}
+                  >
+                    <div className="font-bold truncate">
+                      {a.start_time.slice(0, 5)} {a.customer_name.split(' ')[0]}
+                    </div>
+                    <div className="truncate opacity-75">{a.service_name}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Mobile: stacked day cards */}
+      <div className="sm:hidden space-y-2">
+        {weekDays.map((date, i) => {
+          const dayAppts = appointments
+            .filter(a => a.appointment_date === date)
+            .sort((a, b) => a.start_time.localeCompare(b.start_time))
+          const isToday = date === today
+          return (
+            <div
+              key={date}
+              className={cn('border overflow-hidden', isToday ? 'border-near-black' : 'border-[rgba(18,18,18,0.10)]')}
+            >
+              <div className={cn(
+                'px-4 py-3 flex items-center justify-between',
+                isToday ? 'bg-near-black' : 'bg-white border-b border-[rgba(18,18,18,0.06)]',
+              )}>
+                <p className={cn('text-xs font-bold', isToday ? 'text-white' : 'text-near-black')}>
+                  {DAY_ABBR[i]} · {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </p>
+                {isToday && <span className="text-[9px] text-white/60 font-bold uppercase tracking-wider">Today</span>}
+                {!isToday && (
+                  <span className="text-[10px] text-muted-text">
+                    {dayAppts.length === 0 ? 'Free' : `${dayAppts.length} appt${dayAppts.length > 1 ? 's' : ''}`}
+                  </span>
+                )}
+              </div>
+              {dayAppts.length === 0 ? (
+                <div className="bg-white px-4 py-3">
+                  <p className="text-[11px] text-muted-text">No appointments</p>
+                </div>
+              ) : (
+                <div className="bg-white divide-y divide-[rgba(18,18,18,0.06)]">
+                  {dayAppts.map(a => (
+                    <div key={a.id} className="px-4 py-3 flex items-center gap-2 min-w-0">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[11px] font-bold text-near-black whitespace-nowrap">{fmt12(a.start_time)}</span>
+                          <StatusBadge status={a.status} />
+                        </div>
+                        <p className="text-xs text-muted-text truncate mt-0.5">
+                          {a.customer_name} · {a.service_name}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+// ── Month calendar view ───────────────────────────────────────────────────────
+
+function MonthCalendarView({
+  monthGrid,
+  appointments,
+  today,
+}: {
+  monthGrid: CalendarCell[][]
+  appointments: Appointment[]
+  today: string
+}) {
+  return (
+    <>
+      {/* Desktop + tablet: calendar grid */}
+      <div className="hidden sm:block bg-white border border-[rgba(18,18,18,0.10)] overflow-hidden">
+        {/* Day-of-week headers */}
+        <div className="grid grid-cols-7 border-b border-[rgba(18,18,18,0.08)]">
+          {DAY_ABBR.map(d => (
+            <div
+              key={d}
+              className="text-center py-2 text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text border-r last:border-r-0 border-[rgba(18,18,18,0.06)]"
+            >
+              {d}
+            </div>
+          ))}
+        </div>
+        {/* Calendar rows */}
+        {monthGrid.map((week, wi) => (
+          <div key={wi} className="grid grid-cols-7 border-b border-[rgba(18,18,18,0.06)] last:border-b-0">
+            {week.map((cell, di) => {
+              if (!cell) {
+                return (
+                  <div
+                    key={di}
+                    className="border-r last:border-r-0 border-[rgba(18,18,18,0.06)] min-h-[80px] bg-[rgba(18,18,18,0.015)]"
+                  />
+                )
+              }
+              const { date } = cell
+              const isToday = date === today
+              const dayAppts = appointments
+                .filter(a => a.appointment_date === date)
+                .sort((a, b) => a.start_time.localeCompare(b.start_time))
+              const shown = dayAppts.slice(0, 2)
+              const extra = dayAppts.length - 2
+
+              return (
+                <div
+                  key={date}
+                  className={cn(
+                    'border-r last:border-r-0 border-[rgba(18,18,18,0.06)] min-h-[80px] p-1.5 flex flex-col gap-0.5',
+                    isToday ? 'bg-near-black' : 'bg-white',
+                  )}
+                >
+                  <span className={cn('text-[11px] font-bold leading-none mb-0.5', isToday ? 'text-white' : 'text-near-black')}>
+                    {new Date(date + 'T00:00:00').getDate()}
+                  </span>
+                  {shown.map(a => (
+                    <div
+                      key={a.id}
+                      className={cn('px-1 py-0.5 text-[8px] leading-tight truncate border', apptStatusChipCls(a.status))}
+                      title={`${fmt12(a.start_time)} · ${a.customer_name} · ${a.service_name}`}
+                    >
+                      {a.start_time.slice(0, 5)} {a.customer_name.split(' ')[0]}
+                    </div>
+                  ))}
+                  {extra > 0 && (
+                    <span className={cn('text-[8px] font-bold px-0.5', isToday ? 'text-white/60' : 'text-muted-text')}>
+                      +{extra} more
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Mobile: grouped day cards (only days with appointments) */}
+      <div className="sm:hidden space-y-2">
+        {(() => {
+          const daysWithAppts = monthGrid
+            .flat()
+            .filter((cell): cell is { date: string } => cell !== null)
+            .map(cell => ({
+              date: cell.date,
+              appts: appointments
+                .filter(a => a.appointment_date === cell.date)
+                .sort((a, b) => a.start_time.localeCompare(b.start_time)),
+            }))
+            .filter(({ appts }) => appts.length > 0)
+
+          if (daysWithAppts.length === 0) {
+            return (
+              <div className="bg-white border border-[rgba(18,18,18,0.10)] px-4 py-10 text-center">
+                <p className="text-sm font-semibold text-near-black mb-1">No appointments this month</p>
+                <p className="text-xs text-muted-text">Use the navigation above to browse other months.</p>
+              </div>
+            )
+          }
+
+          return daysWithAppts.map(({ date, appts }) => {
+            const isToday = date === today
+            return (
+              <div
+                key={date}
+                className={cn('border overflow-hidden', isToday ? 'border-near-black' : 'border-[rgba(18,18,18,0.10)]')}
+              >
+                <div className={cn(
+                  'px-4 py-2.5 flex items-center justify-between',
+                  isToday ? 'bg-near-black' : 'bg-white border-b border-[rgba(18,18,18,0.06)]',
+                )}>
+                  <p className={cn('text-xs font-bold', isToday ? 'text-white' : 'text-near-black')}>
+                    {fmtDate(date)}
+                  </p>
+                  {isToday && <span className="text-[9px] text-white/60 font-bold uppercase tracking-wider">Today</span>}
+                </div>
+                <div className="bg-white divide-y divide-[rgba(18,18,18,0.06)]">
+                  {appts.map(a => (
+                    <div key={a.id} className="px-4 py-3 flex items-center gap-2 min-w-0">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[11px] font-bold text-near-black whitespace-nowrap">{fmt12(a.start_time)}</span>
+                          <StatusBadge status={a.status} />
+                        </div>
+                        <p className="text-xs text-muted-text truncate mt-0.5">
+                          {a.customer_name} · {a.service_name}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })
+        })()}
+      </div>
+    </>
   )
 }
 
@@ -622,9 +933,7 @@ function AppointmentCard({
           Today
         </div>
       )}
-
       <div className="px-4 py-4">
-        {/* Header row */}
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -644,8 +953,6 @@ function AppointmentCard({
             Edit
           </button>
         </div>
-
-        {/* Service + time */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
           <div className="flex items-center gap-2">
             <Scissors size={12} className="text-muted-text flex-shrink-0" />
@@ -670,48 +977,23 @@ function AppointmentCard({
             </div>
           </div>
         </div>
-
         {appt.notes && (
           <p className="text-[11px] text-muted-text border-l-2 border-[rgba(18,18,18,0.12)] pl-2.5 mb-3 italic">
             {appt.notes}
           </p>
         )}
-
-        {/* Action buttons */}
         {!terminal && (
           <div className="flex flex-wrap gap-1.5 pt-1 border-t border-[rgba(18,18,18,0.06)]">
             {appt.status === 'pending' && isFuture && (
-              <ActionBtn
-                onClick={() => onStatus('confirmed')}
-                disabled={busy}
-                icon={<CheckCircle size={11} />}
-                label="Confirm"
-                primary
-              />
+              <ActionBtn onClick={() => onStatus('confirmed')} disabled={busy} icon={<CheckCircle size={11} />} label="Confirm" primary />
             )}
             {(appt.status === 'pending' || appt.status === 'confirmed') && (
-              <ActionBtn
-                onClick={() => onStatus('completed')}
-                disabled={busy}
-                icon={<CheckCircle size={11} />}
-                label="Complete"
-              />
+              <ActionBtn onClick={() => onStatus('completed')} disabled={busy} icon={<CheckCircle size={11} />} label="Complete" />
             )}
             {appt.status === 'confirmed' && (
-              <ActionBtn
-                onClick={() => onStatus('no_show')}
-                disabled={busy}
-                icon={<User size={11} />}
-                label="No-show"
-              />
+              <ActionBtn onClick={() => onStatus('no_show')} disabled={busy} icon={<User size={11} />} label="No-show" />
             )}
-            <ActionBtn
-              onClick={onCancel}
-              disabled={busy}
-              icon={<XCircle size={11} />}
-              label="Cancel"
-              danger
-            />
+            <ActionBtn onClick={onCancel} disabled={busy} icon={<XCircle size={11} />} label="Cancel" danger />
           </div>
         )}
       </div>
@@ -720,12 +1002,7 @@ function AppointmentCard({
 }
 
 function ActionBtn({
-  onClick,
-  disabled,
-  icon,
-  label,
-  primary,
-  danger,
+  onClick, disabled, icon, label, primary, danger,
 }: {
   onClick: () => void
   disabled: boolean

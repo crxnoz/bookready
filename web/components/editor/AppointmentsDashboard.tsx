@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Calendar, ChevronRight, Clock } from 'lucide-react'
+import { Calendar, ChevronRight, Clock, Plus } from 'lucide-react'
 import {
   deleteEditorAppointment,
   getEditorAppointments,
@@ -36,6 +36,25 @@ function getWeekBounds(): [string, string] {
   return [start.toISOString().slice(0, 10), end.toISOString().slice(0, 10)]
 }
 
+// ── Status pill ───────────────────────────────────────────────────────────────
+
+const STATUS_CFG: Record<string, { label: string; cls: string }> = {
+  pending:   { label: 'Pending',   cls: 'bg-blush text-near-black' },
+  confirmed: { label: 'Confirmed', cls: 'bg-lavender text-near-black' },
+  completed: { label: 'Completed', cls: 'bg-near-black text-white' },
+  cancelled: { label: 'Cancelled', cls: 'bg-white border border-[rgba(18,18,18,0.20)] text-muted-text' },
+  no_show:   { label: 'No-show',   cls: 'bg-white border border-[rgba(18,18,18,0.20)] text-near-black' },
+}
+
+function StatusPill({ status }: { status: string }) {
+  const cfg = STATUS_CFG[status] ?? { label: status, cls: 'bg-white border border-[rgba(18,18,18,0.12)] text-near-black' }
+  return (
+    <span className={cn('text-[9px] font-bold tracking-[0.06em] uppercase px-2 py-0.5 flex-shrink-0 whitespace-nowrap', cfg.cls)}>
+      {cfg.label}
+    </span>
+  )
+}
+
 // ── Main component (Bookings Hub) ─────────────────────────────────────────────
 
 export default function AppointmentsDashboard() {
@@ -58,6 +77,12 @@ export default function AppointmentsDashboard() {
     a.appointment_date >= weekStart && a.appointment_date <= weekEnd && a.status !== 'cancelled'
   )
 
+  // Preview: today + pending + upcoming, up to 5, sorted by date/time
+  const previewAppts = appointments
+    .filter(a => (a.appointment_date >= today || a.status === 'pending') && a.status !== 'cancelled')
+    .sort((a, b) => a.appointment_date.localeCompare(b.appointment_date) || a.start_time.localeCompare(b.start_time))
+    .slice(0, 5)
+
   async function handleConfirm(id: number) {
     setActionLoading(id)
     try {
@@ -68,7 +93,7 @@ export default function AppointmentsDashboard() {
     }
   }
 
-  async function handleCancel(id: number) {
+  async function handleDecline(id: number) {
     if (!confirm('Cancel this appointment?')) return
     setActionLoading(id)
     try {
@@ -143,58 +168,126 @@ export default function AppointmentsDashboard() {
           </div>
         </div>
 
-        {/* Pending requests */}
-        {!loading && pending.length > 0 && (
-          <div>
-            <p className="text-[10px] font-bold tracking-[0.16em] uppercase text-muted-text mb-3">
-              Pending Requests
-            </p>
-            <div className="space-y-2">
-              {pending.slice(0, 5).map(appt => (
-                <div key={appt.id} className="bg-white border border-[rgba(18,18,18,0.10)] px-4 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-near-black truncate">{appt.customer_name}</p>
-                      <p className="text-[11px] text-muted-text mt-0.5 truncate">
-                        {appt.service_name} · {fmtDate(appt.appointment_date)} at {fmt12(appt.start_time)}
-                      </p>
-                      {(appt.customer_email || appt.customer_phone) && (
-                        <p className="text-[11px] text-muted-text truncate">
-                          {appt.customer_email || appt.customer_phone}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-1.5 flex-shrink-0">
-                      <button
-                        onClick={() => handleConfirm(appt.id)}
-                        disabled={actionLoading === appt.id}
-                        className="px-2.5 py-1.5 text-[10px] font-bold bg-near-black text-white hover:bg-[#2a2a2a] transition-colors disabled:opacity-50"
-                      >
-                        Confirm
-                      </button>
-                      <button
-                        onClick={() => handleCancel(appt.id)}
-                        disabled={actionLoading === appt.id}
-                        className="px-2.5 py-1.5 text-[10px] font-semibold border border-[rgba(18,18,18,0.12)] text-muted-text hover:text-near-black transition-colors disabled:opacity-50"
-                      >
-                        Decline
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {pending.length > 5 && (
-                <Link
-                  href="/editor/appointments"
-                  className="block text-center text-[11px] font-semibold text-muted-text hover:text-near-black py-2 transition-colors"
-                >
-                  View all {pending.length} pending →
-                </Link>
-              )}
+        {/* Appointments preview */}
+        <div>
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div>
+              <p className="text-[10px] font-bold tracking-[0.16em] uppercase text-muted-text">
+                Appointments Preview
+              </p>
+              <p className="text-[11px] text-muted-text mt-0.5">
+                A quick look at your schedule and recent booking requests.
+              </p>
             </div>
+            <Link
+              href="/editor/appointments"
+              className="text-[10px] font-bold text-near-black border border-[rgba(18,18,18,0.15)] px-3 py-1.5 hover:bg-cream transition-colors flex-shrink-0 whitespace-nowrap"
+            >
+              View all
+            </Link>
+          </div>
+
+          {loading ? (
+            <div className="bg-white border border-[rgba(18,18,18,0.10)] px-4 py-8 text-center text-sm text-muted-text">
+              Loading…
+            </div>
+          ) : previewAppts.length === 0 ? (
+            <div className="bg-white border border-[rgba(18,18,18,0.10)] px-4 py-10 text-center">
+              <Calendar size={20} className="text-muted-text mx-auto mb-2" />
+              <p className="text-sm font-semibold text-near-black mb-1">No upcoming appointments</p>
+              <p className="text-xs text-muted-text mb-4">No bookings scheduled yet.</p>
+              <Link
+                href="/editor/appointments"
+                className="inline-flex items-center gap-1.5 bg-near-black text-white px-4 py-2.5 text-xs font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors"
+              >
+                <Plus size={11} /> Create Appointment
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {previewAppts.map(appt => (
+                <PreviewCard
+                  key={appt.id}
+                  appt={appt}
+                  busy={actionLoading === appt.id}
+                  onConfirm={() => handleConfirm(appt.id)}
+                  onDecline={() => handleDecline(appt.id)}
+                />
+              ))}
+              <Link
+                href="/editor/appointments"
+                className="flex items-center justify-center gap-1 text-[11px] font-semibold text-near-black border border-[rgba(18,18,18,0.12)] bg-white py-3 hover:bg-cream transition-colors"
+              >
+                View all appointments <ChevronRight size={11} />
+              </Link>
+            </div>
+          )}
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
+// ── Preview card ──────────────────────────────────────────────────────────────
+
+function PreviewCard({
+  appt,
+  busy,
+  onConfirm,
+  onDecline,
+}: {
+  appt: Appointment
+  busy: boolean
+  onConfirm: () => void
+  onDecline: () => void
+}) {
+  const today = todayStr()
+  const isToday = appt.appointment_date === today
+
+  return (
+    <div className={cn(
+      'bg-white border px-4 py-3',
+      isToday ? 'border-near-black' : 'border-[rgba(18,18,18,0.10)]',
+    )}>
+      {isToday && (
+        <div className="text-[9px] font-bold tracking-[0.12em] uppercase text-near-black mb-2">
+          Today
+        </div>
+      )}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap mb-0.5">
+            <p className="text-sm font-bold text-near-black truncate">{appt.customer_name}</p>
+            <StatusPill status={appt.status} />
+          </div>
+          <p className="text-[11px] text-muted-text truncate">
+            {appt.service_name} · {fmtDate(appt.appointment_date)} at {fmt12(appt.start_time)}
+          </p>
+          {(appt.customer_email || appt.customer_phone) && (
+            <p className="text-[11px] text-muted-text truncate mt-0.5">
+              {appt.customer_email || appt.customer_phone}
+            </p>
+          )}
+        </div>
+        {appt.status === 'pending' && (
+          <div className="flex gap-1.5 flex-shrink-0">
+            <button
+              onClick={onConfirm}
+              disabled={busy}
+              className="px-2.5 py-1.5 text-[10px] font-bold bg-near-black text-white hover:bg-[#2a2a2a] transition-colors disabled:opacity-50"
+            >
+              Confirm
+            </button>
+            <button
+              onClick={onDecline}
+              disabled={busy}
+              className="px-2.5 py-1.5 text-[10px] font-semibold border border-[rgba(18,18,18,0.12)] text-muted-text hover:text-near-black transition-colors disabled:opacity-50"
+            >
+              Decline
+            </button>
           </div>
         )}
-
       </div>
     </div>
   )
