@@ -3,9 +3,11 @@
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\BillingController;
+use App\Http\Controllers\Api\Editor\AppointmentsController;
 use App\Http\Controllers\Api\Editor\AvailabilityController;
 use App\Http\Controllers\Api\Editor\BusinessPolicyController;
 use App\Http\Controllers\Api\Editor\BusinessProfileController;
+use App\Http\Controllers\Api\Editor\CustomersController;
 use App\Http\Controllers\Api\Editor\HoursController;
 use App\Http\Controllers\Api\Editor\ServicesController;
 use App\Http\Controllers\Api\PublicSiteController;
@@ -64,6 +66,14 @@ Route::prefix('v1')->group(function () {
 
         Route::get('policies',  [BusinessPolicyController::class, 'show']);
         Route::patch('policies', [BusinessPolicyController::class, 'update']);
+
+        Route::get('appointments',                   [AppointmentsController::class, 'index']);
+        Route::post('appointments',                  [AppointmentsController::class, 'store']);
+        Route::get('appointments/{appointment}',     [AppointmentsController::class, 'show']);
+        Route::patch('appointments/{appointment}',   [AppointmentsController::class, 'update']);
+        Route::delete('appointments/{appointment}',  [AppointmentsController::class, 'destroy']);
+
+        Route::get('customers', [CustomersController::class, 'index']);
     });
 
     // ── Stripe webhook (no auth, no CSRF) ────────────────────────────────

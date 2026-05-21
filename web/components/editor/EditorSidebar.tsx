@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   Building2,
+  Calendar,
   Scissors,
   Clock,
   FileText,
@@ -26,14 +27,15 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { href: '/editor/business',  label: 'Business',  icon: Building2,      status: 'complete',    statusLabel: 'Complete'     },
-  { href: '/editor/services',  label: 'Services',  icon: Scissors,       status: 'complete',    statusLabel: 'Complete'     },
-  { href: '/editor/availability', label: 'Availability', icon: Clock,       status: 'needs-setup', statusLabel: 'Needs setup'  },
-  { href: '/editor/policies',  label: 'Policies',  icon: FileText,       status: 'needs-setup', statusLabel: 'Needs setup'  },
-  { href: '/editor/gallery',   label: 'Gallery',   icon: Image,          status: 'soon',        statusLabel: 'Coming soon', disabled: true },
-  { href: '/editor/staff',     label: 'Staff',     icon: Users,          status: 'soon',        statusLabel: 'Coming soon', disabled: true },
-  { href: '#',                 label: 'Branding',  icon: Palette,        status: 'soon',        statusLabel: 'Coming soon', disabled: true },
-  { href: '#',                 label: 'Template',  icon: LayoutTemplate, status: 'info',        statusLabel: 'The Fade Room', disabled: true },
+  { href: '/editor/business',      label: 'Business',      icon: Building2,      status: 'complete',    statusLabel: 'Complete'      },
+  { href: '/editor/services',      label: 'Services',      icon: Scissors,       status: 'complete',    statusLabel: 'Complete'      },
+  { href: '/editor/availability',  label: 'Availability',  icon: Clock,          status: 'needs-setup', statusLabel: 'Needs setup'   },
+  { href: '/editor/policies',      label: 'Policies',      icon: FileText,       status: 'needs-setup', statusLabel: 'Needs setup'   },
+  { href: '/editor/appointments',  label: 'Appointments',  icon: Calendar,       status: 'complete',    statusLabel: 'Live'          },
+  { href: '/editor/gallery',       label: 'Gallery',       icon: Image,          status: 'soon',        statusLabel: 'Coming soon',  disabled: true },
+  { href: '/editor/staff',         label: 'Staff',         icon: Users,          status: 'soon',        statusLabel: 'Coming soon',  disabled: true },
+  { href: '#',                     label: 'Branding',      icon: Palette,        status: 'soon',        statusLabel: 'Coming soon',  disabled: true },
+  { href: '#',                     label: 'Template',      icon: LayoutTemplate, status: 'info',        statusLabel: 'The Fade Room', disabled: true },
 ]
 
 const BADGE: Record<Status, string> = {

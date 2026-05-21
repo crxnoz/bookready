@@ -168,6 +168,64 @@ export interface PublicSite {
   policies?: BusinessPolicy | null
 }
 
+// Appointments & Customers
+export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show'
+
+export interface Customer {
+  id: number
+  name: string
+  email: string | null
+  phone: string | null
+  notes: string | null
+  last_appointment_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Appointment {
+  id: number
+  customer_id: number | null
+  service_id: number | null
+  customer_name: string
+  customer_email: string | null
+  customer_phone: string | null
+  service_name: string
+  service_price: number | null
+  service_duration_minutes: number | null
+  appointment_date: string   // "YYYY-MM-DD"
+  start_time: string         // "HH:MM"
+  end_time: string           // "HH:MM"
+  status: AppointmentStatus
+  notes: string | null
+  internal_notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateAppointmentPayload {
+  customer_name: string
+  customer_email?: string
+  customer_phone?: string
+  service_id: number
+  appointment_date: string
+  start_time: string
+  notes?: string
+  internal_notes?: string
+  status?: AppointmentStatus
+}
+
+export interface UpdateAppointmentPayload {
+  customer_name?: string
+  customer_email?: string | null
+  customer_phone?: string | null
+  service_id?: number
+  appointment_date?: string
+  start_time?: string
+  status?: AppointmentStatus
+  notes?: string | null
+  internal_notes?: string | null
+}
+
 // Auth
 export interface AuthUser {
   id: number

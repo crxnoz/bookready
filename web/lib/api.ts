@@ -1,4 +1,5 @@
 import {
+  Appointment,
   AuthResponse,
   AuthUser,
   AvailabilityData,
@@ -7,12 +8,15 @@ import {
   BusinessProfile,
   CheckoutResponse,
   CheckoutSessionData,
+  CreateAppointmentPayload,
+  Customer,
   HoursEntry,
   LoginPayload,
   PublicSite,
   RegisterPayload,
   Service,
   TenantData,
+  UpdateAppointmentPayload,
 } from './types'
 import { getToken } from './auth'
 import { mockTenant } from './mockTenant'
@@ -189,4 +193,42 @@ export async function savePolicies(data: TenantData['policies']): Promise<void> 
 export async function saveGallery(data: TenantData['gallery']): Promise<void> {
   // TODO: real API call
   console.log('[api] saveGallery stub', data)
+}
+
+export async function getEditorAppointments(params?: {
+  status?: string
+  date_from?: string
+  date_to?: string
+  limit?: number
+}): Promise<Appointment[]> {
+  const qs = params ? '?' + new URLSearchParams(
+    Object.fromEntries(
+      Object.entries(params)
+        .filter(([, v]) => v !== undefined)
+        .map(([k, v]) => [k, String(v)])
+    )
+  ).toString() : ''
+  return request<Appointment[]>(`/editor/appointments${qs}`)
+}
+
+export async function createEditorAppointment(data: CreateAppointmentPayload): Promise<Appointment> {
+  return request<Appointment>('/editor/appointments', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateEditorAppointment(id: number, data: UpdateAppointmentPayload): Promise<Appointment> {
+  return request<Appointment>(`/editor/appointments/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteEditorAppointment(id: number): Promise<void> {
+  await request(`/editor/appointments/${id}`, { method: 'DELETE' })
+}
+
+export async function getEditorCustomers(): Promise<Customer[]> {
+  return request<Customer[]>('/editor/customers')
 }
