@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\BillingController;
+use App\Http\Controllers\Api\Editor\BusinessPolicyController;
 use App\Http\Controllers\Api\Editor\BusinessProfileController;
 use App\Http\Controllers\Api\Editor\HoursController;
 use App\Http\Controllers\Api\Editor\ServicesController;
@@ -56,6 +57,9 @@ Route::prefix('v1')->group(function () {
 
         Route::get('hours',  [HoursController::class, 'index']);
         Route::patch('hours', [HoursController::class, 'update']);
+
+        Route::get('policies',  [BusinessPolicyController::class, 'show']);
+        Route::patch('policies', [BusinessPolicyController::class, 'update']);
     });
 
     // ── Stripe webhook (no auth, no CSRF) ────────────────────────────────

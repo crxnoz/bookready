@@ -92,6 +92,36 @@ function Placeholder({ site, baseDomain }: { site: PublicSite; baseDomain: strin
           </div>
         )}
 
+        {site.policies && Object.entries({
+          'Cancellation Policy': site.policies.cancellation_policy,
+          'Late Arrival Policy': site.policies.late_policy,
+          'No-Show Policy': site.policies.no_show_policy,
+          'Deposit Policy': site.policies.deposit_policy,
+          'Reschedule Policy': site.policies.reschedule_policy,
+          'Additional Notes': site.policies.extra_notes,
+        }).some(([, v]) => v) && (
+          <div style={{ marginTop: 28 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#6B7280', marginBottom: 12 }}>
+              Policies
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {([
+                ['Cancellation Policy', site.policies.cancellation_policy],
+                ['Late Arrival Policy', site.policies.late_policy],
+                ['No-Show Policy', site.policies.no_show_policy],
+                ['Deposit Policy', site.policies.deposit_policy],
+                ['Reschedule Policy', site.policies.reschedule_policy],
+                ['Additional Notes', site.policies.extra_notes],
+              ] as [string, string | null][]).filter(([, v]) => v).map(([label, text]) => (
+                <div key={label}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: '#121212', marginBottom: 4 }}>{label}</p>
+                  <p style={{ fontSize: 12, color: '#6B7280', whiteSpace: 'pre-wrap' }}>{text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {site.hours && site.hours.length > 0 && (
           <div style={{ marginTop: 28 }}>
             <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#6B7280', marginBottom: 12 }}>

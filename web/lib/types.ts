@@ -121,6 +121,16 @@ export interface BusinessProfile {
   site_status: string
 }
 
+export interface BusinessPolicy {
+  id?: number
+  cancellation_policy: string | null
+  late_policy: string | null
+  no_show_policy: string | null
+  deposit_policy: string | null
+  reschedule_policy: string | null
+  extra_notes: string | null
+}
+
 // Public tenant lookup
 export interface PublicSite {
   tenant_id: string
@@ -132,6 +142,7 @@ export interface PublicSite {
   profile?: BusinessProfile | null
   services?: Service[]
   hours?: HoursEntry[]
+  policies?: BusinessPolicy | null
 }
 
 // Auth

@@ -2,6 +2,7 @@ import {
   AuthResponse,
   AuthUser,
   BillingCycle,
+  BusinessPolicy,
   BusinessProfile,
   CheckoutResponse,
   CheckoutSessionData,
@@ -139,6 +140,17 @@ export async function updateEditorHours(hours: HoursEntry[]): Promise<HoursEntry
   return request<HoursEntry[]>('/editor/hours', {
     method: 'PATCH',
     body: JSON.stringify({ hours }),
+  })
+}
+
+export async function getEditorPolicies(): Promise<BusinessPolicy> {
+  return request<BusinessPolicy>('/editor/policies')
+}
+
+export async function updateEditorPolicies(data: Partial<BusinessPolicy>): Promise<BusinessPolicy> {
+  return request<BusinessPolicy>('/editor/policies', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
   })
 }
 

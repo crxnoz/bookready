@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\BusinessPolicy;
 use App\Models\BusinessProfile;
 use App\Models\Tenant;
 use Illuminate\Http\JsonResponse;
@@ -29,6 +30,7 @@ class PublicSiteController extends Controller
         tenancy()->initialize($tenant);
 
         $profile  = BusinessProfile::first();
+        $policies = BusinessPolicy::first();
         $services = DB::table('services')
             ->where('is_active', true)
             ->orderBy('sort_order')
@@ -73,6 +75,7 @@ class PublicSiteController extends Controller
             'profile'       => $profile,
             'services'      => $services,
             'hours'         => $hours,
+            'policies'      => $policies,
         ]);
     }
 }
