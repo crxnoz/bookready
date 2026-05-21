@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Editor\BusinessProfileController;
 use App\Http\Controllers\Api\Editor\CustomersController;
 use App\Http\Controllers\Api\Editor\HoursController;
 use App\Http\Controllers\Api\Editor\ServicesController;
+use App\Http\Controllers\Api\PublicBookingController;
 use App\Http\Controllers\Api\PublicSiteController;
 use App\Http\Controllers\Api\WebhookController;
 use Illuminate\Support\Facades\Route;
@@ -25,8 +26,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
 
-    // ── Public tenant lookup (no auth) ────────────────────────────────────
-    Route::get('public/sites/{slug}', [PublicSiteController::class, 'show']);
+    // ── Public tenant lookup + booking (no auth) ─────────────────────────
+    Route::get('public/sites/{slug}',               [PublicSiteController::class,  'show']);
+    Route::post('public/sites/{slug}/appointments', [PublicBookingController::class, 'store']);
 
     // ── Authentication (central) ───────────────────────────────────────────
     Route::prefix('auth')->group(function () {

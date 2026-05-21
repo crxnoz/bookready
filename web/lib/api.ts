@@ -12,6 +12,8 @@ import {
   Customer,
   HoursEntry,
   LoginPayload,
+  PublicBookingPayload,
+  PublicBookingResponse,
   PublicSite,
   RegisterPayload,
   Service,
@@ -73,6 +75,23 @@ export async function logout(): Promise<void> {
 
 export async function getPublicSite(slug: string): Promise<PublicSite> {
   return request<PublicSite>(`/public/sites/${slug}`)
+}
+
+export async function createPublicAppointment(
+  slug: string,
+  data: PublicBookingPayload,
+): Promise<PublicBookingResponse> {
+  const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
+  const res = await fetch(`${base}/public/sites/${slug}/appointments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }))
+    throw new Error(err.message ?? 'Booking failed')
+  }
+  return res.json() as Promise<PublicBookingResponse>
 }
 
 // ── Billing ───────────────────────────────────────────────────────────────────

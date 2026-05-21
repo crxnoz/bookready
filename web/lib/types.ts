@@ -226,6 +226,30 @@ export interface UpdateAppointmentPayload {
   internal_notes?: string | null
 }
 
+// Public booking
+export interface PublicBookingPayload {
+  service_id: number
+  appointment_date: string   // "YYYY-MM-DD"
+  start_time: string         // "HH:MM"
+  customer_name: string
+  customer_email?: string
+  customer_phone?: string
+  notes?: string
+}
+
+export interface PublicBookingResponse {
+  message: string
+  appointment: {
+    id: number
+    service_name: string
+    appointment_date: string
+    start_time: string
+    end_time: string
+    status: string
+    customer_name: string
+  }
+}
+
 // Auth
 export interface AuthUser {
   id: number

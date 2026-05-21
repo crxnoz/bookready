@@ -102,7 +102,7 @@ export default function WebsiteHub() {
             const card = (
               <div
                 className={cn(
-                  'bg-white border p-5 flex flex-col gap-3 transition-colors h-full',
+                  'bg-white border p-5 flex flex-col gap-3 transition-colors h-full min-h-[180px]',
                   disabled
                     ? 'border-[rgba(18,18,18,0.08)] opacity-60 cursor-default'
                     : 'border-[rgba(18,18,18,0.12)] hover:border-near-black cursor-pointer',

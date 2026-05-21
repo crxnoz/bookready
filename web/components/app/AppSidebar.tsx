@@ -70,8 +70,8 @@ export default function AppSidebar({ slug }: { slug: string }) {
         'bg-white border-[rgba(18,18,18,0.10)] flex-shrink-0 z-10',
         // Mobile: horizontal bar at top
         'flex flex-row w-full border-b overflow-x-auto',
-        // Desktop: vertical sidebar
-        'md:flex-col md:w-[220px] md:h-full md:border-r md:border-b-0 md:overflow-x-visible md:overflow-y-auto',
+        // Desktop: vertical sidebar — h-screen so flex-1 nav + bottom actions pin correctly
+        'md:flex-col md:w-[220px] md:h-screen md:border-r md:border-b-0 md:overflow-x-visible md:overflow-y-auto',
       )}
     >
       {/* Brand — desktop only */}
