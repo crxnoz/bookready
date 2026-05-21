@@ -47,6 +47,36 @@ function todayStr(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
+function getWeekBounds(): [string, string] {
+  const d = new Date()
+  const dow = (d.getDay() + 6) % 7 // 0 = Mon
+  const start = new Date(d)
+  start.setDate(d.getDate() - dow)
+  const end = new Date(start)
+  end.setDate(start.getDate() + 6)
+  return [start.toISOString().slice(0, 10), end.toISOString().slice(0, 10)]
+}
+
+function getMonthBounds(): [string, string] {
+  const d = new Date()
+  const y = d.getFullYear()
+  const mo = d.getMonth()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const start = `${y}-${pad(mo + 1)}-01`
+  const lastDay = new Date(y, mo + 1, 0).getDate()
+  const end = `${y}-${pad(mo + 1)}-${pad(lastDay)}`
+  return [start, end]
+}
+
+function groupByDate(appts: Appointment[]): [string, Appointment[]][] {
+  const map = new Map<string, Appointment[]>()
+  for (const a of appts) {
+    if (!map.has(a.appointment_date)) map.set(a.appointment_date, [])
+    map.get(a.appointment_date)!.push(a)
+  }
+  return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))
+}
+
 // ── Status badge ─────────────────────────────────────────────────────────────
 
 const STATUS_CFG: Record<string, { label: string; cls: string }> = {
@@ -66,7 +96,7 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-// ── Form defaults ─────────────────────────────────────────────────────────────
+// ── Form state ────────────────────────────────────────────────────────────────
 
 interface FormState {
   customer_name: string
@@ -107,7 +137,7 @@ function appointmentToForm(a: Appointment): FormState {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-type Filter = 'upcoming' | 'today' | 'pending' | 'completed' | 'all'
+type Filter = 'today' | 'week' | 'month' | 'pending' | 'upcoming' | 'all'
 
 export default function AppointmentsEditor() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
@@ -133,21 +163,28 @@ export default function AppointmentsEditor() {
   }, [])
 
   const today = todayStr()
+  const [weekStart, weekEnd] = getWeekBounds()
+  const [monthStart, monthEnd] = getMonthBounds()
 
   const stats = {
-    today:     appointments.filter(a => a.appointment_date === today).length,
-    upcoming:  appointments.filter(a => a.appointment_date >= today && a.status !== 'cancelled').length,
+    today:     appointments.filter(a => a.appointment_date === today && a.status !== 'cancelled').length,
     pending:   appointments.filter(a => a.status === 'pending').length,
+    thisWeek:  appointments.filter(a => a.appointment_date >= weekStart && a.appointment_date <= weekEnd && a.status !== 'cancelled').length,
     completed: appointments.filter(a => a.status === 'completed').length,
   }
 
-  const filtered = appointments.filter(a => {
-    if (filter === 'today')     return a.appointment_date === today
-    if (filter === 'upcoming')  return a.appointment_date >= today && a.status !== 'cancelled'
-    if (filter === 'pending')   return a.status === 'pending'
-    if (filter === 'completed') return a.status === 'completed'
-    return true
-  })
+  const filtered = appointments
+    .filter(a => {
+      if (filter === 'today')    return a.appointment_date === today
+      if (filter === 'week')     return a.appointment_date >= weekStart && a.appointment_date <= weekEnd && a.status !== 'cancelled'
+      if (filter === 'month')    return a.appointment_date >= monthStart && a.appointment_date <= monthEnd && a.status !== 'cancelled'
+      if (filter === 'pending')  return a.status === 'pending'
+      if (filter === 'upcoming') return a.appointment_date >= today && a.status !== 'cancelled'
+      return true
+    })
+    .sort((a, b) => a.appointment_date.localeCompare(b.appointment_date) || a.start_time.localeCompare(b.start_time))
+
+  const grouped = (filter === 'week' || filter === 'month') ? groupByDate(filtered) : null
 
   // ── Form helpers ──────────────────────────────────────────────────────────
 
@@ -209,9 +246,11 @@ export default function AppointmentsEditor() {
           notes:            form.notes || undefined,
         }
         const created = await createEditorAppointment(payload)
-        setAppointments(prev => [created, ...prev].sort((a, b) =>
-          a.appointment_date.localeCompare(b.appointment_date) || a.start_time.localeCompare(b.start_time)
-        ))
+        setAppointments(prev =>
+          [created, ...prev].sort((a, b) =>
+            a.appointment_date.localeCompare(b.appointment_date) || a.start_time.localeCompare(b.start_time)
+          )
+        )
       }
       closeForm()
     } catch {
@@ -243,8 +282,6 @@ export default function AppointmentsEditor() {
       setActionLoading(null)
     }
   }
-
-  // ── Computed service info for form preview ────────────────────────────────
 
   const selectedService = services.find(s => s.id === Number(form.service_id))
 
@@ -278,8 +315,8 @@ export default function AppointmentsEditor() {
         <div className="grid grid-cols-2 sm:grid-cols-4 border border-[rgba(18,18,18,0.10)] divide-y sm:divide-y-0 sm:divide-x divide-[rgba(18,18,18,0.10)] overflow-hidden">
           {([
             { label: 'Today',     value: stats.today,     icon: Calendar },
-            { label: 'Upcoming',  value: stats.upcoming,  icon: Clock },
-            { label: 'Pending',   value: stats.pending,   icon: CheckCircle },
+            { label: 'Pending',   value: stats.pending,   icon: Clock },
+            { label: 'This Week', value: stats.thisWeek,  icon: Calendar },
             { label: 'Completed', value: stats.completed, icon: CheckCircle },
           ] as const).map(({ label, value, icon: Icon }) => (
             <div key={label} className="bg-white p-3 min-w-0 overflow-hidden">
@@ -291,6 +328,21 @@ export default function AppointmentsEditor() {
             </div>
           ))}
         </div>
+
+        {/* Pending callout */}
+        {!loading && stats.pending > 0 && filter !== 'pending' && (
+          <div className="flex items-center justify-between gap-3 bg-blush px-4 py-3 border border-[rgba(18,18,18,0.08)]">
+            <p className="text-[12px] font-semibold text-near-black">
+              {stats.pending} pending booking request{stats.pending !== 1 ? 's' : ''} need your response.
+            </p>
+            <button
+              onClick={() => setFilter('pending')}
+              className="text-[10px] font-bold text-near-black underline underline-offset-2 flex-shrink-0 whitespace-nowrap"
+            >
+              Review
+            </button>
+          </div>
+        )}
 
         {/* Create / edit form */}
         {showForm && (
@@ -442,11 +494,12 @@ export default function AppointmentsEditor() {
         {/* Filter tabs */}
         <div className="flex gap-1 flex-wrap">
           {([
-            { key: 'upcoming',  label: 'Upcoming' },
-            { key: 'today',     label: 'Today' },
-            { key: 'pending',   label: 'Pending' },
-            { key: 'completed', label: 'Completed' },
-            { key: 'all',       label: 'All' },
+            { key: 'today',    label: 'Today' },
+            { key: 'week',     label: 'This Week' },
+            { key: 'month',    label: 'This Month' },
+            { key: 'pending',  label: 'Pending' },
+            { key: 'upcoming', label: 'Upcoming' },
+            { key: 'all',      label: 'All' },
           ] as const).map(({ key, label }) => (
             <button
               key={key}
@@ -490,6 +543,35 @@ export default function AppointmentsEditor() {
               </button>
             )}
           </div>
+        ) : grouped ? (
+          <div className="space-y-5">
+            {grouped.map(([date, appts]) => (
+              <div key={date}>
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+                    {fmtDate(date)}
+                  </p>
+                  {date === today && (
+                    <span className="text-[9px] font-bold bg-near-black text-white px-1.5 py-0.5">
+                      Today
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {appts.map(appt => (
+                    <AppointmentCard
+                      key={appt.id}
+                      appt={appt}
+                      busy={actionLoading === appt.id}
+                      onEdit={() => openEdit(appt)}
+                      onStatus={status => handleStatusUpdate(appt.id, status)}
+                      onCancel={() => handleCancel(appt.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="space-y-2">
             {filtered.map(appt => (
@@ -504,13 +586,6 @@ export default function AppointmentsEditor() {
             ))}
           </div>
         )}
-
-        {/* TODOs for future */}
-        {/* TODO: prevent overlapping appointments */}
-        {/* TODO: apply availability rules (hours, blocked dates) */}
-        {/* TODO: apply buffer_before_minutes / buffer_after_minutes */}
-        {/* TODO: apply slot release rules */}
-        {/* TODO: apply minimum_notice_minutes */}
 
       </div>
     </div>
