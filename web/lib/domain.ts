@@ -1,11 +1,14 @@
-const BASE_DOMAIN = process.env.NEXT_PUBLIC_TENANT_BASE_DOMAIN ?? 'daysbookings.site'
+const PRIMARY_DOMAIN = process.env.NEXT_PUBLIC_TENANT_BASE_DOMAIN ?? 'bkrdy.me'
 
-// Subdomains that belong to the app itself, not tenants
+// Support both the primary domain and the legacy staging domain simultaneously.
+// This lets tenant subdomains on either domain resolve correctly in middleware.
+const BASE_DOMAINS = Array.from(new Set([PRIMARY_DOMAIN, 'daysbookings.site']))
+
 const RESERVED = new Set(['app', 'api', 'www'])
 
 export type HostType =
-  | { kind: 'app' }         // app.daysbookings.site or localhost
-  | { kind: 'tenant'; slug: string }  // the-fade-room.daysbookings.site
+  | { kind: 'app' }
+  | { kind: 'tenant'; slug: string }
   | { kind: 'unknown' }
 
 export function parseHost(host: string | null): HostType {
@@ -19,17 +22,21 @@ export function parseHost(host: string | null): HostType {
     return { kind: 'app' }
   }
 
-  // Must end with the base domain
-  if (!hostname.endsWith(`.${BASE_DOMAIN}`) && hostname !== BASE_DOMAIN) {
-    return { kind: 'unknown' }
+  for (const baseDomain of BASE_DOMAINS) {
+    if (hostname !== baseDomain && !hostname.endsWith(`.${baseDomain}`)) continue
+
+    const subdomain =
+      hostname === baseDomain
+        ? ''
+        : hostname.slice(0, hostname.length - baseDomain.length - 1)
+
+    // Bare domain or reserved subdomain → app shell
+    if (!subdomain || RESERVED.has(subdomain)) {
+      return { kind: 'app' }
+    }
+
+    return { kind: 'tenant', slug: subdomain }
   }
 
-  const subdomain = hostname.slice(0, hostname.length - BASE_DOMAIN.length - 1)
-
-  // No subdomain (bare domain) or reserved subdomain -> treat as app
-  if (!subdomain || RESERVED.has(subdomain)) {
-    return { kind: 'app' }
-  }
-
-  return { kind: 'tenant', slug: subdomain }
+  return { kind: 'unknown' }
 }
