@@ -8,6 +8,7 @@ import {
   LoginPayload,
   PublicSite,
   RegisterPayload,
+  Service,
   TenantData,
 } from './types'
 import { getToken } from './auth'
@@ -105,6 +106,28 @@ export async function updateEditorBusiness(data: Partial<BusinessProfile>): Prom
     method: 'PATCH',
     body: JSON.stringify(data),
   })
+}
+
+export async function getEditorServices(): Promise<Service[]> {
+  return request<Service[]>('/editor/services')
+}
+
+export async function createEditorService(data: Omit<Service, 'id'>): Promise<Service> {
+  return request<Service>('/editor/services', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateEditorService(id: number, data: Partial<Omit<Service, 'id'>>): Promise<Service> {
+  return request<Service>(`/editor/services/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteEditorService(id: number): Promise<void> {
+  await request(`/editor/services/${id}`, { method: 'DELETE' })
 }
 
 export async function saveServices(data: TenantData['services']): Promise<void> {

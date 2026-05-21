@@ -22,12 +22,14 @@ export interface Business {
 }
 
 export interface Service {
-  id: string
+  id: number
   name: string
-  description: string
-  duration: number // minutes
+  description: string | null
   price: number
-  category: string
+  duration_minutes: number
+  category: string | null
+  is_active: boolean
+  sort_order: number
 }
 
 export interface StaffMember {
@@ -124,6 +126,7 @@ export interface PublicSite {
   plan: string
   status: string
   profile?: BusinessProfile | null
+  services?: Service[]
 }
 
 // Auth

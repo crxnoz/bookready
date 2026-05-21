@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BusinessProfile;
 use App\Models\Tenant;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class PublicSiteController extends Controller
 {
@@ -26,7 +27,25 @@ class PublicSiteController extends Controller
         $domain = $tenant->domains()->first();
 
         tenancy()->initialize($tenant);
-        $profile = BusinessProfile::first();
+
+        $profile  = BusinessProfile::first();
+        $services = DB::table('services')
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->map(fn ($r) => [
+                'id'               => (int)  $r->id,
+                'name'             =>         $r->name,
+                'description'      =>         $r->description,
+                'price'            => (float) $r->price,
+                'duration_minutes' => (int)   $r->duration,
+                'category'         =>         $r->category ?? null,
+                'is_active'        => (bool)  $r->is_active,
+                'sort_order'       => (int)   $r->sort_order,
+            ])
+            ->values();
+
         tenancy()->end();
 
         return response()->json([
@@ -37,6 +56,7 @@ class PublicSiteController extends Controller
             'plan'          => $tenant->plan,
             'status'        => 'active',
             'profile'       => $profile,
+            'services'      => $services,
         ]);
     }
 }

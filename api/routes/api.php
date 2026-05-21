@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\Editor\BusinessProfileController;
+use App\Http\Controllers\Api\Editor\ServicesController;
 use App\Http\Controllers\Api\PublicSiteController;
 use App\Http\Controllers\Api\WebhookController;
 use Illuminate\Support\Facades\Route;
@@ -46,6 +47,11 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->prefix('editor')->group(function () {
         Route::get('business',  [BusinessProfileController::class, 'show']);
         Route::patch('business', [BusinessProfileController::class, 'update']);
+
+        Route::get('services',              [ServicesController::class, 'index']);
+        Route::post('services',             [ServicesController::class, 'store']);
+        Route::patch('services/{service}',  [ServicesController::class, 'update']);
+        Route::delete('services/{service}', [ServicesController::class, 'destroy']);
     });
 
     // ── Stripe webhook (no auth, no CSRF) ────────────────────────────────

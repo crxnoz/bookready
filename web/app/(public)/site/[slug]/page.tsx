@@ -68,6 +68,29 @@ function Placeholder({ site, baseDomain }: { site: PublicSite; baseDomain: strin
           <MetaRow label="Plan" value={site.plan} />
           <MetaRow label="Status" value={site.status} />
         </dl>
+
+        {site.services && site.services.length > 0 && (
+          <div style={{ marginTop: 28 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#6B7280', marginBottom: 12 }}>
+              Services
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {site.services.map(s => (
+                <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '10px 14px', border: '1px solid rgba(18,18,18,0.08)', background: '#F8F6F2' }}>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#121212', marginBottom: 2 }}>{s.name}</p>
+                    {s.description && <p style={{ fontSize: 11, color: '#6B7280' }}>{s.description}</p>}
+                    {s.category && <p style={{ fontSize: 10, color: '#9CA3AF', marginTop: 2 }}>{s.category}</p>}
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 16 }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: '#121212' }}>${Number(s.price).toFixed(2)}</p>
+                    <p style={{ fontSize: 11, color: '#6B7280' }}>{s.duration_minutes} min</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
