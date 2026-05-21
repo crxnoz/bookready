@@ -1,10 +1,10 @@
 import EditorShell from '@/components/editor/EditorShell'
-import BookingsHub from '@/components/editor/BookingsHub'
+import AppointmentsDashboard from '@/components/editor/AppointmentsDashboard'
 
 export default function BookingsPage() {
   return (
     <EditorShell>
-      <BookingsHub />
+      <AppointmentsDashboard />
     </EditorShell>
   )
 }
