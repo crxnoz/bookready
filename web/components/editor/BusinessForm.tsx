@@ -68,10 +68,12 @@ export default function BusinessForm() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-5 space-y-6">
+      {/* Heading */}
       <div>
-        <h2 className="text-lg font-bold text-near-black tracking-tight mb-0.5">Business</h2>
-        <p className="text-xs text-muted-text">This info appears throughout your public site.</p>
+        <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-1">Business Info</p>
+        <h2 className="text-lg font-bold text-near-black tracking-tight mb-0.5">Your business profile</h2>
+        <p className="text-xs text-muted-text">This info appears throughout your public booking site.</p>
       </div>
 
       {status === 'error' && errorMsg && (
@@ -80,6 +82,7 @@ export default function BusinessForm() {
         </div>
       )}
 
+      {/* Basic info */}
       <div className="space-y-4">
         <Input
           label="Business Name"
@@ -102,9 +105,12 @@ export default function BusinessForm() {
 
       <hr className="border-[rgba(18,18,18,0.08)]" />
 
+      {/* Contact */}
       <div className="space-y-4">
         <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">Contact</p>
-        <div className="grid grid-cols-2 gap-3">
+
+        {/* Phone + Email — 1 col on mobile, 2 col on sm+ */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input
             label="Phone"
             type="tel"
@@ -118,13 +124,16 @@ export default function BusinessForm() {
             onChange={e => set('public_email', e.target.value)}
           />
         </div>
+
         <Input
           label="Street Address"
           value={form.address_line ?? ''}
           onChange={e => set('address_line', e.target.value)}
         />
-        <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-1">
+
+        {/* City — full width on mobile, City+State+ZIP on sm+ */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="col-span-2 sm:col-span-1">
             <Input
               label="City"
               value={form.city ?? ''}
@@ -142,6 +151,7 @@ export default function BusinessForm() {
             onChange={e => set('zip', e.target.value)}
           />
         </div>
+
         <Input
           label="Instagram URL"
           placeholder="https://instagram.com/yourbusiness"
@@ -150,7 +160,8 @@ export default function BusinessForm() {
         />
       </div>
 
-      <div className="flex items-center gap-3 pt-2">
+      {/* Save */}
+      <div className="flex items-center gap-3 pt-1 pb-2">
         <Button onClick={handleSave} size="md" disabled={status === 'saving'}>
           {status === 'saving' ? 'Saving…' : 'Save Changes'}
         </Button>
