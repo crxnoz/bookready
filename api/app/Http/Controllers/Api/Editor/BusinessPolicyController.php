@@ -15,11 +15,19 @@ class BusinessPolicyController extends Controller
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
-        $policy = BusinessPolicy::first() ?? new BusinessPolicy();
+        $policy = BusinessPolicy::first();
+        $data = $policy ? $policy->toArray() : array_fill_keys([
+            'cancellation_policy',
+            'late_policy',
+            'no_show_policy',
+            'deposit_policy',
+            'reschedule_policy',
+            'extra_notes',
+        ], null);
 
         tenancy()->end();
 
-        return response()->json($policy);
+        return response()->json($data);
     }
 
     public function update(Request $request): JsonResponse
@@ -43,8 +51,10 @@ class BusinessPolicyController extends Controller
             $policy = BusinessPolicy::create($validated);
         }
 
+        $data = $policy->toArray();
+
         tenancy()->end();
 
-        return response()->json($policy);
+        return response()->json($data);
     }
 }
