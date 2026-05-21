@@ -1,10 +1,5 @@
-import EditorShell from '@/components/editor/EditorShell'
-import HoursEditor from '@/components/editor/HoursEditor'
+import { redirect } from 'next/navigation'
 
 export default function HoursPage() {
-  return (
-    <EditorShell>
-      <HoursEditor />
-    </EditorShell>
-  )
+  redirect('/editor/availability')
 }

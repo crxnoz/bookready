@@ -121,6 +121,28 @@ export interface BusinessProfile {
   site_status: string
 }
 
+export interface BookingSettings {
+  id?: number
+  buffer_before_minutes: number
+  buffer_after_minutes: number
+  minimum_notice_minutes: number
+  booking_interval_minutes: number
+  max_days_ahead: number
+  max_appointments_per_day: number | null
+  auto_confirm_bookings: boolean
+  slot_release_enabled: boolean
+  slot_release_frequency: 'weekly' | 'biweekly' | 'monthly' | 'custom' | null
+  slot_release_day_of_week: number | null
+  slot_release_day_of_month: number | null
+  slot_release_time: string | null
+  slot_release_window_days: number | null
+}
+
+export interface AvailabilityData {
+  hours: HoursEntry[]
+  settings: BookingSettings
+}
+
 export interface BusinessPolicy {
   id?: number
   cancellation_policy: string | null
@@ -133,6 +155,7 @@ export interface BusinessPolicy {
 
 // Public tenant lookup
 export interface PublicSite {
+  availability?: AvailabilityData | null
   tenant_id: string
   slug: string
   domain: string | null

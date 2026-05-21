@@ -28,7 +28,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: '/editor/business',  label: 'Business',  icon: Building2,      status: 'complete',    statusLabel: 'Complete'     },
   { href: '/editor/services',  label: 'Services',  icon: Scissors,       status: 'complete',    statusLabel: 'Complete'     },
-  { href: '/editor/hours',     label: 'Hours',     icon: Clock,          status: 'needs-setup', statusLabel: 'Needs setup'  },
+  { href: '/editor/availability', label: 'Availability', icon: Clock,       status: 'needs-setup', statusLabel: 'Needs setup'  },
   { href: '/editor/policies',  label: 'Policies',  icon: FileText,       status: 'needs-setup', statusLabel: 'Needs setup'  },
   { href: '/editor/gallery',   label: 'Gallery',   icon: Image,          status: 'soon',        statusLabel: 'Coming soon', disabled: true },
   { href: '/editor/staff',     label: 'Staff',     icon: Users,          status: 'soon',        statusLabel: 'Coming soon', disabled: true },

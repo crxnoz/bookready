@@ -1,6 +1,7 @@
 import {
   AuthResponse,
   AuthUser,
+  AvailabilityData,
   BillingCycle,
   BusinessPolicy,
   BusinessProfile,
@@ -140,6 +141,17 @@ export async function updateEditorHours(hours: HoursEntry[]): Promise<HoursEntry
   return request<HoursEntry[]>('/editor/hours', {
     method: 'PATCH',
     body: JSON.stringify({ hours }),
+  })
+}
+
+export async function getEditorAvailability(): Promise<AvailabilityData> {
+  return request<AvailabilityData>('/editor/availability')
+}
+
+export async function updateEditorAvailability(data: AvailabilityData): Promise<AvailabilityData> {
+  return request<AvailabilityData>('/editor/availability', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
   })
 }
 
