@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\Editor\BusinessProfileController;
+use App\Http\Controllers\Api\Editor\HoursController;
 use App\Http\Controllers\Api\Editor\ServicesController;
 use App\Http\Controllers\Api\PublicSiteController;
 use App\Http\Controllers\Api\WebhookController;
@@ -52,6 +53,9 @@ Route::prefix('v1')->group(function () {
         Route::post('services',             [ServicesController::class, 'store']);
         Route::patch('services/{service}',  [ServicesController::class, 'update']);
         Route::delete('services/{service}', [ServicesController::class, 'destroy']);
+
+        Route::get('hours',  [HoursController::class, 'index']);
+        Route::patch('hours', [HoursController::class, 'update']);
     });
 
     // ── Stripe webhook (no auth, no CSRF) ────────────────────────────────

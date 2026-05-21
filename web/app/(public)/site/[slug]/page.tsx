@@ -91,6 +91,26 @@ function Placeholder({ site, baseDomain }: { site: PublicSite; baseDomain: strin
             </div>
           </div>
         )}
+
+        {site.hours && site.hours.length > 0 && (
+          <div style={{ marginTop: 28 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#6B7280', marginBottom: 12 }}>
+              Hours
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {[...site.hours.filter(h => h.day_of_week !== 0), ...site.hours.filter(h => h.day_of_week === 0)].map(h => (
+                <div key={h.day_of_week} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid rgba(18,18,18,0.06)' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#121212' }}>{h.day_name}</span>
+                  <span style={{ fontSize: 12, color: '#6B7280' }}>
+                    {h.is_open && h.open_time && h.close_time
+                      ? `${h.open_time} – ${h.close_time}`
+                      : 'Closed'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

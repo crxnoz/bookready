@@ -5,6 +5,7 @@ import {
   BusinessProfile,
   CheckoutResponse,
   CheckoutSessionData,
+  HoursEntry,
   LoginPayload,
   PublicSite,
   RegisterPayload,
@@ -128,6 +129,17 @@ export async function updateEditorService(id: number, data: Partial<Omit<Service
 
 export async function deleteEditorService(id: number): Promise<void> {
   await request(`/editor/services/${id}`, { method: 'DELETE' })
+}
+
+export async function getEditorHours(): Promise<HoursEntry[]> {
+  return request<HoursEntry[]>('/editor/hours')
+}
+
+export async function updateEditorHours(hours: HoursEntry[]): Promise<HoursEntry[]> {
+  return request<HoursEntry[]>('/editor/hours', {
+    method: 'PATCH',
+    body: JSON.stringify({ hours }),
+  })
 }
 
 export async function saveServices(data: TenantData['services']): Promise<void> {

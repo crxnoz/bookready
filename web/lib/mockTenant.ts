@@ -58,13 +58,13 @@ export const mockTenant: TenantData = {
     { id: '6', url: '', alt: 'Full look styling' },
   ],
   hours: [
-    { day: 'Sunday', open: '', close: '', closed: true },
-    { day: 'Monday', open: '09:00', close: '19:00', closed: false },
-    { day: 'Tuesday', open: '09:00', close: '19:00', closed: false },
-    { day: 'Wednesday', open: '09:00', close: '19:00', closed: false },
-    { day: 'Thursday', open: '09:00', close: '20:00', closed: false },
-    { day: 'Friday', open: '09:00', close: '20:00', closed: false },
-    { day: 'Saturday', open: '08:00', close: '18:00', closed: false },
+    { id: 1, day_of_week: 0, day_name: 'Sunday',    is_open: false, open_time: null,    close_time: null,    break_start: null, break_end: null },
+    { id: 2, day_of_week: 1, day_name: 'Monday',    is_open: true,  open_time: '09:00', close_time: '19:00', break_start: null, break_end: null },
+    { id: 3, day_of_week: 2, day_name: 'Tuesday',   is_open: true,  open_time: '09:00', close_time: '19:00', break_start: null, break_end: null },
+    { id: 4, day_of_week: 3, day_name: 'Wednesday', is_open: true,  open_time: '09:00', close_time: '19:00', break_start: null, break_end: null },
+    { id: 5, day_of_week: 4, day_name: 'Thursday',  is_open: true,  open_time: '09:00', close_time: '20:00', break_start: null, break_end: null },
+    { id: 6, day_of_week: 5, day_name: 'Friday',    is_open: true,  open_time: '09:00', close_time: '20:00', break_start: null, break_end: null },
+    { id: 7, day_of_week: 6, day_name: 'Saturday',  is_open: true,  open_time: '08:00', close_time: '18:00', break_start: null, break_end: null },
   ],
   policies: [
     {

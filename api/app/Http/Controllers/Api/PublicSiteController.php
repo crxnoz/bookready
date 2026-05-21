@@ -46,6 +46,21 @@ class PublicSiteController extends Controller
             ])
             ->values();
 
+        $hours = DB::table('hours')
+            ->orderBy('day_of_week')
+            ->get()
+            ->map(fn ($r) => [
+                'id'          => (int)   $r->id,
+                'day_of_week' => (int)   $r->day_of_week,
+                'day_name'    => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][(int) $r->day_of_week],
+                'is_open'     => ! (bool) $r->is_closed,
+                'open_time'   => $r->open_time  ? substr($r->open_time,  0, 5) : null,
+                'close_time'  => $r->close_time ? substr($r->close_time, 0, 5) : null,
+                'break_start' => isset($r->break_start) && $r->break_start ? substr($r->break_start, 0, 5) : null,
+                'break_end'   => isset($r->break_end)   && $r->break_end   ? substr($r->break_end,   0, 5) : null,
+            ])
+            ->values();
+
         tenancy()->end();
 
         return response()->json([
@@ -57,6 +72,7 @@ class PublicSiteController extends Controller
             'status'        => 'active',
             'profile'       => $profile,
             'services'      => $services,
+            'hours'         => $hours,
         ]);
     }
 }

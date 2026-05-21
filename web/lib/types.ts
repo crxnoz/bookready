@@ -48,10 +48,14 @@ export interface GalleryImage {
 }
 
 export interface HoursEntry {
-  day: DayOfWeek
-  open: string
-  close: string
-  closed: boolean
+  id: number
+  day_of_week: number
+  day_name: string
+  is_open: boolean
+  open_time: string | null
+  close_time: string | null
+  break_start: string | null
+  break_end: string | null
 }
 
 export interface Policy {
@@ -127,6 +131,7 @@ export interface PublicSite {
   status: string
   profile?: BusinessProfile | null
   services?: Service[]
+  hours?: HoursEntry[]
 }
 
 // Auth
