@@ -102,7 +102,7 @@ export default function WebsiteHub() {
             const card = (
               <div
                 className={cn(
-                  'bg-white border p-5 flex flex-col gap-3 transition-colors',
+                  'bg-white border p-5 flex flex-col gap-3 transition-colors h-full',
                   disabled
                     ? 'border-[rgba(18,18,18,0.08)] opacity-60 cursor-default'
                     : 'border-[rgba(18,18,18,0.12)] hover:border-near-black cursor-pointer',
@@ -135,18 +135,16 @@ export default function WebsiteHub() {
                   <p className="text-xs text-muted-text leading-relaxed">{description}</p>
                 </div>
 
-                {!disabled && (
-                  <div className="flex items-center gap-1 text-[10px] font-semibold text-near-black">
-                    Open <ChevronRight size={11} />
-                  </div>
-                )}
+                <div className={cn('flex items-center gap-1 text-[10px] font-semibold text-near-black', disabled && 'invisible')}>
+                  Open <ChevronRight size={11} />
+                </div>
               </div>
             )
 
             return disabled ? (
-              <div key={label}>{card}</div>
+              <div key={label} className="h-full">{card}</div>
             ) : (
-              <Link key={label} href={href} className="block">
+              <Link key={label} href={href} className="block h-full">
                 {card}
               </Link>
             )
