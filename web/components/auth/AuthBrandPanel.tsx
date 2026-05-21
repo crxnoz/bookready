@@ -16,11 +16,9 @@ const BENEFITS = [
 export default function AuthBrandPanel() {
   return (
     <div className="flex flex-col h-full p-10 xl:p-14">
-      {/* Wordmark */}
+      {/* Logo */}
       <div>
-        <span className="text-[11px] font-bold tracking-[0.24em] uppercase text-white/90">
-          BookReady
-        </span>
+        <img src="/logo.svg" alt="BookReady" className="h-8 w-auto invert" />
       </div>
 
       {/* Main copy */}

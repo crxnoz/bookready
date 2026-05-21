@@ -14,11 +14,9 @@ export default function AuthShell({ children }: AuthShellProps) {
 
       {/* Form panel — fills remaining space */}
       <div className="flex-1 bg-cream flex flex-col items-center justify-center px-6 py-14">
-        {/* Mobile wordmark */}
+        {/* Mobile logo */}
         <div className="mb-8 lg:hidden">
-          <span className="text-[11px] font-bold tracking-[0.22em] uppercase text-near-black">
-            BookReady
-          </span>
+          <img src="/logo.svg" alt="BookReady" className="h-7 w-auto" />
         </div>
 
         <div className="w-full max-w-[400px]">
