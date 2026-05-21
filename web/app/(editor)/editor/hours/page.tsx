@@ -1,5 +1,10 @@
+import EditorShell from '@/components/editor/EditorShell'
 import HoursEditor from '@/components/editor/HoursEditor'
 
 export default function HoursPage() {
-  return <HoursEditor />
+  return (
+    <EditorShell>
+      <HoursEditor />
+    </EditorShell>
+  )
 }

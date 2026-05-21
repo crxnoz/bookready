@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getToken, getTenantId, clearAuth } from '@/lib/auth'
 import { getCurrentUser } from '@/lib/api'
-import EditorShell from './EditorShell'
+import AppShell from '@/components/app/AppShell'
 
 export default function EditorGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -17,14 +17,11 @@ export default function EditorGuard({ children }: { children: React.ReactNode })
       return
     }
 
-    // Use cached tenant_id immediately so the shell renders fast, then verify token
     const cached = getTenantId()
     if (cached) setSlug(cached)
 
     getCurrentUser()
-      .then(user => {
-        setSlug(user.tenant_id)
-      })
+      .then(user => setSlug(user.tenant_id))
       .catch(() => {
         clearAuth()
         router.replace('/login')
@@ -41,5 +38,5 @@ export default function EditorGuard({ children }: { children: React.ReactNode })
     )
   }
 
-  return <EditorShell slug={slug}>{children}</EditorShell>
+  return <AppShell slug={slug}>{children}</AppShell>
 }

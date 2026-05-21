@@ -448,7 +448,7 @@ function HoursDisplay({ hours }: { hours: HoursEntry[] }) {
     <div>
       {hours.map(h => (
         <div
-          key={h.day}
+          key={h.day_of_week}
           style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -457,9 +457,9 @@ function HoursDisplay({ hours }: { hours: HoursEntry[] }) {
             fontSize: '14px',
           }}
         >
-          <span style={{ color: C.muted, fontWeight: 600 }}>{h.day}</span>
-          <span style={{ color: h.closed ? C.muted : C.text }}>
-            {h.closed ? 'Closed' : `${fmt12h(h.open)} – ${fmt12h(h.close)}`}
+          <span style={{ color: C.muted, fontWeight: 600 }}>{h.day_name}</span>
+          <span style={{ color: !h.is_open ? C.muted : C.text }}>
+            {!h.is_open ? 'Closed' : `${h.open_time ?? ''} – ${h.close_time ?? ''}`}
           </span>
         </div>
       ))}

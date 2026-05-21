@@ -5,76 +5,101 @@ import { usePathname } from 'next/navigation'
 import {
   Building2,
   Scissors,
-  Image,
   Clock,
-  Users,
   FileText,
-  ExternalLink,
-  ChevronRight,
+  Image,
+  Users,
+  Palette,
+  LayoutTemplate,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
-const NAV = [
-  { href: '/editor/business', label: 'Business', icon: Building2 },
-  { href: '/editor/services', label: 'Services', icon: Scissors },
-  { href: '/editor/gallery', label: 'Gallery', icon: Image },
-  { href: '/editor/hours', label: 'Hours', icon: Clock },
-  { href: '/editor/staff', label: 'Team', icon: Users },
-  { href: '/editor/policies', label: 'Policies', icon: FileText },
+type Status = 'complete' | 'needs-setup' | 'soon' | 'info'
+
+interface NavItem {
+  href: string
+  label: string
+  icon: React.ElementType
+  status: Status
+  statusLabel: string
+  disabled?: boolean
+}
+
+const NAV: NavItem[] = [
+  { href: '/editor/business', label: 'Business Info', icon: Building2, status: 'complete', statusLabel: 'Complete' },
+  { href: '/editor/services', label: 'Services', icon: Scissors, status: 'complete', statusLabel: 'Complete' },
+  { href: '/editor/hours', label: 'Hours', icon: Clock, status: 'needs-setup', statusLabel: 'Needs setup' },
+  { href: '/editor/policies', label: 'Policies', icon: FileText, status: 'needs-setup', statusLabel: 'Needs setup' },
+  { href: '/editor/gallery', label: 'Gallery', icon: Image, status: 'soon', statusLabel: 'Coming soon', disabled: true },
+  { href: '/editor/staff', label: 'Staff', icon: Users, status: 'soon', statusLabel: 'Coming soon', disabled: true },
+  { href: '#', label: 'Branding', icon: Palette, status: 'soon', statusLabel: 'Coming soon', disabled: true },
+  { href: '#', label: 'Template', icon: LayoutTemplate, status: 'info', statusLabel: 'The Fade Room', disabled: true },
 ]
 
-export default function EditorSidebar({ slug }: { slug: string }) {
+const BADGE: Record<Status, string> = {
+  complete: 'bg-white border border-[rgba(18,18,18,0.12)] text-[rgba(18,18,18,0.6)]',
+  'needs-setup': 'bg-blush border-transparent text-[rgba(18,18,18,0.7)]',
+  soon: 'bg-lavender border-transparent text-[rgba(18,18,18,0.5)]',
+  info: 'bg-white border border-[rgba(18,18,18,0.12)] text-[rgba(18,18,18,0.5)]',
+}
+
+export default function EditorSidebar({ slug: _slug }: { slug: string }) {
   const path = usePathname()
 
   return (
-    <aside className="w-[220px] flex-shrink-0 bg-white border-r border-[rgba(18,18,18,0.10)] flex flex-col h-full">
-      {/* Brand */}
-      <div className="px-5 py-5 border-b border-[rgba(18,18,18,0.08)]">
-        <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-0.5">
-          BookReady
-        </p>
-        <p className="text-sm font-bold text-near-black truncate">
-          {slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-        </p>
-      </div>
+    <aside
+      className={cn(
+        'bg-white border-[rgba(18,18,18,0.10)] flex-shrink-0',
+        // Mobile: horizontal scrollable row
+        'flex flex-row overflow-x-auto border-b w-full',
+        // Desktop: vertical sidebar
+        'md:flex-col md:w-[240px] md:border-b-0 md:border-r md:overflow-x-visible md:overflow-y-auto md:h-full',
+      )}
+    >
+      {/* Label — desktop only */}
+      <p className="hidden md:block px-5 pt-4 pb-2 text-[9px] font-bold tracking-[0.2em] uppercase text-muted-text flex-shrink-0">
+        Site Sections
+      </p>
 
       {/* Nav */}
-      <nav className="flex-1 py-3 overflow-y-auto">
-        <p className="px-5 pt-2 pb-1 text-[9px] font-bold tracking-[0.2em] uppercase text-muted-text">
-          Editor
-        </p>
-        {NAV.map(({ href, label, icon: Icon }) => {
-          const active = path === href || path.startsWith(href + '/')
+      <div className="flex flex-row md:flex-col gap-0.5 p-2 md:p-2 flex-1">
+        {NAV.map(({ href, label, icon: Icon, status, statusLabel, disabled }) => {
+          const active = path === href || (href !== '#' && path.startsWith(href))
           return (
             <Link
-              key={href}
-              href={href}
+              key={label}
+              href={disabled ? '#' : href}
+              onClick={disabled ? e => e.preventDefault() : undefined}
               className={cn(
-                'flex items-center gap-3 px-5 py-2.5 text-sm font-medium transition-colors duration-100',
+                'flex items-center gap-2.5 px-3 py-2.5 text-[13px] font-medium transition-colors border whitespace-nowrap',
+                'flex-col md:flex-row items-center md:items-center gap-1 md:gap-2.5',
                 active
-                  ? 'bg-cream text-near-black'
-                  : 'text-muted-text hover:bg-[#f8f6f2] hover:text-near-black',
+                  ? 'bg-near-black text-white border-near-black'
+                  : disabled
+                  ? 'border-transparent text-[rgba(18,18,18,0.3)] cursor-default'
+                  : 'border-transparent text-[rgba(18,18,18,0.75)] hover:bg-[rgba(18,18,18,0.04)] hover:text-near-black',
               )}
             >
-              <Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
-              <span>{label}</span>
-              {active && <ChevronRight size={12} className="ml-auto opacity-40" />}
+              <Icon
+                size={14}
+                strokeWidth={active ? 2.2 : 1.8}
+                className="flex-shrink-0 md:flex-none"
+              />
+              {/* Label — always visible on mobile (icon + text stacked), row on desktop */}
+              <span className="text-[10px] md:text-[13px]">{label}</span>
+
+              {/* Status badge — desktop only */}
+              <span
+                className={cn(
+                  'hidden md:inline-flex ml-auto text-[9px] font-semibold tracking-[0.06em] uppercase px-1.5 py-0.5 border',
+                  active ? 'bg-white/15 border-white/20 text-white' : BADGE[status],
+                )}
+              >
+                {statusLabel}
+              </span>
             </Link>
           )
         })}
-      </nav>
-
-      {/* Footer */}
-      <div className="p-4 border-t border-[rgba(18,18,18,0.08)]">
-        <a
-          href={`/site/${slug}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 text-xs font-semibold text-muted-text hover:text-near-black transition-colors w-full px-2 py-2"
-        >
-          <ExternalLink size={13} />
-          Preview Site
-        </a>
       </div>
     </aside>
   )
