@@ -287,7 +287,7 @@ function Services({ services }: { services: TenantData['services'] }) {
                           letterSpacing: '0.05em',
                         }}
                       >
-                        {s.duration} min
+                        {s.duration_minutes} min
                       </span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px', flexShrink: 0 }}>
