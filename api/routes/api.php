@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Editor\BusinessProfileController;
 use App\Http\Controllers\Api\Editor\CustomersController;
 use App\Http\Controllers\Api\Editor\HoursController;
 use App\Http\Controllers\Api\Editor\ServicesController;
+use App\Http\Controllers\Api\Editor\StaffController;
 use App\Http\Controllers\Api\PublicAvailabilityController;
 use App\Http\Controllers\Api\PublicBookingController;
 use App\Http\Controllers\Api\PublicSiteController;
@@ -80,6 +81,11 @@ Route::prefix('v1')->group(function () {
         Route::get('customers',              [CustomersController::class, 'index']);
         Route::post('customers',             [CustomersController::class, 'store']);
         Route::patch('customers/{customer}', [CustomersController::class, 'update']);
+
+        Route::get('staff',              [StaffController::class, 'index']);
+        Route::post('staff',             [StaffController::class, 'store']);
+        Route::patch('staff/{staff}',    [StaffController::class, 'update']);
+        Route::delete('staff/{staff}',   [StaffController::class, 'destroy']);
     });
 
     // ── Stripe webhook (no auth, no CSRF) ────────────────────────────────

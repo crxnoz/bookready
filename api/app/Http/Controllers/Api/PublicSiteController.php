@@ -95,6 +95,22 @@ class PublicSiteController extends Controller
         $profileArr  = $profile  ? (array) $profile->toArray()  : null;
         $policiesArr = $policies ? (array) $policies->toArray() : null;
 
+        $staff = DB::table('staff')
+            ->where('is_active', true)
+            ->orderBy('sort_order', 'asc')
+            ->orderBy('id', 'asc')
+            ->get()
+            ->map(fn ($r) => [
+                'id'         => (int) $r->id,
+                'name'       =>        $r->name,
+                'role'       =>        $r->role,
+                'bio'        =>        $r->bio,
+                'photo_url'  =>        $r->avatar_url ?? null,
+                'sort_order' => (int)  $r->sort_order,
+            ])
+            ->values()
+            ->all();
+
         tenancy()->end();
 
         return response()->json([
@@ -108,6 +124,7 @@ class PublicSiteController extends Controller
             'services'      => $services,
             'hours'         => $hours,
             'policies'      => $policiesArr,
+            'staff'         => $staff,
             'availability'  => [
                 'hours'    => $hours,
                 'settings' => $settings,

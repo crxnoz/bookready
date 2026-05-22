@@ -1,4 +1,5 @@
 import {
+  ApiStaffMember,
   Appointment,
   AuthResponse,
   AuthUser,
@@ -21,6 +22,7 @@ import {
   PublicSite,
   RegisterPayload,
   Service,
+  StaffMemberPayload,
   TenantData,
   UpdateAppointmentPayload,
 } from './types'
@@ -298,4 +300,27 @@ export async function updateEditorCustomer(id: number, data: CustomerUpdatePaylo
     method: 'PATCH',
     body: JSON.stringify(data),
   })
+}
+
+export async function getEditorStaff(params?: { active?: boolean }): Promise<ApiStaffMember[]> {
+  const qs = params?.active ? '?active=1' : ''
+  return request<ApiStaffMember[]>(`/editor/staff${qs}`)
+}
+
+export async function createEditorStaff(data: StaffMemberPayload): Promise<ApiStaffMember> {
+  return request<ApiStaffMember>('/editor/staff', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateEditorStaff(id: number, data: Partial<StaffMemberPayload>): Promise<ApiStaffMember> {
+  return request<ApiStaffMember>(`/editor/staff/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function archiveEditorStaff(id: number): Promise<ApiStaffMember> {
+  return request<ApiStaffMember>(`/editor/staff/${id}`, { method: 'DELETE' })
 }

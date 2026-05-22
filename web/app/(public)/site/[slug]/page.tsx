@@ -103,6 +103,33 @@ function SitePage({ site, slug, baseDomain }: { site: PublicSite; slug: string; 
           </div>
         )}
 
+        {/* Staff */}
+        {site.staff && site.staff.length > 0 && (
+          <div style={{ marginBottom: 28 }}>
+            <SectionLabel>Our Team</SectionLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {site.staff.map(s => (
+                <div key={s.id} style={styles.staffRow}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: s.bio ? 6 : 0 }}>
+                    <div style={styles.staffAvatar}>
+                      {s.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: '#121212' }}>{s.name}</p>
+                      {s.role && <p style={{ fontSize: 11, color: '#6B7280' }}>{s.role}</p>}
+                    </div>
+                  </div>
+                  {s.bio && (
+                    <p style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5, marginLeft: 42 }}>
+                      {s.bio}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Policies */}
         {site.policies && ([
           ['Cancellation Policy', site.policies.cancellation_policy],
@@ -234,5 +261,23 @@ const styles = {
     justifyContent: 'space-between',
     padding: '7px 0',
     borderBottom: '1px solid rgba(18,18,18,0.06)',
+  } as React.CSSProperties,
+  staffRow: {
+    padding: '12px 14px',
+    border: '1px solid rgba(18,18,18,0.08)',
+    background: '#F8F6F2',
+  } as React.CSSProperties,
+  staffAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: '50%',
+    background: '#E8D5C4',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#121212',
+    flexShrink: 0,
   } as React.CSSProperties,
 }

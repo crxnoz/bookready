@@ -3,78 +3,166 @@
 namespace App\Http\Controllers\Api\Editor;
 
 use App\Http\Controllers\Controller;
+use App\Models\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class StaffController extends Controller
 {
-    public function index(): JsonResponse
+    private function format(object $row): array
     {
-        return response()->json(DB::table('staff')->orderBy('sort_order')->get());
+        return [
+            'id'         => (int)  $row->id,
+            'name'       =>         $row->name,
+            'role'       =>         $row->role,
+            'bio'        =>         $row->bio,
+            'email'      =>         $row->email      ?? null,
+            'phone'      =>         $row->phone      ?? null,
+            'photo_url'  =>         $row->avatar_url ?? null,
+            'is_active'  => (bool)  $row->is_active,
+            'sort_order' => (int)   $row->sort_order,
+            'created_at' =>         $row->created_at,
+            'updated_at' =>         $row->updated_at,
+        ];
     }
 
+    // GET /editor/staff
+    public function index(Request $request): JsonResponse
+    {
+        $tenant = Tenant::findOrFail($request->user()->tenant_id);
+        tenancy()->initialize($tenant);
+
+        $query = DB::table('staff')
+            ->orderBy('sort_order', 'asc')
+            ->orderBy('id', 'asc');
+
+        if ($request->boolean('active')) {
+            $query->where('is_active', true);
+        }
+
+        $staff = $query->get()->map(fn ($r) => $this->format($r))->values()->all();
+
+        tenancy()->end();
+
+        return response()->json($staff);
+    }
+
+    // POST /editor/staff
     public function store(Request $request): JsonResponse
     {
-        $data = $request->validate([
-            'name'             => ['required', 'string', 'max:100'],
-            'role'             => ['nullable', 'string', 'max:100'],
-            'bio'              => ['nullable', 'string', 'max:1000'],
-            'avatar_url'       => ['nullable', 'url'],
-            'instagram_handle' => ['nullable', 'string', 'max:60'],
+        $validated = $request->validate([
+            'name'       => 'required|string|max:255',
+            'role'       => 'nullable|string|max:255',
+            'bio'        => 'nullable|string|max:5000',
+            'email'      => 'nullable|email|max:255',
+            'phone'      => 'nullable|string|max:50',
+            'photo_url'  => 'nullable|string|max:1000',
+            'is_active'  => 'nullable|boolean',
+            'sort_order' => 'nullable|integer',
         ]);
 
-        $id = DB::table('staff')->insertGetId(array_merge($data, [
-            'sort_order' => DB::table('staff')->max('sort_order') + 1,
-            'is_active'  => true,
+        $tenant = Tenant::findOrFail($request->user()->tenant_id);
+        tenancy()->initialize($tenant);
+
+        $nextOrder = (int) DB::table('staff')->max('sort_order') + 1;
+
+        $id = DB::table('staff')->insertGetId([
+            'name'       => $validated['name'],
+            'role'       => $validated['role']       ?? null,
+            'bio'        => $validated['bio']        ?? null,
+            'email'      => $validated['email']      ?? null,
+            'phone'      => $validated['phone']      ?? null,
+            'avatar_url' => $validated['photo_url']  ?? null,
+            'is_active'  => $validated['is_active']  ?? true,
+            'sort_order' => $validated['sort_order'] ?? $nextOrder,
             'created_at' => now(),
             'updated_at' => now(),
-        ]));
-
-        $this->bustCache();
-
-        return response()->json(DB::table('staff')->find($id), 201);
-    }
-
-    public function update(Request $request, int $id): JsonResponse
-    {
-        $data = $request->validate([
-            'name'             => ['sometimes', 'string', 'max:100'],
-            'role'             => ['sometimes', 'nullable', 'string', 'max:100'],
-            'bio'              => ['sometimes', 'nullable', 'string', 'max:1000'],
-            'avatar_url'       => ['sometimes', 'nullable', 'url'],
-            'instagram_handle' => ['sometimes', 'nullable', 'string', 'max:60'],
-            'is_active'        => ['sometimes', 'boolean'],
         ]);
 
-        DB::table('staff')->where('id', $id)->update(array_merge($data, ['updated_at' => now()]));
-        $this->bustCache();
+        $row    = DB::table('staff')->find($id);
+        $result = $this->format($row);
 
-        return response()->json(DB::table('staff')->find($id));
+        tenancy()->end();
+
+        return response()->json($result, 201);
     }
 
-    public function destroy(int $id): JsonResponse
+    // PATCH /editor/staff/{staff}
+    public function update(Request $request, int $staff): JsonResponse
     {
-        DB::table('staff')->delete($id);
-        $this->bustCache();
+        $validated = $request->validate([
+            'name'       => 'sometimes|required|string|max:255',
+            'role'       => 'nullable|string|max:255',
+            'bio'        => 'nullable|string|max:5000',
+            'email'      => 'nullable|email|max:255',
+            'phone'      => 'nullable|string|max:50',
+            'photo_url'  => 'nullable|string|max:1000',
+            'is_active'  => 'sometimes|boolean',
+            'sort_order' => 'sometimes|integer',
+        ]);
 
-        return response()->json(null, 204);
-    }
+        $tenant = Tenant::findOrFail($request->user()->tenant_id);
+        tenancy()->initialize($tenant);
 
-    public function reorder(Request $request): JsonResponse
-    {
-        $request->validate(['ids' => ['required', 'array']]);
-        foreach ($request->ids as $order => $id) {
-            DB::table('staff')->where('id', $id)->update(['sort_order' => $order]);
+        $row = DB::table('staff')->find($staff);
+        if (! $row) {
+            tenancy()->end();
+            return response()->json(['message' => 'Staff member not found'], 404);
         }
-        $this->bustCache();
 
-        return response()->json(['ok' => true]);
+        $data = ['updated_at' => now()];
+
+        foreach (['name', 'role', 'bio', 'email', 'phone'] as $field) {
+            if (array_key_exists($field, $validated)) {
+                $data[$field] = $validated[$field];
+            }
+        }
+
+        if (array_key_exists('photo_url', $validated)) {
+            $data['avatar_url'] = $validated['photo_url'];
+        }
+
+        if (array_key_exists('is_active', $validated)) {
+            $data['is_active'] = $validated['is_active'];
+        }
+
+        if (array_key_exists('sort_order', $validated)) {
+            $data['sort_order'] = $validated['sort_order'];
+        }
+
+        DB::table('staff')->where('id', $staff)->update($data);
+        $updated = DB::table('staff')->find($staff);
+        $result  = $this->format($updated);
+
+        tenancy()->end();
+
+        return response()->json($result);
     }
 
-    private function bustCache(): void
+    // DELETE /editor/staff/{staff}
+    // Soft archive: sets is_active = false, preserves the record.
+    public function destroy(Request $request, int $staff): JsonResponse
     {
-        Cache::forget('template:' . tenancy()->tenant->id);
+        $tenant = Tenant::findOrFail($request->user()->tenant_id);
+        tenancy()->initialize($tenant);
+
+        $row = DB::table('staff')->find($staff);
+        if (! $row) {
+            tenancy()->end();
+            return response()->json(['message' => 'Staff member not found'], 404);
+        }
+
+        DB::table('staff')->where('id', $staff)->update([
+            'is_active'  => false,
+            'updated_at' => now(),
+        ]);
+
+        $updated = DB::table('staff')->find($staff);
+        $result  = $this->format($updated);
+
+        tenancy()->end();
+
+        return response()->json($result);
     }
 }

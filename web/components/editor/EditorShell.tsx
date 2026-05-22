@@ -26,7 +26,7 @@ const BOOKINGS_NAV = [
   { href: '/editor/services',      label: 'Services' },
   { href: '/editor/availability',  label: 'Availability' },
   { href: '/editor/appointments',  label: 'Appointments' },
-  { href: '/editor/staff',         label: 'Staff',      disabled: true },
+  { href: '/editor/staff',         label: 'Staff' },
 ] as const
 
 const WEBSITE_PATHS = [

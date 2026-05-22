@@ -153,6 +153,41 @@ export interface BusinessPolicy {
   extra_notes: string | null
 }
 
+// Staff (API-backed, editor + public)
+export interface ApiStaffMember {
+  id: number
+  name: string
+  role: string | null
+  bio: string | null
+  email: string | null
+  phone: string | null
+  photo_url: string | null
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface StaffMemberPayload {
+  name: string
+  role?: string | null
+  bio?: string | null
+  email?: string | null
+  phone?: string | null
+  photo_url?: string | null
+  is_active?: boolean
+  sort_order?: number
+}
+
+export interface PublicStaffMember {
+  id: number
+  name: string
+  role: string | null
+  bio: string | null
+  photo_url: string | null
+  sort_order: number
+}
+
 // Public tenant lookup
 export interface PublicSite {
   availability?: AvailabilityData | null
@@ -166,6 +201,7 @@ export interface PublicSite {
   services?: Service[]
   hours?: HoursEntry[]
   policies?: BusinessPolicy | null
+  staff?: PublicStaffMember[]
 }
 
 // Appointments & Customers

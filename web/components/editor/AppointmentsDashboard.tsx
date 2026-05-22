@@ -160,10 +160,9 @@ export default function AppointmentsDashboard() {
               description="Set your hours, buffers, and booking windows."
             />
             <HubCard
-              href="#"
+              href="/editor/staff"
               title="Staff"
-              description="Staff scheduling is coming soon."
-              disabled
+              description="Manage your team members and their profiles."
             />
           </div>
         </div>
