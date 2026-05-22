@@ -29,6 +29,7 @@ interface Profile {
   city?: string | null
   state?: string | null
   zip?: string | null
+  instagram_url?: string | null
 }
 
 // ── Tab registry ──────────────────────────────────────────────────────────────
@@ -51,15 +52,15 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'book',      label: 'Book'      },
-    ...(services.length > 0 ? [{ id: 'services'  as TabId, label: 'Services'  }] : []),
+    { id: 'services',  label: 'Services'  },
     { id: 'gallery',   label: 'Gallery'   },
     { id: 'results',   label: 'Results'   },
     { id: 'about',     label: 'About'     },
-    ...(hasPolicies         ? [{ id: 'policies'  as TabId, label: 'Policies'  }] : []),
+    { id: 'policies',  label: 'Policies'  },
     { id: 'before',    label: 'Before'    },
     { id: 'aftercare', label: 'Aftercare' },
-    ...(staff.length > 0    ? [{ id: 'team'       as TabId, label: 'Team'      }] : []),
-    ...(hours.length > 0    ? [{ id: 'hours'      as TabId, label: 'Hours'     }] : []),
+    { id: 'team',      label: 'Team'      },
+    { id: 'hours',     label: 'Hours'     },
     { id: 'contact',   label: 'Contact'   },
   ]
 
@@ -86,6 +87,10 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
 
         {/* ── Header ── */}
         <section className="tfr-header-section">
+          <span className="tfr-floating-heart tfr-fh-1" aria-hidden="true">♥</span>
+          <span className="tfr-floating-heart tfr-fh-2" aria-hidden="true">♥</span>
+          <span className="tfr-floating-heart tfr-fh-3" aria-hidden="true">♥</span>
+
           <div className="tfr-header-cover">
             <div className="tfr-cover-veil" aria-hidden="true" />
             <div className="tfr-cover-heart" aria-hidden="true">♥</div>
@@ -99,32 +104,44 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
 
           <div className="tfr-header-content">
             <h1>{displayName}</h1>
-            {p?.tagline && <p>{p.tagline}</p>}
+            <p>{p?.tagline ?? 'Sharp cuts. Smooth booking.'}</p>
 
             <div className="tfr-header-buttons">
               <button className="tfr-header-btn tfr-header-btn-book" onClick={goBook}>
                 <span>♥</span><span>Book</span>
               </button>
-              {p?.public_phone && (
-                <a className="tfr-header-btn tfr-header-btn-call" href={`tel:${p.public_phone}`}>
-                  <span>📞</span><span>Call</span>
-                </a>
-              )}
-              {p?.public_email && (
-                <a className="tfr-header-btn tfr-header-btn-chat" href={`mailto:${p.public_email}`}>
-                  <span>✉</span><span>Email</span>
-                </a>
-              )}
-              {address && (
-                <a
-                  className="tfr-header-btn tfr-header-btn-tiktok"
-                  href={`https://maps.google.com/?q=${encodeURIComponent(address)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <span>📍</span><span>Directions</span>
-                </a>
-              )}
+              <a
+                className="tfr-header-btn tfr-header-btn-call"
+                href={p?.public_phone ? `tel:${p.public_phone}` : '#'}
+                aria-disabled={!p?.public_phone || undefined}
+              >
+                <span>📞</span><span>Call</span>
+              </a>
+              <a
+                className="tfr-header-btn tfr-header-btn-chat"
+                href={p?.public_email ? `mailto:${p.public_email}` : '#'}
+                aria-disabled={!p?.public_email || undefined}
+              >
+                <span>✉</span><span>Email</span>
+              </a>
+              <a
+                className="tfr-header-btn tfr-header-btn-instagram"
+                href={p?.instagram_url ?? '#'}
+                target={p?.instagram_url ? '_blank' : undefined}
+                rel={p?.instagram_url ? 'noopener noreferrer' : undefined}
+                aria-disabled={!p?.instagram_url || undefined}
+              >
+                <span>📸</span><span>Instagram</span>
+              </a>
+              <a
+                className="tfr-header-btn tfr-header-btn-tiktok"
+                href={address ? `https://maps.google.com/?q=${encodeURIComponent(address)}` : '#'}
+                target={address ? '_blank' : undefined}
+                rel={address ? 'noopener noreferrer' : undefined}
+                aria-disabled={!address || undefined}
+              >
+                <span>📍</span><span>Directions</span>
+              </a>
             </div>
           </div>
         </section>
@@ -173,11 +190,9 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
           </div>
 
           {/* ── Policies ── */}
-          {hasPolicies && (
-            <div className={`tfr-tab-panel${active === 'policies' ? ' is-active' : ''}`}>
-              <PoliciesPanel policies={policies!} />
-            </div>
-          )}
+          <div className={`tfr-tab-panel${active === 'policies' ? ' is-active' : ''}`}>
+            <PoliciesPanel policies={policies} />
+          </div>
 
           {/* ── Before ── */}
           <div className={`tfr-tab-panel${active === 'before' ? ' is-active' : ''}`}>
@@ -190,18 +205,14 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
           </div>
 
           {/* ── Team ── */}
-          {staff.length > 0 && (
-            <div className={`tfr-tab-panel${active === 'team' ? ' is-active' : ''}`}>
-              <TeamPanel staff={staff} />
-            </div>
-          )}
+          <div className={`tfr-tab-panel${active === 'team' ? ' is-active' : ''}`}>
+            <TeamPanel staff={staff} />
+          </div>
 
           {/* ── Hours ── */}
-          {hours.length > 0 && (
-            <div className={`tfr-tab-panel${active === 'hours' ? ' is-active' : ''}`}>
-              <HoursPanel hours={hours} />
-            </div>
-          )}
+          <div className={`tfr-tab-panel${active === 'hours' ? ' is-active' : ''}`}>
+            <HoursPanel hours={hours} />
+          </div>
 
           {/* ── Contact ── */}
           <div className={`tfr-tab-panel${active === 'contact' ? ' is-active' : ''}`}>
@@ -282,18 +293,19 @@ const GALLERY_GROUPS = [
   {
     label: 'Fresh Work',
     images: [
-      { cls: 'tfr-gallery-img--square', label: 'Fresh Fade' },
-      { cls: 'tfr-gallery-img--tall',   label: 'Beard Detail' },
-      { cls: 'tfr-gallery-img--square', label: 'Clean Lineup' },
-      { cls: 'tfr-gallery-img--wide',   label: 'Chair View' },
+      { label: 'Fresh Fade' },
+      { label: 'Beard Detail' },
+      { label: 'Clean Lineup' },
+      { label: 'Chair View' },
     ],
   },
   {
     label: 'The Shop',
     images: [
-      { cls: 'tfr-gallery-img--wide',   label: 'Shop Floor' },
-      { cls: 'tfr-gallery-img--square', label: 'Shop Detail' },
-      { cls: 'tfr-gallery-img--tall',   label: 'Tools' },
+      { label: 'Shop Floor' },
+      { label: 'Shop Detail' },
+      { label: 'Tools' },
+      { label: 'Vibe' },
     ],
   },
 ]
@@ -306,7 +318,7 @@ function GalleryPanel() {
           <h2>{g.label}</h2>
           <div className="tfr-gallery-grid">
             {g.images.map((img, i) => (
-              <div key={i} className={`tfr-gallery-img ${img.cls}`}>
+              <div key={i} className="tfr-gallery-img tfr-gallery-img--square">
                 <div className="tfr-gallery-placeholder">
                   <span>{img.label}</span>
                 </div>
@@ -415,10 +427,16 @@ const POLICY_KEYS: [string, string][] = [
   ['extra_notes',         'Additional Notes'],
 ]
 
+const FALLBACK_POLICIES = [
+  { label: 'Cancellation', text: 'We require 24 hours notice for cancellations. Cancellations made with less than 24 hours notice may be subject to a fee.' },
+  { label: 'Late Arrival',  text: 'Please arrive on time. Clients arriving more than 10 minutes late may need to be rescheduled to protect other clients\' appointments.' },
+  { label: 'No-Show',      text: 'No-shows may be charged a no-show fee. Repeated no-shows may result in prepayment requirements for future bookings.' },
+]
+
 function PoliciesPanel({ policies }: { policies: PublicSite['policies'] }) {
-  if (!policies) return null
-  const active = POLICY_KEYS.filter(([key]) => (policies as unknown as Record<string, string | null>)[key])
-  if (!active.length) return null
+  const activeReal = policies
+    ? POLICY_KEYS.filter(([key]) => (policies as unknown as Record<string, string | null>)[key])
+    : []
 
   return (
     <section className="tfr-policy-section">
@@ -427,16 +445,24 @@ function PoliciesPanel({ policies }: { policies: PublicSite['policies'] }) {
         <h2>Policies</h2>
       </div>
       <div className="tfr-policy-list">
-        {active.map(([key, label]) => (
-          <div key={key} className="tfr-policy-card">
-            <h3>{label}</h3>
-            <div className="tfr-policy-copy">
-              <p style={{ whiteSpace: 'pre-wrap' }}>
-                {(policies as unknown as Record<string, string | null>)[key]}
-              </p>
-            </div>
-          </div>
-        ))}
+        {activeReal.length > 0
+          ? activeReal.map(([key, label]) => (
+              <div key={key} className="tfr-policy-card">
+                <h3>{label}</h3>
+                <div className="tfr-policy-copy">
+                  <p style={{ whiteSpace: 'pre-wrap' }}>
+                    {(policies as unknown as Record<string, string | null>)[key]}
+                  </p>
+                </div>
+              </div>
+            ))
+          : FALLBACK_POLICIES.map(fp => (
+              <div key={fp.label} className="tfr-policy-card">
+                <h3>{fp.label}</h3>
+                <div className="tfr-policy-copy"><p>{fp.text}</p></div>
+              </div>
+            ))
+        }
       </div>
     </section>
   )
@@ -503,13 +529,18 @@ function AftercarePanel() {
 
 // ── Team panel ────────────────────────────────────────────────────────────────
 
+const FALLBACK_STAFF = [
+  { name: 'The Fade Room Team', role: 'Expert Stylists', bio: 'Our skilled team brings years of experience and a passion for craft to every appointment. We\'re dedicated to giving you the perfect look.' },
+]
+
 function TeamPanel({ staff }: { staff: PublicStaffMember[] }) {
+  const members = staff.length > 0 ? staff : FALLBACK_STAFF
   return (
-    <section className="tfr-before-appointment-section">
+    <section className="tfr-aftercare-section">
       <h2>Our Team</h2>
-      <div style={{ display: 'grid', gap: 16 }}>
-        {staff.map(m => (
-          <div key={m.id} className="tfr-aftercare-card">
+      <div className="tfr-aftercare-list">
+        {members.map((m, i) => (
+          <div key={'id' in m ? m.id : i} className="tfr-aftercare-card">
             <div className="tfr-aftercare-head">
               <span className="tfr-aftercare-dot" aria-hidden="true" />
               {m.role && <span className="tfr-aftercare-index">{m.role}</span>}
@@ -525,16 +556,26 @@ function TeamPanel({ staff }: { staff: PublicStaffMember[] }) {
 
 // ── Hours panel ───────────────────────────────────────────────────────────────
 
+const FALLBACK_HOURS = [
+  { day_of_week: 1, day_name: 'Monday',    is_open: true,  open_time: '09:00', close_time: '18:00' },
+  { day_of_week: 2, day_name: 'Tuesday',   is_open: true,  open_time: '09:00', close_time: '18:00' },
+  { day_of_week: 3, day_name: 'Wednesday', is_open: true,  open_time: '09:00', close_time: '18:00' },
+  { day_of_week: 4, day_name: 'Thursday',  is_open: true,  open_time: '09:00', close_time: '20:00' },
+  { day_of_week: 5, day_name: 'Friday',    is_open: true,  open_time: '09:00', close_time: '20:00' },
+  { day_of_week: 6, day_name: 'Saturday',  is_open: true,  open_time: '10:00', close_time: '17:00' },
+  { day_of_week: 0, day_name: 'Sunday',    is_open: false, open_time: null,    close_time: null     },
+]
+
 function HoursPanel({ hours }: { hours: PublicSite['hours'] }) {
-  if (!hours || !hours.length) return null
+  const raw = hours && hours.length > 0 ? hours : FALLBACK_HOURS
   const sorted = [
-    ...hours.filter(h => h.day_of_week !== 0),
-    ...hours.filter(h => h.day_of_week === 0),
+    ...raw.filter(h => h.day_of_week !== 0),
+    ...raw.filter(h => h.day_of_week === 0),
   ]
   return (
     <section className="tfr-before-appointment-section">
       <h2>Hours</h2>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, maxWidth: 480 }}>
         {sorted.map(h => (
           <div key={h.day_of_week} className="tfr-footer-hour">
             <span>{h.day_name}</span>
@@ -823,10 +864,11 @@ const TFR_CSS = `
 }
 .tfr-header-buttons {
   width:min(100%,880px); margin:0 auto;
-  display:grid; grid-template-columns:repeat(4,minmax(100px,1fr)); gap:10px;
+  display:grid; grid-template-columns:repeat(5,minmax(100px,1fr)); gap:10px;
+  align-items:stretch;
 }
 .tfr-header-btn {
-  width:100%; min-height:56px; padding:0 14px;
+  width:100%; min-width:0; min-height:56px; padding:0 14px;
   display:inline-flex; align-items:center; justify-content:center; gap:8px;
   color:var(--tfr-text); border-radius:12px;
   border:1px solid var(--tfr-dark-border);
@@ -834,13 +876,21 @@ const TFR_CSS = `
   transition:transform .18s ease,filter .18s ease; cursor:pointer;
 }
 .tfr-header-btn:hover { filter:brightness(1.1); transform:translateY(-2px); }
+.tfr-header-btn[aria-disabled] { opacity:0.5; cursor:default; transform:none !important; }
 .tfr-header-btn span:first-child { font-size:18px; }
-.tfr-header-btn-book    { background:var(--tfr-pink); box-shadow:0 0 18px rgba(255,61,190,0.4); }
-.tfr-header-btn-call    { background:linear-gradient(45deg,#A281FF 0%,#FF9CD7 100%); }
-.tfr-header-btn-chat    { background:linear-gradient(45deg,#FF987E 0%,#FF7EAC 100%); }
-.tfr-header-btn-tiktok  { background:linear-gradient(45deg,#EA5F96 36%,#2FC2BF 100%); }
-.tfr-header-btn-youtube { background:linear-gradient(45deg,#FB3354 49%,#FE879C 100%); }
+.tfr-header-btn-book      { background:var(--tfr-pink); box-shadow:0 0 18px rgba(255,61,190,0.4); }
+.tfr-header-btn-call      { background:linear-gradient(45deg,#A281FF 0%,#FF9CD7 100%); }
+.tfr-header-btn-chat      { background:linear-gradient(45deg,#FF987E 0%,#FF7EAC 100%); }
+.tfr-header-btn-tiktok    { background:linear-gradient(45deg,#EA5F96 36%,#2FC2BF 100%); }
+.tfr-header-btn-youtube   { background:linear-gradient(45deg,#FB3354 49%,#FE879C 100%); }
 .tfr-header-btn-instagram { background:linear-gradient(45deg,#F9CE34 0%,#EE2A7B 50%,#6228D7 100%); }
+
+/* ── Floating hearts ── */
+.tfr-floating-heart { position:absolute; color:var(--tfr-pink); pointer-events:none; z-index:1; text-shadow:0 0 10px rgba(255,61,190,0.85),0 0 22px rgba(255,61,190,0.5); animation:tfrFloat 6s ease-in-out infinite; }
+.tfr-fh-1 { top:18%; left:6%; font-size:14px; opacity:0.85; animation-delay:-1s; }
+.tfr-fh-2 { top:30%; right:8%; font-size:18px; opacity:0.9; animation-delay:-3s; }
+.tfr-fh-3 { bottom:14%; left:12%; font-size:12px; opacity:0.75; animation-delay:-5s; }
+@keyframes tfrFloat { 0%,100% { transform:translateY(0) rotate(-6deg); } 50% { transform:translateY(-10px) rotate(6deg); } }
 
 /* ── Tabs ── */
 .tfr-tabbed-section { width:100%; background:var(--tfr-bg); overflow:hidden; }
@@ -1237,10 +1287,10 @@ const TFR_CSS = `
 
 /* ── Desktop ── */
 @media (min-width:1025px) {
-  .tfr-header-section { min-height:auto; display:grid; grid-template-columns:1.05fr 1fr; align-items:stretch; padding:0; }
-  .tfr-header-cover { height:auto; min-height:640px; }
+  .tfr-header-section { min-height:auto; display:grid; grid-template-columns:1.05fr 1fr; align-items:stretch; padding:0; position:relative; }
+  .tfr-header-cover { height:auto; min-height:640px; order:1; }
   .tfr-header-avatar { position:absolute; top:56px; left:56px; width:140px; height:140px; border-width:6px; box-shadow:none; transform:none; z-index:3; }
-  .tfr-header-content { order:2; max-width:none; margin:0; padding:90px 72px 72px; text-align:left; }
+  .tfr-header-content { order:2; max-width:none; margin:0; padding:90px 72px 72px; text-align:left; display:flex; flex-direction:column; justify-content:center; }
   .tfr-header-buttons { width:100%; max-width:520px; margin:0; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
   .tfr-header-btn { min-height:62px; font-size:16px; border-radius:14px; }
   .tfr-tab-slider { justify-content:center; padding:8px 40px; gap:12px; }
@@ -1303,9 +1353,12 @@ const TFR_CSS = `
 
 /* ── Tablet ── */
 @media (min-width:641px) and (max-width:1024px) {
-  .tfr-header-avatar { width:190px; height:190px; border-width:7px; }
-  .tfr-header-content { padding:120px 40px 64px; max-width:720px; }
-  .tfr-header-buttons { max-width:540px; grid-template-columns:repeat(2,1fr); gap:8px; }
+  .tfr-header-section { min-height:auto; }
+  .tfr-header-cover { height:320px; min-height:320px; }
+  .tfr-header-avatar { top:calc(320px - 95px); width:190px; height:190px; border-width:7px; box-shadow:none; }
+  .tfr-header-content { padding:115px 40px 64px; max-width:720px; }
+  .tfr-header-buttons { width:min(100%,560px); grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+  .tfr-header-btn { min-height:54px; font-size:15px; }
   .tfr-tab-slider { padding:6px 28px; justify-content:center; gap:8px; }
   .tfr-gallery-group, .tfr-before-after-section, .tfr-about-section, .tfr-policy-section, .tfr-before-appointment-section, .tfr-aftercare-section { width:min(100%,720px); }
   .tfr-gallery-grid { grid-template-columns:repeat(3,1fr); gap:14px; }
@@ -1317,9 +1370,15 @@ const TFR_CSS = `
 
 /* ── Mobile ── */
 @media (max-width:640px) {
-  .tfr-header-content { padding:8px 22px 52px; }
-  .tfr-header-buttons { max-width:348px; grid-template-columns:repeat(2,1fr); gap:6px; }
-  .tfr-header-btn { min-height:48px; height:48px; border-radius:10px; font-size:14px; padding-inline:10px; }
+  .tfr-header-section { min-height:auto; position:static; display:flex; flex-direction:column; align-items:center; }
+  .tfr-header-cover { height:205px; min-height:205px; order:1; width:100%; }
+  .tfr-header-avatar { position:static; transform:translateY(-82px); width:165px; height:165px; border-width:5px; order:2; margin-bottom:-50px; box-shadow:none; }
+  .tfr-avatar-initials { font-size:38px; }
+  .tfr-header-content { order:3; padding:8px 22px 52px; text-align:center; width:100%; }
+  .tfr-header-content h1 { font-size:clamp(28px,7vw,48px); }
+  .tfr-header-content p { font-size:clamp(24px,6vw,38px); margin:4px 0 32px; }
+  .tfr-header-buttons { width:min(100%,348px); max-width:none; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin:0 auto; }
+  .tfr-header-btn { min-height:48px; height:48px; border-radius:10px; font-size:13px; padding-inline:8px; }
   .tfr-tab-pill { padding:14px 12px; font-size:10px; letter-spacing:0.12em; }
   .tfr-tab-pill::after { left:12px; right:12px; }
   .tfr-booking-section { padding:28px 16px 56px; }
