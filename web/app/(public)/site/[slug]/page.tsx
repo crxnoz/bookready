@@ -1,5 +1,6 @@
 import { getPublicSite } from '@/lib/api'
 import { PublicSite } from '@/lib/types'
+import { resolveTemplate } from '@/templates/registry'
 import PublicBookingForm from '@/components/public/PublicBookingForm'
 
 export const dynamic = 'force-dynamic'
@@ -20,12 +21,18 @@ export default async function PublicSitePage({ params }: Props) {
 
   if (!site) return <NotFound slug={params.slug} baseDomain={baseDomain} />
 
-  return <SitePage site={site} slug={params.slug} baseDomain={baseDomain} />
+  const loader = resolveTemplate(site)
+  if (loader) {
+    const { default: Template } = await loader()
+    return <Template site={site} slug={params.slug} />
+  }
+
+  return <DefaultSitePage site={site} slug={params.slug} baseDomain={baseDomain} />
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ── Fallback default template ─────────────────────────────────────────────────
 
-function SitePage({ site, slug, baseDomain }: { site: PublicSite; slug: string; baseDomain: string }) {
+function DefaultSitePage({ site, slug, baseDomain }: { site: PublicSite; slug: string; baseDomain: string }) {
   const p = site.profile
   const displayName = p?.business_name ?? site.business_name ?? site.slug
   const services = site.services ?? []
@@ -33,17 +40,13 @@ function SitePage({ site, slug, baseDomain }: { site: PublicSite; slug: string; 
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-
-        {/* Header */}
         <p style={styles.eyebrow}>BookReady</p>
         <h1 style={styles.heading}>{displayName}</h1>
-
         {p?.tagline && (
           <p style={{ fontSize: 14, color: '#6B7280', marginBottom: 6 }}>{p.tagline}</p>
         )}
         <p style={styles.subdomain}>{site.slug}.{baseDomain}</p>
 
-        {/* Contact info */}
         {(p?.public_phone || p?.public_email || p?.address_line) && (
           <dl style={{ ...styles.meta, marginBottom: 28 }}>
             {p?.public_phone && <MetaRow label="Phone"   value={p.public_phone} />}
@@ -57,7 +60,6 @@ function SitePage({ site, slug, baseDomain }: { site: PublicSite; slug: string; 
           </dl>
         )}
 
-        {/* Services */}
         {services.length > 0 && (
           <div style={{ marginBottom: 28 }}>
             <SectionLabel>Services</SectionLabel>
@@ -78,13 +80,11 @@ function SitePage({ site, slug, baseDomain }: { site: PublicSite; slug: string; 
           </div>
         )}
 
-        {/* Booking form */}
         <div style={{ marginBottom: 36 }}>
           <SectionLabel>Request a Booking</SectionLabel>
           <PublicBookingForm slug={slug} services={services} />
         </div>
 
-        {/* Hours */}
         {site.hours && site.hours.length > 0 && (
           <div style={{ marginBottom: 28 }}>
             <SectionLabel>Hours</SectionLabel>
@@ -103,7 +103,6 @@ function SitePage({ site, slug, baseDomain }: { site: PublicSite; slug: string; 
           </div>
         )}
 
-        {/* Staff */}
         {site.staff && site.staff.length > 0 && (
           <div style={{ marginBottom: 28 }}>
             <SectionLabel>Our Team</SectionLabel>
@@ -112,7 +111,7 @@ function SitePage({ site, slug, baseDomain }: { site: PublicSite; slug: string; 
                 <div key={s.id} style={styles.staffRow}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: s.bio ? 6 : 0 }}>
                     <div style={styles.staffAvatar}>
-                      {s.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      {s.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                     </div>
                     <div>
                       <p style={{ fontSize: 13, fontWeight: 700, color: '#121212' }}>{s.name}</p>
@@ -130,7 +129,6 @@ function SitePage({ site, slug, baseDomain }: { site: PublicSite; slug: string; 
           </div>
         )}
 
-        {/* Policies */}
         {site.policies && ([
           ['Cancellation Policy', site.policies.cancellation_policy],
           ['Late Arrival Policy', site.policies.late_policy],
@@ -158,7 +156,6 @@ function SitePage({ site, slug, baseDomain }: { site: PublicSite; slug: string; 
             </div>
           </div>
         )}
-
       </div>
     </div>
   )
@@ -169,12 +166,8 @@ function SitePage({ site, slug, baseDomain }: { site: PublicSite; slug: string; 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p style={{
-      fontSize: 10,
-      fontWeight: 700,
-      letterSpacing: '0.18em',
-      textTransform: 'uppercase',
-      color: '#6B7280',
-      marginBottom: 12,
+      fontSize: 10, fontWeight: 700, letterSpacing: '0.18em',
+      textTransform: 'uppercase', color: '#6B7280', marginBottom: 12,
     }}>
       {children}
     </p>
@@ -205,79 +198,43 @@ function NotFound({ slug, baseDomain }: { slug: string; baseDomain: string }) {
   )
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+// ── Default styles ────────────────────────────────────────────────────────────
 
 const styles = {
   page: {
-    minHeight: '100vh',
-    display: 'flex',
-    justifyContent: 'center',
-    background: '#F8F6F2',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
+    minHeight: '100vh', display: 'flex', justifyContent: 'center',
+    background: '#F8F6F2', fontFamily: 'system-ui, -apple-system, sans-serif',
     padding: '40px 16px',
   } as React.CSSProperties,
   card: {
-    maxWidth: 520,
-    width: '100%',
-    padding: '48px 36px',
-    background: '#fff',
-    border: '1px solid rgba(18,18,18,0.10)',
+    maxWidth: 520, width: '100%', padding: '48px 36px',
+    background: '#fff', border: '1px solid rgba(18,18,18,0.10)',
     alignSelf: 'flex-start',
   } as React.CSSProperties,
   eyebrow: {
-    fontSize: 10,
-    fontWeight: 700,
-    letterSpacing: '0.2em',
-    textTransform: 'uppercase' as const,
-    color: '#6B7280',
-    marginBottom: 20,
+    fontSize: 10, fontWeight: 700, letterSpacing: '0.2em',
+    textTransform: 'uppercase' as const, color: '#6B7280', marginBottom: 20,
   } as React.CSSProperties,
   heading: {
-    fontSize: 26,
-    fontWeight: 700,
-    color: '#121212',
-    letterSpacing: '-0.02em',
-    marginBottom: 6,
+    fontSize: 26, fontWeight: 700, color: '#121212',
+    letterSpacing: '-0.02em', marginBottom: 6,
   } as React.CSSProperties,
-  subdomain: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 28,
-  } as React.CSSProperties,
-  meta: {
-    margin: 0,
-    padding: 0,
-  } as React.CSSProperties,
+  subdomain: { fontSize: 13, color: '#6B7280', marginBottom: 28 } as React.CSSProperties,
+  meta: { margin: 0, padding: 0 } as React.CSSProperties,
   serviceRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    padding: '10px 14px',
-    border: '1px solid rgba(18,18,18,0.08)',
-    background: '#F8F6F2',
+    display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+    padding: '10px 14px', border: '1px solid rgba(18,18,18,0.08)', background: '#F8F6F2',
   } as React.CSSProperties,
   hoursRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    padding: '7px 0',
-    borderBottom: '1px solid rgba(18,18,18,0.06)',
+    display: 'flex', justifyContent: 'space-between',
+    padding: '7px 0', borderBottom: '1px solid rgba(18,18,18,0.06)',
   } as React.CSSProperties,
   staffRow: {
-    padding: '12px 14px',
-    border: '1px solid rgba(18,18,18,0.08)',
-    background: '#F8F6F2',
+    padding: '12px 14px', border: '1px solid rgba(18,18,18,0.08)', background: '#F8F6F2',
   } as React.CSSProperties,
   staffAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: '50%',
-    background: '#E8D5C4',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 11,
-    fontWeight: 700,
-    color: '#121212',
-    flexShrink: 0,
+    width: 32, height: 32, borderRadius: '50%', background: '#E8D5C4',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 11, fontWeight: 700, color: '#121212', flexShrink: 0,
   } as React.CSSProperties,
 }
