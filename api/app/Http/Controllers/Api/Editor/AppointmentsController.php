@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Editor;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
+use App\Services\AppointmentMailer;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -213,8 +214,9 @@ class AppointmentsController extends Controller
             return response()->json(['message' => 'Appointment not found'], 404);
         }
 
-        $data     = ['updated_at' => now()];
-        $duration = (int) ($appt->service_duration_minutes ?? 30);
+        $oldStatus = $appt->status;
+        $data      = ['updated_at' => now()];
+        $duration  = (int) ($appt->service_duration_minutes ?? 30);
 
         // If service_id is changing, update snapshot and recalculate duration
         if (isset($validated['service_id'])) {
@@ -223,16 +225,16 @@ class AppointmentsController extends Controller
                 tenancy()->end();
                 return response()->json(['message' => 'Service not found'], 422);
             }
-            $duration                        = (int) $service->duration;
-            $data['service_id']              = (int) $service->id;
-            $data['service_name']            = $service->name;
-            $data['service_price']           = $service->price;
+            $duration                         = (int) $service->duration;
+            $data['service_id']               = (int) $service->id;
+            $data['service_name']             = $service->name;
+            $data['service_price']            = $service->price;
             $data['service_duration_minutes'] = $duration;
         }
 
         // Recalculate end_time if start_time or service changed
         if (isset($validated['start_time']) || isset($validated['service_id'])) {
-            $startTime         = $validated['start_time'] ?? substr($appt->start_time, 0, 5);
+            $startTime          = $validated['start_time'] ?? substr($appt->start_time, 0, 5);
             $data['start_time'] = $startTime;
             $data['end_time']   = $this->calcEndTime($startTime, $duration);
         }
@@ -248,7 +250,38 @@ class AppointmentsController extends Controller
         $row       = DB::table('appointments')->find($appointment);
         $formatted = $this->format($row);
 
+        // Collect email payload before ending tenancy if status changed to confirmed/cancelled
+        $newStatus    = $row->status;
+        $statusChanged = isset($validated['status']) && $newStatus !== $oldStatus;
+
+        $emailAppt     = null;
+        $emailBusiness = null;
+
+        if ($statusChanged && in_array($newStatus, ['confirmed', 'cancelled']) && ! empty($row->customer_email)) {
+            $emailAppt = [
+                'id'               => (int) $row->id,
+                'customer_name'    => $row->customer_name,
+                'customer_email'   => $row->customer_email,
+                'service_name'     => $row->service_name,
+                'appointment_date' => $row->appointment_date,
+                'start_time'       => substr($row->start_time, 0, 5),
+                'end_time'         => substr($row->end_time, 0, 5),
+                'status'           => $row->status,
+                'notes'            => $row->notes,
+            ];
+            $emailBusiness = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
+        }
+
         tenancy()->end();
+
+        // Send email outside tenancy with plain-array data
+        if ($emailAppt !== null && $emailBusiness !== null) {
+            if ($newStatus === 'confirmed') {
+                AppointmentMailer::sendConfirmed($emailAppt, $emailBusiness);
+            } elseif ($newStatus === 'cancelled') {
+                AppointmentMailer::sendCancelled($emailAppt, $emailBusiness);
+            }
+        }
 
         return response()->json($formatted);
     }
@@ -260,8 +293,8 @@ class AppointmentsController extends Controller
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
-        $exists = DB::table('appointments')->where('id', $appointment)->exists();
-        if (! $exists) {
+        $appt = DB::table('appointments')->find($appointment);
+        if (! $appt) {
             tenancy()->end();
             return response()->json(['message' => 'Appointment not found'], 404);
         }
@@ -271,7 +304,30 @@ class AppointmentsController extends Controller
             'updated_at' => now(),
         ]);
 
+        // Collect email payload before ending tenancy
+        $emailAppt     = null;
+        $emailBusiness = null;
+
+        if (! empty($appt->customer_email) && $appt->status !== 'cancelled') {
+            $emailAppt = [
+                'id'               => (int) $appt->id,
+                'customer_name'    => $appt->customer_name,
+                'customer_email'   => $appt->customer_email,
+                'service_name'     => $appt->service_name,
+                'appointment_date' => $appt->appointment_date,
+                'start_time'       => substr($appt->start_time, 0, 5),
+                'end_time'         => substr($appt->end_time, 0, 5),
+                'status'           => 'cancelled',
+                'notes'            => $appt->notes,
+            ];
+            $emailBusiness = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
+        }
+
         tenancy()->end();
+
+        if ($emailAppt !== null && $emailBusiness !== null) {
+            AppointmentMailer::sendCancelled($emailAppt, $emailBusiness);
+        }
 
         return response()->json(null, 204);
     }

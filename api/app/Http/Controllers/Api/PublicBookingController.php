@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
+use App\Services\AppointmentMailer;
 use App\Services\SlotGenerator;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -42,6 +43,9 @@ class PublicBookingController extends Controller
         $serviceId = (int)    $validated['service_id'];
         $date      =          $validated['appointment_date'];
         $startTime = substr($validated['start_time'], 0, 5);
+
+        // Fetch owner email from central DB before switching tenant connection.
+        $ownerEmail = $tenant->owner?->email;
 
         tenancy()->initialize($tenant);
 
@@ -117,23 +121,39 @@ class PublicBookingController extends Controller
             'updated_at'               => now(),
         ]);
 
-        // Serialize to plain array before ending tenancy
+        // ── Collect data for response + emails before ending tenancy ─────
         $row = DB::table('appointments')->find($id);
-        $appointment = [
+        $appt = [
             'id'               => (int) $row->id,
-            'service_name'     =>       $row->service_name,
-            'appointment_date' =>       $row->appointment_date,
+            'customer_name'    => $row->customer_name,
+            'customer_email'   => $row->customer_email,
+            'customer_phone'   => $row->customer_phone,
+            'service_name'     => $row->service_name,
+            'appointment_date' => $row->appointment_date,
             'start_time'       => substr($row->start_time, 0, 5),
             'end_time'         => substr($row->end_time,   0, 5),
-            'status'           =>       $row->status,
-            'customer_name'    =>       $row->customer_name,
+            'status'           => $row->status,
+            'notes'            => $row->notes,
         ];
+
+        $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
 
         tenancy()->end();
 
+        // ── Send emails (outside tenancy, with plain-array data) ─────────
+        AppointmentMailer::sendBookingRequest($appt, $businessName, $ownerEmail);
+
         return response()->json([
             'message'     => 'Booking request received',
-            'appointment' => $appointment,
+            'appointment' => [
+                'id'               => $appt['id'],
+                'service_name'     => $appt['service_name'],
+                'appointment_date' => $appt['appointment_date'],
+                'start_time'       => $appt['start_time'],
+                'end_time'         => $appt['end_time'],
+                'status'           => $appt['status'],
+                'customer_name'    => $appt['customer_name'],
+            ],
         ], 201);
     }
 
