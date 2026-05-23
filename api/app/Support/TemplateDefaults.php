@@ -56,19 +56,19 @@ class TemplateDefaults
             'steps' => [
                 'heading' => 'Steps',
                 'items'   => [
-                    ['title' => 'Keep It Fresh',          'body' => 'Maintain your look between appointments with the right products for your hair type.'],
-                    ['title' => 'Avoid Heavy Products',   'body' => 'Let any treatments settle for 24–48 hours before applying styling products.'],
-                    ['title' => 'Book Your Maintenance',  'body' => 'Most styles look best when touched up every 2–4 weeks. Book your next visit before you leave.'],
-                    ['title' => 'Follow Your Care Guide', 'body' => 'Your stylist may give specific instructions for your service — follow them for the best results.'],
+                    ['title' => 'Choose your service',  'body' => 'Pick the service that fits your appointment.'],
+                    ['title' => 'Select your time',     'body' => 'Choose an available date and time from the booking calendar.'],
+                    ['title' => 'Send your request',    'body' => 'Add your contact details and submit your booking request.'],
+                    ['title' => 'Wait for confirmation','body' => 'The business will confirm your appointment soon.'],
                 ],
             ],
             'before_appointment' => [
                 'heading' => 'Before Your Appointment',
                 'items'   => [
-                    ['title' => 'Arrive on Time',         'body' => 'Plan to arrive 5 minutes early so you can settle in and we can start right on schedule.'],
-                    ['title' => 'Come Prepared',          'body' => 'Wear comfortable clothing and avoid heavy product in your hair or beard before your appointment.'],
-                    ['title' => 'Bring Reference Photos', 'body' => 'Not sure exactly what you want? Bring photos of styles you like — it helps us dial in the perfect look.'],
-                    ['title' => 'Confirm Your Service',   'body' => 'Review your booked service before arriving. If anything has changed, give us a call and we\'ll sort it out.'],
+                    ['title' => 'Arrive on time',         'body' => 'Late arrivals may need to be rescheduled.'],
+                    ['title' => 'Come prepared',          'body' => 'Arrive ready for the service you booked.'],
+                    ['title' => 'Bring reference photos', 'body' => 'If you have a specific look in mind, bring photos.'],
+                    ['title' => 'Review policies',        'body' => 'Please review cancellation, late, and no-show policies before booking.'],
                 ],
             ],
             'additionals' => [

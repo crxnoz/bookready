@@ -825,48 +825,195 @@ function ContentTabsPanel({
 
       <BeforeAfterManagerPanel />
 
-      <Panel
+      <InstructionsEditorPanel
         title="Steps content"
         subtitle="Card-style instructions shown on the Steps tab."
-      >
-        <ItemsSummary
-          items={settings.steps?.items ?? []}
-          empty="No steps yet."
-        />
-        <p className="text-[11px] text-muted-text">
-          Inline item editor coming soon. The Fade Room template ships with
-          sensible defaults until then.
-        </p>
-      </Panel>
+        addLabel="Add Step"
+        emptyText="No steps yet — add your first one."
+        block={settings.steps ?? { heading: 'Steps', items: [] }}
+        defaultHeading="Steps"
+        onSave={(next) => onSaveSettings({ steps: next })}
+      />
 
-      <Panel
+      <InstructionsEditorPanel
         title="Before Your Appointment content"
         subtitle="Numbered timeline shown on the Before Your Appointment tab."
-      >
-        <ItemsSummary
-          items={settings.before_appointment?.items ?? []}
-          empty="No items yet."
-        />
-        <p className="text-[11px] text-muted-text">
-          Inline item editor coming soon. The Fade Room template ships with
-          sensible defaults until then.
-        </p>
-      </Panel>
+        addLabel="Add Instruction"
+        emptyText="No instructions yet — add your first one."
+        block={settings.before_appointment ?? { heading: 'Before Your Appointment', items: [] }}
+        defaultHeading="Before Your Appointment"
+        onSave={(next) => onSaveSettings({ before_appointment: next })}
+      />
     </div>
   )
 }
 
-function ItemsSummary({ items, empty }: { items: { title: string; body: string }[]; empty: string }) {
-  if (items.length === 0) return <p className="text-xs text-muted-text">{empty}</p>
+// ── Instructions editor (Steps & Before Your Appointment) ───────────────────
+
+const INSTRUCTIONS_MAX_ITEMS = 8
+
+interface InstructionItem { title: string; body: string }
+interface InstructionBlock { heading: string; items: InstructionItem[] }
+
+function InstructionsEditorPanel({
+  title, subtitle, addLabel, emptyText, block, defaultHeading, onSave,
+}: {
+  title:          string
+  subtitle:       string
+  addLabel:       string
+  emptyText:      string
+  block:          InstructionBlock
+  defaultHeading: string
+  onSave:         (next: InstructionBlock) => Promise<void>
+}) {
+  // Seed with at least one empty item so the user has something to fill in.
+  const initial: InstructionBlock = {
+    heading: block.heading ?? defaultHeading,
+    items:   block.items?.length ? block.items : [],
+  }
+  const form = useSettingsForm<InstructionBlock>(initial, onSave)
+  const { value, patch, dirty, saving, saved, error, doSave } = form
+
+  function setItems(next: InstructionItem[]) {
+    patch({ items: next })
+  }
+
+  function addItem() {
+    if (value.items.length >= INSTRUCTIONS_MAX_ITEMS) return
+    setItems([...value.items, { title: '', body: '' }])
+  }
+
+  function updateItem(i: number, partial: Partial<InstructionItem>) {
+    setItems(value.items.map((it, idx) => idx === i ? { ...it, ...partial } : it))
+  }
+
+  function removeItem(i: number) {
+    setItems(value.items.filter((_, idx) => idx !== i))
+  }
+
+  function move(i: number, dir: 'up' | 'down') {
+    const j = dir === 'up' ? i - 1 : i + 1
+    if (j < 0 || j >= value.items.length) return
+    const next = value.items.slice()
+    ;[next[i], next[j]] = [next[j], next[i]]
+    setItems(next)
+  }
+
+  // Validation: every item must have non-empty title and body
+  const invalidIndexes: number[] = value.items
+    .map((it, i) => (!it.title.trim() || !it.body.trim()) ? i : -1)
+    .filter(i => i >= 0)
+  const hasValidationError = invalidIndexes.length > 0
+
   return (
-    <ol className="space-y-1.5">
-      {items.map((it, i) => (
-        <li key={i} className="border border-[rgba(18,18,18,0.08)] px-3 py-2">
-          <p className="text-sm font-semibold text-near-black">{i + 1}. {it.title}</p>
-          <p className="text-xs text-muted-text mt-0.5 line-clamp-2">{it.body}</p>
-        </li>
-      ))}
-    </ol>
+    <Panel title={title} subtitle={subtitle}>
+      <TextField
+        label="Section heading"
+        value={value.heading}
+        onChange={v => patch({ heading: v })}
+        placeholder={defaultHeading}
+        maxLength={120}
+      />
+
+      <div className="space-y-2.5">
+        {value.items.length === 0 && (
+          <div className="bg-cream border border-[rgba(18,18,18,0.08)] px-4 py-5 text-center">
+            <ListChecks size={18} className="mx-auto mb-1.5 text-muted-text" strokeWidth={1.5} />
+            <p className="text-xs text-muted-text">{emptyText}</p>
+          </div>
+        )}
+
+        {value.items.map((item, i) => {
+          const invalid = invalidIndexes.includes(i)
+          const isLast  = i === value.items.length - 1
+          return (
+            <div
+              key={i}
+              className={cn(
+                'bg-white border p-3 space-y-2',
+                invalid ? 'border-red-300' : 'border-[rgba(18,18,18,0.10)]',
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+                  Step {i + 1}
+                </span>
+                <div className="flex items-center gap-1 ml-auto flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => move(i, 'up')}
+                    disabled={i === 0}
+                    className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black disabled:opacity-30"
+                    title="Move up"
+                  >
+                    <ArrowUp size={11} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => move(i, 'down')}
+                    disabled={isLast}
+                    className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black disabled:opacity-30"
+                    title="Move down"
+                  >
+                    <ArrowDown size={11} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(i)}
+                    disabled={value.items.length <= 1}
+                    className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600 disabled:opacity-30"
+                    title={value.items.length <= 1 ? 'At least one step is required' : 'Delete'}
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+              </div>
+
+              <input
+                type="text"
+                value={item.title}
+                onChange={e => updateItem(i, { title: e.target.value })}
+                placeholder="Title"
+                maxLength={120}
+                className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+              />
+              <textarea
+                value={item.body}
+                onChange={e => updateItem(i, { body: e.target.value })}
+                placeholder="Body — what should happen at this step?"
+                rows={2}
+                maxLength={500}
+                className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black resize-y"
+              />
+
+              {invalid && (
+                <p className="text-[11px] text-red-700 flex items-center gap-1.5">
+                  <AlertCircle size={11} /> Title and body are required.
+                </p>
+              )}
+            </div>
+          )
+        })}
+
+        <button
+          type="button"
+          onClick={addItem}
+          disabled={value.items.length >= INSTRUCTIONS_MAX_ITEMS}
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Plus size={12} /> {addLabel}
+          {value.items.length >= INSTRUCTIONS_MAX_ITEMS && ` (max ${INSTRUCTIONS_MAX_ITEMS})`}
+        </button>
+      </div>
+
+      <SaveBar
+        dirty={dirty && !hasValidationError}
+        saving={saving}
+        saved={saved}
+        error={error ?? (dirty && hasValidationError ? 'Fix the highlighted items before saving.' : null)}
+        onSave={doSave}
+      />
+    </Panel>
   )
 }
 
