@@ -7,7 +7,7 @@ import {
   FileText, Image as ImageIcon, Info, ListChecks,
   Eye, EyeOff, Lock, Plus, Smartphone, Monitor, ExternalLink, Copy,
   Check, Loader2, Heart, Phone, Mail, Instagram, MapPin, Sparkles,
-  Megaphone, MessageSquare, ChevronRight, AlertCircle,
+  Megaphone, MessageSquare, ChevronRight, AlertCircle, RefreshCw,
 } from 'lucide-react'
 import {
   getCurrentUser,
@@ -78,6 +78,7 @@ export default function WebsiteHub() {
   const [sections, setSections]       = useState<WebsiteSection[]>([])
   const [loading, setLoading]         = useState(true)
   const [loadError, setLoadError]     = useState<string | null>(null)
+  const [previewKey, setPreviewKey]   = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -107,11 +108,13 @@ export default function WebsiteHub() {
   async function saveSettings(partial: Partial<TemplateSettings>): Promise<void> {
     const res = await updateEditorTemplateSettings(partial)
     setSettings(res.settings)
+    setPreviewKey(k => k + 1)
   }
 
   async function toggleSection(id: number, enabled: boolean): Promise<void> {
     const updated = await updateEditorWebsiteSection(id, { is_enabled: enabled })
     setSections(prev => prev.map(s => s.id === id ? updated : s))
+    setPreviewKey(k => k + 1)
   }
 
   if (loading) {
@@ -139,15 +142,12 @@ export default function WebsiteHub() {
         <div className="px-4 md:px-8 py-6 max-w-[1440px] mx-auto w-full">
 
           {/* Page head */}
-          <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
+          <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
             <div className="min-w-0">
               <h1 className="text-2xl font-bold text-near-black tracking-tight">Website</h1>
               <p className="text-sm text-muted-text mt-0.5">
                 Manage your public website content, template sections, and preview.
               </p>
-              {slug && (
-                <p className="text-xs text-muted-text mt-1.5 font-mono">{slug}.{baseDomain}</p>
-              )}
             </div>
             {slug && (
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -163,6 +163,26 @@ export default function WebsiteHub() {
               </div>
             )}
           </div>
+
+          {/* Tenant URL banner — makes it obvious which public site this editor affects */}
+          {slug && (
+            <div className="bg-white border border-[rgba(18,18,18,0.10)] border-l-4 border-l-near-black px-4 py-3 mb-6 flex items-center gap-3 flex-wrap">
+              <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text flex-shrink-0">
+                Editing
+              </span>
+              <a
+                href={publicUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-mono font-semibold text-near-black break-all hover:underline"
+              >
+                {slug}.{baseDomain}
+              </a>
+              <span className="text-[11px] text-muted-text">
+                — saved changes appear on this URL only.
+              </span>
+            </div>
+          )}
 
           {/* Editor + preview split */}
           <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_440px] gap-6">
@@ -203,7 +223,7 @@ export default function WebsiteHub() {
 
             {/* Preview — sticky on desktop, stacks below on mobile */}
             <div className="xl:sticky xl:top-4 xl:self-start">
-              <PreviewPanel url={publicUrl} />
+              <PreviewPanel url={publicUrl} refreshKey={previewKey} />
             </div>
           </div>
 
@@ -993,20 +1013,44 @@ function FooterPanel({
 
 // ── Preview ──────────────────────────────────────────────────────────────────
 
-function PreviewPanel({ url }: { url: string }) {
+const PREVIEW_MOBILE_W  = 390
+const PREVIEW_DESKTOP_W = 1280
+const PREVIEW_HEIGHT    = 720
+const PREVIEW_FRAME_W   = 400  // visible width of preview column content
+
+function PreviewPanel({ url, refreshKey }: { url: string; refreshKey: number }) {
   const [mode, setMode] = useState<'mobile' | 'desktop'>('mobile')
+  const [manualBump, setManualBump] = useState(0)
+
+  // Cache-bust the iframe whenever refreshKey changes (auto on save) or user clicks Refresh
+  const cacheKey = refreshKey + manualBump
+  const src = url
+    ? `${url}${url.includes('?') ? '&' : '?'}preview=${cacheKey}`
+    : ''
+
   if (!url) {
     return (
-      <Panel title="Preview" subtitle="Sign in to preview your site.">
-        <div />
-      </Panel>
+      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
+        <p className="text-sm text-muted-text">Sign in to preview your site.</p>
+      </div>
     )
   }
+
+  const desktopScale = PREVIEW_FRAME_W / PREVIEW_DESKTOP_W
+
   return (
     <div className="bg-white border border-[rgba(18,18,18,0.10)] p-3 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">Preview</p>
         <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setManualBump(n => n + 1)}
+            className="inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.08em] uppercase px-2 py-1 border bg-white text-near-black border-[rgba(18,18,18,0.15)] hover:border-near-black"
+            title="Refresh preview"
+          >
+            <RefreshCw size={11} />
+          </button>
           <button
             onClick={() => setMode('mobile')}
             className={cn(
@@ -1027,17 +1071,53 @@ function PreviewPanel({ url }: { url: string }) {
           </button>
         </div>
       </div>
-      <div className="flex justify-center bg-cream p-2 border border-[rgba(18,18,18,0.06)]">
-        <iframe
-          key={mode}
-          src={url}
-          title="Public site preview"
-          className={cn(
-            'bg-white border border-[rgba(18,18,18,0.10)]',
-            mode === 'mobile' ? 'w-[360px] h-[640px]' : 'w-full h-[640px]',
-          )}
-        />
+
+      <div className="flex justify-center items-start bg-cream p-2 border border-[rgba(18,18,18,0.06)] overflow-hidden">
+        {mode === 'mobile' ? (
+          <iframe
+            key={`mob-${cacheKey}`}
+            src={src}
+            title="Public site preview — mobile"
+            style={{
+              width:  PREVIEW_MOBILE_W,
+              height: PREVIEW_HEIGHT,
+              border: '1px solid rgba(18,18,18,0.10)',
+              background: '#fff',
+              transform: `scale(${PREVIEW_FRAME_W / PREVIEW_MOBILE_W < 1 ? PREVIEW_FRAME_W / PREVIEW_MOBILE_W : 1})`,
+              transformOrigin: 'top center',
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              width:  PREVIEW_FRAME_W,
+              height: PREVIEW_HEIGHT * desktopScale,
+              overflow: 'hidden',
+              position: 'relative',
+            }}
+          >
+            <iframe
+              key={`desk-${cacheKey}`}
+              src={src}
+              title="Public site preview — desktop"
+              style={{
+                width:  PREVIEW_DESKTOP_W,
+                height: PREVIEW_HEIGHT,
+                border: '1px solid rgba(18,18,18,0.10)',
+                background: '#fff',
+                transform: `scale(${desktopScale})`,
+                transformOrigin: 'top left',
+              }}
+            />
+          </div>
+        )}
       </div>
+
+      <p className="text-[10px] text-muted-text text-center">
+        {mode === 'mobile'
+          ? `Live preview at ${PREVIEW_MOBILE_W}px`
+          : `Scaled from ${PREVIEW_DESKTOP_W}px desktop view`}
+      </p>
     </div>
   )
 }
