@@ -11,6 +11,8 @@ use App\Http\Controllers\Api\Editor\CustomersController;
 use App\Http\Controllers\Api\Editor\HoursController;
 use App\Http\Controllers\Api\Editor\ServicesController;
 use App\Http\Controllers\Api\Editor\StaffController;
+use App\Http\Controllers\Api\Editor\WebsiteSectionsController;
+use App\Http\Controllers\Api\Editor\WebsiteTemplateController;
 use App\Http\Controllers\Api\PublicAvailabilityController;
 use App\Http\Controllers\Api\PublicBookingController;
 use App\Http\Controllers\Api\PublicSiteController;
@@ -86,6 +88,13 @@ Route::prefix('v1')->group(function () {
         Route::post('staff',             [StaffController::class, 'store']);
         Route::patch('staff/{staff}',    [StaffController::class, 'update']);
         Route::delete('staff/{staff}',   [StaffController::class, 'destroy']);
+
+        Route::get('website/template',                [WebsiteTemplateController::class, 'show']);
+        Route::patch('website/template',              [WebsiteTemplateController::class, 'update']);
+        Route::get('website/sections',                [WebsiteSectionsController::class, 'index']);
+        Route::post('website/sections',               [WebsiteSectionsController::class, 'store']);
+        Route::patch('website/sections/{section}',    [WebsiteSectionsController::class, 'update']);
+        Route::delete('website/sections/{section}',   [WebsiteSectionsController::class, 'destroy']);
     });
 
     // ── Stripe webhook (no auth, no CSRF) ────────────────────────────────

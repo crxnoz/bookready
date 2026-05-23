@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\BusinessPolicy;
 use App\Models\BusinessProfile;
 use App\Models\Tenant;
+use App\Support\TemplateDefaults;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class PublicSiteController extends Controller
 {
@@ -111,6 +113,44 @@ class PublicSiteController extends Controller
             ->values()
             ->all();
 
+        // ── Template settings + sections (graceful fallback if migrations not yet run) ──
+        $templateSlug = TemplateDefaults::DEFAULT_TEMPLATE_SLUG;
+        $templateSettings = TemplateDefaults::settingsFor($templateSlug);
+        $templateSections = [];
+
+        if (Schema::hasTable('template_settings')) {
+            $tsRow = DB::table('template_settings')
+                ->where('template_slug', $templateSlug)
+                ->first();
+            if ($tsRow && $tsRow->settings_json) {
+                $templateSettings = TemplateDefaults::mergeWithDefaults(
+                    $templateSlug,
+                    json_decode($tsRow->settings_json, true) ?: []
+                );
+            }
+        }
+
+        if (Schema::hasTable('website_sections')) {
+            $templateSections = DB::table('website_sections')
+                ->where('template_slug', $templateSlug)
+                ->orderBy('sort_order', 'asc')
+                ->orderBy('id', 'asc')
+                ->get()
+                ->map(fn ($r) => [
+                    'id'           => (int)  $r->id,
+                    'section_key'  =>        $r->section_key,
+                    'section_type' =>        $r->section_type,
+                    'title'        =>        $r->title,
+                    'subtitle'     =>        $r->subtitle,
+                    'content_json' =>        $r->content_json ? json_decode($r->content_json, true) : null,
+                    'is_enabled'   => (bool) $r->is_enabled,
+                    'is_locked'    => (bool) $r->is_locked,
+                    'sort_order'   => (int)  $r->sort_order,
+                ])
+                ->values()
+                ->all();
+        }
+
         tenancy()->end();
 
         return response()->json([
@@ -128,6 +168,11 @@ class PublicSiteController extends Controller
             'availability'  => [
                 'hours'    => $hours,
                 'settings' => $settings,
+            ],
+            'template'      => [
+                'slug'     => $templateSlug,
+                'settings' => $templateSettings,
+                'sections' => $templateSections,
             ],
         ]);
     }

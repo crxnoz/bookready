@@ -23,8 +23,13 @@ import {
   RegisterPayload,
   Service,
   StaffMemberPayload,
+  TemplateSettings,
+  TemplateSettingsResponse,
   TenantData,
   UpdateAppointmentPayload,
+  WebsiteSection,
+  WebsiteSectionCreatePayload,
+  WebsiteSectionUpdatePayload,
 } from './types'
 import { getToken } from './auth'
 import { mockTenant } from './mockTenant'
@@ -323,4 +328,46 @@ export async function updateEditorStaff(id: number, data: Partial<StaffMemberPay
 
 export async function archiveEditorStaff(id: number): Promise<ApiStaffMember> {
   return request<ApiStaffMember>(`/editor/staff/${id}`, { method: 'DELETE' })
+}
+
+// ── Website / Template ────────────────────────────────────────────────────────
+
+export async function getEditorTemplateSettings(): Promise<TemplateSettingsResponse> {
+  return request<TemplateSettingsResponse>('/editor/website/template')
+}
+
+export async function updateEditorTemplateSettings(
+  settings: Partial<TemplateSettings>,
+): Promise<TemplateSettingsResponse> {
+  return request<TemplateSettingsResponse>('/editor/website/template', {
+    method: 'PATCH',
+    body: JSON.stringify({ settings }),
+  })
+}
+
+export async function getEditorWebsiteSections(): Promise<WebsiteSection[]> {
+  return request<WebsiteSection[]>('/editor/website/sections')
+}
+
+export async function createEditorWebsiteSection(
+  payload: WebsiteSectionCreatePayload,
+): Promise<WebsiteSection> {
+  return request<WebsiteSection>('/editor/website/sections', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateEditorWebsiteSection(
+  id: number,
+  payload: WebsiteSectionUpdatePayload,
+): Promise<WebsiteSection> {
+  return request<WebsiteSection>(`/editor/website/sections/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteEditorWebsiteSection(id: number): Promise<{ deleted?: boolean } | WebsiteSection> {
+  return request(`/editor/website/sections/${id}`, { method: 'DELETE' })
 }

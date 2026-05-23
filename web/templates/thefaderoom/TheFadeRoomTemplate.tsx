@@ -40,6 +40,39 @@ interface Profile {
 type TabId = 'book' | 'gallery' | 'policies' | 'about'
            | 'results' | 'aftercare' | 'before'
 
+// Map editor section_key → in-template TabId for visibility gating
+const SECTION_KEY_TO_TAB: Record<string, TabId | null> = {
+  book:               'book',
+  gallery:            'gallery',
+  policy:             'policies',
+  about:              'about',
+  before_after:       'results',
+  steps:              'aftercare',
+  before_appointment: 'before',
+  // header/footer aren't tabs; locked sections always render
+  header:             null,
+  footer:             null,
+}
+
+// Fallback defaults so the template never crashes if backend is offline.
+const FALLBACK_HEADER_SETTINGS = {
+  tagline: 'Sharp cuts. Smooth booking.',
+  show_book_button: true,
+  show_call_button: true,
+  show_email_button: true,
+  show_instagram_button: true,
+  show_directions_button: true,
+}
+const FALLBACK_TAB_LABELS = {
+  book_label: 'Book',
+  gallery_label: 'Gallery',
+  policy_label: 'Policy',
+  about_label: 'About',
+  results_label: 'Before & After',
+  steps_label: 'Steps',
+  before_appointment_label: 'Before Your Appointment',
+}
+
 // ── Main template ─────────────────────────────────────────────────────────────
 
 export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; slug: string }) {
@@ -51,15 +84,45 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
   const availability = site.availability ?? null
   const address     = [p?.address_line, p?.city, p?.state, p?.zip].filter(Boolean).join(', ')
 
-  const tabs: { id: TabId; label: string }[] = [
-    { id: 'book',      label: 'Book'                    },
-    { id: 'gallery',   label: 'Gallery'                 },
-    { id: 'policies',  label: 'Policy'                  },
-    { id: 'about',     label: 'About'                   },
-    { id: 'results',   label: 'Before & After'          },
-    { id: 'aftercare', label: 'Steps'                   },
-    { id: 'before',    label: 'Before Your Appointment' },
+  // ── Template settings + sections (graceful fallback) ──
+  const header = { ...FALLBACK_HEADER_SETTINGS, ...(site.template?.settings.header ?? {}) }
+  const tabLabels = { ...FALLBACK_TAB_LABELS, ...(site.template?.settings.tabs ?? {}) }
+  const footerSettings = site.template?.settings.footer ?? { show_powered_by: true }
+
+  // Build enabledByTab map from website_sections.is_enabled
+  // (default to true when sections missing entirely)
+  const enabledByTab: Record<TabId, boolean> = {
+    book: true, gallery: true, policies: true, about: true,
+    results: true, aftercare: true, before: true,
+  }
+  const sectionsList = site.template?.sections ?? []
+  if (sectionsList.length > 0) {
+    for (const s of sectionsList) {
+      const tabId = SECTION_KEY_TO_TAB[s.section_key]
+      if (tabId) enabledByTab[tabId] = s.is_enabled
+    }
+  }
+
+  // Section title overrides via website_sections.title (when editor renamed them)
+  const titleByKey: Record<string, string> = {}
+  for (const s of sectionsList) {
+    if (s.title) titleByKey[s.section_key] = s.title
+  }
+
+  const allTabs: { id: TabId; label: string; key: string }[] = [
+    { id: 'book',      label: tabLabels.book_label,               key: 'book'               },
+    { id: 'gallery',   label: tabLabels.gallery_label,            key: 'gallery'            },
+    { id: 'policies',  label: tabLabels.policy_label,             key: 'policy'             },
+    { id: 'about',     label: tabLabels.about_label,              key: 'about'              },
+    { id: 'results',   label: tabLabels.results_label,            key: 'before_after'       },
+    { id: 'aftercare', label: tabLabels.steps_label,              key: 'steps'              },
+    { id: 'before',    label: tabLabels.before_appointment_label, key: 'before_appointment' },
   ]
+
+  // Apply title overrides + filter to enabled
+  const tabs = allTabs
+    .map(t => ({ ...t, label: titleByKey[t.key] ?? t.label }))
+    .filter(t => t.id === 'book' || enabledByTab[t.id])
 
   const [active, setActive] = useState<TabId>('book')
   const tabRailRef = useRef<HTMLDivElement>(null)
@@ -101,44 +164,54 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
 
           <div className="tfr-header-content">
             <h1>{displayName}</h1>
-            <p>{p?.tagline ?? 'Sharp cuts. Smooth booking.'}</p>
+            <p>{p?.tagline ?? header.tagline}</p>
 
             <div className="tfr-header-buttons">
-              <button className="tfr-header-btn tfr-header-btn-book" onClick={goBook}>
-                <Heart size={16} fill="currentColor" /><span>Book</span>
-              </button>
-              <a
-                className="tfr-header-btn tfr-header-btn-call"
-                href={p?.public_phone ? `tel:${p.public_phone}` : '#'}
-                aria-disabled={!p?.public_phone || undefined}
-              >
-                <Phone size={16} /><span>Call</span>
-              </a>
-              <a
-                className="tfr-header-btn tfr-header-btn-chat"
-                href={p?.public_email ? `mailto:${p.public_email}` : '#'}
-                aria-disabled={!p?.public_email || undefined}
-              >
-                <Mail size={16} /><span>Email</span>
-              </a>
-              <a
-                className="tfr-header-btn tfr-header-btn-instagram"
-                href={p?.instagram_url ?? '#'}
-                target={p?.instagram_url ? '_blank' : undefined}
-                rel={p?.instagram_url ? 'noopener noreferrer' : undefined}
-                aria-disabled={!p?.instagram_url || undefined}
-              >
-                <Instagram size={16} /><span>Instagram</span>
-              </a>
-              <a
-                className="tfr-header-btn tfr-header-btn-tiktok"
-                href={address ? `https://maps.google.com/?q=${encodeURIComponent(address)}` : '#'}
-                target={address ? '_blank' : undefined}
-                rel={address ? 'noopener noreferrer' : undefined}
-                aria-disabled={!address || undefined}
-              >
-                <MapPin size={16} /><span>Directions</span>
-              </a>
+              {header.show_book_button && (
+                <button className="tfr-header-btn tfr-header-btn-book" onClick={goBook}>
+                  <Heart size={16} fill="currentColor" /><span>Book</span>
+                </button>
+              )}
+              {header.show_call_button && (
+                <a
+                  className="tfr-header-btn tfr-header-btn-call"
+                  href={p?.public_phone ? `tel:${p.public_phone}` : '#'}
+                  aria-disabled={!p?.public_phone || undefined}
+                >
+                  <Phone size={16} /><span>Call</span>
+                </a>
+              )}
+              {header.show_email_button && (
+                <a
+                  className="tfr-header-btn tfr-header-btn-chat"
+                  href={p?.public_email ? `mailto:${p.public_email}` : '#'}
+                  aria-disabled={!p?.public_email || undefined}
+                >
+                  <Mail size={16} /><span>Email</span>
+                </a>
+              )}
+              {header.show_instagram_button && (
+                <a
+                  className="tfr-header-btn tfr-header-btn-instagram"
+                  href={p?.instagram_url ?? '#'}
+                  target={p?.instagram_url ? '_blank' : undefined}
+                  rel={p?.instagram_url ? 'noopener noreferrer' : undefined}
+                  aria-disabled={!p?.instagram_url || undefined}
+                >
+                  <Instagram size={16} /><span>Instagram</span>
+                </a>
+              )}
+              {header.show_directions_button && (
+                <a
+                  className="tfr-header-btn tfr-header-btn-tiktok"
+                  href={address ? `https://maps.google.com/?q=${encodeURIComponent(address)}` : '#'}
+                  target={address ? '_blank' : undefined}
+                  rel={address ? 'noopener noreferrer' : undefined}
+                  aria-disabled={!address || undefined}
+                >
+                  <MapPin size={16} /><span>Directions</span>
+                </a>
+              )}
             </div>
           </div>
         </section>
@@ -172,37 +245,52 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
           </div>
 
           {/* ── Gallery ── */}
-          <div className={`tfr-tab-panel${active === 'gallery' ? ' is-active' : ''}`}>
-            <GalleryPanel />
-          </div>
+          {enabledByTab.gallery && (
+            <div className={`tfr-tab-panel${active === 'gallery' ? ' is-active' : ''}`}>
+              <GalleryPanel />
+            </div>
+          )}
 
           {/* ── Results ── */}
-          <div className={`tfr-tab-panel${active === 'results' ? ' is-active' : ''}`}>
-            <ResultsPanel />
-          </div>
+          {enabledByTab.results && (
+            <div className={`tfr-tab-panel${active === 'results' ? ' is-active' : ''}`}>
+              <ResultsPanel />
+            </div>
+          )}
 
           {/* ── About ── */}
-          <div className={`tfr-tab-panel${active === 'about' ? ' is-active' : ''}`}>
-            <AboutPanel profile={p} displayName={displayName} />
-          </div>
+          {enabledByTab.about && (
+            <div className={`tfr-tab-panel${active === 'about' ? ' is-active' : ''}`}>
+              <AboutPanel profile={p} displayName={displayName} />
+            </div>
+          )}
 
           {/* ── Policy ── */}
-          <div className={`tfr-tab-panel${active === 'policies' ? ' is-active' : ''}`}>
-            <PoliciesPanel policies={policies} />
-          </div>
-
-          {/* ── Before & After ── */}
-          {/* (panel reuses 'results' id) */}
+          {enabledByTab.policies && (
+            <div className={`tfr-tab-panel${active === 'policies' ? ' is-active' : ''}`}>
+              <PoliciesPanel policies={policies} />
+            </div>
+          )}
 
           {/* ── Steps (aftercare) ── */}
-          <div className={`tfr-tab-panel${active === 'aftercare' ? ' is-active' : ''}`}>
-            <AftercarePanel />
-          </div>
+          {enabledByTab.aftercare && (
+            <div className={`tfr-tab-panel${active === 'aftercare' ? ' is-active' : ''}`}>
+              <AftercarePanel
+                items={site.template?.settings.steps?.items}
+                heading={site.template?.settings.steps?.heading}
+              />
+            </div>
+          )}
 
           {/* ── Before Your Appointment ── */}
-          <div className={`tfr-tab-panel${active === 'before' ? ' is-active' : ''}`}>
-            <BeforePanel />
-          </div>
+          {enabledByTab.before && (
+            <div className={`tfr-tab-panel${active === 'before' ? ' is-active' : ''}`}>
+              <BeforePanel
+                items={site.template?.settings.before_appointment?.items}
+                heading={site.template?.settings.before_appointment?.heading}
+              />
+            </div>
+          )}
 
         </section>
 
@@ -220,7 +308,14 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
         </section>
 
         {/* ── Footer ── */}
-        <Footer profile={p} hours={hours} displayName={displayName} address={address} onBook={goBook} />
+        <Footer
+          profile={p}
+          hours={hours}
+          displayName={displayName}
+          address={address}
+          onBook={goBook}
+          showPoweredBy={footerSettings.show_powered_by}
+        />
 
       </div>
     </>
@@ -437,12 +532,19 @@ const BEFORE_STEPS = [
   { title: 'Confirm Your Service',    body: 'Review your booked service before arriving. If anything has changed, give us a call and we\'ll sort it out.' },
 ]
 
-function BeforePanel() {
+function BeforePanel({
+  items,
+  heading,
+}: {
+  items?: { title: string; body: string }[]
+  heading?: string
+}) {
+  const steps = items && items.length > 0 ? items : BEFORE_STEPS
   return (
     <section className="tfr-before-appointment-section">
-      <h2>Before Your Appointment</h2>
+      <h2>{heading ?? 'Before Your Appointment'}</h2>
       <ol className="tfr-before-timeline">
-        {BEFORE_STEPS.map((s, i) => (
+        {steps.map((s, i) => (
           <li key={i} className="tfr-before-step">
             <div className="tfr-before-node">
               <span className="tfr-before-node-num">{i + 1}</span>
@@ -467,12 +569,19 @@ const AFTERCARE_CARDS = [
   { title: 'Follow Your Care Guide',   body: 'Your barber may give specific instructions for your service — follow them for the best results.' },
 ]
 
-function AftercarePanel() {
+function AftercarePanel({
+  items,
+  heading,
+}: {
+  items?: { title: string; body: string }[]
+  heading?: string
+}) {
+  const cards = items && items.length > 0 ? items : AFTERCARE_CARDS
   return (
     <section className="tfr-aftercare-section">
-      <h2>Aftercare</h2>
+      <h2>{heading ?? 'Steps'}</h2>
       <div className="tfr-aftercare-list">
-        {AFTERCARE_CARDS.map((c, i) => (
+        {cards.map((c, i) => (
           <div key={i} className="tfr-aftercare-card">
             <div className="tfr-aftercare-head">
               <span className="tfr-aftercare-dot" aria-hidden="true" />
@@ -495,12 +604,14 @@ function Footer({
   displayName,
   address,
   onBook,
+  showPoweredBy = true,
 }: {
   profile: Profile | null
   hours: PublicSite['hours']
   displayName: string
   address: string
   onBook: () => void
+  showPoweredBy?: boolean
 }) {
   const sorted = hours
     ? [...hours.filter(h => h.day_of_week !== 0), ...hours.filter(h => h.day_of_week === 0)]
@@ -570,8 +681,12 @@ function Footer({
       </div>
       <div className="tfr-footer-bottom">
         <span>© {new Date().getFullYear()} {displayName}</span>
-        <span className="tfr-footer-dot" aria-hidden="true"><Dot size={14} /></span>
-        <span>Powered by <strong>BookReady</strong></span>
+        {showPoweredBy && (
+          <>
+            <span className="tfr-footer-dot" aria-hidden="true"><Dot size={14} /></span>
+            <span>Powered by <strong>BookReady</strong></span>
+          </>
+        )}
       </div>
     </footer>
   )

@@ -1,0 +1,122 @@
+<?php
+
+namespace App\Support;
+
+/**
+ * Default template settings + sections per template slug.
+ *
+ * Used both for seeding fresh records and for merging missing keys
+ * onto stored settings_json. Keeping defaults in one place means the
+ * frontend can rely on the API to always hydrate the full shape.
+ */
+class TemplateDefaults
+{
+    public const DEFAULT_TEMPLATE_SLUG = 'thefaderoom';
+
+    public static function settingsFor(string $templateSlug): array
+    {
+        return match ($templateSlug) {
+            'thefaderoom' => self::theFadeRoomSettings(),
+            default       => self::theFadeRoomSettings(),
+        };
+    }
+
+    public static function sectionsFor(string $templateSlug): array
+    {
+        return match ($templateSlug) {
+            'thefaderoom' => self::theFadeRoomSections(),
+            default       => self::theFadeRoomSections(),
+        };
+    }
+
+    private static function theFadeRoomSettings(): array
+    {
+        return [
+            'header' => [
+                'tagline'                 => 'Sharp cuts. Smooth booking.',
+                'show_book_button'        => true,
+                'show_call_button'        => true,
+                'show_email_button'       => true,
+                'show_instagram_button'   => true,
+                'show_directions_button'  => true,
+            ],
+            'tabs' => [
+                'book_label'               => 'Book',
+                'gallery_label'            => 'Gallery',
+                'policy_label'             => 'Policy',
+                'about_label'              => 'About',
+                'results_label'            => 'Before & After',
+                'steps_label'              => 'Steps',
+                'before_appointment_label' => 'Before Your Appointment',
+            ],
+            'steps' => [
+                'heading' => 'Steps',
+                'items'   => [
+                    ['title' => 'Keep It Fresh',          'body' => 'Maintain your look between appointments with the right products for your hair type.'],
+                    ['title' => 'Avoid Heavy Products',   'body' => 'Let any treatments settle for 24–48 hours before applying styling products.'],
+                    ['title' => 'Book Your Maintenance',  'body' => 'Most styles look best when touched up every 2–4 weeks. Book your next visit before you leave.'],
+                    ['title' => 'Follow Your Care Guide', 'body' => 'Your stylist may give specific instructions for your service — follow them for the best results.'],
+                ],
+            ],
+            'before_appointment' => [
+                'heading' => 'Before Your Appointment',
+                'items'   => [
+                    ['title' => 'Arrive on Time',         'body' => 'Plan to arrive 5 minutes early so you can settle in and we can start right on schedule.'],
+                    ['title' => 'Come Prepared',          'body' => 'Wear comfortable clothing and avoid heavy product in your hair or beard before your appointment.'],
+                    ['title' => 'Bring Reference Photos', 'body' => 'Not sure exactly what you want? Bring photos of styles you like — it helps us dial in the perfect look.'],
+                    ['title' => 'Confirm Your Service',   'body' => 'Review your booked service before arriving. If anything has changed, give us a call and we\'ll sort it out.'],
+                ],
+            ],
+            'footer' => [
+                'show_powered_by' => true,
+            ],
+        ];
+    }
+
+    /**
+     * Each entry: section_key, section_type, title, is_locked, sort_order
+     */
+    private static function theFadeRoomSections(): array
+    {
+        return [
+            ['section_key' => 'header',             'section_type' => 'header',        'title' => 'Header',                  'is_locked' => true,  'sort_order' => 1],
+            ['section_key' => 'book',               'section_type' => 'booking',       'title' => 'Book',                    'is_locked' => true,  'sort_order' => 2],
+            ['section_key' => 'gallery',            'section_type' => 'gallery',       'title' => 'Gallery',                 'is_locked' => false, 'sort_order' => 3],
+            ['section_key' => 'policy',             'section_type' => 'policy',        'title' => 'Policy',                  'is_locked' => false, 'sort_order' => 4],
+            ['section_key' => 'about',              'section_type' => 'about',         'title' => 'About',                   'is_locked' => false, 'sort_order' => 5],
+            ['section_key' => 'before_after',       'section_type' => 'before_after',  'title' => 'Before & After',          'is_locked' => false, 'sort_order' => 6],
+            ['section_key' => 'steps',              'section_type' => 'instructions',  'title' => 'Steps',                   'is_locked' => false, 'sort_order' => 7],
+            ['section_key' => 'before_appointment', 'section_type' => 'instructions',  'title' => 'Before Your Appointment', 'is_locked' => false, 'sort_order' => 8],
+            ['section_key' => 'footer',             'section_type' => 'footer',        'title' => 'Footer',                  'is_locked' => true,  'sort_order' => 99],
+        ];
+    }
+
+    /**
+     * Deep-merge stored settings onto defaults so any keys added in
+     * later releases are filled in for older tenants.
+     */
+    public static function mergeWithDefaults(string $templateSlug, ?array $stored): array
+    {
+        $defaults = self::settingsFor($templateSlug);
+        if (! $stored) return $defaults;
+        return self::deepMerge($defaults, $stored);
+    }
+
+    private static function deepMerge(array $base, array $override): array
+    {
+        foreach ($override as $k => $v) {
+            if (is_array($v) && isset($base[$k]) && is_array($base[$k]) && self::isAssoc($base[$k])) {
+                $base[$k] = self::deepMerge($base[$k], $v);
+            } else {
+                $base[$k] = $v;
+            }
+        }
+        return $base;
+    }
+
+    private static function isAssoc(array $arr): bool
+    {
+        if ($arr === []) return false;
+        return array_keys($arr) !== range(0, count($arr) - 1);
+    }
+}

@@ -202,6 +202,7 @@ export interface PublicSite {
   hours?: HoursEntry[]
   policies?: BusinessPolicy | null
   staff?: PublicStaffMember[]
+  template?: PublicTemplate | null
 }
 
 // Appointments & Customers
@@ -358,4 +359,105 @@ export interface AuthResponse {
   tenant_id?: string  // present on register, absent on login (use user.tenant_id instead)
   domain?: string
   user: AuthUser
+}
+
+// ── Website / Template system ────────────────────────────────────────────────
+
+export interface TemplateHeaderSettings {
+  tagline: string
+  show_book_button: boolean
+  show_call_button: boolean
+  show_email_button: boolean
+  show_instagram_button: boolean
+  show_directions_button: boolean
+}
+
+export interface TemplateTabLabels {
+  book_label: string
+  gallery_label: string
+  policy_label: string
+  about_label: string
+  results_label: string
+  steps_label: string
+  before_appointment_label: string
+}
+
+export interface TemplateInstructionItem {
+  title: string
+  body: string
+}
+
+export interface TemplateInstructionBlock {
+  heading: string
+  items: TemplateInstructionItem[]
+}
+
+export interface TemplateFooterSettings {
+  show_powered_by: boolean
+}
+
+export interface TemplateSettings {
+  header: TemplateHeaderSettings
+  tabs: TemplateTabLabels
+  steps: TemplateInstructionBlock
+  before_appointment: TemplateInstructionBlock
+  footer: TemplateFooterSettings
+}
+
+export interface TemplateSettingsResponse {
+  template_slug: string
+  settings: TemplateSettings
+}
+
+export type WebsiteSectionType =
+  | 'header'
+  | 'booking'
+  | 'gallery'
+  | 'policy'
+  | 'about'
+  | 'before_after'
+  | 'instructions'
+  | 'staff'
+  | 'hours'
+  | 'contact'
+  | 'footer'
+  | 'text_block'
+  | 'announcement'
+
+export interface WebsiteSection {
+  id: number
+  template_slug: string
+  section_key: string
+  section_type: WebsiteSectionType
+  title: string | null
+  subtitle: string | null
+  content_json: Record<string, unknown> | null
+  is_enabled: boolean
+  is_locked: boolean
+  sort_order: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface WebsiteSectionCreatePayload {
+  section_type: 'text_block' | 'instructions' | 'announcement'
+  title?: string | null
+  subtitle?: string | null
+  content_json?: Record<string, unknown> | null
+  is_enabled?: boolean
+  sort_order?: number
+}
+
+export interface WebsiteSectionUpdatePayload {
+  title?: string | null
+  subtitle?: string | null
+  content_json?: Record<string, unknown> | null
+  is_enabled?: boolean
+  sort_order?: number
+}
+
+export interface PublicTemplate {
+  slug: string
+  settings: TemplateSettings
+  sections: WebsiteSection[]
 }
