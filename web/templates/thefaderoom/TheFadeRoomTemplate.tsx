@@ -1,8 +1,11 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import {
+  Heart, Phone, Mail, Instagram, MapPin, Dot, CalendarCheck,
+} from 'lucide-react'
 import TheFadeRoomBooking from './TheFadeRoomBooking'
-import type { PublicSite, PublicStaffMember, Service } from '@/lib/types'
+import type { PublicSite, Service } from '@/lib/types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -34,8 +37,8 @@ interface Profile {
 
 // ── Tab registry ──────────────────────────────────────────────────────────────
 
-type TabId = 'book' | 'services' | 'gallery' | 'results' | 'about'
-           | 'policies' | 'before' | 'aftercare' | 'team' | 'hours' | 'contact'
+type TabId = 'book' | 'gallery' | 'policies' | 'about'
+           | 'results' | 'aftercare' | 'before'
 
 // ── Main template ─────────────────────────────────────────────────────────────
 
@@ -43,25 +46,19 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
   const p           = site.profile as Profile | null
   const displayName = p?.business_name ?? site.business_name ?? site.slug
   const services    = (site.services ?? []).filter((s: Service) => s.is_active)
-  const staff       = (site.staff    ?? []) as PublicStaffMember[]
   const hours       = site.hours     ?? []
   const policies    = site.policies  ?? null
+  const availability = site.availability ?? null
   const address     = [p?.address_line, p?.city, p?.state, p?.zip].filter(Boolean).join(', ')
 
-  const hasPolicies = !!(policies && Object.values(policies).some(v => v))
-
   const tabs: { id: TabId; label: string }[] = [
-    { id: 'book',      label: 'Book'      },
-    { id: 'services',  label: 'Services'  },
-    { id: 'gallery',   label: 'Gallery'   },
-    { id: 'results',   label: 'Results'   },
-    { id: 'about',     label: 'About'     },
-    { id: 'policies',  label: 'Policies'  },
-    { id: 'before',    label: 'Before'    },
-    { id: 'aftercare', label: 'Aftercare' },
-    { id: 'team',      label: 'Team'      },
-    { id: 'hours',     label: 'Hours'     },
-    { id: 'contact',   label: 'Contact'   },
+    { id: 'book',      label: 'Book'                    },
+    { id: 'gallery',   label: 'Gallery'                 },
+    { id: 'policies',  label: 'Policy'                  },
+    { id: 'about',     label: 'About'                   },
+    { id: 'results',   label: 'Before & After'          },
+    { id: 'aftercare', label: 'Steps'                   },
+    { id: 'before',    label: 'Before Your Appointment' },
   ]
 
   const [active, setActive] = useState<TabId>('book')
@@ -87,18 +84,18 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
 
         {/* ── Header ── */}
         <section className="tfr-header-section">
-          <span className="tfr-floating-heart tfr-fh-1" aria-hidden="true">♥</span>
-          <span className="tfr-floating-heart tfr-fh-2" aria-hidden="true">♥</span>
-          <span className="tfr-floating-heart tfr-fh-3" aria-hidden="true">♥</span>
+          <span className="tfr-floating-heart tfr-fh-1" aria-hidden="true"><Heart size={14} fill="currentColor" /></span>
+          <span className="tfr-floating-heart tfr-fh-2" aria-hidden="true"><Heart size={18} fill="currentColor" /></span>
+          <span className="tfr-floating-heart tfr-fh-3" aria-hidden="true"><Heart size={12} /></span>
 
           <div className="tfr-header-cover">
             <div className="tfr-cover-veil" aria-hidden="true" />
-            <div className="tfr-cover-heart" aria-hidden="true">♥</div>
+            <div className="tfr-cover-heart" aria-hidden="true"><Heart size={22} fill="currentColor" /></div>
           </div>
 
           <div className="tfr-header-avatar">
             <span className="tfr-avatar-ring" aria-hidden="true" />
-            <span className="tfr-avatar-heart" aria-hidden="true">♥</span>
+            <span className="tfr-avatar-heart" aria-hidden="true"><Heart size={14} fill="currentColor" /></span>
             <div className="tfr-avatar-initials">{initials(displayName)}</div>
           </div>
 
@@ -108,21 +105,21 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
 
             <div className="tfr-header-buttons">
               <button className="tfr-header-btn tfr-header-btn-book" onClick={goBook}>
-                <span>♥</span><span>Book</span>
+                <Heart size={16} fill="currentColor" /><span>Book</span>
               </button>
               <a
                 className="tfr-header-btn tfr-header-btn-call"
                 href={p?.public_phone ? `tel:${p.public_phone}` : '#'}
                 aria-disabled={!p?.public_phone || undefined}
               >
-                <span>📞</span><span>Call</span>
+                <Phone size={16} /><span>Call</span>
               </a>
               <a
                 className="tfr-header-btn tfr-header-btn-chat"
                 href={p?.public_email ? `mailto:${p.public_email}` : '#'}
                 aria-disabled={!p?.public_email || undefined}
               >
-                <span>✉</span><span>Email</span>
+                <Mail size={16} /><span>Email</span>
               </a>
               <a
                 className="tfr-header-btn tfr-header-btn-instagram"
@@ -131,7 +128,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 rel={p?.instagram_url ? 'noopener noreferrer' : undefined}
                 aria-disabled={!p?.instagram_url || undefined}
               >
-                <span>📸</span><span>Instagram</span>
+                <Instagram size={16} /><span>Instagram</span>
               </a>
               <a
                 className="tfr-header-btn tfr-header-btn-tiktok"
@@ -140,7 +137,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 rel={address ? 'noopener noreferrer' : undefined}
                 aria-disabled={!address || undefined}
               >
-                <span>📍</span><span>Directions</span>
+                <MapPin size={16} /><span>Directions</span>
               </a>
             </div>
           </div>
@@ -166,12 +163,12 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
 
           {/* ── Book ── */}
           <div className={`tfr-tab-panel${active === 'book' ? ' is-active' : ''}`}>
-            <TheFadeRoomBooking slug={slug} services={services} displayName={displayName} />
-          </div>
-
-          {/* ── Services ── */}
-          <div className={`tfr-tab-panel${active === 'services' ? ' is-active' : ''}`}>
-            <ServicesPanel services={services} />
+            <TheFadeRoomBooking
+              slug={slug}
+              services={services}
+              displayName={displayName}
+              availability={availability}
+            />
           </div>
 
           {/* ── Gallery ── */}
@@ -189,34 +186,22 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
             <AboutPanel profile={p} displayName={displayName} />
           </div>
 
-          {/* ── Policies ── */}
+          {/* ── Policy ── */}
           <div className={`tfr-tab-panel${active === 'policies' ? ' is-active' : ''}`}>
             <PoliciesPanel policies={policies} />
           </div>
 
-          {/* ── Before ── */}
-          <div className={`tfr-tab-panel${active === 'before' ? ' is-active' : ''}`}>
-            <BeforePanel />
-          </div>
+          {/* ── Before & After ── */}
+          {/* (panel reuses 'results' id) */}
 
-          {/* ── Aftercare ── */}
+          {/* ── Steps (aftercare) ── */}
           <div className={`tfr-tab-panel${active === 'aftercare' ? ' is-active' : ''}`}>
             <AftercarePanel />
           </div>
 
-          {/* ── Team ── */}
-          <div className={`tfr-tab-panel${active === 'team' ? ' is-active' : ''}`}>
-            <TeamPanel staff={staff} />
-          </div>
-
-          {/* ── Hours ── */}
-          <div className={`tfr-tab-panel${active === 'hours' ? ' is-active' : ''}`}>
-            <HoursPanel hours={hours} />
-          </div>
-
-          {/* ── Contact ── */}
-          <div className={`tfr-tab-panel${active === 'contact' ? ' is-active' : ''}`}>
-            <ContactPanel profile={p} address={address} onBook={goBook} />
+          {/* ── Before Your Appointment ── */}
+          <div className={`tfr-tab-panel${active === 'before' ? ' is-active' : ''}`}>
+            <BeforePanel />
           </div>
 
         </section>
@@ -256,34 +241,9 @@ function AnnounceMsgs({ tagline, name }: { tagline?: string | null; name: string
     <>
       {msgs.flatMap((msg, i) => [
         <span key={`m${i}`}>{msg}</span>,
-        <span key={`s${i}`} className="tfr-announce-sep">●</span>,
+        <span key={`s${i}`} className="tfr-announce-sep" aria-hidden="true"><Dot size={14} /></span>,
       ])}
     </>
-  )
-}
-
-// ── Services panel ────────────────────────────────────────────────────────────
-
-function ServicesPanel({ services }: { services: Service[] }) {
-  return (
-    <div className="tfr-booking-section">
-      <div className="tfr-booking-head">
-        <span className="tfr-booking-eyebrow">What We Offer</span>
-        <h2>Our Services</h2>
-      </div>
-      <div className="tfr-booking-services">
-        {services.map(s => (
-          <div key={s.id} className="tfr-booking-service-card">
-            <div className="tfr-booking-service-top">
-              <h3>{s.name}</h3>
-              <span className="tfr-booking-price">${Number(s.price).toFixed(2)}</span>
-            </div>
-            {s.description && <p className="tfr-booking-desc">{s.description}</p>}
-            <p className="tfr-booking-meta">⏱ {s.duration_minutes} min</p>
-          </div>
-        ))}
-      </div>
-    </div>
   )
 }
 
@@ -527,128 +487,6 @@ function AftercarePanel() {
   )
 }
 
-// ── Team panel ────────────────────────────────────────────────────────────────
-
-const FALLBACK_STAFF = [
-  { name: 'The Fade Room Team', role: 'Expert Stylists', bio: 'Our skilled team brings years of experience and a passion for craft to every appointment. We\'re dedicated to giving you the perfect look.' },
-]
-
-function TeamPanel({ staff }: { staff: PublicStaffMember[] }) {
-  const members = staff.length > 0 ? staff : FALLBACK_STAFF
-  return (
-    <section className="tfr-aftercare-section">
-      <h2>Our Team</h2>
-      <div className="tfr-aftercare-list">
-        {members.map((m, i) => (
-          <div key={'id' in m ? m.id : i} className="tfr-aftercare-card">
-            <div className="tfr-aftercare-head">
-              <span className="tfr-aftercare-dot" aria-hidden="true" />
-              {m.role && <span className="tfr-aftercare-index">{m.role}</span>}
-            </div>
-            <h3>{m.name}</h3>
-            {m.bio && <p>{m.bio}</p>}
-          </div>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-// ── Hours panel ───────────────────────────────────────────────────────────────
-
-const FALLBACK_HOURS = [
-  { day_of_week: 1, day_name: 'Monday',    is_open: true,  open_time: '09:00', close_time: '18:00' },
-  { day_of_week: 2, day_name: 'Tuesday',   is_open: true,  open_time: '09:00', close_time: '18:00' },
-  { day_of_week: 3, day_name: 'Wednesday', is_open: true,  open_time: '09:00', close_time: '18:00' },
-  { day_of_week: 4, day_name: 'Thursday',  is_open: true,  open_time: '09:00', close_time: '20:00' },
-  { day_of_week: 5, day_name: 'Friday',    is_open: true,  open_time: '09:00', close_time: '20:00' },
-  { day_of_week: 6, day_name: 'Saturday',  is_open: true,  open_time: '10:00', close_time: '17:00' },
-  { day_of_week: 0, day_name: 'Sunday',    is_open: false, open_time: null,    close_time: null     },
-]
-
-function HoursPanel({ hours }: { hours: PublicSite['hours'] }) {
-  const raw = hours && hours.length > 0 ? hours : FALLBACK_HOURS
-  const sorted = [
-    ...raw.filter(h => h.day_of_week !== 0),
-    ...raw.filter(h => h.day_of_week === 0),
-  ]
-  return (
-    <section className="tfr-before-appointment-section">
-      <h2>Hours</h2>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, maxWidth: 480 }}>
-        {sorted.map(h => (
-          <div key={h.day_of_week} className="tfr-footer-hour">
-            <span>{h.day_name}</span>
-            <span>
-              {h.is_open && h.open_time && h.close_time
-                ? `${fmt12(h.open_time)} – ${fmt12(h.close_time)}`
-                : 'Closed'}
-            </span>
-          </div>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-// ── Contact panel ─────────────────────────────────────────────────────────────
-
-function ContactPanel({
-  profile: p,
-  address,
-  onBook,
-}: {
-  profile: Profile | null
-  address: string
-  onBook: () => void
-}) {
-  return (
-    <section className="tfr-booking-section">
-      <div className="tfr-booking-head">
-        <span className="tfr-booking-eyebrow">Reach Us</span>
-        <h2>Contact</h2>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 480 }}>
-        {p?.public_phone && (
-          <a href={`tel:${p.public_phone}`} className="tfr-contact-card">
-            <span className="tfr-contact-icon">📞</span>
-            <div>
-              <span className="tfr-contact-label">Phone</span>
-              <span className="tfr-contact-value">{p.public_phone}</span>
-            </div>
-          </a>
-        )}
-        {p?.public_email && (
-          <a href={`mailto:${p.public_email}`} className="tfr-contact-card">
-            <span className="tfr-contact-icon">✉</span>
-            <div>
-              <span className="tfr-contact-label">Email</span>
-              <span className="tfr-contact-value">{p.public_email}</span>
-            </div>
-          </a>
-        )}
-        {address && (
-          <a
-            href={`https://maps.google.com/?q=${encodeURIComponent(address)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="tfr-contact-card"
-          >
-            <span className="tfr-contact-icon">📍</span>
-            <div>
-              <span className="tfr-contact-label">Address</span>
-              <span className="tfr-contact-value">{address}</span>
-            </div>
-          </a>
-        )}
-        <button className="tfr-booking-confirm-btn" onClick={onBook} style={{ marginTop: 8, width: '100%' }}>
-          ♥ Book an Appointment
-        </button>
-      </div>
-    </section>
-  )
-}
-
 // ── Footer ────────────────────────────────────────────────────────────────────
 
 function Footer({
@@ -684,12 +522,12 @@ function Footer({
             <span className="tfr-footer-label">Contact</span>
             {p?.public_phone && (
               <a className="tfr-footer-item" href={`tel:${p.public_phone}`}>
-                <span>📞</span> {p.public_phone}
+                <Phone size={14} /> {p.public_phone}
               </a>
             )}
             {p?.public_email && (
               <a className="tfr-footer-item" href={`mailto:${p.public_email}`}>
-                <span>✉</span> {p.public_email}
+                <Mail size={14} /> {p.public_email}
               </a>
             )}
             {address && (
@@ -699,7 +537,7 @@ function Footer({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <span>📍</span> {address}
+                <MapPin size={14} /> {address}
               </a>
             )}
           </div>
@@ -725,14 +563,14 @@ function Footer({
           <span className="tfr-footer-label">Quick Book</span>
           <button className="tfr-header-btn tfr-header-btn-book" onClick={onBook}
             style={{ minHeight: 44, borderRadius: 10, fontSize: 13 }}>
-            <span>♥</span><span>Book Now</span>
+            <CalendarCheck size={16} /><span>Book Now</span>
           </button>
         </div>
 
       </div>
       <div className="tfr-footer-bottom">
         <span>© {new Date().getFullYear()} {displayName}</span>
-        <span className="tfr-footer-dot">●</span>
+        <span className="tfr-footer-dot" aria-hidden="true"><Dot size={14} /></span>
         <span>Powered by <strong>BookReady</strong></span>
       </div>
     </footer>
@@ -807,8 +645,8 @@ const TFR_CSS = `
 }
 .tfr-cover-heart {
   position:absolute; top:22px; right:22px;
-  color:var(--tfr-pink); font-size:22px;
-  text-shadow:0 0 12px rgba(255,61,190,0.85),0 0 24px rgba(255,61,190,0.5);
+  color:var(--tfr-pink); display:inline-flex; align-items:center; justify-content:center;
+  filter:drop-shadow(0 0 8px rgba(255,61,190,0.85)) drop-shadow(0 0 16px rgba(255,61,190,0.5));
   animation:tfrHeartPulse 2.4s ease-in-out infinite;
 }
 .tfr-header-avatar {
@@ -886,7 +724,7 @@ const TFR_CSS = `
 .tfr-header-btn-instagram { background:linear-gradient(45deg,#F9CE34 0%,#EE2A7B 50%,#6228D7 100%); }
 
 /* ── Floating hearts ── */
-.tfr-floating-heart { position:absolute; color:var(--tfr-pink); pointer-events:none; z-index:1; text-shadow:0 0 10px rgba(255,61,190,0.85),0 0 22px rgba(255,61,190,0.5); animation:tfrFloat 6s ease-in-out infinite; }
+.tfr-floating-heart { position:absolute; color:var(--tfr-pink); pointer-events:none; z-index:1; display:inline-flex; filter:drop-shadow(0 0 8px rgba(255,61,190,0.85)) drop-shadow(0 0 16px rgba(255,61,190,0.5)); animation:tfrFloat 6s ease-in-out infinite; }
 .tfr-fh-1 { top:18%; left:6%; font-size:14px; opacity:0.85; animation-delay:-1s; }
 .tfr-fh-2 { top:30%; right:8%; font-size:18px; opacity:0.9; animation-delay:-3s; }
 .tfr-fh-3 { bottom:14%; left:12%; font-size:12px; opacity:0.75; animation-delay:-5s; }
@@ -1014,6 +852,64 @@ const TFR_CSS = `
 .tfr-booking-day:hover { border-color:rgba(255,61,190,0.4); }
 .tfr-booking-day.is-selected { border-color:var(--tfr-pink); background:rgba(255,61,190,0.1); box-shadow:0 0 14px rgba(255,61,190,0.35); }
 .tfr-booking-day.is-selected span, .tfr-booking-day.is-selected strong { color:#fff; }
+
+/* ── Calendar ── */
+.tfr-booking-calendar {
+  background:linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.005));
+  border:1px solid rgba(255,255,255,0.08); border-radius:10px;
+  padding:14px; display:flex; flex-direction:column; gap:10px;
+}
+.tfr-calendar-head {
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+}
+.tfr-calendar-title {
+  font-family:var(--tfr-sans); font-size:14px; font-weight:600;
+  letter-spacing:0.08em; color:var(--tfr-text); text-transform:uppercase;
+}
+.tfr-calendar-nav {
+  background:transparent; border:1px solid rgba(255,255,255,0.12);
+  color:var(--tfr-text); width:34px; height:34px; border-radius:999px;
+  display:inline-flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:all .2s ease;
+}
+.tfr-calendar-nav:hover { border-color:var(--tfr-pink); color:var(--tfr-pink); box-shadow:0 0 12px rgba(255,61,190,0.4); }
+.tfr-calendar-nav:disabled { opacity:0.3; cursor:not-allowed; }
+.tfr-calendar-nav:disabled:hover { border-color:rgba(255,255,255,0.12); color:var(--tfr-text); box-shadow:none; }
+.tfr-calendar-dow {
+  display:grid; grid-template-columns:repeat(7,1fr); gap:4px;
+  font-family:var(--tfr-sans); font-size:10px; font-weight:600;
+  letter-spacing:0.1em; text-transform:uppercase; color:var(--tfr-muted);
+  text-align:center; padding:0 2px;
+}
+.tfr-calendar-dow span { padding:4px 0; }
+.tfr-calendar-grid {
+  display:grid; grid-template-columns:repeat(7,1fr); gap:4px;
+}
+.tfr-calendar-day {
+  aspect-ratio:1/1; min-height:36px;
+  background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08);
+  border-radius:6px; color:var(--tfr-text);
+  font-family:var(--tfr-mono); font-size:13px; font-weight:500;
+  display:inline-flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:all .15s ease; padding:0;
+}
+.tfr-calendar-day:hover:not(:disabled) { border-color:rgba(255,61,190,0.5); transform:translateY(-1px); }
+.tfr-calendar-day--today {
+  border-color:rgba(255,255,255,0.35); color:#fff;
+}
+.tfr-calendar-day--blocked {
+  background:transparent; border-color:rgba(255,255,255,0.04);
+  color:rgba(255,255,255,0.18); cursor:not-allowed;
+}
+.tfr-calendar-day--blocked:hover { transform:none; }
+.tfr-calendar-day--selected {
+  background:var(--tfr-pink); border-color:var(--tfr-pink); color:#fff;
+  box-shadow:0 0 16px rgba(255,61,190,0.55), inset 0 0 0 1px rgba(255,255,255,0.2);
+}
+.tfr-calendar-day--selected.tfr-calendar-day--today { color:#fff; }
+.tfr-calendar-day--empty {
+  background:transparent; border:0; cursor:default; visibility:hidden;
+}
 .tfr-booking-times { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:8px; }
 .tfr-booking-time {
   background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.1);

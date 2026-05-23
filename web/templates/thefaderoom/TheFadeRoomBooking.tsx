@@ -1,26 +1,43 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import {
+  ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight,
+  Clock, Heart, CalendarCheck,
+} from 'lucide-react'
 import { getPublicAvailability, createPublicAppointment } from '@/lib/api'
-import type { AvailableSlot, PublicBookingPayload, Service } from '@/lib/types'
+import type {
+  AvailableSlot, PublicBookingPayload, Service,
+  AvailabilityData,
+} from '@/lib/types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
 
-function getNext14Days(): Date[] {
-  const days: Date[] = []
-  const now = new Date()
-  for (let i = 0; i < 14; i++) {
-    const d = new Date(now)
-    d.setDate(now.getDate() + i)
-    days.push(d)
-  }
-  return days
+function startOfMonth(year: number, month: number): Date {
+  return new Date(year, month, 1)
+}
+
+function daysInMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate()
 }
 
 function dateKey(d: Date): string {
-  return d.toISOString().slice(0, 10)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function isSameDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth()
+    && a.getDate() === b.getDate()
 }
 
 function fmt12(t: string): string {
@@ -52,10 +69,12 @@ export default function TheFadeRoomBooking({
   slug,
   services,
   displayName,
+  availability,
 }: {
   slug: string
   services: Service[]
   displayName: string
+  availability: AvailabilityData | null
 }) {
   const [step,         setStep]         = useState<Step>(1)
   const [serviceId,    setServiceId]    = useState<number | null>(null)
@@ -72,9 +91,39 @@ export default function TheFadeRoomBooking({
   const fetchRef = useRef(0)
 
   const selectedService = services.find(s => s.id === serviceId) ?? null
-  const days = getNext14Days()
 
-  // Same stale-fetch protection pattern as PublicBookingForm
+  // ── Calendar state ──
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const [viewYear,  setViewYear]  = useState(today.getFullYear())
+  const [viewMonth, setViewMonth] = useState(today.getMonth())
+
+  // Availability helpers — day_of_week: 0=Sunday matches JS Date.getDay()
+  const openByDow: Record<number, boolean> = (() => {
+    const map: Record<number, boolean> = { 0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true }
+    if (availability?.hours && availability.hours.length > 0) {
+      // Default to false when we have hours data, then mark open days
+      for (let i = 0; i < 7; i++) map[i] = false
+      for (const h of availability.hours) {
+        if (h.is_open) map[h.day_of_week] = true
+      }
+    }
+    return map
+  })()
+
+  const maxDaysAhead = availability?.settings?.max_days_ahead ?? null
+  const maxDate = maxDaysAhead != null
+    ? (() => { const d = new Date(today); d.setDate(d.getDate() + maxDaysAhead); return d })()
+    : null
+
+  function isDateBlocked(d: Date): boolean {
+    if (d < today) return true
+    if (!openByDow[d.getDay()]) return true
+    if (maxDate && d > maxDate) return true
+    return false
+  }
+
+  // Same stale-fetch protection pattern as before
   useEffect(() => {
     if (!serviceId || !date) {
       setSlotState({ status: 'idle' })
@@ -125,12 +174,37 @@ export default function TheFadeRoomBooking({
     }
   }
 
+  function gotoPrevMonth() {
+    setViewMonth(m => {
+      if (m === 0) { setViewYear(y => y - 1); return 11 }
+      return m - 1
+    })
+  }
+  function gotoNextMonth() {
+    setViewMonth(m => {
+      if (m === 11) { setViewYear(y => y + 1); return 0 }
+      return m + 1
+    })
+  }
+
+  const isPrevMonthDisabled = (() => {
+    const lastOfPrev = new Date(viewYear, viewMonth, 0)
+    return lastOfPrev < today
+  })()
+  const isNextMonthDisabled = (() => {
+    if (!maxDate) return false
+    const firstOfNext = new Date(viewYear, viewMonth + 1, 1)
+    return firstOfNext > maxDate
+  })()
+
   // ── Success ────────────────────────────────────────────────────────────────
 
   if (success) {
     return (
       <div className="tfr-booking-success">
-        <div className="tfr-booking-success-icon">♥</div>
+        <div className="tfr-booking-success-icon" aria-hidden="true">
+          <Heart size={48} fill="currentColor" />
+        </div>
         <p className="tfr-booking-eyebrow">Booking request sent</p>
         <h3>You&apos;re on the books</h3>
         <p className="tfr-booking-success-copy">
@@ -140,9 +214,9 @@ export default function TheFadeRoomBooking({
         {selectedService && date && selectedSlot && (
           <div className="tfr-booking-success-summary">
             <span>{selectedService.name}</span>
-            <span className="tfr-booking-success-dot">·</span>
+            <span className="tfr-booking-success-dot" aria-hidden="true">·</span>
             <span>{fmtDateDisplay(date)}</span>
-            <span className="tfr-booking-success-dot">·</span>
+            <span className="tfr-booking-success-dot" aria-hidden="true">·</span>
             <span>{fmt12(selectedSlot)}</span>
           </div>
         )}
@@ -165,6 +239,16 @@ export default function TheFadeRoomBooking({
     return 'tfr-booking-step'
   }
 
+  // ── Calendar grid build ──
+  const firstDay   = startOfMonth(viewYear, viewMonth)
+  const startWeekday = firstDay.getDay() // 0=Sun
+  const daysCount  = daysInMonth(viewYear, viewMonth)
+  const cells: ({ d: Date } | null)[] = []
+  for (let i = 0; i < startWeekday; i++) cells.push(null)
+  for (let day = 1; day <= daysCount; day++) cells.push({ d: new Date(viewYear, viewMonth, day) })
+  // Pad to full weeks
+  while (cells.length % 7 !== 0) cells.push(null)
+
   return (
     <section className="tfr-booking-section">
 
@@ -181,7 +265,9 @@ export default function TheFadeRoomBooking({
               className={stepClass(n)}
               onClick={() => { if (n < step) setStep(n) }}
             >
-              <span className="tfr-booking-step-num">{step > n ? '✓' : n}</span>
+              <span className="tfr-booking-step-num">
+                {step > n ? <Check size={12} strokeWidth={3} /> : n}
+              </span>
               <span className="tfr-booking-step-label">{label}</span>
             </button>
           ))}
@@ -207,12 +293,14 @@ export default function TheFadeRoomBooking({
                       <span className="tfr-booking-price">${Number(s.price).toFixed(2)}</span>
                     </div>
                     {s.description && <p className="tfr-booking-desc">{s.description}</p>}
-                    <p className="tfr-booking-meta">⏱ {s.duration_minutes} min</p>
+                    <p className="tfr-booking-meta">
+                      <Clock size={12} /> {s.duration_minutes} min
+                    </p>
                     <button
                       className="tfr-booking-pick"
                       onClick={() => { setServiceId(s.id); setStep(2) }}
                     >
-                      Select →
+                      Select <ArrowRight size={12} />
                     </button>
                   </div>
                 ))}
@@ -223,7 +311,7 @@ export default function TheFadeRoomBooking({
                   disabled={!canStep2}
                   onClick={() => setStep(2)}
                 >
-                  Continue →
+                  Continue <ArrowRight size={12} />
                 </button>
               </div>
             </>
@@ -236,20 +324,64 @@ export default function TheFadeRoomBooking({
 
             <div className="tfr-booking-block">
               <span className="tfr-booking-block-label">Pick a Day</span>
-              <div className="tfr-booking-days">
-                {days.map(d => {
-                  const key = dateKey(d)
-                  return (
-                    <button
-                      key={key}
-                      className={`tfr-booking-day${date === key ? ' is-selected' : ''}`}
-                      onClick={() => setDate(key)}
-                    >
-                      <span>{DAY_SHORT[d.getDay()]}</span>
-                      <strong>{d.getDate()}</strong>
-                    </button>
-                  )
-                })}
+
+              {/* Calendar */}
+              <div className="tfr-booking-calendar">
+                <div className="tfr-calendar-head">
+                  <button
+                    type="button"
+                    className="tfr-calendar-nav"
+                    onClick={gotoPrevMonth}
+                    disabled={isPrevMonthDisabled}
+                    aria-label="Previous month"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <span className="tfr-calendar-title">
+                    {MONTH_NAMES[viewMonth]} {viewYear}
+                  </span>
+                  <button
+                    type="button"
+                    className="tfr-calendar-nav"
+                    onClick={gotoNextMonth}
+                    disabled={isNextMonthDisabled}
+                    aria-label="Next month"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+
+                <div className="tfr-calendar-dow">
+                  {DAY_SHORT.map(d => <span key={d}>{d}</span>)}
+                </div>
+
+                <div className="tfr-calendar-grid" role="grid">
+                  {cells.map((c, i) => {
+                    if (!c) return <span key={i} className="tfr-calendar-day tfr-calendar-day--empty" aria-hidden="true" />
+                    const blocked  = isDateBlocked(c.d)
+                    const isToday  = isSameDay(c.d, today)
+                    const key      = dateKey(c.d)
+                    const selected = date === key
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        role="gridcell"
+                        className={
+                          'tfr-calendar-day'
+                          + (blocked  ? ' tfr-calendar-day--blocked'  : '')
+                          + (isToday  ? ' tfr-calendar-day--today'    : '')
+                          + (selected ? ' tfr-calendar-day--selected' : '')
+                        }
+                        disabled={blocked}
+                        aria-label={c.d.toDateString() + (blocked ? ' (closed)' : '')}
+                        onClick={() => { if (!blocked) setDate(key) }}
+                      >
+                        {c.d.getDate()}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
 
@@ -283,13 +415,15 @@ export default function TheFadeRoomBooking({
             </div>
 
             <div className="tfr-booking-nav">
-              <button className="tfr-booking-back" onClick={() => setStep(1)}>← Back</button>
+              <button className="tfr-booking-back" onClick={() => setStep(1)}>
+                <ArrowLeft size={12} /> Back
+              </button>
               <button
                 className="tfr-booking-next"
                 disabled={!canStep3}
                 onClick={() => setStep(3)}
               >
-                Continue →
+                Continue <ArrowRight size={12} />
               </button>
             </div>
           </div>
@@ -340,13 +474,15 @@ export default function TheFadeRoomBooking({
             </label>
           </div>
           <div className="tfr-booking-nav" style={{ marginTop: 20 }}>
-            <button className="tfr-booking-back" onClick={() => setStep(2)}>← Back</button>
+            <button className="tfr-booking-back" onClick={() => setStep(2)}>
+              <ArrowLeft size={12} /> Back
+            </button>
             <button
               className="tfr-booking-next"
               disabled={!name.trim()}
               onClick={() => setStep(4)}
             >
-              Review →
+              Review <ArrowRight size={12} />
             </button>
           </div>
         </div>
@@ -390,17 +526,23 @@ export default function TheFadeRoomBooking({
             )}
 
             <div className="tfr-booking-nav">
-              <button className="tfr-booking-back" onClick={() => setStep(3)}>← Back</button>
+              <button className="tfr-booking-back" onClick={() => setStep(3)}>
+                <ArrowLeft size={12} /> Back
+              </button>
               <button
                 className="tfr-booking-confirm-btn"
                 disabled={submitting || !canStep4}
                 onClick={handleSubmit}
               >
-                {submitting ? 'Sending…' : 'Confirm Booking ✓'}
+                {submitting
+                  ? 'Sending…'
+                  : <>Confirm Booking <Check size={14} strokeWidth={3} /></>
+                }
               </button>
             </div>
 
             <p className="tfr-booking-disclaimer">
+              <CalendarCheck size={11} style={{ verticalAlign: -1, marginRight: 4 }} />
               No payment required — the business will confirm your appointment.
             </p>
           </div>
