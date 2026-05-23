@@ -113,6 +113,27 @@ class PublicSiteController extends Controller
             ->values()
             ->all();
 
+        // ── Gallery items (active only, public) ──
+        $gallery = [];
+        if (Schema::hasTable('gallery_items')) {
+            $gallery = DB::table('gallery_items')
+                ->where('is_active', true)
+                ->orderBy('sort_order', 'asc')
+                ->orderBy('id', 'asc')
+                ->get()
+                ->map(fn ($r) => [
+                    'id'         => (int) $r->id,
+                    'title'      =>        $r->title,
+                    'caption'    =>        $r->caption,
+                    'alt_text'   =>        $r->alt_text,
+                    'image_url'  =>        $r->image_url,
+                    'category'   =>        $r->category,
+                    'sort_order' => (int)  $r->sort_order,
+                ])
+                ->values()
+                ->all();
+        }
+
         // ── Template settings + sections (graceful fallback if migrations not yet run) ──
         $templateSlug = TemplateDefaults::DEFAULT_TEMPLATE_SLUG;
         $templateSettings = TemplateDefaults::settingsFor($templateSlug);
@@ -169,6 +190,7 @@ class PublicSiteController extends Controller
                 'hours'    => $hours,
                 'settings' => $settings,
             ],
+            'gallery'       => $gallery,
             'template'      => [
                 'slug'     => $templateSlug,
                 'settings' => $templateSettings,

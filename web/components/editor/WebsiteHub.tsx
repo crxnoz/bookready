@@ -8,6 +8,7 @@ import {
   Eye, EyeOff, Lock, Plus, Smartphone, Monitor, ExternalLink, Copy,
   Check, Loader2, Heart, Phone, Mail, Instagram, MapPin, Sparkles,
   Megaphone, MessageSquare, ChevronRight, AlertCircle, RefreshCw,
+  Edit2, Trash2, X, Link as LinkIcon, ArrowUp, ArrowDown,
 } from 'lucide-react'
 import {
   getCurrentUser,
@@ -15,6 +16,10 @@ import {
   updateEditorTemplateSettings,
   getEditorWebsiteSections,
   updateEditorWebsiteSection,
+  getEditorGallery,
+  createEditorGalleryItem,
+  updateEditorGalleryItem,
+  deleteEditorGalleryItem,
 } from '@/lib/api'
 import type {
   TemplateSettings,
@@ -22,6 +27,8 @@ import type {
   TemplateFooterSettings,
   TemplateAdditionalsSettings,
   WebsiteSection,
+  GalleryItem,
+  GalleryItemPayload,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
 
@@ -808,6 +815,8 @@ function ContentTabsPanel({
         />
       </Panel>
 
+      <GalleryManagerPanel />
+
       <Panel
         title="Steps content"
         subtitle="Card-style instructions shown on the Steps tab."
@@ -1101,6 +1110,366 @@ function PreviewPanel({ url, refreshKey }: { url: string; refreshKey: number }) 
           ? `Live preview at ${PREVIEW_MOBILE_W}px`
           : `Scaled from ${PREVIEW_DESKTOP_W}px desktop view`}
       </p>
+    </div>
+  )
+}
+
+// ── Gallery manager (lives inside Content & Tabs) ────────────────────────────
+
+function GalleryManagerPanel() {
+  const [items, setItems]     = useState<GalleryItem[] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState<string | null>(null)
+  const [busyId, setBusyId]   = useState<number | null>(null)
+  const [editing, setEditing] = useState<GalleryItem | null>(null)
+  const [adding, setAdding]   = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    getEditorGallery()
+      .then(rows => { if (!cancelled) setItems(rows) })
+      .catch(e => { if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load gallery') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const sorted = useMemo(
+    () => (items ?? []).slice().sort((a, b) => a.sort_order - b.sort_order || a.id - b.id),
+    [items],
+  )
+
+  async function toggle(item: GalleryItem) {
+    setBusyId(item.id); setError(null)
+    try {
+      const updated = await updateEditorGalleryItem(item.id, { is_active: !item.is_active })
+      setItems(prev => (prev ?? []).map(i => i.id === item.id ? updated : i))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function remove(item: GalleryItem) {
+    if (!confirm(`Delete "${item.title ?? 'this image'}"? This can't be undone.`)) return
+    setBusyId(item.id); setError(null)
+    try {
+      await deleteEditorGalleryItem(item.id)
+      setItems(prev => (prev ?? []).filter(i => i.id !== item.id))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function move(item: GalleryItem, dir: 'up' | 'down') {
+    const i = sorted.findIndex(s => s.id === item.id)
+    if (i < 0) return
+    const j = dir === 'up' ? i - 1 : i + 1
+    if (j < 0 || j >= sorted.length) return
+    const a = sorted[i], b = sorted[j]
+    setBusyId(item.id); setError(null)
+    try {
+      const [updA, updB] = await Promise.all([
+        updateEditorGalleryItem(a.id, { sort_order: b.sort_order }),
+        updateEditorGalleryItem(b.id, { sort_order: a.sort_order }),
+      ])
+      setItems(prev => (prev ?? []).map(s => s.id === updA.id ? updA : s.id === updB.id ? updB : s))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to reorder')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function handleSave(payload: GalleryItemPayload, existingId: number | null) {
+    setError(null)
+    if (existingId) {
+      const updated = await updateEditorGalleryItem(existingId, payload)
+      setItems(prev => (prev ?? []).map(i => i.id === existingId ? updated : i))
+    } else {
+      const created = await createEditorGalleryItem(payload)
+      setItems(prev => [...(prev ?? []), created])
+    }
+    setEditing(null)
+    setAdding(false)
+  }
+
+  return (
+    <Panel
+      title="Gallery"
+      subtitle="Add image URLs to show your work on your public website. Add cuts, lashes, nails, facials, studio shots, or before/after photos."
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-muted-text">
+          {loading ? 'Loading…' : `${sorted.length} image${sorted.length === 1 ? '' : 's'}`}
+        </p>
+        <button
+          onClick={() => setAdding(true)}
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2"
+        >
+          <Plus size={12} /> Add Image
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-white border border-red-200 text-red-700 text-xs p-3 flex items-center gap-2">
+          <AlertCircle size={13} /> {error}
+        </div>
+      )}
+
+      {!loading && sorted.length === 0 && (
+        <div className="bg-cream border border-[rgba(18,18,18,0.08)] px-4 py-6 text-center">
+          <ImageIcon size={20} className="mx-auto mb-2 text-muted-text" strokeWidth={1.5} />
+          <p className="text-sm text-near-black font-semibold">No gallery images yet</p>
+          <p className="text-xs text-muted-text mt-0.5">Add your first image to bring your public site to life.</p>
+        </div>
+      )}
+
+      {sorted.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {sorted.map((item, i) => {
+            const busy = busyId === item.id
+            return (
+              <div
+                key={item.id}
+                className={cn(
+                  'bg-white border flex gap-3 p-3',
+                  item.is_active ? 'border-[rgba(18,18,18,0.10)]' : 'border-[rgba(18,18,18,0.06)] opacity-70',
+                )}
+              >
+                {/* Preview */}
+                <div className="w-16 h-16 bg-cream border border-[rgba(18,18,18,0.08)] flex-shrink-0 overflow-hidden">
+                  {item.image_url
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    ? <img src={item.image_url} alt={item.alt_text ?? item.title ?? ''} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center text-muted-text"><ImageIcon size={16} /></div>
+                  }
+                </div>
+
+                {/* Meta */}
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold text-near-black truncate">
+                      {item.title ?? 'Untitled'}
+                    </span>
+                    {!item.is_active && (
+                      <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-transparent bg-lavender text-[rgba(18,18,18,0.6)] px-1.5 py-0.5">
+                        Hidden
+                      </span>
+                    )}
+                  </div>
+                  {item.category && (
+                    <span className="text-[10px] text-muted-text uppercase tracking-[0.1em] font-semibold">
+                      {item.category}
+                    </span>
+                  )}
+                  {item.caption && (
+                    <p className="text-[11px] text-muted-text line-clamp-2">{item.caption}</p>
+                  )}
+                  {item.alt_text && (
+                    <p className="text-[10px] text-muted-text italic line-clamp-1">alt: {item.alt_text}</p>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setEditing(item)}
+                      disabled={busy}
+                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black disabled:opacity-30"
+                      title="Edit"
+                    >
+                      <Edit2 size={11} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggle(item)}
+                      disabled={busy}
+                      className={cn(
+                        'h-7 px-2 inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.06em] uppercase border',
+                        item.is_active
+                          ? 'border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black'
+                          : 'border-near-black bg-near-black text-white',
+                      )}
+                      title={item.is_active ? 'Hide' : 'Show'}
+                    >
+                      {item.is_active ? <><Eye size={10} /> Visible</> : <><EyeOff size={10} /> Hidden</>}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => move(item, 'up')}
+                      disabled={busy || i === 0}
+                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black disabled:opacity-30"
+                      title="Move up"
+                    >
+                      <ArrowUp size={11} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => move(item, 'down')}
+                      disabled={busy || i === sorted.length - 1}
+                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black disabled:opacity-30"
+                      title="Move down"
+                    >
+                      <ArrowDown size={11} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => remove(item)}
+                      disabled={busy}
+                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600 disabled:opacity-30"
+                      title="Delete"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {(adding || editing) && (
+        <GalleryItemDialog
+          item={editing}
+          onClose={() => { setAdding(false); setEditing(null) }}
+          onSave={handleSave}
+        />
+      )}
+    </Panel>
+  )
+}
+
+function GalleryItemDialog({
+  item, onClose, onSave,
+}: {
+  item: GalleryItem | null
+  onClose: () => void
+  onSave: (payload: GalleryItemPayload, existingId: number | null) => void | Promise<void>
+}) {
+  const [imageUrl,  setImageUrl]  = useState(item?.image_url ?? '')
+  const [title,     setTitle]     = useState(item?.title     ?? '')
+  const [caption,   setCaption]   = useState(item?.caption   ?? '')
+  const [altText,   setAltText]   = useState(item?.alt_text  ?? '')
+  const [category,  setCategory]  = useState(item?.category  ?? '')
+  const [isActive,  setIsActive]  = useState(item?.is_active ?? true)
+  const [saving,    setSaving]    = useState(false)
+  const [error,     setError]     = useState<string | null>(null)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!imageUrl.trim()) { setError('Image URL is required.'); return }
+    setSaving(true); setError(null)
+    try {
+      await onSave({
+        image_url: imageUrl.trim(),
+        title:     title.trim()    || null,
+        caption:   caption.trim()  || null,
+        alt_text:  altText.trim()  || null,
+        category:  category.trim() || null,
+        is_active: isActive,
+      }, item?.id ?? null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-lg border border-[rgba(18,18,18,0.15)] max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-[rgba(18,18,18,0.10)] px-4 py-3 sticky top-0 bg-white">
+          <h3 className="text-sm font-bold text-near-black">{item ? 'Edit image' : 'Add image'}</h3>
+          <button onClick={onClose} className="text-muted-text hover:text-near-black">
+            <X size={16} />
+          </button>
+        </div>
+
+        <form onSubmit={submit} className="p-4 space-y-3">
+          <TextField
+            label="Image URL *"
+            value={imageUrl}
+            onChange={setImageUrl}
+            placeholder="https://images.unsplash.com/…"
+            maxLength={2000}
+          />
+
+          {imageUrl && (
+            <div className="bg-cream border border-[rgba(18,18,18,0.08)] p-2 flex justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={imageUrl}
+                alt="Preview"
+                style={{ maxHeight: 240, maxWidth: '100%', objectFit: 'contain' }}
+              />
+            </div>
+          )}
+
+          <TextField
+            label="Title"
+            value={title}
+            onChange={setTitle}
+            placeholder="Fresh Fade"
+            maxLength={255}
+          />
+          <TextField
+            label="Category"
+            value={category}
+            onChange={setCategory}
+            placeholder="Fresh Work, The Shop, Lashes…"
+            maxLength={255}
+            hint="Optional grouping"
+          />
+          <TextareaField
+            label="Caption"
+            value={caption}
+            onChange={setCaption}
+            placeholder="A short description shown on the public site."
+            rows={2}
+            maxLength={5000}
+          />
+          <TextField
+            label="Alt text"
+            value={altText}
+            onChange={setAltText}
+            placeholder="Describe the image for screen readers"
+            maxLength={255}
+          />
+
+          <ToggleRow
+            label="Visible on public site"
+            icon={Eye}
+            on={isActive}
+            onToggle={() => setIsActive(v => !v)}
+          />
+
+          {error && (
+            <p className="text-xs text-red-700 flex items-center gap-1.5">
+              <AlertCircle size={12} /> {error}
+            </p>
+          )}
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+            <button
+              type="button" onClick={onClose}
+              className="text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2"
+            >Cancel</button>
+            <button
+              type="submit" disabled={saving}
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 disabled:opacity-60"
+            >
+              {saving
+                ? <><Loader2 size={11} className="animate-spin" /> Saving</>
+                : <><Check size={12} /> {item ? 'Save changes' : 'Add image'}</>
+              }
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

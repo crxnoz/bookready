@@ -264,7 +264,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
           {/* ── Gallery ── */}
           {enabledByTab.gallery && (
             <div className={`tfr-tab-panel${active === 'gallery' ? ' is-active' : ''}`}>
-              <GalleryPanel />
+              <GalleryPanel items={site.gallery ?? []} displayName={displayName} />
             </div>
           )}
 
@@ -408,18 +408,67 @@ const GALLERY_GROUPS = [
   },
 ]
 
-function GalleryPanel() {
+interface PublicGalleryItem {
+  id: number
+  title: string | null
+  caption: string | null
+  alt_text: string | null
+  image_url: string
+  category: string | null
+  sort_order: number
+}
+
+function GalleryPanel({
+  items,
+  displayName,
+}: {
+  items: PublicGalleryItem[]
+  displayName: string
+}) {
+  // No items → keep polished placeholder groups
+  if (items.length === 0) {
+    return (
+      <section className="tfr-gallery-section">
+        {GALLERY_GROUPS.map(g => (
+          <div key={g.label} className="tfr-gallery-group">
+            <h2>{g.label}</h2>
+            <div className="tfr-gallery-grid">
+              {g.images.map((img, i) => (
+                <div key={i} className="tfr-gallery-img tfr-gallery-img--square">
+                  <div className="tfr-gallery-placeholder">
+                    <span>{img.label}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+    )
+  }
+
+  // Real items → group by category (preserves sort_order within each group)
+  const groups = new Map<string, PublicGalleryItem[]>()
+  for (const item of items) {
+    const key = item.category?.trim() || 'Gallery'
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(item)
+  }
+
   return (
     <section className="tfr-gallery-section">
-      {GALLERY_GROUPS.map(g => (
-        <div key={g.label} className="tfr-gallery-group">
-          <h2>{g.label}</h2>
+      {Array.from(groups.entries()).map(([label, list]) => (
+        <div key={label} className="tfr-gallery-group">
+          <h2>{label}</h2>
           <div className="tfr-gallery-grid">
-            {g.images.map((img, i) => (
-              <div key={i} className="tfr-gallery-img tfr-gallery-img--square">
-                <div className="tfr-gallery-placeholder">
-                  <span>{img.label}</span>
-                </div>
+            {list.map(item => (
+              <div key={item.id} className="tfr-gallery-img tfr-gallery-img--square">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={item.image_url}
+                  alt={item.alt_text ?? item.title ?? displayName}
+                  loading="lazy"
+                />
               </div>
             ))}
           </div>
@@ -1191,6 +1240,8 @@ const TFR_CSS = `
   transition:border-color .25s ease,box-shadow .25s ease;
 }
 .tfr-gallery-img:hover { border-color:rgba(255,61,190,0.4); box-shadow:0 6px 22px rgba(255,61,190,0.18); }
+.tfr-gallery-img > img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .35s ease, filter .35s ease; }
+.tfr-gallery-img:hover > img { transform:scale(1.04); filter:brightness(1.05); }
 .tfr-gallery-img--square { aspect-ratio:1/1; }
 .tfr-gallery-img--tall   { aspect-ratio:160/200; }
 .tfr-gallery-img--wide   { grid-column:1/-1; aspect-ratio:331/160; }

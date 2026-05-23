@@ -47,6 +47,41 @@ export interface GalleryImage {
   alt: string
 }
 
+// API-backed gallery items (editor + public)
+export interface GalleryItem {
+  id: number
+  title: string | null
+  caption: string | null
+  alt_text: string | null
+  image_url: string
+  category: string | null
+  is_active: boolean
+  sort_order: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface GalleryItemPayload {
+  title?: string | null
+  caption?: string | null
+  alt_text?: string | null
+  image_url: string
+  category?: string | null
+  is_active?: boolean
+  sort_order?: number
+}
+
+// Public-facing subset
+export interface PublicGalleryItem {
+  id: number
+  title: string | null
+  caption: string | null
+  alt_text: string | null
+  image_url: string
+  category: string | null
+  sort_order: number
+}
+
 export interface HoursEntry {
   id: number
   day_of_week: number
@@ -202,6 +237,7 @@ export interface PublicSite {
   hours?: HoursEntry[]
   policies?: BusinessPolicy | null
   staff?: PublicStaffMember[]
+  gallery?: PublicGalleryItem[]
   template?: PublicTemplate | null
 }
 

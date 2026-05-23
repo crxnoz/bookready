@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Editor\BusinessPolicyController;
 use App\Http\Controllers\Api\Editor\BusinessProfileController;
 use App\Http\Controllers\Api\Editor\CustomersController;
 use App\Http\Controllers\Api\Editor\HoursController;
+use App\Http\Controllers\Api\Editor\GalleryItemsController;
 use App\Http\Controllers\Api\Editor\ServicesController;
 use App\Http\Controllers\Api\Editor\StaffController;
 use App\Http\Controllers\Api\Editor\WebsiteSectionsController;
@@ -88,6 +89,11 @@ Route::prefix('v1')->group(function () {
         Route::post('staff',             [StaffController::class, 'store']);
         Route::patch('staff/{staff}',    [StaffController::class, 'update']);
         Route::delete('staff/{staff}',   [StaffController::class, 'destroy']);
+
+        Route::get('gallery',                         [GalleryItemsController::class, 'index']);
+        Route::post('gallery',                        [GalleryItemsController::class, 'store']);
+        Route::patch('gallery/{item}',                [GalleryItemsController::class, 'update']);
+        Route::delete('gallery/{item}',               [GalleryItemsController::class, 'destroy']);
 
         Route::get('website/template',                [WebsiteTemplateController::class, 'show']);
         Route::patch('website/template',              [WebsiteTemplateController::class, 'update']);

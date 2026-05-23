@@ -21,6 +21,8 @@ import {
   PublicBookingResponse,
   PublicSite,
   RegisterPayload,
+  GalleryItem,
+  GalleryItemPayload,
   Service,
   StaffMemberPayload,
   TemplateSettings,
@@ -373,4 +375,32 @@ export async function updateEditorWebsiteSection(
 
 export async function deleteEditorWebsiteSection(id: number): Promise<{ deleted?: boolean } | WebsiteSection> {
   return request(`/editor/website/sections/${id}`, { method: 'DELETE' })
+}
+
+// ── Gallery items ────────────────────────────────────────────────────────────
+
+export async function getEditorGallery(params?: { active?: boolean; category?: string }): Promise<GalleryItem[]> {
+  const qs = new URLSearchParams()
+  if (params?.active)   qs.set('active', '1')
+  if (params?.category) qs.set('category', params.category)
+  const suffix = qs.toString() ? `?${qs}` : ''
+  return request<GalleryItem[]>(`/editor/gallery${suffix}`)
+}
+
+export async function createEditorGalleryItem(payload: GalleryItemPayload): Promise<GalleryItem> {
+  return request<GalleryItem>('/editor/gallery', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateEditorGalleryItem(id: number, payload: Partial<GalleryItemPayload>): Promise<GalleryItem> {
+  return request<GalleryItem>(`/editor/gallery/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteEditorGalleryItem(id: number): Promise<{ deleted?: boolean }> {
+  return request(`/editor/gallery/${id}`, { method: 'DELETE' })
 }

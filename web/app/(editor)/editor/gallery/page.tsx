@@ -1,10 +1,7 @@
-import EditorShell from '@/components/editor/EditorShell'
-import GalleryEditor from '@/components/editor/GalleryEditor'
+import { redirect } from 'next/navigation'
 
-export default function GalleryPage() {
-  return (
-    <EditorShell>
-      <GalleryEditor />
-    </EditorShell>
-  )
+// Gallery management lives inside the Website Editor (Content / Tabs).
+// Anyone landing on the old standalone /editor/gallery URL is sent there.
+export default function GalleryRedirect() {
+  redirect('/editor/website?tab=content')
 }
