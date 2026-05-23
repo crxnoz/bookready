@@ -164,25 +164,8 @@ export default function WebsiteHub() {
             )}
           </div>
 
-          {/* Tenant URL banner — makes it obvious which public site this editor affects */}
-          {slug && (
-            <div className="bg-white border border-[rgba(18,18,18,0.10)] border-l-4 border-l-near-black px-4 py-3 mb-6 flex items-center gap-3 flex-wrap">
-              <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text flex-shrink-0">
-                Editing
-              </span>
-              <a
-                href={publicUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-mono font-semibold text-near-black break-all hover:underline"
-              >
-                {slug}.{baseDomain}
-              </a>
-              <span className="text-[11px] text-muted-text">
-                — saved changes appear on this URL only.
-              </span>
-            </div>
-          )}
+          <div className="mb-6" />
+
 
           {/* Editor + preview split */}
           <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_440px] gap-6">

@@ -830,6 +830,10 @@ const TFR_CSS = `
   overflow:visible; z-index:2;
   box-shadow:0 0 0 2px rgba(255,61,190,0.55),0 0 24px rgba(255,61,190,0.45),0 0 60px rgba(255,61,190,0.25);
 }
+.tfr-header-avatar > img {
+  width:100%; height:100%; display:block; object-fit:cover;
+  border-radius:999px;
+}
 .tfr-avatar-ring {
   position:absolute; inset:-10px; border-radius:999px;
   border:1px dashed rgba(255,61,190,0.55); pointer-events:none;

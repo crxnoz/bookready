@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { EditorProvider } from '@/lib/editorContext'
 import { getTenantId } from '@/lib/auth'
 import { cn } from '@/lib/cn'
+import { ArrowLeft } from 'lucide-react'
 
 // ── Section nav config ────────────────────────────────────────────────────────
 
@@ -132,6 +133,19 @@ export default function EditorShell({ children }: { children: React.ReactNode })
 
   const sectionLabel = isWebsite ? 'Website' : isBookings ? 'Bookings' : isCustomers ? 'Customers' : 'Editor'
 
+  // A "sub-page" inside the Website group (e.g. /editor/business) gets a
+  // small back link so users can always return to the Website hub.
+  const isWebsiteSubpage = isWebsite && !isWebsiteHub
+  const subpageBackHref  = '/editor/website'
+  const subpageBackLabel = (() => {
+    if (path.startsWith('/editor/business')) return 'Business Info'
+    if (path.startsWith('/editor/policies')) return 'Policies'
+    if (path.startsWith('/editor/gallery'))  return 'Gallery'
+    if (path.startsWith('/editor/branding')) return 'Branding'
+    if (path.startsWith('/editor/template')) return 'Template'
+    return 'Page'
+  })()
+
   // Read active website tab from URL (only meaningful when isWebsiteHub)
   const rawTab = searchParams?.get('tab') ?? 'overview'
   const activeWebsiteTab: WebsiteTabId = VALID_WEBSITE_TABS.includes(rawTab as WebsiteTabId)
@@ -150,6 +164,20 @@ export default function EditorShell({ children }: { children: React.ReactNode })
       {/* Section tab nav — only the Website hub gets the new tab strip */}
       {isWebsiteHub && <WebsiteSectionNav activeTab={activeWebsiteTab} />}
       {isBookings   && <BookingsSectionNav nav={BOOKINGS_NAV} path={path} />}
+
+      {/* Back link for Website sub-pages (Business Info, Policies, etc.) */}
+      {isWebsiteSubpage && (
+        <div className="flex items-center gap-3 border-b border-[rgba(18,18,18,0.10)] bg-white px-4 py-2.5 flex-shrink-0">
+          <Link
+            href={subpageBackHref}
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
+          >
+            <ArrowLeft size={12} /> Back to Website
+          </Link>
+          <span className="text-[10px] text-muted-text">/</span>
+          <span className="text-[11px] font-semibold text-near-black">{subpageBackLabel}</span>
+        </div>
+      )}
 
       {/* Content area — full width. The Website hub owns its own editor/preview split. */}
       <div className="flex flex-col flex-1 min-h-0">
