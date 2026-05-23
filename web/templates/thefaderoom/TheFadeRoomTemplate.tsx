@@ -271,7 +271,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
           {/* ── Results ── */}
           {enabledByTab.results && (
             <div className={`tfr-tab-panel${active === 'results' ? ' is-active' : ''}`}>
-              <ResultsPanel />
+              <ResultsPanel items={site.before_after ?? []} />
             </div>
           )}
 
@@ -486,7 +486,19 @@ const BA_PAIRS = [
   { label: 'Beard' },
 ]
 
-function ResultsPanel() {
+interface PublicBeforeAfterItem {
+  id: number
+  title: string | null
+  caption: string | null
+  before_image_url: string
+  after_image_url: string
+  before_alt_text: string | null
+  after_alt_text: string | null
+  category: string | null
+  sort_order: number
+}
+
+function ResultsPanel({ items }: { items: PublicBeforeAfterItem[] }) {
   const [revealed, setRevealed] = useState<Set<number>>(new Set())
 
   function toggle(i: number) {
@@ -497,6 +509,49 @@ function ResultsPanel() {
     })
   }
 
+  // Real items take precedence over placeholders
+  if (items.length > 0) {
+    return (
+      <section className="tfr-before-after-section">
+        <div className="tfr-results-heading">
+          <div className="tfr-results-backdrop">RESULTS</div>
+          <h2>Amazing</h2>
+        </div>
+        <div className="tfr-ba-stack">
+          {items.map((item, i) => (
+            <div key={item.id} className="tfr-ba-pair">
+              <span className="tfr-ba-label tfr-ba-label--before">Before</span>
+              <span className="tfr-ba-label tfr-ba-label--after">After</span>
+              <div className="tfr-ba-card tfr-ba-card--before">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={item.before_image_url}
+                  alt={item.before_alt_text ?? `${item.title ?? 'Result'} — before`}
+                  loading="lazy"
+                />
+              </div>
+              <button
+                className={`tfr-ba-card tfr-ba-card--after${revealed.has(i) ? ' is-revealed' : ''}`}
+                onClick={() => toggle(i)}
+                aria-label={revealed.has(i) ? 'Hide result' : 'Tap to reveal result'}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={item.after_image_url}
+                  alt={item.after_alt_text ?? `${item.title ?? 'Result'} — after`}
+                  loading="lazy"
+                  className="tfr-ba-after-img"
+                />
+                <span>Tap to Reveal</span>
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  // Placeholder fallback when no real items exist
   return (
     <section className="tfr-before-after-section">
       <div className="tfr-results-heading">
@@ -1281,6 +1336,8 @@ const TFR_CSS = `
 }
 .tfr-ba-card--after:hover { box-shadow:0 10px 32px rgba(255,61,190,0.32),0 4px 12px rgba(0,0,0,0.4); }
 .tfr-ba-placeholder { width:100%; height:100%; background:linear-gradient(135deg,#1a1020 0%,#2a0a1e 50%,#1a0a14 100%); }
+.tfr-ba-card > img { width:100%; height:100%; object-fit:cover; display:block; }
+img.tfr-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filter .35s ease,transform .35s ease; }
 .tfr-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filter .35s ease,transform .35s ease; }
 .tfr-ba-card--after span {
   position:absolute; inset:0; display:flex; align-items:center; justify-content:center;

@@ -21,6 +21,8 @@ import {
   PublicBookingResponse,
   PublicSite,
   RegisterPayload,
+  BeforeAfterItem,
+  BeforeAfterItemPayload,
   GalleryItem,
   GalleryItemPayload,
   Service,
@@ -403,4 +405,32 @@ export async function updateEditorGalleryItem(id: number, payload: Partial<Galle
 
 export async function deleteEditorGalleryItem(id: number): Promise<{ deleted?: boolean }> {
   return request(`/editor/gallery/${id}`, { method: 'DELETE' })
+}
+
+// ── Before & After items ─────────────────────────────────────────────────────
+
+export async function getEditorBeforeAfter(params?: { active?: boolean; category?: string }): Promise<BeforeAfterItem[]> {
+  const qs = new URLSearchParams()
+  if (params?.active)   qs.set('active', '1')
+  if (params?.category) qs.set('category', params.category)
+  const suffix = qs.toString() ? `?${qs}` : ''
+  return request<BeforeAfterItem[]>(`/editor/before-after${suffix}`)
+}
+
+export async function createEditorBeforeAfterItem(payload: BeforeAfterItemPayload): Promise<BeforeAfterItem> {
+  return request<BeforeAfterItem>('/editor/before-after', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateEditorBeforeAfterItem(id: number, payload: Partial<BeforeAfterItemPayload>): Promise<BeforeAfterItem> {
+  return request<BeforeAfterItem>(`/editor/before-after/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteEditorBeforeAfterItem(id: number): Promise<{ deleted?: boolean }> {
+  return request(`/editor/before-after/${id}`, { method: 'DELETE' })
 }

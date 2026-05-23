@@ -20,6 +20,10 @@ import {
   createEditorGalleryItem,
   updateEditorGalleryItem,
   deleteEditorGalleryItem,
+  getEditorBeforeAfter,
+  createEditorBeforeAfterItem,
+  updateEditorBeforeAfterItem,
+  deleteEditorBeforeAfterItem,
 } from '@/lib/api'
 import type {
   TemplateSettings,
@@ -29,6 +33,8 @@ import type {
   WebsiteSection,
   GalleryItem,
   GalleryItemPayload,
+  BeforeAfterItem,
+  BeforeAfterItemPayload,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
 
@@ -817,6 +823,8 @@ function ContentTabsPanel({
 
       <GalleryManagerPanel />
 
+      <BeforeAfterManagerPanel />
+
       <Panel
         title="Steps content"
         subtitle="Card-style instructions shown on the Steps tab."
@@ -1470,6 +1478,407 @@ function GalleryItemDialog({
           </div>
         </form>
       </div>
+    </div>
+  )
+}
+
+// ── Before & After manager (lives inside Content & Tabs, after Gallery) ─────
+
+function BeforeAfterManagerPanel() {
+  const [items, setItems]     = useState<BeforeAfterItem[] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState<string | null>(null)
+  const [busyId, setBusyId]   = useState<number | null>(null)
+  const [editing, setEditing] = useState<BeforeAfterItem | null>(null)
+  const [adding, setAdding]   = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    getEditorBeforeAfter()
+      .then(rows => { if (!cancelled) setItems(rows) })
+      .catch(e => { if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load before/after items') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const sorted = useMemo(
+    () => (items ?? []).slice().sort((a, b) => a.sort_order - b.sort_order || a.id - b.id),
+    [items],
+  )
+
+  async function toggle(item: BeforeAfterItem) {
+    setBusyId(item.id); setError(null)
+    try {
+      const updated = await updateEditorBeforeAfterItem(item.id, { is_active: !item.is_active })
+      setItems(prev => (prev ?? []).map(i => i.id === item.id ? updated : i))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function remove(item: BeforeAfterItem) {
+    if (!confirm(`Delete "${item.title ?? 'this pair'}"? This can't be undone.`)) return
+    setBusyId(item.id); setError(null)
+    try {
+      await deleteEditorBeforeAfterItem(item.id)
+      setItems(prev => (prev ?? []).filter(i => i.id !== item.id))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function move(item: BeforeAfterItem, dir: 'up' | 'down') {
+    const i = sorted.findIndex(s => s.id === item.id)
+    if (i < 0) return
+    const j = dir === 'up' ? i - 1 : i + 1
+    if (j < 0 || j >= sorted.length) return
+    const a = sorted[i], b = sorted[j]
+    setBusyId(item.id); setError(null)
+    try {
+      const [updA, updB] = await Promise.all([
+        updateEditorBeforeAfterItem(a.id, { sort_order: b.sort_order }),
+        updateEditorBeforeAfterItem(b.id, { sort_order: a.sort_order }),
+      ])
+      setItems(prev => (prev ?? []).map(s => s.id === updA.id ? updA : s.id === updB.id ? updB : s))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to reorder')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function handleSave(payload: BeforeAfterItemPayload, existingId: number | null) {
+    setError(null)
+    if (existingId) {
+      const updated = await updateEditorBeforeAfterItem(existingId, payload)
+      setItems(prev => (prev ?? []).map(i => i.id === existingId ? updated : i))
+    } else {
+      const created = await createEditorBeforeAfterItem(payload)
+      setItems(prev => [...(prev ?? []), created])
+    }
+    setEditing(null)
+    setAdding(false)
+  }
+
+  return (
+    <Panel
+      title="Before & After"
+      subtitle="Add transformation pairs to show results on your public website."
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-muted-text">
+          {loading ? 'Loading…' : `${sorted.length} pair${sorted.length === 1 ? '' : 's'}`}
+        </p>
+        <button
+          onClick={() => setAdding(true)}
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2"
+        >
+          <Plus size={12} /> Add Pair
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-white border border-red-200 text-red-700 text-xs p-3 flex items-center gap-2">
+          <AlertCircle size={13} /> {error}
+        </div>
+      )}
+
+      {!loading && sorted.length === 0 && (
+        <div className="bg-cream border border-[rgba(18,18,18,0.08)] px-4 py-6 text-center">
+          <ImageIcon size={20} className="mx-auto mb-2 text-muted-text" strokeWidth={1.5} />
+          <p className="text-sm text-near-black font-semibold">No before/after pairs yet</p>
+          <p className="text-xs text-muted-text mt-0.5">Add your first transformation to show results on your public site.</p>
+        </div>
+      )}
+
+      {sorted.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {sorted.map((item, i) => {
+            const busy = busyId === item.id
+            return (
+              <div
+                key={item.id}
+                className={cn(
+                  'bg-white border flex gap-3 p-3',
+                  item.is_active ? 'border-[rgba(18,18,18,0.10)]' : 'border-[rgba(18,18,18,0.06)] opacity-70',
+                )}
+              >
+                {/* Twin thumbnails */}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <BAThumb url={item.before_image_url} alt={item.before_alt_text} label="B" />
+                  <BAThumb url={item.after_image_url}  alt={item.after_alt_text}  label="A" />
+                </div>
+
+                {/* Meta */}
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold text-near-black truncate">
+                      {item.title ?? 'Untitled'}
+                    </span>
+                    {!item.is_active && (
+                      <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-transparent bg-lavender text-[rgba(18,18,18,0.6)] px-1.5 py-0.5">
+                        Hidden
+                      </span>
+                    )}
+                  </div>
+                  {item.category && (
+                    <span className="text-[10px] text-muted-text uppercase tracking-[0.1em] font-semibold">
+                      {item.category}
+                    </span>
+                  )}
+                  {item.caption && (
+                    <p className="text-[11px] text-muted-text line-clamp-2">{item.caption}</p>
+                  )}
+
+                  <div className="flex items-center gap-1 mt-1 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setEditing(item)}
+                      disabled={busy}
+                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black disabled:opacity-30"
+                      title="Edit"
+                    >
+                      <Edit2 size={11} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggle(item)}
+                      disabled={busy}
+                      className={cn(
+                        'h-7 px-2 inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.06em] uppercase border',
+                        item.is_active
+                          ? 'border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black'
+                          : 'border-near-black bg-near-black text-white',
+                      )}
+                      title={item.is_active ? 'Hide' : 'Show'}
+                    >
+                      {item.is_active ? <><Eye size={10} /> Visible</> : <><EyeOff size={10} /> Hidden</>}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => move(item, 'up')}
+                      disabled={busy || i === 0}
+                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black disabled:opacity-30"
+                      title="Move up"
+                    >
+                      <ArrowUp size={11} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => move(item, 'down')}
+                      disabled={busy || i === sorted.length - 1}
+                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black disabled:opacity-30"
+                      title="Move down"
+                    >
+                      <ArrowDown size={11} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => remove(item)}
+                      disabled={busy}
+                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600 disabled:opacity-30"
+                      title="Delete"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {(adding || editing) && (
+        <BeforeAfterItemDialog
+          item={editing}
+          onClose={() => { setAdding(false); setEditing(null) }}
+          onSave={handleSave}
+        />
+      )}
+    </Panel>
+  )
+}
+
+function BAThumb({ url, alt, label }: { url: string; alt: string | null; label: string }) {
+  return (
+    <div className="relative w-14 h-14 bg-cream border border-[rgba(18,18,18,0.08)] overflow-hidden flex-shrink-0">
+      {url
+        /* eslint-disable-next-line @next/next/no-img-element */
+        ? <img src={url} alt={alt ?? ''} className="w-full h-full object-cover" />
+        : <div className="w-full h-full flex items-center justify-center text-muted-text"><ImageIcon size={14} /></div>
+      }
+      <span className="absolute bottom-0 left-0 right-0 text-[8px] font-bold tracking-[0.18em] uppercase text-white bg-black/55 text-center py-[1px]">
+        {label}
+      </span>
+    </div>
+  )
+}
+
+function BeforeAfterItemDialog({
+  item, onClose, onSave,
+}: {
+  item: BeforeAfterItem | null
+  onClose: () => void
+  onSave: (payload: BeforeAfterItemPayload, existingId: number | null) => void | Promise<void>
+}) {
+  const [beforeUrl, setBeforeUrl] = useState(item?.before_image_url ?? '')
+  const [afterUrl,  setAfterUrl]  = useState(item?.after_image_url  ?? '')
+  const [title,     setTitle]     = useState(item?.title            ?? '')
+  const [caption,   setCaption]   = useState(item?.caption          ?? '')
+  const [beforeAlt, setBeforeAlt] = useState(item?.before_alt_text  ?? '')
+  const [afterAlt,  setAfterAlt]  = useState(item?.after_alt_text   ?? '')
+  const [category,  setCategory]  = useState(item?.category         ?? '')
+  const [isActive,  setIsActive]  = useState(item?.is_active        ?? true)
+  const [saving,    setSaving]    = useState(false)
+  const [error,     setError]     = useState<string | null>(null)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!beforeUrl.trim()) { setError('Before image URL is required.'); return }
+    if (!afterUrl.trim())  { setError('After image URL is required.');  return }
+    setSaving(true); setError(null)
+    try {
+      await onSave({
+        before_image_url: beforeUrl.trim(),
+        after_image_url:  afterUrl.trim(),
+        title:            title.trim()     || null,
+        caption:          caption.trim()   || null,
+        before_alt_text:  beforeAlt.trim() || null,
+        after_alt_text:   afterAlt.trim()  || null,
+        category:         category.trim()  || null,
+        is_active:        isActive,
+      }, item?.id ?? null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-lg border border-[rgba(18,18,18,0.15)] max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-[rgba(18,18,18,0.10)] px-4 py-3 sticky top-0 bg-white">
+          <h3 className="text-sm font-bold text-near-black">{item ? 'Edit pair' : 'Add before/after pair'}</h3>
+          <button onClick={onClose} className="text-muted-text hover:text-near-black">
+            <X size={16} />
+          </button>
+        </div>
+
+        <form onSubmit={submit} className="p-4 space-y-3">
+          <TextField
+            label="Before image URL *"
+            value={beforeUrl}
+            onChange={setBeforeUrl}
+            placeholder="https://…/before.jpg"
+            maxLength={2000}
+          />
+          <TextField
+            label="After image URL *"
+            value={afterUrl}
+            onChange={setAfterUrl}
+            placeholder="https://…/after.jpg"
+            maxLength={2000}
+          />
+
+          {/* Live side-by-side preview */}
+          {(beforeUrl || afterUrl) && (
+            <div className="bg-cream border border-[rgba(18,18,18,0.08)] p-2 grid grid-cols-2 gap-2">
+              <BAPreviewBox url={beforeUrl} label="Before" />
+              <BAPreviewBox url={afterUrl}  label="After" />
+            </div>
+          )}
+
+          <TextField
+            label="Title"
+            value={title}
+            onChange={setTitle}
+            placeholder="Fade Transformation"
+            maxLength={255}
+          />
+          <TextField
+            label="Category"
+            value={category}
+            onChange={setCategory}
+            placeholder="Fresh Work, Lashes, Nails…"
+            maxLength={255}
+            hint="Optional grouping"
+          />
+          <TextareaField
+            label="Caption"
+            value={caption}
+            onChange={setCaption}
+            placeholder="A short description shown on the public site."
+            rows={2}
+            maxLength={5000}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <TextField
+              label="Before alt text"
+              value={beforeAlt}
+              onChange={setBeforeAlt}
+              placeholder="Describe the before image"
+              maxLength={255}
+            />
+            <TextField
+              label="After alt text"
+              value={afterAlt}
+              onChange={setAfterAlt}
+              placeholder="Describe the after image"
+              maxLength={255}
+            />
+          </div>
+
+          <ToggleRow
+            label="Visible on public site"
+            icon={Eye}
+            on={isActive}
+            onToggle={() => setIsActive(v => !v)}
+          />
+
+          {error && (
+            <p className="text-xs text-red-700 flex items-center gap-1.5">
+              <AlertCircle size={12} /> {error}
+            </p>
+          )}
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+            <button
+              type="button" onClick={onClose}
+              className="text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2"
+            >Cancel</button>
+            <button
+              type="submit" disabled={saving}
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 disabled:opacity-60"
+            >
+              {saving
+                ? <><Loader2 size={11} className="animate-spin" /> Saving</>
+                : <><Check size={12} /> {item ? 'Save changes' : 'Add pair'}</>
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function BAPreviewBox({ url, label }: { url: string; label: string }) {
+  return (
+    <div className="relative bg-white border border-[rgba(18,18,18,0.08)] overflow-hidden" style={{ aspectRatio: '1/1' }}>
+      {url
+        /* eslint-disable-next-line @next/next/no-img-element */
+        ? <img src={url} alt={label} className="w-full h-full object-cover" />
+        : <div className="w-full h-full flex items-center justify-center text-muted-text"><ImageIcon size={20} /></div>
+      }
+      <span className="absolute top-1.5 left-1.5 text-[9px] font-bold tracking-[0.16em] uppercase text-white bg-black/55 px-1.5 py-0.5">
+        {label}
+      </span>
     </div>
   )
 }

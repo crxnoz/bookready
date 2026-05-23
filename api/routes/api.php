@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Editor\BusinessPolicyController;
 use App\Http\Controllers\Api\Editor\BusinessProfileController;
 use App\Http\Controllers\Api\Editor\CustomersController;
 use App\Http\Controllers\Api\Editor\HoursController;
+use App\Http\Controllers\Api\Editor\BeforeAfterItemsController;
 use App\Http\Controllers\Api\Editor\GalleryItemsController;
 use App\Http\Controllers\Api\Editor\ServicesController;
 use App\Http\Controllers\Api\Editor\StaffController;
@@ -94,6 +95,11 @@ Route::prefix('v1')->group(function () {
         Route::post('gallery',                        [GalleryItemsController::class, 'store']);
         Route::patch('gallery/{item}',                [GalleryItemsController::class, 'update']);
         Route::delete('gallery/{item}',               [GalleryItemsController::class, 'destroy']);
+
+        Route::get('before-after',                    [BeforeAfterItemsController::class, 'index']);
+        Route::post('before-after',                   [BeforeAfterItemsController::class, 'store']);
+        Route::patch('before-after/{item}',           [BeforeAfterItemsController::class, 'update']);
+        Route::delete('before-after/{item}',          [BeforeAfterItemsController::class, 'destroy']);
 
         Route::get('website/template',                [WebsiteTemplateController::class, 'show']);
         Route::patch('website/template',              [WebsiteTemplateController::class, 'update']);

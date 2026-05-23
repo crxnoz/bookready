@@ -113,6 +113,29 @@ class PublicSiteController extends Controller
             ->values()
             ->all();
 
+        // ── Before & After items (active only, public) ──
+        $beforeAfter = [];
+        if (Schema::hasTable('before_after_items')) {
+            $beforeAfter = DB::table('before_after_items')
+                ->where('is_active', true)
+                ->orderBy('sort_order', 'asc')
+                ->orderBy('id', 'asc')
+                ->get()
+                ->map(fn ($r) => [
+                    'id'                => (int) $r->id,
+                    'title'             =>        $r->title,
+                    'caption'           =>        $r->caption,
+                    'before_image_url'  =>        $r->before_image_url,
+                    'after_image_url'   =>        $r->after_image_url,
+                    'before_alt_text'   =>        $r->before_alt_text,
+                    'after_alt_text'    =>        $r->after_alt_text,
+                    'category'          =>        $r->category,
+                    'sort_order'        => (int)  $r->sort_order,
+                ])
+                ->values()
+                ->all();
+        }
+
         // ── Gallery items (active only, public) ──
         $gallery = [];
         if (Schema::hasTable('gallery_items')) {
@@ -191,6 +214,7 @@ class PublicSiteController extends Controller
                 'settings' => $settings,
             ],
             'gallery'       => $gallery,
+            'before_after'  => $beforeAfter,
             'template'      => [
                 'slug'     => $templateSlug,
                 'settings' => $templateSettings,

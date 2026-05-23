@@ -82,6 +82,46 @@ export interface PublicGalleryItem {
   sort_order: number
 }
 
+// API-backed before/after pairs (editor + public)
+export interface BeforeAfterItem {
+  id: number
+  title: string | null
+  caption: string | null
+  before_image_url: string
+  after_image_url: string
+  before_alt_text: string | null
+  after_alt_text: string | null
+  category: string | null
+  is_active: boolean
+  sort_order: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface BeforeAfterItemPayload {
+  title?: string | null
+  caption?: string | null
+  before_image_url: string
+  after_image_url: string
+  before_alt_text?: string | null
+  after_alt_text?: string | null
+  category?: string | null
+  is_active?: boolean
+  sort_order?: number
+}
+
+export interface PublicBeforeAfterItem {
+  id: number
+  title: string | null
+  caption: string | null
+  before_image_url: string
+  after_image_url: string
+  before_alt_text: string | null
+  after_alt_text: string | null
+  category: string | null
+  sort_order: number
+}
+
 export interface HoursEntry {
   id: number
   day_of_week: number
@@ -238,6 +278,7 @@ export interface PublicSite {
   policies?: BusinessPolicy | null
   staff?: PublicStaffMember[]
   gallery?: PublicGalleryItem[]
+  before_after?: PublicBeforeAfterItem[]
   template?: PublicTemplate | null
 }
 
