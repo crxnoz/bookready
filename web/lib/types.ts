@@ -370,6 +370,10 @@ export interface TemplateHeaderSettings {
   show_email_button: boolean
   show_instagram_button: boolean
   show_directions_button: boolean
+  announcement_text?: string | null
+  show_announcement?: boolean
+  cover_image_url?: string | null
+  avatar_image_url?: string | null
 }
 
 export interface TemplateTabLabels {
@@ -394,6 +398,17 @@ export interface TemplateInstructionBlock {
 
 export interface TemplateFooterSettings {
   show_powered_by: boolean
+  business_name_override?: string | null
+  subtext?: string | null
+  show_hours?: boolean
+  show_quick_book?: boolean
+  show_contact_links?: boolean
+}
+
+export interface TemplateAdditionalsSettings {
+  show_thank_you?: boolean
+  thank_you_title?: string | null
+  thank_you_body?: string | null
 }
 
 export interface TemplateSettings {
@@ -402,6 +417,7 @@ export interface TemplateSettings {
   steps: TemplateInstructionBlock
   before_appointment: TemplateInstructionBlock
   footer: TemplateFooterSettings
+  additionals?: TemplateAdditionalsSettings
 }
 
 export interface TemplateSettingsResponse {

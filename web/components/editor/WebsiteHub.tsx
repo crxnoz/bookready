@@ -1,69 +1,77 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import {
   LayoutTemplate, FileText, Image as ImageIcon, Info, ListChecks,
-  Eye, Lock, Plus, ArrowUp, ArrowDown, Trash2, Smartphone, Monitor,
-  ExternalLink, Copy, Check, Loader2, X, Heart, Phone, Mail,
-  Instagram, MapPin, Sparkles, Clock,
+  Eye, EyeOff, Lock, Plus, Smartphone, Monitor, ExternalLink, Copy,
+  Check, Loader2, Heart, Phone, Mail, Instagram, MapPin, Sparkles,
+  Megaphone, MessageSquare, ChevronRight, AlertCircle,
 } from 'lucide-react'
 import {
   getCurrentUser,
   getEditorTemplateSettings,
   updateEditorTemplateSettings,
   getEditorWebsiteSections,
-  createEditorWebsiteSection,
   updateEditorWebsiteSection,
-  deleteEditorWebsiteSection,
 } from '@/lib/api'
 import type {
   TemplateSettings,
+  TemplateHeaderSettings,
+  TemplateFooterSettings,
+  TemplateAdditionalsSettings,
   WebsiteSection,
-  WebsiteSectionCreatePayload,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// ── Types & constants ────────────────────────────────────────────────────────
 
-type SubTab = 'template' | 'header' | 'sections' | 'preview'
+type SubTab = 'overview' | 'header' | 'content' | 'additionals' | 'footer'
 
 const SUB_TABS: { id: SubTab; label: string; icon: React.ElementType }[] = [
-  { id: 'template', label: 'Template', icon: LayoutTemplate },
-  { id: 'header',   label: 'Header',   icon: Sparkles },
-  { id: 'sections', label: 'Sections', icon: ListChecks },
-  { id: 'preview',  label: 'Preview',  icon: Eye },
+  { id: 'overview',    label: 'Overview',        icon: LayoutTemplate },
+  { id: 'header',      label: 'Header / Hero',   icon: Sparkles       },
+  { id: 'content',     label: 'Content / Tabs',  icon: ListChecks     },
+  { id: 'additionals', label: 'Additionals',     icon: Plus           },
+  { id: 'footer',      label: 'Footer',          icon: Info           },
 ]
 
-const SECTION_ICONS: Record<string, React.ElementType> = {
-  header:        Sparkles,
-  booking:       Heart,
-  gallery:       ImageIcon,
-  policy:        FileText,
-  about:         Info,
-  before_after:  Sparkles,
-  instructions:  ListChecks,
-  staff:         Info,
-  hours:         Clock,
-  contact:       Phone,
-  footer:        Lock,
-  text_block:    FileText,
-  announcement:  Sparkles,
+const SECTION_LABEL_FOR_KEY: Record<string, string> = {
+  header:             'Header',
+  book:               'Booking',
+  gallery:            'Gallery',
+  policy:             'Policy',
+  about:              'About',
+  before_after:       'Before & After',
+  steps:              'Steps',
+  before_appointment: 'Before Your Appointment',
+  footer:             'Footer',
 }
 
-const CUSTOM_TYPE_OPTIONS: { value: 'text_block' | 'instructions' | 'announcement'; label: string; description: string }[] = [
-  { value: 'text_block',   label: 'Text Block',   description: 'A short editorial paragraph.' },
-  { value: 'instructions', label: 'Instructions', description: 'A numbered list of titled steps.' },
-  { value: 'announcement', label: 'Announcement', description: 'A short highlighted note.' },
-]
+const SECTION_ICONS: Record<string, React.ElementType> = {
+  header:             Sparkles,
+  book:               Heart,
+  booking:            Heart,
+  gallery:            ImageIcon,
+  policy:             FileText,
+  about:              Info,
+  before_after:       Sparkles,
+  steps:              ListChecks,
+  before_appointment: ListChecks,
+  instructions:       ListChecks,
+  footer:             Lock,
+  text_block:         FileText,
+  announcement:       Megaphone,
+}
 
-// ── Main ─────────────────────────────────────────────────────────────────────
+// ── Root ─────────────────────────────────────────────────────────────────────
 
 export default function WebsiteHub() {
-  const [tab, setTab] = useState<SubTab>('template')
+  const [tab, setTab] = useState<SubTab>('overview')
 
-  const [slug, setSlug] = useState<string | null>(null)
-  const [settings, setSettings]       = useState<TemplateSettings | null>(null)
+  const [slug, setSlug]               = useState<string | null>(null)
   const [templateSlug, setTplSlug]    = useState<string>('thefaderoom')
+  const [settings, setSettings]       = useState<TemplateSettings | null>(null)
   const [sections, setSections]       = useState<WebsiteSection[]>([])
   const [loading, setLoading]         = useState(true)
   const [loadError, setLoadError]     = useState<string | null>(null)
@@ -93,6 +101,16 @@ export default function WebsiteHub() {
   const baseDomain = process.env.NEXT_PUBLIC_TENANT_BASE_DOMAIN ?? 'bkrdy.me'
   const publicUrl  = slug ? `https://${slug}.${baseDomain}` : ''
 
+  async function saveSettings(partial: Partial<TemplateSettings>): Promise<void> {
+    const res = await updateEditorTemplateSettings(partial)
+    setSettings(res.settings)
+  }
+
+  async function toggleSection(id: number, enabled: boolean): Promise<void> {
+    const updated = await updateEditorWebsiteSection(id, { is_enabled: enabled })
+    setSections(prev => prev.map(s => s.id === id ? updated : s))
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh] bg-cream">
@@ -101,11 +119,11 @@ export default function WebsiteHub() {
     )
   }
 
-  if (loadError) {
+  if (loadError || !settings) {
     return (
       <div className="p-6 bg-cream min-h-full">
         <div className="bg-white border border-[rgba(18,18,18,0.10)] p-5 text-sm text-red-700">
-          {loadError}
+          {loadError ?? 'Could not load website settings.'}
         </div>
       </div>
     )
@@ -134,71 +152,94 @@ export default function WebsiteHub() {
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-4 md:p-6 space-y-5">
 
-        {/* Page head */}
-        <div>
-          <h1 className="text-2xl font-bold text-near-black tracking-tight">Website</h1>
-          <p className="text-sm text-muted-text mt-0.5">
-            Manage your public website content, template, and sections.
-          </p>
-          {slug && (
-            <p className="text-xs text-muted-text mt-1.5 font-mono">{slug}.{baseDomain}</p>
-          )}
+          {/* Page head */}
+          <div>
+            <h1 className="text-2xl font-bold text-near-black tracking-tight">Website</h1>
+            <p className="text-sm text-muted-text mt-0.5">
+              Manage your public website content, template sections, and preview.
+            </p>
+            {slug && (
+              <p className="text-xs text-muted-text mt-1.5 font-mono">{slug}.{baseDomain}</p>
+            )}
+          </div>
+
+          {/* Internal nav */}
+          <div className="flex gap-1 border-b border-[rgba(18,18,18,0.10)] overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+            {SUB_TABS.map(t => {
+              const Icon = t.icon
+              const active = tab === t.id
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-3 py-2.5 text-[11px] font-semibold tracking-[0.06em] uppercase transition-colors flex-shrink-0',
+                    active
+                      ? 'text-near-black border-b-2 border-near-black -mb-px'
+                      : 'text-muted-text hover:text-near-black',
+                  )}
+                >
+                  <Icon size={13} strokeWidth={1.8} />
+                  {t.label}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Editor + preview split */}
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_400px] gap-5">
+
+            {/* Editor */}
+            <div className="space-y-5">
+              {tab === 'overview' && (
+                <OverviewPanel
+                  templateSlug={templateSlug}
+                  settings={settings}
+                  sections={sections}
+                  publicUrl={publicUrl}
+                  onToggleSection={toggleSection}
+                  onGoToTab={setTab}
+                />
+              )}
+
+              {tab === 'header' && (
+                <HeaderPanel settings={settings} onSave={saveSettings} />
+              )}
+
+              {tab === 'content' && (
+                <ContentTabsPanel
+                  settings={settings}
+                  sections={sections}
+                  onSaveSettings={saveSettings}
+                  onToggleSection={toggleSection}
+                />
+              )}
+
+              {tab === 'additionals' && (
+                <AdditionalsPanel settings={settings} onSave={saveSettings} />
+              )}
+
+              {tab === 'footer' && (
+                <FooterPanel settings={settings} onSave={saveSettings} />
+              )}
+            </div>
+
+            {/* Preview — sticky on desktop */}
+            <div className="lg:sticky lg:top-4 lg:self-start">
+              <PreviewPanel url={publicUrl} />
+            </div>
+          </div>
+
         </div>
-
-        {/* Subnav */}
-        <div className="flex gap-1 border-b border-[rgba(18,18,18,0.10)] overflow-x-auto">
-          {SUB_TABS.map(t => {
-            const Icon = t.icon
-            const active = tab === t.id
-            return (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={cn(
-                  'inline-flex items-center gap-1.5 px-3 py-2.5 text-[11px] font-semibold tracking-[0.06em] uppercase transition-colors flex-shrink-0',
-                  active
-                    ? 'text-near-black border-b-2 border-near-black -mb-px'
-                    : 'text-muted-text hover:text-near-black',
-                )}
-              >
-                <Icon size={13} strokeWidth={1.8} />
-                {t.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Panels */}
-        {tab === 'template' && (
-          <TemplatePanel templateSlug={templateSlug} />
-        )}
-
-        {tab === 'header' && settings && (
-          <HeaderPanel
-            settings={settings}
-            onSaved={setSettings}
-          />
-        )}
-
-        {tab === 'sections' && (
-          <SectionsPanel
-            sections={sections}
-            onChange={setSections}
-          />
-        )}
-
-        {tab === 'preview' && (
-          <PreviewPanel url={publicUrl} />
-        )}
-
       </div>
     </div>
   )
 }
 
-// ── Copy link ────────────────────────────────────────────────────────────────
+// ── Shared atoms ─────────────────────────────────────────────────────────────
 
 function CopyLinkButton({ url }: { url: string }) {
   const [copied, setCopied] = useState(false)
@@ -219,99 +260,200 @@ function CopyLinkButton({ url }: { url: string }) {
   )
 }
 
-// ── Template panel ───────────────────────────────────────────────────────────
-
-function TemplatePanel({ templateSlug }: { templateSlug: string }) {
+function Panel({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-5 space-y-4 max-w-2xl">
-      <div className="flex items-start gap-3">
-        <div className="w-10 h-10 flex items-center justify-center border border-[rgba(18,18,18,0.12)] bg-cream flex-shrink-0">
-          <LayoutTemplate size={18} className="text-near-black" strokeWidth={1.6} />
-        </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-base font-bold text-near-black">
-              {templateSlug === 'thefaderoom' ? 'The Fade Room' : templateSlug}
-            </h2>
-            <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-transparent bg-blush text-[rgba(18,18,18,0.7)] px-1.5 py-0.5">
-              Active
-            </span>
-          </div>
-          <p className="text-xs text-muted-text mt-1 font-mono">{templateSlug}</p>
-        </div>
+    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-5 space-y-4">
+      <div>
+        <h2 className="text-base font-bold text-near-black">{title}</h2>
+        {subtitle && <p className="text-xs text-muted-text mt-0.5">{subtitle}</p>}
       </div>
+      {children}
+    </div>
+  )
+}
 
-      <div className="border-t border-[rgba(18,18,18,0.08)] pt-4">
-        <p className="text-xs text-muted-text leading-relaxed">
-          Changing templates keeps your business info, services, bookings, staff,
-          customers, availability, and policies. Template-specific settings (such as
-          header tagline, section content, and decorative copy) may reset.
+function FieldLabel({ children, hint }: { children: React.ReactNode; hint?: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">{children}</span>
+      {hint && <span className="text-[10px] text-muted-text">{hint}</span>}
+    </div>
+  )
+}
+
+function TextField({
+  label, value, onChange, placeholder, maxLength, hint, disabled, disabledHint,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  maxLength?: number
+  hint?: string
+  disabled?: boolean
+  disabledHint?: string
+}) {
+  return (
+    <label className="block">
+      <FieldLabel hint={hint}>{label}</FieldLabel>
+      <input
+        type="text"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        maxLength={maxLength}
+        disabled={disabled}
+        className={cn(
+          'mt-1.5 w-full bg-white border px-3 py-2 text-sm text-near-black focus:outline-none',
+          disabled
+            ? 'border-[rgba(18,18,18,0.08)] bg-cream text-muted-text cursor-not-allowed'
+            : 'border-[rgba(18,18,18,0.15)] focus:border-near-black',
+        )}
+      />
+      {disabledHint && (
+        <p className="text-[10px] text-muted-text mt-1 flex items-center gap-1">
+          <AlertCircle size={10} /> {disabledHint}
         </p>
-      </div>
+      )}
+    </label>
+  )
+}
 
+function TextareaField({
+  label, value, onChange, placeholder, rows = 3, maxLength,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  rows?: number
+  maxLength?: number
+}) {
+  return (
+    <label className="block">
+      <FieldLabel>{label}</FieldLabel>
+      <textarea
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={rows}
+        maxLength={maxLength}
+        className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black resize-y"
+      />
+    </label>
+  )
+}
+
+function ToggleRow({
+  label, icon: Icon, on, onToggle, hint,
+}: {
+  label: string
+  icon?: React.ElementType
+  on: boolean
+  onToggle: () => void
+  hint?: string
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 border border-[rgba(18,18,18,0.08)] px-3 py-2.5">
+      <div className="flex items-center gap-2 min-w-0">
+        {Icon && <Icon size={14} className="text-near-black flex-shrink-0" strokeWidth={1.8} />}
+        <div className="min-w-0">
+          <span className="text-sm text-near-black block">{label}</span>
+          {hint && <span className="text-[11px] text-muted-text">{hint}</span>}
+        </div>
+      </div>
       <button
-        disabled
-        className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-cream text-muted-text px-3 py-2 cursor-not-allowed"
+        type="button"
+        role="switch"
+        aria-checked={on}
+        onClick={onToggle}
+        className={cn(
+          'relative inline-flex items-center w-10 h-5 transition-colors border flex-shrink-0',
+          on ? 'bg-near-black border-near-black' : 'bg-white border-[rgba(18,18,18,0.25)]',
+        )}
       >
-        Change Template — coming soon
+        <span className={cn(
+          'absolute top-0.5 w-3.5 h-3.5 bg-white border border-[rgba(18,18,18,0.15)] transition-all',
+          on ? 'left-[22px]' : 'left-0.5',
+        )} />
       </button>
     </div>
   )
 }
 
-// ── Header panel ─────────────────────────────────────────────────────────────
-
-type HeaderToggleKey =
-  | 'show_book_button'
-  | 'show_call_button'
-  | 'show_email_button'
-  | 'show_instagram_button'
-  | 'show_directions_button'
-
-const HEADER_TOGGLES: { key: HeaderToggleKey; label: string; icon: React.ElementType }[] = [
-  { key: 'show_book_button',       label: 'Show Book button',       icon: Heart },
-  { key: 'show_call_button',       label: 'Show Call button',       icon: Phone },
-  { key: 'show_email_button',      label: 'Show Email button',      icon: Mail },
-  { key: 'show_instagram_button',  label: 'Show Instagram button',  icon: Instagram },
-  { key: 'show_directions_button', label: 'Show Directions button', icon: MapPin },
-]
-
-function HeaderPanel({
-  settings,
-  onSaved,
+function SaveBar({
+  dirty, saving, saved, error, onSave,
 }: {
-  settings: TemplateSettings
-  onSaved: (s: TemplateSettings) => void
+  dirty: boolean
+  saving: boolean
+  saved: boolean
+  error: string | null
+  onSave: () => void
 }) {
-  const [tagline, setTagline] = useState(settings.header.tagline)
-  const [toggles, setToggles] = useState({
-    show_book_button:       settings.header.show_book_button,
-    show_call_button:       settings.header.show_call_button,
-    show_email_button:      settings.header.show_email_button,
-    show_instagram_button:  settings.header.show_instagram_button,
-    show_directions_button: settings.header.show_directions_button,
-  })
+  return (
+    <div className="flex items-center justify-between gap-3 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+      <div className="text-xs flex items-center gap-2">
+        {error && <span className="text-red-700">{error}</span>}
+        {!error && saved && !saving && (
+          <span className="text-green-700 inline-flex items-center gap-1">
+            <Check size={12} /> Saved
+          </span>
+        )}
+        {!error && !saved && dirty && (
+          <span className="text-muted-text">Unsaved changes</span>
+        )}
+      </div>
+      <button
+        onClick={onSave}
+        disabled={!dirty || saving}
+        className={cn(
+          'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase px-3 py-2',
+          dirty && !saving
+            ? 'bg-near-black text-white'
+            : 'bg-cream text-muted-text border border-[rgba(18,18,18,0.12)] cursor-not-allowed',
+        )}
+      >
+        {saving && <Loader2 size={11} className="animate-spin" />}
+        {saving ? 'Saving' : 'Save changes'}
+      </button>
+    </div>
+  )
+}
+
+// Tiny hook to manage local-vs-saved settings state
+function useSettingsForm<T extends object>(
+  initial: T,
+  save: (next: T) => Promise<void>,
+): {
+  value: T
+  setValue: (v: T) => void
+  patch: (p: Partial<T>) => void
+  dirty: boolean
+  saving: boolean
+  saved: boolean
+  error: string | null
+  doSave: () => Promise<void>
+} {
+  const [value, setValue] = useState<T>(initial)
+  const [baseline, setBaseline] = useState<T>(initial)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved]   = useState(false)
-  const [error, setError]   = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const dirty = useMemo(() => {
-    if (tagline !== settings.header.tagline) return true
-    for (const k of Object.keys(toggles) as (keyof typeof toggles)[]) {
-      if (toggles[k] !== settings.header[k]) return true
-    }
-    return false
-  }, [tagline, toggles, settings])
+  const dirty = useMemo(
+    () => JSON.stringify(value) !== JSON.stringify(baseline),
+    [value, baseline],
+  )
 
-  async function save() {
-    setSaving(true)
-    setError(null)
-    setSaved(false)
+  function patch(p: Partial<T>) {
+    setValue(v => ({ ...v, ...p }))
+  }
+
+  async function doSave() {
+    setSaving(true); setError(null); setSaved(false)
     try {
-      const res = await updateEditorTemplateSettings({
-        header: { ...settings.header, ...toggles, tagline },
-      })
-      onSaved(res.settings)
+      await save(value)
+      setBaseline(value)
       setSaved(true)
       setTimeout(() => setSaved(false), 1800)
     } catch (e) {
@@ -321,412 +463,557 @@ function HeaderPanel({
     }
   }
 
-  return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-5 space-y-5 max-w-2xl">
-      <div>
-        <h2 className="text-base font-bold text-near-black">Header</h2>
-        <p className="text-xs text-muted-text mt-0.5">
-          Edit the tagline and which contact buttons appear in the hero.
-        </p>
-      </div>
-
-      {/* Tagline */}
-      <label className="block">
-        <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
-          Tagline / subtext
-        </span>
-        <input
-          type="text"
-          value={tagline}
-          onChange={e => setTagline(e.target.value)}
-          maxLength={120}
-          className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
-          placeholder="Sharp cuts. Smooth booking."
-        />
-        <p className="text-[10px] text-muted-text mt-1">{tagline.length}/120</p>
-      </label>
-
-      {/* Toggles */}
-      <div className="space-y-2">
-        {HEADER_TOGGLES.map(({ key, label, icon: Icon }) => {
-          const on = toggles[key]
-          return (
-            <div
-              key={key}
-              className="flex items-center justify-between gap-3 border border-[rgba(18,18,18,0.08)] px-3 py-2.5"
-            >
-              <div className="flex items-center gap-2">
-                <Icon size={14} className="text-near-black" strokeWidth={1.8} />
-                <span className="text-sm text-near-black">{label}</span>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={on}
-                onClick={() => setToggles(t => ({ ...t, [key]: !t[key] }))}
-                className={cn(
-                  'relative inline-flex items-center w-10 h-5 transition-colors border',
-                  on
-                    ? 'bg-near-black border-near-black'
-                    : 'bg-white border-[rgba(18,18,18,0.25)]',
-                )}
-              >
-                <span className={cn(
-                  'absolute top-0.5 w-3.5 h-3.5 bg-white border border-[rgba(18,18,18,0.15)] transition-all',
-                  on ? 'left-[22px]' : 'left-0.5',
-                )} />
-              </button>
-            </div>
-          )
-        })}
-      </div>
-
-      {error && <p className="text-xs text-red-700">{error}</p>}
-
-      <div className="flex items-center gap-2">
-        <button
-          onClick={save}
-          disabled={!dirty || saving}
-          className={cn(
-            'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase px-3 py-2',
-            dirty && !saving
-              ? 'bg-near-black text-white'
-              : 'bg-cream text-muted-text border border-[rgba(18,18,18,0.12)] cursor-not-allowed',
-          )}
-        >
-          {saving ? <Loader2 size={11} className="animate-spin" /> : null}
-          {saving ? 'Saving' : saved ? 'Saved' : 'Save changes'}
-        </button>
-        {saved && !saving && <Check size={14} className="text-green-700" />}
-      </div>
-    </div>
-  )
+  return { value, setValue, patch, dirty, saving, saved, error, doSave }
 }
 
-// ── Sections panel ───────────────────────────────────────────────────────────
+// ── Overview ─────────────────────────────────────────────────────────────────
 
-function SectionsPanel({
-  sections,
-  onChange,
+function OverviewPanel({
+  templateSlug, settings, sections, publicUrl, onToggleSection, onGoToTab,
 }: {
+  templateSlug: string
+  settings: TemplateSettings
   sections: WebsiteSection[]
-  onChange: (s: WebsiteSection[]) => void
+  publicUrl: string
+  onToggleSection: (id: number, enabled: boolean) => Promise<void>
+  onGoToTab: (t: SubTab) => void
 }) {
-  const [busyId, setBusyId] = useState<number | null>(null)
-  const [showAdd, setShowAdd] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
   const sorted = useMemo(
     () => [...sections].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id),
     [sections],
   )
+  const [busyId, setBusyId] = useState<number | null>(null)
 
-  async function patch(id: number, payload: Parameters<typeof updateEditorWebsiteSection>[1]) {
-    setBusyId(id); setError(null)
+  const enabledCount = sections.filter(s => s.is_enabled).length
+
+  const QUICK_LINKS: { tab: SubTab; label: string; icon: React.ElementType; hint: string }[] = [
+    { tab: 'header',      label: 'Header / Hero',  icon: Sparkles,   hint: 'Announcement, tagline, buttons' },
+    { tab: 'content',     label: 'Content / Tabs', icon: ListChecks, hint: 'Tab labels and section content' },
+    { tab: 'additionals', label: 'Additionals',    icon: Plus,       hint: 'Thank-you, extra sections' },
+    { tab: 'footer',      label: 'Footer',         icon: Info,       hint: 'Subtext, links, BookReady badge' },
+  ]
+
+  async function toggle(s: WebsiteSection) {
+    if (s.is_locked) return
+    setBusyId(s.id)
     try {
-      const updated = await updateEditorWebsiteSection(id, payload)
-      onChange(sections.map(s => s.id === id ? updated : s))
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update section')
+      await onToggleSection(s.id, !s.is_enabled)
     } finally {
       setBusyId(null)
-    }
-  }
-
-  async function remove(id: number) {
-    if (!confirm('Remove this section?')) return
-    setBusyId(id); setError(null)
-    try {
-      const res = await deleteEditorWebsiteSection(id)
-      if ('deleted' in res && res.deleted) {
-        onChange(sections.filter(s => s.id !== id))
-      } else if ('id' in res) {
-        onChange(sections.map(s => s.id === id ? res : s))
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to remove section')
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  async function move(id: number, dir: 'up' | 'down') {
-    const i = sorted.findIndex(s => s.id === id)
-    if (i < 0) return
-    const j = dir === 'up' ? i - 1 : i + 1
-    if (j < 0 || j >= sorted.length) return
-    const a = sorted[i], b = sorted[j]
-    if (a.is_locked || b.is_locked) return
-    // Swap sort_order
-    setBusyId(id); setError(null)
-    try {
-      const [updA, updB] = await Promise.all([
-        updateEditorWebsiteSection(a.id, { sort_order: b.sort_order }),
-        updateEditorWebsiteSection(b.id, { sort_order: a.sort_order }),
-      ])
-      onChange(sections.map(s => s.id === updA.id ? updA : s.id === updB.id ? updB : s))
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to reorder')
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  async function addCustom(payload: WebsiteSectionCreatePayload) {
-    setError(null)
-    try {
-      const created = await createEditorWebsiteSection(payload)
-      onChange([...sections, created])
-      setShowAdd(false)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to add section')
     }
   }
 
   return (
-    <div className="space-y-3 max-w-3xl">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs text-muted-text">
-          Sections appear in this order on your public site. Locked sections stay visible.
+    <div className="space-y-5">
+
+      {/* Template + status */}
+      <Panel
+        title={templateSlug === 'thefaderoom' ? 'The Fade Room' : templateSlug}
+        subtitle="Current template"
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-transparent bg-blush text-[rgba(18,18,18,0.7)] px-1.5 py-0.5">
+            Active
+          </span>
+          <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.12)] bg-white text-near-black px-1.5 py-0.5">
+            {enabledCount} sections visible
+          </span>
+          <span className="text-xs text-muted-text font-mono">{templateSlug}</span>
+        </div>
+        <p className="text-xs text-muted-text leading-relaxed">
+          Changing templates keeps your business info, services, bookings, staff,
+          customers, availability, and policies. Template-specific settings may reset.
         </p>
         <button
-          onClick={() => setShowAdd(true)}
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 flex-shrink-0"
+          disabled
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.12)] bg-cream text-muted-text px-3 py-2 cursor-not-allowed"
         >
-          <Plus size={12} /> Add Section
+          Change Template — coming soon
         </button>
-      </div>
+      </Panel>
 
-      {error && (
-        <div className="bg-white border border-red-200 text-red-700 text-xs p-3">{error}</div>
-      )}
-
-      <div className="space-y-2">
-        {sorted.map((s, i) => {
-          const Icon  = SECTION_ICONS[s.section_type] ?? FileText
-          const isFirst = i === 0 || sorted[i - 1].is_locked
-          const isLast  = i === sorted.length - 1 || sorted[i + 1].is_locked
-          const busy = busyId === s.id
-
-          return (
-            <div
-              key={s.id}
-              className={cn(
-                'bg-white border p-3.5 flex items-center gap-3',
-                s.is_enabled ? 'border-[rgba(18,18,18,0.10)]' : 'border-[rgba(18,18,18,0.06)] opacity-70',
-              )}
-            >
-              <div className="w-9 h-9 flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-cream flex-shrink-0">
+      {/* Quick links */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {QUICK_LINKS.map(({ tab, label, icon: Icon, hint }) => (
+          <button
+            key={tab}
+            onClick={() => onGoToTab(tab)}
+            className="text-left bg-white border border-[rgba(18,18,18,0.10)] p-4 hover:border-near-black transition-colors flex items-start justify-between gap-3"
+          >
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="w-8 h-8 flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-cream flex-shrink-0">
                 <Icon size={14} className="text-near-black" strokeWidth={1.7} />
               </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-near-black">{label}</p>
+                <p className="text-[11px] text-muted-text mt-0.5">{hint}</p>
+              </div>
+            </div>
+            <ChevronRight size={14} className="text-muted-text flex-shrink-0 mt-1" />
+          </button>
+        ))}
+      </div>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-semibold text-near-black truncate">
-                    {s.title ?? s.section_key}
-                  </span>
+      {/* Section visibility controller */}
+      <Panel
+        title="Section visibility"
+        subtitle="Show or hide sections on your public site. Locked sections always stay visible."
+      >
+        <div className="space-y-1.5">
+          {sorted.map(s => {
+            const Icon = SECTION_ICONS[s.section_type] ?? FileText
+            const label = s.title ?? SECTION_LABEL_FOR_KEY[s.section_key] ?? s.section_key
+            const busy = busyId === s.id
+            return (
+              <div
+                key={s.id}
+                className={cn(
+                  'flex items-center justify-between gap-3 border px-3 py-2.5',
+                  s.is_enabled
+                    ? 'border-[rgba(18,18,18,0.10)] bg-white'
+                    : 'border-[rgba(18,18,18,0.06)] bg-white opacity-70',
+                )}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Icon size={14} className="text-near-black flex-shrink-0" strokeWidth={1.7} />
+                  <span className="text-sm text-near-black truncate">{label}</span>
                   {s.is_locked && (
-                    <span className="inline-flex items-center gap-1 text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.15)] bg-cream text-[rgba(18,18,18,0.7)] px-1.5 py-0.5">
+                    <span className="inline-flex items-center gap-1 text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.15)] bg-cream text-[rgba(18,18,18,0.7)] px-1.5 py-0.5 flex-shrink-0">
                       <Lock size={9} /> Locked
                     </span>
                   )}
-                  {!s.is_enabled && (
-                    <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-transparent bg-lavender text-[rgba(18,18,18,0.6)] px-1.5 py-0.5">
-                      Hidden
-                    </span>
-                  )}
                 </div>
-                <p className="text-[11px] text-muted-text mt-0.5 font-mono">{s.section_type}</p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {!s.is_locked && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => move(s.id, 'up')}
-                      disabled={busy || isFirst}
-                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black disabled:opacity-30 hover:border-near-black"
-                      title="Move up"
-                    >
-                      <ArrowUp size={12} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => move(s.id, 'down')}
-                      disabled={busy || isLast}
-                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black disabled:opacity-30 hover:border-near-black"
-                      title="Move down"
-                    >
-                      <ArrowDown size={12} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => patch(s.id, { is_enabled: !s.is_enabled })}
-                      disabled={busy}
-                      className={cn(
-                        'h-7 px-2 inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.06em] uppercase border',
-                        s.is_enabled
-                          ? 'border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black'
-                          : 'border-near-black bg-near-black text-white',
-                      )}
-                      title={s.is_enabled ? 'Hide section' : 'Show section'}
-                    >
-                      <Eye size={11} /> {s.is_enabled ? 'Hide' : 'Show'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => remove(s.id)}
-                      disabled={busy}
-                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600 disabled:opacity-30"
-                      title="Remove"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </>
+                {s.is_locked ? (
+                  <span className="text-[10px] uppercase tracking-[0.08em] text-muted-text font-semibold">Always on</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => toggle(s)}
+                    disabled={busy}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.06em] uppercase border px-2 py-1.5 flex-shrink-0',
+                      s.is_enabled
+                        ? 'bg-white border-[rgba(18,18,18,0.15)] text-near-black hover:border-near-black'
+                        : 'bg-near-black border-near-black text-white',
+                    )}
+                  >
+                    {s.is_enabled ? <><Eye size={11} /> Visible</> : <><EyeOff size={11} /> Hidden</>}
+                  </button>
                 )}
               </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      </Panel>
 
-      {showAdd && (
-        <AddSectionDialog
-          onClose={() => setShowAdd(false)}
-          onSubmit={addCustom}
-        />
+      {/* Core data hints */}
+      <Panel
+        title="Core data lives in Bookings & Business"
+        subtitle="These editors are separate from website settings — change them once and they update everywhere."
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <CoreLink href="/editor/business"  label="Business Info" hint="Name, tagline, contact, address" />
+          <CoreLink href="/editor/policies"  label="Policies"      hint="Cancellation, deposits, no-show" />
+          <CoreLink href="/editor/services"  label="Services"      hint="Lives under Bookings" />
+          <CoreLink href="/editor/availability" label="Availability" hint="Lives under Bookings" />
+        </div>
+      </Panel>
+
+      {publicUrl && (
+        <Panel title="Public site" subtitle="Your live website URL.">
+          <p className="text-sm font-mono text-near-black break-all">{publicUrl}</p>
+        </Panel>
       )}
     </div>
   )
 }
 
-// ── Add custom section dialog ────────────────────────────────────────────────
+function CoreLink({ href, label, hint }: { href: string; label: string; hint: string }) {
+  return (
+    <Link
+      href={href}
+      className="bg-white border border-[rgba(18,18,18,0.10)] p-3 hover:border-near-black flex items-center justify-between gap-2"
+    >
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-near-black truncate">{label}</p>
+        <p className="text-[11px] text-muted-text">{hint}</p>
+      </div>
+      <ChevronRight size={14} className="text-muted-text flex-shrink-0" />
+    </Link>
+  )
+}
 
-function AddSectionDialog({
-  onClose,
-  onSubmit,
+// ── Header / Hero ────────────────────────────────────────────────────────────
+
+function HeaderPanel({
+  settings, onSave,
 }: {
-  onClose: () => void
-  onSubmit: (p: WebsiteSectionCreatePayload) => void | Promise<void>
+  settings: TemplateSettings
+  onSave: (p: Partial<TemplateSettings>) => Promise<void>
 }) {
-  const [type, setType]       = useState<'text_block' | 'instructions' | 'announcement'>('text_block')
-  const [title, setTitle]     = useState('')
-  const [subtitle, setSub]    = useState('')
-  const [body, setBody]       = useState('')
-  const [saving, setSaving]   = useState(false)
-  const [error, setError]     = useState<string | null>(null)
+  const form = useSettingsForm<TemplateHeaderSettings>(
+    settings.header,
+    async (next) => { await onSave({ header: next }) },
+  )
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    setSaving(true); setError(null)
-    let content_json: Record<string, unknown> | null = null
-    if (type === 'text_block' || type === 'announcement') {
-      content_json = { body: body.trim() }
-    } else {
-      // Single-item starter; user can edit later (later iteration)
-      content_json = { items: body.trim() ? [{ title: title.trim() || 'Step', body: body.trim() }] : [] }
-    }
-    try {
-      await onSubmit({
-        section_type: type,
-        title:        title.trim() || null,
-        subtitle:     subtitle.trim() || null,
-        content_json,
-      })
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to add')
-    } finally {
-      setSaving(false)
-    }
+  return (
+    <Panel
+      title="Header / Hero"
+      subtitle="The top of your public website — announcement, cover, business identity, and contact buttons."
+    >
+      {/* Announcement */}
+      <div className="space-y-2.5">
+        <TextField
+          label="Announcement bar text"
+          value={form.value.announcement_text ?? ''}
+          onChange={v => form.patch({ announcement_text: v })}
+          placeholder="Now booking for the season — limited weekend slots."
+          maxLength={200}
+        />
+        <ToggleRow
+          label="Show announcement bar"
+          icon={Megaphone}
+          on={form.value.show_announcement ?? true}
+          onToggle={() => form.patch({ show_announcement: !(form.value.show_announcement ?? true) })}
+        />
+      </div>
+
+      {/* Images */}
+      <div className="space-y-2.5 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+        <TextField
+          label="Cover image URL"
+          value={form.value.cover_image_url ?? ''}
+          onChange={v => form.patch({ cover_image_url: v || null })}
+          placeholder="https://…"
+          disabledHint="Uploads coming soon — for now, paste a hosted image URL."
+        />
+        <TextField
+          label="Avatar / logo image URL"
+          value={form.value.avatar_image_url ?? ''}
+          onChange={v => form.patch({ avatar_image_url: v || null })}
+          placeholder="https://…"
+          disabledHint="Uploads coming soon — for now, paste a hosted image URL."
+        />
+      </div>
+
+      {/* Identity */}
+      <div className="space-y-2.5 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+        <div className="bg-cream border border-[rgba(18,18,18,0.08)] px-3 py-2.5 flex items-start gap-2">
+          <Info size={13} className="text-muted-text flex-shrink-0 mt-0.5" />
+          <p className="text-[11px] text-muted-text leading-relaxed">
+            Business name comes from your{' '}
+            <Link href="/editor/business" className="text-near-black font-semibold underline">Business Info</Link>.
+            The tagline below overrides the displayed subtext on this template.
+          </p>
+        </div>
+        <TextField
+          label="Tagline / subtext"
+          value={form.value.tagline}
+          onChange={v => form.patch({ tagline: v })}
+          placeholder="Sharp cuts. Smooth booking."
+          maxLength={120}
+        />
+      </div>
+
+      {/* Header buttons */}
+      <div className="space-y-1.5 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1">
+          Header buttons
+        </p>
+        <ToggleRow label="Show Book button"       icon={Heart}     on={form.value.show_book_button}       onToggle={() => form.patch({ show_book_button: !form.value.show_book_button })} />
+        <ToggleRow label="Show Call button"       icon={Phone}     on={form.value.show_call_button}       onToggle={() => form.patch({ show_call_button: !form.value.show_call_button })} />
+        <ToggleRow label="Show Email button"      icon={Mail}      on={form.value.show_email_button}      onToggle={() => form.patch({ show_email_button: !form.value.show_email_button })} />
+        <ToggleRow label="Show Instagram button"  icon={Instagram} on={form.value.show_instagram_button}  onToggle={() => form.patch({ show_instagram_button: !form.value.show_instagram_button })} />
+        <ToggleRow label="Show Directions button" icon={MapPin}    on={form.value.show_directions_button} onToggle={() => form.patch({ show_directions_button: !form.value.show_directions_button })} />
+      </div>
+
+      <SaveBar
+        dirty={form.dirty} saving={form.saving} saved={form.saved}
+        error={form.error} onSave={form.doSave}
+      />
+    </Panel>
+  )
+}
+
+// ── Content / Tabs ───────────────────────────────────────────────────────────
+
+const TAB_LABEL_FIELDS: { key: keyof TemplateSettings['tabs']; sectionKey: string; label: string }[] = [
+  { key: 'book_label',               sectionKey: 'book',               label: 'Book tab' },
+  { key: 'gallery_label',            sectionKey: 'gallery',            label: 'Gallery tab' },
+  { key: 'policy_label',             sectionKey: 'policy',             label: 'Policy tab' },
+  { key: 'about_label',              sectionKey: 'about',              label: 'About tab' },
+  { key: 'results_label',            sectionKey: 'before_after',       label: 'Before & After tab' },
+  { key: 'steps_label',              sectionKey: 'steps',              label: 'Steps tab' },
+  { key: 'before_appointment_label', sectionKey: 'before_appointment', label: 'Before Your Appointment tab' },
+]
+
+function ContentTabsPanel({
+  settings, sections, onSaveSettings, onToggleSection,
+}: {
+  settings: TemplateSettings
+  sections: WebsiteSection[]
+  onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
+  onToggleSection: (id: number, enabled: boolean) => Promise<void>
+}) {
+  const form = useSettingsForm<TemplateSettings['tabs']>(
+    settings.tabs,
+    async (next) => { await onSaveSettings({ tabs: next }) },
+  )
+
+  const sectionByKey = useMemo(() => {
+    const m: Record<string, WebsiteSection> = {}
+    for (const s of sections) m[s.section_key] = s
+    return m
+  }, [sections])
+
+  const [busyId, setBusyId] = useState<number | null>(null)
+
+  async function toggle(s: WebsiteSection | undefined) {
+    if (!s || s.is_locked) return
+    setBusyId(s.id)
+    try { await onToggleSection(s.id, !s.is_enabled) }
+    finally { setBusyId(null) }
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-md border border-[rgba(18,18,18,0.15)]">
-        <div className="flex items-center justify-between border-b border-[rgba(18,18,18,0.10)] px-4 py-3">
-          <h3 className="text-sm font-bold text-near-black">Add Section</h3>
-          <button onClick={onClose} className="text-muted-text hover:text-near-black">
-            <X size={16} />
-          </button>
+    <div className="space-y-5">
+      <Panel
+        title="Content / Tabs"
+        subtitle="Rename the tabs your visitors see and choose which sections appear. Booking is always visible."
+      >
+        <div className="space-y-3">
+          {TAB_LABEL_FIELDS.map(({ key, sectionKey, label }) => {
+            const section = sectionByKey[sectionKey]
+            const locked  = !!section?.is_locked || sectionKey === 'book'
+            const visible = section ? section.is_enabled : true
+            const busy    = section && busyId === section.id
+            return (
+              <div key={String(key)} className="border border-[rgba(18,18,18,0.08)] p-3 space-y-2.5 bg-white">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+                    {label}
+                  </span>
+                  {locked ? (
+                    <span className="inline-flex items-center gap-1 text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.15)] bg-cream text-[rgba(18,18,18,0.7)] px-1.5 py-0.5">
+                      <Lock size={9} /> Always on
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => toggle(section)}
+                      disabled={!section || busy}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.06em] uppercase border px-2 py-1',
+                        visible
+                          ? 'bg-white border-[rgba(18,18,18,0.15)] text-near-black hover:border-near-black'
+                          : 'bg-near-black border-near-black text-white',
+                      )}
+                    >
+                      {visible ? <><Eye size={11} /> Visible</> : <><EyeOff size={11} /> Hidden</>}
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  value={form.value[key] ?? ''}
+                  onChange={e => form.patch({ [key]: e.target.value } as Partial<TemplateSettings['tabs']>)}
+                  maxLength={40}
+                  className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+                />
+              </div>
+            )
+          })}
         </div>
 
-        <form onSubmit={submit} className="p-4 space-y-3">
-          <div>
-            <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
-              Section type
-            </span>
-            <div className="mt-1.5 space-y-1.5">
-              {CUSTOM_TYPE_OPTIONS.map(opt => (
-                <label key={opt.value} className={cn(
-                  'flex items-start gap-2 border p-2.5 cursor-pointer',
-                  type === opt.value
-                    ? 'border-near-black bg-cream'
-                    : 'border-[rgba(18,18,18,0.10)]',
-                )}>
-                  <input
-                    type="radio"
-                    checked={type === opt.value}
-                    onChange={() => setType(opt.value)}
-                    className="mt-0.5"
-                  />
-                  <div>
-                    <span className="text-xs font-semibold text-near-black">{opt.label}</span>
-                    <p className="text-[11px] text-muted-text">{opt.description}</p>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
+        <SaveBar
+          dirty={form.dirty} saving={form.saving} saved={form.saved}
+          error={form.error} onSave={form.doSave}
+        />
+      </Panel>
 
-          <label className="block">
-            <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Title</span>
-            <input
-              type="text" value={title} onChange={e => setTitle(e.target.value)}
-              maxLength={120}
-              className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
-            />
-          </label>
+      <Panel
+        title="Steps content"
+        subtitle="Card-style instructions shown on the Steps tab."
+      >
+        <ItemsSummary
+          items={settings.steps?.items ?? []}
+          empty="No steps yet."
+        />
+        <p className="text-[11px] text-muted-text">
+          Inline item editor coming soon. The Fade Room template ships with
+          sensible defaults until then.
+        </p>
+      </Panel>
 
-          <label className="block">
-            <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Subtitle (optional)</span>
-            <input
-              type="text" value={subtitle} onChange={e => setSub(e.target.value)}
-              maxLength={200}
-              className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
-              {type === 'instructions' ? 'First step body' : 'Body'}
-            </span>
-            <textarea
-              value={body} onChange={e => setBody(e.target.value)}
-              rows={4}
-              className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black resize-y"
-            />
-          </label>
-
-          {error && <p className="text-xs text-red-700">{error}</p>}
-
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <button
-              type="button" onClick={onClose}
-              className="text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2"
-            >Cancel</button>
-            <button
-              type="submit" disabled={saving}
-              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 disabled:opacity-60"
-            >
-              {saving ? <Loader2 size={11} className="animate-spin" /> : <Plus size={12} />}
-              Add Section
-            </button>
-          </div>
-        </form>
-      </div>
+      <Panel
+        title="Before Your Appointment content"
+        subtitle="Numbered timeline shown on the Before Your Appointment tab."
+      >
+        <ItemsSummary
+          items={settings.before_appointment?.items ?? []}
+          empty="No items yet."
+        />
+        <p className="text-[11px] text-muted-text">
+          Inline item editor coming soon. The Fade Room template ships with
+          sensible defaults until then.
+        </p>
+      </Panel>
     </div>
+  )
+}
+
+function ItemsSummary({ items, empty }: { items: { title: string; body: string }[]; empty: string }) {
+  if (items.length === 0) return <p className="text-xs text-muted-text">{empty}</p>
+  return (
+    <ol className="space-y-1.5">
+      {items.map((it, i) => (
+        <li key={i} className="border border-[rgba(18,18,18,0.08)] px-3 py-2">
+          <p className="text-sm font-semibold text-near-black">{i + 1}. {it.title}</p>
+          <p className="text-xs text-muted-text mt-0.5 line-clamp-2">{it.body}</p>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+// ── Additionals ──────────────────────────────────────────────────────────────
+
+function AdditionalsPanel({
+  settings, onSave,
+}: {
+  settings: TemplateSettings
+  onSave: (p: Partial<TemplateSettings>) => Promise<void>
+}) {
+  const initial: TemplateAdditionalsSettings = {
+    show_thank_you:  settings.additionals?.show_thank_you  ?? true,
+    thank_you_title: settings.additionals?.thank_you_title ?? 'Thank you for choosing us',
+    thank_you_body:  settings.additionals?.thank_you_body  ?? '',
+  }
+  const form = useSettingsForm<TemplateAdditionalsSettings>(
+    initial,
+    async (next) => { await onSave({ additionals: next }) },
+  )
+
+  return (
+    <div className="space-y-5">
+      <Panel
+        title="Thank you section"
+        subtitle="A short closing note shown near the bottom of your public site."
+      >
+        <ToggleRow
+          label="Show Thank You section"
+          icon={MessageSquare}
+          on={form.value.show_thank_you ?? true}
+          onToggle={() => form.patch({ show_thank_you: !(form.value.show_thank_you ?? true) })}
+        />
+        <TextField
+          label="Title"
+          value={form.value.thank_you_title ?? ''}
+          onChange={v => form.patch({ thank_you_title: v })}
+          placeholder="Thank you for choosing us"
+          maxLength={120}
+        />
+        <TextareaField
+          label="Body (optional)"
+          value={form.value.thank_you_body ?? ''}
+          onChange={v => form.patch({ thank_you_body: v || null })}
+          placeholder="A short note your visitors will see at the end of the page."
+          rows={3}
+          maxLength={400}
+        />
+        <SaveBar
+          dirty={form.dirty} saving={form.saving} saved={form.saved}
+          error={form.error} onSave={form.doSave}
+        />
+      </Panel>
+
+      <Panel
+        title="Add an extra section"
+        subtitle="Custom blocks like care guides, parking info, or new-client info."
+      >
+        <div className="bg-cream border border-[rgba(18,18,18,0.08)] p-4 flex items-start gap-2">
+          <Info size={14} className="text-muted-text mt-0.5" />
+          <div className="text-xs text-muted-text leading-relaxed">
+            Custom section editor is coming next. The backend already supports
+            text blocks, instructions, and announcements — the inline UI lands
+            in the next iteration.
+          </div>
+        </div>
+        <button
+          disabled
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.12)] bg-cream text-muted-text px-3 py-2 cursor-not-allowed"
+        >
+          <Plus size={12} /> Add Section — coming soon
+        </button>
+      </Panel>
+    </div>
+  )
+}
+
+// ── Footer ───────────────────────────────────────────────────────────────────
+
+function FooterPanel({
+  settings, onSave,
+}: {
+  settings: TemplateSettings
+  onSave: (p: Partial<TemplateSettings>) => Promise<void>
+}) {
+  const initial: TemplateFooterSettings = {
+    business_name_override: settings.footer.business_name_override ?? null,
+    subtext:                settings.footer.subtext                ?? '',
+    show_hours:             settings.footer.show_hours             ?? true,
+    show_quick_book:        settings.footer.show_quick_book        ?? true,
+    show_contact_links:     settings.footer.show_contact_links     ?? true,
+    show_powered_by:        settings.footer.show_powered_by,
+  }
+  const form = useSettingsForm<TemplateFooterSettings>(
+    initial,
+    async (next) => { await onSave({ footer: next }) },
+  )
+
+  return (
+    <Panel
+      title="Footer"
+      subtitle="The bottom of your public site — name, links, hours, and the BookReady badge."
+    >
+      <div className="bg-cream border border-[rgba(18,18,18,0.08)] px-3 py-2.5 flex items-start gap-2">
+        <Info size={13} className="text-muted-text flex-shrink-0 mt-0.5" />
+        <p className="text-[11px] text-muted-text leading-relaxed">
+          Phone, email, address, and hours come from{' '}
+          <Link href="/editor/business" className="text-near-black font-semibold underline">Business Info</Link>
+          {' '}and Bookings. Toggle below to choose what shows in the footer.
+        </p>
+      </div>
+
+      <TextField
+        label="Footer business name override (optional)"
+        value={form.value.business_name_override ?? ''}
+        onChange={v => form.patch({ business_name_override: v || null })}
+        placeholder="Leave blank to use Business Info name"
+        maxLength={120}
+      />
+
+      <TextareaField
+        label="Footer subtext"
+        value={form.value.subtext ?? ''}
+        onChange={v => form.patch({ subtext: v || null })}
+        placeholder="Booking by appointment. Walk-ins welcome when available."
+        rows={2}
+        maxLength={240}
+      />
+
+      <div className="space-y-1.5 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+        <ToggleRow label="Show contact links" on={form.value.show_contact_links ?? true} onToggle={() => form.patch({ show_contact_links: !(form.value.show_contact_links ?? true) })} />
+        <ToggleRow label="Show hours"         on={form.value.show_hours         ?? true} onToggle={() => form.patch({ show_hours:         !(form.value.show_hours         ?? true) })} />
+        <ToggleRow label="Show Quick Book"    on={form.value.show_quick_book    ?? true} onToggle={() => form.patch({ show_quick_book:    !(form.value.show_quick_book    ?? true) })} />
+        <ToggleRow label="Show Powered by BookReady" on={form.value.show_powered_by}     onToggle={() => form.patch({ show_powered_by:    !form.value.show_powered_by })} />
+      </div>
+
+      <SaveBar
+        dirty={form.dirty} saving={form.saving} saved={form.saved}
+        error={form.error} onSave={form.doSave}
+      />
+    </Panel>
   )
 }
 
@@ -735,42 +1022,45 @@ function AddSectionDialog({
 function PreviewPanel({ url }: { url: string }) {
   const [mode, setMode] = useState<'mobile' | 'desktop'>('mobile')
   if (!url) {
-    return <p className="text-sm text-muted-text">Sign in to preview your site.</p>
+    return (
+      <Panel title="Preview" subtitle="Sign in to preview your site.">
+        <div />
+      </Panel>
+    )
   }
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-1.5">
-        <button
-          onClick={() => setMode('mobile')}
-          className={cn(
-            'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase px-2.5 py-1.5 border',
-            mode === 'mobile'
-              ? 'bg-near-black text-white border-near-black'
-              : 'bg-white text-near-black border-[rgba(18,18,18,0.15)]',
-          )}
-        >
-          <Smartphone size={12} /> Mobile
-        </button>
-        <button
-          onClick={() => setMode('desktop')}
-          className={cn(
-            'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase px-2.5 py-1.5 border',
-            mode === 'desktop'
-              ? 'bg-near-black text-white border-near-black'
-              : 'bg-white text-near-black border-[rgba(18,18,18,0.15)]',
-          )}
-        >
-          <Monitor size={12} /> Desktop
-        </button>
+    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-3 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">Preview</p>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setMode('mobile')}
+            className={cn(
+              'inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.08em] uppercase px-2 py-1 border',
+              mode === 'mobile' ? 'bg-near-black text-white border-near-black' : 'bg-white text-near-black border-[rgba(18,18,18,0.15)]',
+            )}
+          >
+            <Smartphone size={11} /> Mobile
+          </button>
+          <button
+            onClick={() => setMode('desktop')}
+            className={cn(
+              'inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.08em] uppercase px-2 py-1 border',
+              mode === 'desktop' ? 'bg-near-black text-white border-near-black' : 'bg-white text-near-black border-[rgba(18,18,18,0.15)]',
+            )}
+          >
+            <Monitor size={11} /> Desktop
+          </button>
+        </div>
       </div>
-
-      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4 flex justify-center">
+      <div className="flex justify-center bg-cream p-2 border border-[rgba(18,18,18,0.06)]">
         <iframe
+          key={mode}
           src={url}
           title="Public site preview"
           className={cn(
             'bg-white border border-[rgba(18,18,18,0.10)]',
-            mode === 'mobile' ? 'w-[390px] h-[720px]' : 'w-full max-w-[1180px] h-[720px]',
+            mode === 'mobile' ? 'w-[360px] h-[640px]' : 'w-full h-[640px]',
           )}
         />
       </div>

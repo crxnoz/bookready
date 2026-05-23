@@ -62,6 +62,10 @@ const FALLBACK_HEADER_SETTINGS = {
   show_email_button: true,
   show_instagram_button: true,
   show_directions_button: true,
+  announcement_text: 'Now booking for the season — limited weekend slots.',
+  show_announcement: true,
+  cover_image_url: null as string | null,
+  avatar_image_url: null as string | null,
 }
 const FALLBACK_TAB_LABELS = {
   book_label: 'Book',
@@ -138,12 +142,22 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
       <div className="tfr-template">
 
         {/* ── Announcement bar ── */}
-        <div className="tfr-announce" aria-hidden="true">
-          <div className="tfr-announce-track">
-            <AnnounceMsgs tagline={p?.tagline} name={displayName} />
-            <AnnounceMsgs tagline={p?.tagline} name={displayName} />
+        {(header.show_announcement ?? true) && (
+          <div className="tfr-announce" aria-hidden="true">
+            <div className="tfr-announce-track">
+              <AnnounceMsgs
+                tagline={p?.tagline}
+                name={displayName}
+                custom={header.announcement_text ?? null}
+              />
+              <AnnounceMsgs
+                tagline={p?.tagline}
+                name={displayName}
+                custom={header.announcement_text ?? null}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ── Header ── */}
         <section className="tfr-header-section">
@@ -152,6 +166,10 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
           <span className="tfr-floating-heart tfr-fh-3" aria-hidden="true"><Heart size={12} /></span>
 
           <div className="tfr-header-cover">
+            {header.cover_image_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={header.cover_image_url} alt="" />
+            )}
             <div className="tfr-cover-veil" aria-hidden="true" />
             <div className="tfr-cover-heart" aria-hidden="true"><Heart size={22} fill="currentColor" /></div>
           </div>
@@ -159,7 +177,12 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
           <div className="tfr-header-avatar">
             <span className="tfr-avatar-ring" aria-hidden="true" />
             <span className="tfr-avatar-heart" aria-hidden="true"><Heart size={14} fill="currentColor" /></span>
-            <div className="tfr-avatar-initials">{initials(displayName)}</div>
+            {header.avatar_image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={header.avatar_image_url} alt={displayName} />
+            ) : (
+              <div className="tfr-avatar-initials">{initials(displayName)}</div>
+            )}
           </div>
 
           <div className="tfr-header-content">
@@ -295,26 +318,44 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
         </section>
 
         {/* ── Thanks outro ── */}
-        <section className="tfr-thanks-section" aria-label="Thank you">
-          <div className="tfr-thanks-inner">
-            <span className="tfr-thanks-eyebrow">From us, with love</span>
-            <h2>Thank you<br />for choosing <em>{displayName}</em></h2>
-            <div className="tfr-thanks-sig">
-              <span className="tfr-thanks-line" />
-              <em>{displayName.split(' ')[0]}</em>
-              <span className="tfr-thanks-line" />
+        {(site.template?.settings.additionals?.show_thank_you ?? true) && (
+          <section className="tfr-thanks-section" aria-label="Thank you">
+            <div className="tfr-thanks-inner">
+              <span className="tfr-thanks-eyebrow">From us, with love</span>
+              {site.template?.settings.additionals?.thank_you_title
+                ? <h2>{site.template.settings.additionals.thank_you_title}</h2>
+                : <h2>Thank you<br />for choosing <em>{displayName}</em></h2>
+              }
+              {site.template?.settings.additionals?.thank_you_body && (
+                <p style={{
+                  fontFamily: 'var(--tfr-serif)', fontSize: 16,
+                  lineHeight: 1.55, color: 'rgba(255,255,255,0.78)',
+                  maxWidth: 540, margin: 0,
+                }}>
+                  {site.template.settings.additionals.thank_you_body}
+                </p>
+              )}
+              <div className="tfr-thanks-sig">
+                <span className="tfr-thanks-line" />
+                <em>{displayName.split(' ')[0]}</em>
+                <span className="tfr-thanks-line" />
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* ── Footer ── */}
         <Footer
           profile={p}
           hours={hours}
-          displayName={displayName}
+          displayName={footerSettings.business_name_override?.trim() || displayName}
           address={address}
           onBook={goBook}
           showPoweredBy={footerSettings.show_powered_by}
+          subtext={footerSettings.subtext ?? null}
+          showHours={footerSettings.show_hours ?? true}
+          showQuickBook={footerSettings.show_quick_book ?? true}
+          showContactLinks={footerSettings.show_contact_links ?? true}
         />
 
       </div>
@@ -324,14 +365,22 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
 
 // ── Announcement bar ──────────────────────────────────────────────────────────
 
-function AnnounceMsgs({ tagline, name }: { tagline?: string | null; name: string }) {
-  const msgs = [
-    tagline ?? name,
-    'Book your appointment online',
-    'Now accepting new clients',
-    'Walk-ins welcome — call ahead',
-    name,
-  ]
+function AnnounceMsgs({
+  tagline, name, custom,
+}: {
+  tagline?: string | null
+  name: string
+  custom?: string | null
+}) {
+  const msgs = custom && custom.trim().length > 0
+    ? [custom, name, custom, tagline ?? name]
+    : [
+        tagline ?? name,
+        'Book your appointment online',
+        'Now accepting new clients',
+        'Walk-ins welcome — call ahead',
+        name,
+      ]
   return (
     <>
       {msgs.flatMap((msg, i) => [
@@ -605,6 +654,10 @@ function Footer({
   address,
   onBook,
   showPoweredBy = true,
+  subtext = null,
+  showHours = true,
+  showQuickBook = true,
+  showContactLinks = true,
 }: {
   profile: Profile | null
   hours: PublicSite['hours']
@@ -612,10 +665,17 @@ function Footer({
   address: string
   onBook: () => void
   showPoweredBy?: boolean
+  subtext?: string | null
+  showHours?: boolean
+  showQuickBook?: boolean
+  showContactLinks?: boolean
 }) {
   const sorted = hours
     ? [...hours.filter(h => h.day_of_week !== 0), ...hours.filter(h => h.day_of_week === 0)]
     : []
+  const blurb = subtext && subtext.trim().length > 0
+    ? subtext
+    : 'Booking by appointment. Walk-ins welcome when available.'
 
   return (
     <footer className="tfr-footer">
@@ -625,10 +685,10 @@ function Footer({
         <div className="tfr-footer-brand">
           <span className="tfr-footer-mark">{displayName}</span>
           {p?.tagline && <p className="tfr-footer-tag">{p.tagline}</p>}
-          <p className="tfr-footer-blurb">Booking by appointment. Walk-ins welcome when available.</p>
+          <p className="tfr-footer-blurb">{blurb}</p>
         </div>
 
-        {(p?.public_phone || p?.public_email || address) && (
+        {showContactLinks && (p?.public_phone || p?.public_email || address) && (
           <div className="tfr-footer-col">
             <span className="tfr-footer-label">Contact</span>
             {p?.public_phone && (
@@ -654,7 +714,7 @@ function Footer({
           </div>
         )}
 
-        {sorted.length > 0 && (
+        {showHours && sorted.length > 0 && (
           <div className="tfr-footer-col">
             <span className="tfr-footer-label">Hours</span>
             {sorted.map(h => (
@@ -670,13 +730,15 @@ function Footer({
           </div>
         )}
 
-        <div className="tfr-footer-col">
-          <span className="tfr-footer-label">Quick Book</span>
-          <button className="tfr-header-btn tfr-header-btn-book" onClick={onBook}
-            style={{ minHeight: 44, borderRadius: 10, fontSize: 13 }}>
-            <CalendarCheck size={16} /><span>Book Now</span>
-          </button>
-        </div>
+        {showQuickBook && (
+          <div className="tfr-footer-col">
+            <span className="tfr-footer-label">Quick Book</span>
+            <button className="tfr-header-btn tfr-header-btn-book" onClick={onBook}
+              style={{ minHeight: 44, borderRadius: 10, fontSize: 13 }}>
+              <CalendarCheck size={16} /><span>Book Now</span>
+            </button>
+          </div>
+        )}
 
       </div>
       <div className="tfr-footer-bottom">

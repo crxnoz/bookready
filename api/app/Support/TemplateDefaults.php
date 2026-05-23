@@ -39,6 +39,10 @@ class TemplateDefaults
                 'show_email_button'       => true,
                 'show_instagram_button'   => true,
                 'show_directions_button'  => true,
+                'announcement_text'       => 'Now booking for the season — limited weekend slots.',
+                'show_announcement'       => true,
+                'cover_image_url'         => null,
+                'avatar_image_url'        => null,
             ],
             'tabs' => [
                 'book_label'               => 'Book',
@@ -67,8 +71,18 @@ class TemplateDefaults
                     ['title' => 'Confirm Your Service',   'body' => 'Review your booked service before arriving. If anything has changed, give us a call and we\'ll sort it out.'],
                 ],
             ],
+            'additionals' => [
+                'show_thank_you'   => true,
+                'thank_you_title'  => 'Thank you for choosing us',
+                'thank_you_body'   => null,
+            ],
             'footer' => [
-                'show_powered_by' => true,
+                'business_name_override' => null,
+                'subtext'                => 'Booking by appointment. Walk-ins welcome when available.',
+                'show_hours'             => true,
+                'show_quick_book'        => true,
+                'show_contact_links'     => true,
+                'show_powered_by'        => true,
             ],
         ];
     }
