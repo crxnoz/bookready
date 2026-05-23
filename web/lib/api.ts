@@ -85,7 +85,10 @@ export async function logout(): Promise<void> {
 // ── Public ────────────────────────────────────────────────────────────────────
 
 export async function getPublicSite(slug: string): Promise<PublicSite> {
-  return request<PublicSite>(`/public/sites/${slug}`)
+  // cache: 'no-store' so SSR always sees the latest template_settings + sections
+  // (the public/site route is force-dynamic but Next's fetch-level cache must
+  // also be disabled to actually re-fetch from the API on every request).
+  return request<PublicSite>(`/public/sites/${slug}`, { cache: 'no-store' })
 }
 
 export async function getPublicAvailability(
