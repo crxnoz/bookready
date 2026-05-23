@@ -107,12 +107,9 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
     }
   }
 
-  // Section title overrides via website_sections.title (when editor renamed them)
-  const titleByKey: Record<string, string> = {}
-  for (const s of sectionsList) {
-    if (s.title) titleByKey[s.section_key] = s.title
-  }
-
+  // Tab labels come from settings.tabs (edited in Website → Content & Tabs).
+  // website_sections.title is only used in the editor UI for the section list;
+  // it is intentionally NOT used to override the public-facing tab label here.
   const allTabs: { id: TabId; label: string; key: string }[] = [
     { id: 'book',      label: tabLabels.book_label,               key: 'book'               },
     { id: 'gallery',   label: tabLabels.gallery_label,            key: 'gallery'            },
@@ -123,10 +120,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
     { id: 'before',    label: tabLabels.before_appointment_label, key: 'before_appointment' },
   ]
 
-  // Apply title overrides + filter to enabled
-  const tabs = allTabs
-    .map(t => ({ ...t, label: titleByKey[t.key] ?? t.label }))
-    .filter(t => t.id === 'book' || enabledByTab[t.id])
+  const tabs = allTabs.filter(t => t.id === 'book' || enabledByTab[t.id])
 
   const [active, setActive] = useState<TabId>('book')
   const tabRailRef = useRef<HTMLDivElement>(null)
