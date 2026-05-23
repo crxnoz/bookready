@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import {
-  LayoutTemplate, FileText, Image as ImageIcon, Info, ListChecks,
+  FileText, Image as ImageIcon, Info, ListChecks,
   Eye, EyeOff, Lock, Plus, Smartphone, Monitor, ExternalLink, Copy,
   Check, Loader2, Heart, Phone, Mail, Instagram, MapPin, Sparkles,
   Megaphone, MessageSquare, ChevronRight, AlertCircle,
@@ -28,13 +29,11 @@ import { cn } from '@/lib/cn'
 
 type SubTab = 'overview' | 'header' | 'content' | 'additionals' | 'footer'
 
-const SUB_TABS: { id: SubTab; label: string; icon: React.ElementType }[] = [
-  { id: 'overview',    label: 'Overview',        icon: LayoutTemplate },
-  { id: 'header',      label: 'Header / Hero',   icon: Sparkles       },
-  { id: 'content',     label: 'Content / Tabs',  icon: ListChecks     },
-  { id: 'additionals', label: 'Additionals',     icon: Plus           },
-  { id: 'footer',      label: 'Footer',          icon: Info           },
-]
+const VALID_TABS: SubTab[] = ['overview', 'header', 'content', 'additionals', 'footer']
+
+function hrefFor(tab: SubTab): string {
+  return tab === 'overview' ? '/editor/website' : `/editor/website?tab=${tab}`
+}
 
 const SECTION_LABEL_FOR_KEY: Record<string, string> = {
   header:             'Header',
@@ -67,7 +66,11 @@ const SECTION_ICONS: Record<string, React.ElementType> = {
 // ── Root ─────────────────────────────────────────────────────────────────────
 
 export default function WebsiteHub() {
-  const [tab, setTab] = useState<SubTab>('overview')
+  const searchParams = useSearchParams()
+  const rawTab = searchParams?.get('tab') ?? 'overview'
+  const tab: SubTab = VALID_TABS.includes(rawTab as SubTab)
+    ? (rawTab as SubTab)
+    : 'overview'
 
   const [slug, setSlug]               = useState<string | null>(null)
   const [templateSlug, setTplSlug]    = useState<string>('thefaderoom')
@@ -132,68 +135,40 @@ export default function WebsiteHub() {
   return (
     <div className="flex flex-col min-h-full bg-cream">
 
-      {/* Topbar */}
-      <div className="flex items-center justify-between gap-4 border-b border-[rgba(18,18,18,0.10)] bg-white px-5 py-3.5 flex-shrink-0">
-        <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">
-          Website
-        </p>
-        {slug && (
-          <div className="flex items-center gap-2">
-            <CopyLinkButton url={publicUrl} />
-            <a
-              href={publicUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black border border-[rgba(18,18,18,0.15)] bg-white px-2.5 py-1.5 hover:border-near-black"
-            >
-              <ExternalLink size={12} /> View Site
-            </a>
-          </div>
-        )}
-      </div>
-
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-4 md:p-6 space-y-5">
+      <div className="flex-1">
+        <div className="px-4 md:px-8 py-6 max-w-[1440px] mx-auto w-full">
 
           {/* Page head */}
-          <div>
-            <h1 className="text-2xl font-bold text-near-black tracking-tight">Website</h1>
-            <p className="text-sm text-muted-text mt-0.5">
-              Manage your public website content, template sections, and preview.
-            </p>
+          <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold text-near-black tracking-tight">Website</h1>
+              <p className="text-sm text-muted-text mt-0.5">
+                Manage your public website content, template sections, and preview.
+              </p>
+              {slug && (
+                <p className="text-xs text-muted-text mt-1.5 font-mono">{slug}.{baseDomain}</p>
+              )}
+            </div>
             {slug && (
-              <p className="text-xs text-muted-text mt-1.5 font-mono">{slug}.{baseDomain}</p>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <CopyLinkButton url={publicUrl} />
+                <a
+                  href={publicUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black border border-[rgba(18,18,18,0.15)] bg-white px-2.5 py-1.5 hover:border-near-black"
+                >
+                  <ExternalLink size={12} /> View Site
+                </a>
+              </div>
             )}
           </div>
 
-          {/* Internal nav */}
-          <div className="flex gap-1 border-b border-[rgba(18,18,18,0.10)] overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-            {SUB_TABS.map(t => {
-              const Icon = t.icon
-              const active = tab === t.id
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => setTab(t.id)}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-2.5 text-[11px] font-semibold tracking-[0.06em] uppercase transition-colors flex-shrink-0',
-                    active
-                      ? 'text-near-black border-b-2 border-near-black -mb-px'
-                      : 'text-muted-text hover:text-near-black',
-                  )}
-                >
-                  <Icon size={13} strokeWidth={1.8} />
-                  {t.label}
-                </button>
-              )
-            })}
-          </div>
-
           {/* Editor + preview split */}
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_400px] gap-5">
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_440px] gap-6">
 
             {/* Editor */}
-            <div className="space-y-5">
+            <div className="space-y-5 min-w-0">
               {tab === 'overview' && (
                 <OverviewPanel
                   templateSlug={templateSlug}
@@ -201,7 +176,6 @@ export default function WebsiteHub() {
                   sections={sections}
                   publicUrl={publicUrl}
                   onToggleSection={toggleSection}
-                  onGoToTab={setTab}
                 />
               )}
 
@@ -227,8 +201,8 @@ export default function WebsiteHub() {
               )}
             </div>
 
-            {/* Preview — sticky on desktop */}
-            <div className="lg:sticky lg:top-4 lg:self-start">
+            {/* Preview — sticky on desktop, stacks below on mobile */}
+            <div className="xl:sticky xl:top-4 xl:self-start">
               <PreviewPanel url={publicUrl} />
             </div>
           </div>
@@ -469,14 +443,13 @@ function useSettingsForm<T extends object>(
 // ── Overview ─────────────────────────────────────────────────────────────────
 
 function OverviewPanel({
-  templateSlug, settings, sections, publicUrl, onToggleSection, onGoToTab,
+  templateSlug, settings, sections, publicUrl, onToggleSection,
 }: {
   templateSlug: string
   settings: TemplateSettings
   sections: WebsiteSection[]
   publicUrl: string
   onToggleSection: (id: number, enabled: boolean) => Promise<void>
-  onGoToTab: (t: SubTab) => void
 }) {
   const sorted = useMemo(
     () => [...sections].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id),
@@ -535,9 +508,10 @@ function OverviewPanel({
       {/* Quick links */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {QUICK_LINKS.map(({ tab, label, icon: Icon, hint }) => (
-          <button
+          <Link
             key={tab}
-            onClick={() => onGoToTab(tab)}
+            href={hrefFor(tab)}
+            scroll={false}
             className="text-left bg-white border border-[rgba(18,18,18,0.10)] p-4 hover:border-near-black transition-colors flex items-start justify-between gap-3"
           >
             <div className="flex items-start gap-3 min-w-0">
@@ -550,7 +524,7 @@ function OverviewPanel({
               </div>
             </div>
             <ChevronRight size={14} className="text-muted-text flex-shrink-0 mt-1" />
-          </button>
+          </Link>
         ))}
       </div>
 
