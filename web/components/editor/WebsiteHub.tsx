@@ -139,7 +139,7 @@ export default function WebsiteHub() {
     <div className="flex flex-col min-h-full bg-cream">
 
       <div className="flex-1">
-        <div className="px-4 md:px-8 py-6 max-w-[1440px] mx-auto w-full">
+        <div className="px-4 md:px-8 py-6 w-full">
 
           {/* Page head */}
           <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
