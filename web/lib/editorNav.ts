@@ -124,7 +124,7 @@ export const EDITOR_SECTIONS: EditorSectionConfig[] = [
       { id: 'settings',     label: 'Settings',     href: '/editor/settings?tab=payments' },
     ],
     defaultTitle:    'Payments',
-    defaultSubtitle: 'Deposits and customer payment status. Payouts and transactions are on the way.',
+    defaultSubtitle: 'Track deposits, balances, and customer payment activity.',
   },
   {
     key:          'settings',
