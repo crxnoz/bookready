@@ -27,6 +27,8 @@ import {
   GalleryItemPayload,
   PaymentSettings,
   PaymentSettingsPayload,
+  StripeConnectStartResponse,
+  StripeConnectStatusResponse,
   Service,
   StaffMemberPayload,
   TemplateSettings,
@@ -269,6 +271,26 @@ export async function updateEditorPaymentSettings(
   return request<PaymentSettings>('/editor/settings/payments', {
     method: 'PATCH',
     body: JSON.stringify(payload),
+  })
+}
+
+// ── Settings: Stripe Connect (customer payments only) ──────────────────────
+
+export async function startStripeConnect(): Promise<StripeConnectStartResponse> {
+  return request<StripeConnectStartResponse>('/editor/settings/payments/connect/start', {
+    method: 'POST',
+    body:   JSON.stringify({}),
+  })
+}
+
+export async function getStripeConnectStatus(): Promise<StripeConnectStatusResponse> {
+  return request<StripeConnectStatusResponse>('/editor/settings/payments/connect/status')
+}
+
+export async function refreshStripeConnectOnboarding(): Promise<{ onboarding_url: string }> {
+  return request<{ onboarding_url: string }>('/editor/settings/payments/connect/refresh', {
+    method: 'POST',
+    body:   JSON.stringify({}),
   })
 }
 

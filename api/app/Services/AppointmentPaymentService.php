@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\StripeConnectNotReadyException;
 use Stripe\Checkout\Session;
 use Stripe\Stripe;
 
@@ -59,26 +60,47 @@ class AppointmentPaymentService
     /**
      * Create a Stripe Checkout Session for a deposit.
      *
+     * Requires the tenant's Stripe Connect account to be active. Uses
+     * destination charges so funds settle into the tenant's Connect
+     * account on the same charge.
+     *
      * @param array $context [
-     *   'tenant_id'      => string,
-     *   'tenant_slug'    => string,
-     *   'appointment_id' => int,
-     *   'service_name'   => string,
-     *   'deposit_amount' => float (major units),
-     *   'currency'       => 'USD',
-     *   'customer_email' => ?string,
-     *   'success_url'    => string,
-     *   'cancel_url'     => string,
+     *   'tenant_id'                 => string,
+     *   'tenant_slug'               => string,
+     *   'appointment_id'            => int,
+     *   'service_name'              => string,
+     *   'deposit_amount'            => float (major units),
+     *   'currency'                  => 'USD',
+     *   'customer_email'            => ?string,
+     *   'success_url'               => string,
+     *   'cancel_url'                => string,
+     *   'stripe_connect_account_id' => ?string,   // destination account
+     *   'stripe_connect_ready'      => bool,      // true iff status=active
      * ]
      *
+     * @throws StripeConnectNotReadyException
      * @return array{id:string,url:string}
      */
     public static function createDepositCheckoutSession(array $context): array
     {
+        $destination = $context['stripe_connect_account_id'] ?? null;
+        $ready       = (bool) ($context['stripe_connect_ready'] ?? false);
+
+        if (! $destination || ! $ready) {
+            throw new StripeConnectNotReadyException();
+        }
+
         Stripe::setApiKey(config('cashier.secret') ?: env('STRIPE_SECRET'));
 
         $currency = strtolower($context['currency'] ?? 'usd');
         $amount   = (int) round(((float) $context['deposit_amount']) * 100); // minor units (cents)
+
+        $metadata = [
+            'purpose'        => self::PURPOSE,
+            'tenant_id'      => (string) $context['tenant_id'],
+            'tenant_slug'    => (string) $context['tenant_slug'],
+            'appointment_id' => (string) $context['appointment_id'],
+        ];
 
         $sessionParams = [
             'mode'              => 'payment',
@@ -96,21 +118,18 @@ class AppointmentPaymentService
                     ],
                 ],
             ]],
-            'metadata' => [
-                'purpose'        => self::PURPOSE,
-                'tenant_id'      => (string) $context['tenant_id'],
-                'tenant_slug'    => (string) $context['tenant_slug'],
-                'appointment_id' => (string) $context['appointment_id'],
-            ],
-            // Mirror metadata onto the resulting PaymentIntent so we can audit
-            // straight from the PI dashboard view if needed.
+            'metadata' => $metadata,
             'payment_intent_data' => [
-                'metadata' => [
-                    'purpose'        => self::PURPOSE,
-                    'tenant_id'      => (string) $context['tenant_id'],
-                    'tenant_slug'    => (string) $context['tenant_slug'],
-                    'appointment_id' => (string) $context['appointment_id'],
+                'metadata'      => $metadata,
+                // Destination charge — funds settle to the connected
+                // tenant's account on the same charge.
+                'transfer_data' => [
+                    'destination' => $destination,
                 ],
+                // Place the statement_descriptor_suffix on the Connect
+                // account so the customer sees the business, not BookReady.
+                // application_fee_amount intentionally left out — MVP doesn't
+                // collect a platform fee. Add later if needed.
             ],
         ];
 

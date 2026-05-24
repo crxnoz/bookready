@@ -14,6 +14,11 @@ class PaymentSettingsController extends Controller
 
     private function format(object $row): array
     {
+        // Defensive reader — Connect columns won't exist on tenants that
+        // haven't migrated yet. Return safe defaults instead of crashing.
+        $get = static fn(string $k, $default = null) =>
+            property_exists($row, $k) ? $row->{$k} : $default;
+
         return [
             'id'                  => (int)    $row->id,
             'payments_enabled'    => (bool)   $row->payments_enabled,
@@ -24,6 +29,17 @@ class PaymentSettingsController extends Controller
             'currency'            =>          $row->currency ?? 'USD',
             'created_at'          =>          $row->created_at,
             'updated_at'          =>          $row->updated_at,
+
+            // ── Stripe Connect (read-only via this endpoint; managed by
+            //    the StripeConnectController routes). PATCH validation
+            //    rules below do NOT include these so they can't be spoofed. ──
+            'stripe_connect_account_id'             => $get('stripe_connect_account_id'),
+            'stripe_connect_status'                 => $get('stripe_connect_status', 'not_connected'),
+            'stripe_charges_enabled'                => (bool) $get('stripe_charges_enabled', false),
+            'stripe_payouts_enabled'                => (bool) $get('stripe_payouts_enabled', false),
+            'stripe_details_submitted'              => (bool) $get('stripe_details_submitted', false),
+            'stripe_connect_onboarding_completed_at'=>        $get('stripe_connect_onboarding_completed_at'),
+            'stripe_connect_last_checked_at'        =>        $get('stripe_connect_last_checked_at'),
         ];
     }
 

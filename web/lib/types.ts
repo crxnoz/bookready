@@ -287,6 +287,13 @@ export interface PublicSite {
 
 export type DepositType = 'flat' | 'percent'
 
+export type StripeConnectStatus =
+  | 'not_connected'
+  | 'onboarding_started'
+  | 'pending'
+  | 'active'
+  | 'restricted'
+
 export interface PaymentSettings {
   id?: number
   payments_enabled:    boolean
@@ -297,9 +304,43 @@ export interface PaymentSettings {
   currency:            string
   created_at?:         string
   updated_at?:         string
+
+  // ── Stripe Connect (read-only on the payments PATCH endpoint;
+  //    managed by the /editor/settings/payments/connect/* routes) ──
+  stripe_connect_account_id?:              string | null
+  stripe_connect_status?:                  StripeConnectStatus
+  stripe_charges_enabled?:                 boolean
+  stripe_payouts_enabled?:                 boolean
+  stripe_details_submitted?:               boolean
+  stripe_connect_onboarding_completed_at?: string | null
+  stripe_connect_last_checked_at?:         string | null
 }
 
-export type PaymentSettingsPayload = Partial<Omit<PaymentSettings, 'id' | 'created_at' | 'updated_at'>>
+export type PaymentSettingsPayload = Partial<Omit<PaymentSettings,
+  | 'id' | 'created_at' | 'updated_at'
+  | 'stripe_connect_account_id'
+  | 'stripe_connect_status'
+  | 'stripe_charges_enabled'
+  | 'stripe_payouts_enabled'
+  | 'stripe_details_submitted'
+  | 'stripe_connect_onboarding_completed_at'
+  | 'stripe_connect_last_checked_at'
+>>
+
+export interface StripeConnectStatusResponse {
+  stripe_connect_account_id:              string | null
+  stripe_connect_status:                  StripeConnectStatus
+  stripe_charges_enabled:                 boolean
+  stripe_payouts_enabled:                 boolean
+  stripe_details_submitted:               boolean
+  stripe_connect_onboarding_completed_at?: string | null
+  stripe_connect_last_checked_at?:        string | null
+}
+
+export interface StripeConnectStartResponse {
+  onboarding_url:            string
+  stripe_connect_account_id: string
+}
 
 export interface PublicPaymentSettings {
   payments_enabled:    boolean

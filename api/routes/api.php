@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Editor\BusinessProfileController;
 use App\Http\Controllers\Api\Editor\CustomersController;
 use App\Http\Controllers\Api\Editor\HoursController;
 use App\Http\Controllers\Api\Editor\PaymentSettingsController;
+use App\Http\Controllers\Api\Editor\StripeConnectController;
 use App\Http\Controllers\Api\Editor\BeforeAfterItemsController;
 use App\Http\Controllers\Api\Editor\GalleryItemsController;
 use App\Http\Controllers\Api\Editor\ServicesController;
@@ -108,6 +109,11 @@ Route::prefix('v1')->group(function () {
 
         Route::get('settings/payments',               [PaymentSettingsController::class, 'show']);
         Route::patch('settings/payments',             [PaymentSettingsController::class, 'update']);
+
+        // ── Stripe Connect (customer payments only — NOT the SaaS subscription) ──
+        Route::post('settings/payments/connect/start',   [StripeConnectController::class, 'start']);
+        Route::get('settings/payments/connect/status',   [StripeConnectController::class, 'status']);
+        Route::post('settings/payments/connect/refresh', [StripeConnectController::class, 'refresh']);
 
         Route::get('website/template',                [WebsiteTemplateController::class, 'show']);
         Route::patch('website/template',              [WebsiteTemplateController::class, 'update']);

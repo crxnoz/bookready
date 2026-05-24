@@ -6,16 +6,20 @@ import { useSearchParams } from 'next/navigation'
 import {
   Building2, Calendar, CreditCard, Bell, FileText, UserCircle,
   Plug, AlertTriangle, ChevronRight, Loader2, Check, AlertCircle,
-  DollarSign, Percent, Lock,
+  DollarSign, Percent, Lock, ExternalLink, RefreshCw, ShieldCheck,
 } from 'lucide-react'
 import {
   getEditorPaymentSettings,
   updateEditorPaymentSettings,
+  getStripeConnectStatus,
+  startStripeConnect,
+  refreshStripeConnectOnboarding,
 } from '@/lib/api'
 import type {
   DepositType,
   PaymentSettings,
   PaymentSettingsPayload,
+  StripeConnectStatus,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
 
@@ -166,12 +170,15 @@ function PlaceholderPanel({ tab }: { tab: SettingsTab }) {
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
 function PaymentSettingsPanel() {
+  const sp = useSearchParams()
   const [data,    setData]    = useState<PaymentSettings | null>(null)
   const [draft,   setDraft]   = useState<PaymentSettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadErr, setLoadErr] = useState<string | null>(null)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [saveErr,   setSaveErr]   = useState<string | null>(null)
+  const [connectBusy, setConnectBusy] = useState<'idle' | 'starting' | 'refreshing' | 'syncing'>('idle')
+  const [connectErr,  setConnectErr]  = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -181,6 +188,54 @@ function PaymentSettingsPanel() {
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
+
+  // Auto-sync Stripe Connect status when the owner returns from onboarding.
+  // Stripe's redirect lands at ?tab=payments&stripe_connect=return.
+  useEffect(() => {
+    const flag = sp?.get('stripe_connect')
+    if (flag === 'return' || flag === 'refresh') syncConnectStatus()
+
+  }, [sp])
+
+  async function syncConnectStatus() {
+    setConnectBusy('syncing')
+    setConnectErr(null)
+    try {
+      const next = await getStripeConnectStatus()
+      const apply = (d: PaymentSettings | null) =>
+        d ? { ...d, ...next } as PaymentSettings : d
+      setData(apply)
+      setDraft(apply)
+    } catch (e) {
+      setConnectErr(e instanceof Error ? e.message : 'Could not refresh Stripe status')
+    } finally {
+      setConnectBusy('idle')
+    }
+  }
+
+  async function handleConnectStart() {
+    setConnectBusy('starting')
+    setConnectErr(null)
+    try {
+      const { onboarding_url } = await startStripeConnect()
+      window.location.href = onboarding_url
+    } catch (e) {
+      setConnectErr(e instanceof Error ? e.message : 'Could not start Stripe Connect')
+      setConnectBusy('idle')
+    }
+  }
+
+  async function handleConnectContinue() {
+    setConnectBusy('refreshing')
+    setConnectErr(null)
+    try {
+      const { onboarding_url } = await refreshStripeConnectOnboarding()
+      window.location.href = onboarding_url
+    } catch (e) {
+      setConnectErr(e instanceof Error ? e.message : 'Could not refresh onboarding link')
+      setConnectBusy('idle')
+    }
+  }
 
   const dirty = useMemo(() => {
     if (!data || !draft) return false
@@ -254,11 +309,20 @@ function PaymentSettingsPanel() {
       <header className="px-1">
         <h1 className="text-base font-bold text-near-black">Payment Settings</h1>
         <p className="text-xs text-muted-text mt-0.5">
-          Control whether clients pay anything when they book, and how much.
-          Payment processing isn&apos;t wired up yet — these settings will take
-          effect once Stripe is connected.
+          Connect Stripe, decide whether clients pay a deposit when they
+          book, and configure how much.
         </p>
       </header>
+
+      {/* Stripe Connect status card */}
+      <StripeConnectBlock
+        settings={draft}
+        busy={connectBusy}
+        error={connectErr}
+        onStart={handleConnectStart}
+        onContinue={handleConnectContinue}
+        onRefresh={syncConnectStatus}
+      />
 
       {/* Master toggle */}
       <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-2">
@@ -269,6 +333,13 @@ function PaymentSettingsPanel() {
           on={draft.payments_enabled}
           onToggle={() => patch({ payments_enabled: !draft.payments_enabled })}
         />
+        {draft.payments_enabled && draft.stripe_connect_status !== 'active' && (
+          <p className="text-[11px] text-[#8a5a00] inline-flex items-start gap-1.5 mt-1">
+            <AlertCircle size={11} className="mt-0.5 flex-shrink-0" />
+            Connect Stripe above so customers can actually pay. Until then,
+            payment-required bookings will be blocked.
+          </p>
+        )}
       </section>
 
       {/* Deposit */}
@@ -461,4 +532,185 @@ function Toggle({
       </button>
     </div>
   )
+}
+
+// ── Stripe Connect status card ──────────────────────────────────────────────
+
+interface ConnectBlockProps {
+  settings:   PaymentSettings
+  busy:       'idle' | 'starting' | 'refreshing' | 'syncing'
+  error:      string | null
+  onStart:    () => void
+  onContinue: () => void
+  onRefresh:  () => void
+}
+
+function StripeConnectBlock({
+  settings, busy, error, onStart, onContinue, onRefresh,
+}: ConnectBlockProps) {
+  const status: StripeConnectStatus = (settings.stripe_connect_status ?? 'not_connected')
+
+  const meta = (() => {
+    switch (status) {
+      case 'active':
+        return {
+          tone:  'positive' as const,
+          icon:  ShieldCheck,
+          title: 'Stripe connected',
+          body:  'Customer payments are ready. Deposits will route to your Stripe account.',
+        }
+      case 'pending':
+        return {
+          tone:  'warn' as const,
+          icon:  AlertCircle,
+          title: 'Pending review',
+          body:  'You finished onboarding — Stripe is still verifying your details. Payments will turn on once they finish.',
+        }
+      case 'onboarding_started':
+        return {
+          tone:  'warn' as const,
+          icon:  AlertCircle,
+          title: 'Onboarding in progress',
+          body:  'You started Stripe onboarding but haven’t finished yet. Continue where you left off.',
+        }
+      case 'restricted':
+        return {
+          tone:  'danger' as const,
+          icon:  AlertTriangle,
+          title: 'Action required',
+          body:  'Stripe needs more information before your account can accept payments. Continue onboarding to resolve.',
+        }
+      case 'not_connected':
+      default:
+        return {
+          tone:  'neutral' as const,
+          icon:  CreditCard,
+          title: 'Connect Stripe',
+          body:  'Connect a Stripe account so customer deposits and payments land in your bank.',
+        }
+    }
+  })()
+
+  const Icon = meta.icon
+
+  const borderCls = {
+    positive: 'border-[rgba(20,140,80,0.40)]',
+    warn:     'border-[rgba(180,120,0,0.35)]',
+    danger:   'border-[rgba(180,40,40,0.40)]',
+    neutral:  'border-[rgba(18,18,18,0.10)]',
+  }[meta.tone]
+
+  const iconCls = {
+    positive: 'text-[#0f6f3d]',
+    warn:     'text-[#8a5a00]',
+    danger:   'text-[#b42828]',
+    neutral:  'text-near-black',
+  }[meta.tone]
+
+  return (
+    <section className={cn('bg-white border p-3.5 space-y-3', borderCls)}>
+      <div className="flex items-start gap-3">
+        <span className={cn('w-8 h-8 flex items-center justify-center bg-cream border border-[rgba(18,18,18,0.08)] flex-shrink-0', iconCls)}>
+          <Icon size={14} strokeWidth={1.8} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-bold text-near-black">{meta.title}</p>
+            <span className={cn(
+              'text-[9px] font-bold tracking-[0.06em] uppercase border px-1.5 py-0.5 whitespace-nowrap',
+              meta.tone === 'positive' ? 'bg-white border-[rgba(20,140,80,0.40)] text-[#0f6f3d]'
+                : meta.tone === 'warn' ? 'bg-white border-[rgba(180,120,0,0.35)] text-[#8a5a00]'
+                : meta.tone === 'danger' ? 'bg-white border-[rgba(180,40,40,0.40)] text-[#b42828]'
+                : 'bg-cream border-[rgba(18,18,18,0.15)] text-muted-text',
+            )}>{statusLabel(status)}</span>
+          </div>
+          <p className="text-[11px] text-muted-text mt-1">{meta.body}</p>
+
+          {(settings.stripe_connect_account_id || settings.stripe_connect_last_checked_at) && (
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-0.5 mt-2 text-[11px]">
+              {settings.stripe_connect_account_id && (
+                <div className="flex justify-between sm:block">
+                  <dt className="text-muted-text">Account</dt>
+                  <dd className="font-mono text-near-black truncate">{settings.stripe_connect_account_id}</dd>
+                </div>
+              )}
+              {settings.stripe_details_submitted !== undefined && (
+                <div className="flex justify-between sm:block">
+                  <dt className="text-muted-text">Onboarding</dt>
+                  <dd className="text-near-black">{settings.stripe_details_submitted ? 'Submitted' : 'Incomplete'}</dd>
+                </div>
+              )}
+              {settings.stripe_charges_enabled !== undefined && (
+                <div className="flex justify-between sm:block">
+                  <dt className="text-muted-text">Charges</dt>
+                  <dd className="text-near-black">{settings.stripe_charges_enabled ? 'Enabled' : 'Disabled'}</dd>
+                </div>
+              )}
+              {settings.stripe_payouts_enabled !== undefined && (
+                <div className="flex justify-between sm:block">
+                  <dt className="text-muted-text">Payouts</dt>
+                  <dd className="text-near-black">{settings.stripe_payouts_enabled ? 'Enabled' : 'Disabled'}</dd>
+                </div>
+              )}
+            </dl>
+          )}
+        </div>
+      </div>
+
+      {error && (
+        <div className="text-[11px] text-[#b42828] flex items-center gap-1.5">
+          <AlertCircle size={11} /> {error}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[rgba(18,18,18,0.06)]">
+        {status === 'not_connected' && (
+          <button
+            type="button"
+            onClick={onStart}
+            disabled={busy !== 'idle'}
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 hover:bg-white hover:text-near-black border border-near-black disabled:opacity-60"
+          >
+            {busy === 'starting'
+              ? <><Loader2 size={11} className="animate-spin" /> Starting</>
+              : <><CreditCard size={12} /> Connect Stripe</>}
+          </button>
+        )}
+        {(status === 'onboarding_started' || status === 'pending' || status === 'restricted') && (
+          <button
+            type="button"
+            onClick={onContinue}
+            disabled={busy !== 'idle'}
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 hover:bg-white hover:text-near-black border border-near-black disabled:opacity-60"
+          >
+            {busy === 'refreshing'
+              ? <><Loader2 size={11} className="animate-spin" /> Opening</>
+              : <><ExternalLink size={12} /> Continue onboarding</>}
+          </button>
+        )}
+        {settings.stripe_connect_account_id && (
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={busy !== 'idle'}
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-60"
+          >
+            {busy === 'syncing'
+              ? <><Loader2 size={11} className="animate-spin" /> Refreshing</>
+              : <><RefreshCw size={12} /> Refresh status</>}
+          </button>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function statusLabel(status: StripeConnectStatus): string {
+  switch (status) {
+    case 'active':             return 'Active'
+    case 'pending':            return 'Pending'
+    case 'onboarding_started': return 'In progress'
+    case 'restricted':         return 'Restricted'
+    default:                   return 'Not connected'
+  }
 }

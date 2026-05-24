@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Services\AppointmentMailer;
+use App\Exceptions\StripeConnectNotReadyException;
 use App\Services\AppointmentPaymentService;
 use App\Services\SlotGenerator;
+use App\Services\StripeConnectService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -114,6 +116,17 @@ class PublicBookingController extends Controller
         // Columns we set only when the migration has run (graceful fallback).
         $appointmentsHasPaymentCols = Schema::hasColumn('appointments', 'payment_status');
 
+        // Pre-check: if the booking would need a deposit, the tenant's
+        // Stripe Connect account must be ready BEFORE we insert anything.
+        // Otherwise we'd leave a pending_payment row that can never be
+        // collected on.
+        if ($paymentRequired && ! StripeConnectService::isReady($payment)) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'This business is not ready to accept online payments yet.',
+            ], 422);
+        }
+
         $insertData = [
             'client_id'                => $clientId,
             'service_id'               => (int) $service->id,
@@ -174,13 +187,15 @@ class PublicBookingController extends Controller
         if ($paymentRequired && $appointmentsHasPaymentCols) {
             try {
                 $session = AppointmentPaymentService::createDepositCheckoutSession([
-                    'tenant_id'      => (string) $tenant->id,
-                    'tenant_slug'    => (string) $tenant->id,
-                    'appointment_id' => (int)    $appt['id'],
-                    'service_name'   => (string) $appt['service_name'],
-                    'deposit_amount' => (float)  $deposit,
-                    'currency'       => $payment['currency'] ?? 'USD',
-                    'customer_email' => $appt['customer_email'],
+                    'tenant_id'                 => (string) $tenant->id,
+                    'tenant_slug'               => (string) $tenant->id,
+                    'appointment_id'            => (int)    $appt['id'],
+                    'service_name'              => (string) $appt['service_name'],
+                    'deposit_amount'            => (float)  $deposit,
+                    'currency'                  => $payment['currency'] ?? 'USD',
+                    'customer_email'            => $appt['customer_email'],
+                    'stripe_connect_account_id' => $payment['stripe_connect_account_id'] ?? null,
+                    'stripe_connect_ready'      => StripeConnectService::isReady($payment),
                     'success_url'    => sprintf(
                         'https://%s.bkrdy.me/?booking=success&appointment=%d&session_id={CHECKOUT_SESSION_ID}',
                         $tenant->id, $appt['id'],
@@ -197,6 +212,11 @@ class PublicBookingController extends Controller
                 ]);
 
                 $checkoutUrl = $session['url'];
+            } catch (StripeConnectNotReadyException $e) {
+                // Connect went away between our precheck and the create call.
+                DB::table('appointments')->where('id', $id)->delete();
+                tenancy()->end();
+                return response()->json(['message' => $e->getMessage()], 422);
             } catch (\Throwable $e) {
                 Log::error('Stripe checkout session creation failed', [
                     'tenant'   => $tenant->id,
@@ -256,12 +276,17 @@ class PublicBookingController extends Controller
     private function loadPaymentSettings(): array
     {
         $defaults = [
-            'payments_enabled'   => false,
-            'deposits_enabled'   => false,
-            'deposit_type'       => null,
-            'deposit_amount'     => null,
-            'allow_full_payment' => false,
-            'currency'           => 'USD',
+            'payments_enabled'           => false,
+            'deposits_enabled'           => false,
+            'deposit_type'               => null,
+            'deposit_amount'             => null,
+            'allow_full_payment'         => false,
+            'currency'                   => 'USD',
+            'stripe_connect_account_id'  => null,
+            'stripe_connect_status'      => 'not_connected',
+            'stripe_charges_enabled'     => false,
+            'stripe_payouts_enabled'     => false,
+            'stripe_details_submitted'   => false,
         ];
 
         if (! Schema::hasTable('payment_settings')) {
@@ -273,13 +298,22 @@ class PublicBookingController extends Controller
             return $defaults;
         }
 
+        // Defensive accessor for Connect columns added in a later migration.
+        $get = static fn(string $k, $default = null) =>
+            property_exists($row, $k) ? $row->{$k} : $default;
+
         return [
-            'payments_enabled'   => (bool) $row->payments_enabled,
-            'deposits_enabled'   => (bool) $row->deposits_enabled,
-            'deposit_type'       =>        $row->deposit_type,
-            'deposit_amount'     => $row->deposit_amount !== null ? (float) $row->deposit_amount : null,
-            'allow_full_payment' => (bool) $row->allow_full_payment,
-            'currency'           =>        $row->currency ?? 'USD',
+            'payments_enabled'           => (bool) $row->payments_enabled,
+            'deposits_enabled'           => (bool) $row->deposits_enabled,
+            'deposit_type'               =>        $row->deposit_type,
+            'deposit_amount'             => $row->deposit_amount !== null ? (float) $row->deposit_amount : null,
+            'allow_full_payment'         => (bool) $row->allow_full_payment,
+            'currency'                   =>        $row->currency ?? 'USD',
+            'stripe_connect_account_id'  =>        $get('stripe_connect_account_id'),
+            'stripe_connect_status'      =>        $get('stripe_connect_status', 'not_connected'),
+            'stripe_charges_enabled'     => (bool) $get('stripe_charges_enabled', false),
+            'stripe_payouts_enabled'     => (bool) $get('stripe_payouts_enabled', false),
+            'stripe_details_submitted'   => (bool) $get('stripe_details_submitted', false),
         ];
     }
 
