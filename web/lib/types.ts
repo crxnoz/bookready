@@ -583,6 +583,8 @@ export interface PublicAvailabilityResponse {
 }
 
 // Public booking
+export type PaymentChoice = 'deposit' | 'full'
+
 export interface PublicBookingPayload {
   service_id: number
   appointment_date: string   // "YYYY-MM-DD"
@@ -591,6 +593,7 @@ export interface PublicBookingPayload {
   customer_email?: string
   customer_phone?: string
   notes?: string
+  payment_choice?: PaymentChoice
 }
 
 export interface PublicBookingResponse {
@@ -604,9 +607,12 @@ export interface PublicBookingResponse {
     status: string
     customer_name: string
   }
-  // Present when the tenant requires a deposit and a Stripe Checkout
+  // Present when the tenant requires a payment and a Stripe Checkout
   // session was created — frontend should redirect to checkout_url.
   payment_required?: boolean
+  payment_type?:     PaymentChoice
+  amount?:           number
+  /** @deprecated — use `amount`. Kept for back-compat with older frontends. */
   deposit_amount?:   number
   currency?:         string
   checkout_url?:     string

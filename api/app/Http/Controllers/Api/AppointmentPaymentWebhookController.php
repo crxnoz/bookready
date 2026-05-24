@@ -129,7 +129,7 @@ class AppointmentPaymentWebhookController extends Controller
                 return response()->json(['received' => true]);
             }
 
-            // Honor auto_confirm_bookings: when the deposit clears, if the
+            // Honor auto_confirm_bookings: when payment clears, if the
             // tenant has auto-confirm on, jump the appointment straight to
             // 'confirmed'. Otherwise keep 'pending' for the owner to review.
             $autoConfirm = false;
@@ -138,13 +138,24 @@ class AppointmentPaymentWebhookController extends Controller
                 $autoConfirm = (bool) ($bs->auto_confirm_bookings ?? false);
             }
 
+            // Was this a full payment or just a deposit? Use the metadata
+            // we set on the Checkout session; default to 'deposit' for
+            // backwards-compat with sessions created before this field shipped.
+            $paymentType = $metadata['payment_type'] ?? AppointmentPaymentService::TYPE_DEPOSIT;
+
             $update = [
-                'payment_status'           => 'deposit_paid',
+                'payment_status'           => $paymentType === AppointmentPaymentService::TYPE_FULL
+                                                ? 'paid'
+                                                : 'deposit_paid',
                 'deposit_paid_amount'      => $amountTotal ?? $row->deposit_amount,
                 'stripe_payment_intent_id' => $paymentIntent,
                 'paid_at'                  => now(),
                 'updated_at'               => now(),
             ];
+            // Full payment means no balance is owed at the appointment.
+            if ($paymentType === AppointmentPaymentService::TYPE_FULL) {
+                $update['amount_due'] = 0;
+            }
             if ($autoConfirm && $row->status === 'pending') {
                 $update['status'] = 'confirmed';
             }

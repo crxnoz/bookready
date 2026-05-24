@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import { getPublicAvailability, createPublicAppointment } from '@/lib/api'
 import type {
-  AvailableSlot, PublicBookingPayload, Service,
+  AvailableSlot, PaymentChoice, PublicBookingPayload, Service,
   AvailabilityData, PublicPaymentSettings,
 } from '@/lib/types'
 
@@ -90,6 +90,7 @@ export default function TheFadeRoomBooking({
   const [submitting,   setSubmitting]   = useState(false)
   const [success,      setSuccess]      = useState(false)
   const [submitError,  setSubmitError]  = useState<string | null>(null)
+  const [paymentChoice, setPaymentChoice] = useState<PaymentChoice>('deposit')
   const fetchRef = useRef(0)
 
   const selectedService = services.find(s => s.id === serviceId) ?? null
@@ -147,9 +148,8 @@ export default function TheFadeRoomBooking({
       })
   }, [serviceId, date, slug])
 
-  // Compute a preview of the deposit the client will be charged. Used to
-  // show the deposit notice on the Confirm step. Authoritative calc still
-  // runs on the server — this is just a friendly heads-up.
+  // Compute payment previews. Authoritative calc still runs on the server —
+  // these are friendly heads-up amounts for the Confirm step.
   const depositPreview: number | null = (() => {
     if (!paymentSettings) return null
     if (!paymentSettings.payments_enabled) return null
@@ -169,7 +169,33 @@ export default function TheFadeRoomBooking({
     return null
   })()
 
-  const depositRequired = depositPreview != null
+  const fullPreview: number | null = (() => {
+    if (!paymentSettings) return null
+    if (!paymentSettings.payments_enabled) return null
+    if (!paymentSettings.allow_full_payment) return null
+    const price = selectedService?.price ?? null
+    if (price == null || price <= 0) return null
+    return Math.round(price * 100) / 100
+  })()
+
+  const depositAllowed = depositPreview != null
+  const fullAllowed    = fullPreview != null
+  const paymentRequired = depositAllowed || fullAllowed
+  const showChoice = depositAllowed && fullAllowed
+
+  // Effective choice: when only one option exists, lock to it.
+  const effectiveChoice: PaymentChoice = showChoice
+    ? paymentChoice
+    : (depositAllowed ? 'deposit' : 'full')
+
+  const chargePreview: number | null = effectiveChoice === 'full' ? fullPreview : depositPreview
+  const remainingBalance: number | null =
+    effectiveChoice === 'deposit' && selectedService && depositPreview != null
+      ? Math.max(0, Math.round((selectedService.price - depositPreview) * 100) / 100)
+      : 0
+
+  // Back-compat alias for the rest of the component
+  const depositRequired = paymentRequired
 
   async function handleSubmit() {
     if (!serviceId || !date || !selectedSlot || !name.trim()) return
@@ -184,6 +210,9 @@ export default function TheFadeRoomBooking({
         customer_email:   email.trim()  || undefined,
         customer_phone:   phone.trim()  || undefined,
         notes:            notes.trim()  || undefined,
+      }
+      if (paymentRequired) {
+        payload.payment_choice = effectiveChoice
       }
       const res = await createPublicAppointment(slug, payload)
       if (res.checkout_url) {
@@ -553,23 +582,77 @@ export default function TheFadeRoomBooking({
               </dl>
             </div>
 
-            {depositRequired && (
+            {paymentRequired && (
               <div className="tfr-booking-summary" style={{ marginTop: 12 }}>
-                <span className="tfr-booking-block-label">Deposit Required</span>
+                <span className="tfr-booking-block-label">
+                  {showChoice ? 'Payment Options' : (effectiveChoice === 'full' ? 'Payment Required' : 'Deposit Required')}
+                </span>
+
+                {showChoice && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, margin: '8px 0 12px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentChoice('deposit')}
+                      style={{
+                        padding: '10px 12px',
+                        textAlign: 'left',
+                        border: '1px solid ' + (paymentChoice === 'deposit' ? '#fff' : 'rgba(255,255,255,0.15)'),
+                        background: paymentChoice === 'deposit' ? 'rgba(255,255,255,0.08)' : 'transparent',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        borderRadius: 0,
+                      }}
+                    >
+                      <div style={{ fontSize: 10, opacity: 0.7, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 2 }}>
+                        Pay Deposit
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 700 }}>${depositPreview!.toFixed(2)}</div>
+                      {selectedService && selectedService.price > depositPreview! && (
+                        <div style={{ fontSize: 11, opacity: 0.6, marginTop: 2 }}>
+                          ${(selectedService.price - depositPreview!).toFixed(2)} balance later
+                        </div>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentChoice('full')}
+                      style={{
+                        padding: '10px 12px',
+                        textAlign: 'left',
+                        border: '1px solid ' + (paymentChoice === 'full' ? '#fff' : 'rgba(255,255,255,0.15)'),
+                        background: paymentChoice === 'full' ? 'rgba(255,255,255,0.08)' : 'transparent',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        borderRadius: 0,
+                      }}
+                    >
+                      <div style={{ fontSize: 10, opacity: 0.7, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 2 }}>
+                        Pay In Full
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 700 }}>${fullPreview!.toFixed(2)}</div>
+                      <div style={{ fontSize: 11, opacity: 0.6, marginTop: 2 }}>
+                        Nothing owed at appointment
+                      </div>
+                    </button>
+                  </div>
+                )}
+
                 <dl>
                   <div className="tfr-booking-total">
-                    <dt>Deposit due now</dt>
-                    <dd>${depositPreview!.toFixed(2)}</dd>
+                    <dt>{effectiveChoice === 'full' ? 'Due now (paid in full)' : 'Deposit due now'}</dt>
+                    <dd>${chargePreview!.toFixed(2)}</dd>
                   </div>
-                  {selectedService && selectedService.price > depositPreview! && (
+                  {effectiveChoice === 'deposit' && remainingBalance! > 0 && (
                     <div>
                       <dt>Balance at appointment</dt>
-                      <dd>${(selectedService.price - depositPreview!).toFixed(2)}</dd>
+                      <dd>${remainingBalance!.toFixed(2)}</dd>
                     </div>
                   )}
                 </dl>
                 <p style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
-                  You&apos;ll be sent to a secure Stripe page to pay your deposit. Your booking is reserved once the deposit clears.
+                  You&apos;ll be sent to a secure Stripe page to pay
+                  {effectiveChoice === 'full' ? ' in full' : ' your deposit'}.
+                  Your booking is reserved once the payment clears.
                 </p>
               </div>
             )}
@@ -588,9 +671,11 @@ export default function TheFadeRoomBooking({
                 onClick={handleSubmit}
               >
                 {submitting
-                  ? (depositRequired ? 'Redirecting to payment…' : 'Sending…')
-                  : depositRequired
-                    ? <>Pay Deposit & Book <Check size={14} strokeWidth={3} /></>
+                  ? (paymentRequired ? 'Redirecting to payment…' : 'Sending…')
+                  : paymentRequired
+                    ? (effectiveChoice === 'full'
+                        ? <>Pay Full & Book <Check size={14} strokeWidth={3} /></>
+                        : <>Pay Deposit & Book <Check size={14} strokeWidth={3} /></>)
                     : <>Confirm Booking <Check size={14} strokeWidth={3} /></>
                 }
               </button>
@@ -598,8 +683,10 @@ export default function TheFadeRoomBooking({
 
             <p className="tfr-booking-disclaimer">
               <CalendarCheck size={11} style={{ verticalAlign: -1, marginRight: 4 }} />
-              {depositRequired
-                ? 'A deposit is required to reserve your appointment.'
+              {paymentRequired
+                ? (effectiveChoice === 'full'
+                    ? 'Payment is required to reserve your appointment.'
+                    : 'A deposit is required to reserve your appointment.')
                 : 'No payment required — the business will confirm your appointment.'}
             </p>
           </div>

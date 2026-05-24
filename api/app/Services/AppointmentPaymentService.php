@@ -7,18 +7,21 @@ use Stripe\Checkout\Session;
 use Stripe\Stripe;
 
 /**
- * Customer appointment payments (deposits and full-payment).
+ * Customer appointment payments (deposits AND full-payment-up-front).
  *
- * IMPORTANT: This is intentionally separate from the BookReady SaaS subscription
- * billing that lives in App\Http\Controllers\Api\WebhookController + Cashier.
- * Do not call Cashier from here, and do not let SaaS code call this.
+ * IMPORTANT: This is intentionally separate from the BookReady SaaS
+ * subscription billing that lives in App\Http\Controllers\Api\WebhookController
+ * + Cashier. Do not call Cashier from here, and do not let SaaS code call this.
  *
- * For MVP we use the platform Stripe account directly. When we add Stripe Connect
- * later, the Session::create() call here is the seam to swap (stripe_account header).
+ * Uses Stripe Connect destination charges — funds settle directly into the
+ * tenant's connected account on the same charge.
  */
 class AppointmentPaymentService
 {
     public const PURPOSE = 'appointment_deposit';
+
+    public const TYPE_DEPOSIT = 'deposit';
+    public const TYPE_FULL    = 'full';
 
     /**
      * Compute the deposit amount in major units (e.g. dollars) given the
@@ -58,30 +61,42 @@ class AppointmentPaymentService
     }
 
     /**
-     * Create a Stripe Checkout Session for a deposit.
-     *
-     * Requires the tenant's Stripe Connect account to be active. Uses
-     * destination charges so funds settle into the tenant's Connect
-     * account on the same charge.
+     * Compute the full-payment amount in major units. Returns null when
+     * allow_full_payment isn't enabled, or when the service has no price.
+     */
+    public static function calculateFullPayment(array $paymentSettings, ?float $servicePrice): ?float
+    {
+        if (! ($paymentSettings['payments_enabled']   ?? false)) return null;
+        if (! ($paymentSettings['allow_full_payment'] ?? false)) return null;
+        if ($servicePrice === null || $servicePrice <= 0)         return null;
+
+        return round($servicePrice, 2);
+    }
+
+    /**
+     * Create a Stripe Checkout Session for either a deposit or a full
+     * payment. `payment_type` controls the line-item label and the
+     * metadata so the webhook can finalize state correctly.
      *
      * @param array $context [
      *   'tenant_id'                 => string,
      *   'tenant_slug'               => string,
      *   'appointment_id'            => int,
      *   'service_name'              => string,
-     *   'deposit_amount'            => float (major units),
+     *   'payment_type'              => 'deposit'|'full',
+     *   'amount'                    => float,                // major units
      *   'currency'                  => 'USD',
      *   'customer_email'            => ?string,
      *   'success_url'               => string,
      *   'cancel_url'                => string,
-     *   'stripe_connect_account_id' => ?string,   // destination account
-     *   'stripe_connect_ready'      => bool,      // true iff status=active
+     *   'stripe_connect_account_id' => ?string,
+     *   'stripe_connect_ready'      => bool,
      * ]
      *
      * @throws StripeConnectNotReadyException
      * @return array{id:string,url:string}
      */
-    public static function createDepositCheckoutSession(array $context): array
+    public static function createCheckoutSession(array $context): array
     {
         $destination = $context['stripe_connect_account_id'] ?? null;
         $ready       = (bool) ($context['stripe_connect_ready'] ?? false);
@@ -90,46 +105,53 @@ class AppointmentPaymentService
             throw new StripeConnectNotReadyException();
         }
 
+        $paymentType = $context['payment_type'] ?? self::TYPE_DEPOSIT;
+        if (! in_array($paymentType, [self::TYPE_DEPOSIT, self::TYPE_FULL], true)) {
+            $paymentType = self::TYPE_DEPOSIT;
+        }
+
         Stripe::setApiKey(config('cashier.secret') ?: env('STRIPE_SECRET'));
 
         $currency = strtolower($context['currency'] ?? 'usd');
-        $amount   = (int) round(((float) $context['deposit_amount']) * 100); // minor units (cents)
+        $amount   = (int) round(((float) $context['amount']) * 100); // minor units
+
+        $serviceName = $context['service_name'] ?? 'Appointment';
+        $itemName    = ($paymentType === self::TYPE_FULL ? 'Booking · ' : 'Deposit · ') . $serviceName;
+        $itemDesc    = $paymentType === self::TYPE_FULL ? 'Full booking payment' : 'Booking deposit';
 
         $metadata = [
             'purpose'        => self::PURPOSE,
+            'payment_type'   => $paymentType,
             'tenant_id'      => (string) $context['tenant_id'],
             'tenant_slug'    => (string) $context['tenant_slug'],
             'appointment_id' => (string) $context['appointment_id'],
         ];
 
         $sessionParams = [
-            'mode'              => 'payment',
+            'mode'                 => 'payment',
             'payment_method_types' => ['card'],
-            'success_url'       => $context['success_url'],
-            'cancel_url'        => $context['cancel_url'],
-            'line_items'        => [[
+            'success_url'          => $context['success_url'],
+            'cancel_url'           => $context['cancel_url'],
+            'line_items'           => [[
                 'quantity'   => 1,
                 'price_data' => [
                     'currency'     => $currency,
                     'unit_amount'  => $amount,
                     'product_data' => [
-                        'name'        => 'Deposit · ' . ($context['service_name'] ?? 'Appointment'),
-                        'description' => 'Booking deposit',
+                        'name'        => $itemName,
+                        'description' => $itemDesc,
                     ],
                 ],
             ]],
             'metadata' => $metadata,
             'payment_intent_data' => [
                 'metadata'      => $metadata,
-                // Destination charge — funds settle to the connected
-                // tenant's account on the same charge.
+                // Destination charge — funds settle into the connected
+                // tenant account on the same charge. No application_fee
+                // in MVP; add later if needed.
                 'transfer_data' => [
                     'destination' => $destination,
                 ],
-                // Place the statement_descriptor_suffix on the Connect
-                // account so the customer sees the business, not BookReady.
-                // application_fee_amount intentionally left out — MVP doesn't
-                // collect a platform fee. Add later if needed.
             ],
         ];
 
@@ -143,5 +165,17 @@ class AppointmentPaymentService
             'id'  => $session->id,
             'url' => $session->url,
         ];
+    }
+
+    /**
+     * @deprecated Kept for backwards-compat — prefer createCheckoutSession().
+     * Routes a legacy "deposit only" payload through the new method.
+     */
+    public static function createDepositCheckoutSession(array $context): array
+    {
+        return self::createCheckoutSession(array_merge($context, [
+            'payment_type' => self::TYPE_DEPOSIT,
+            'amount'       => $context['amount'] ?? ($context['deposit_amount'] ?? 0),
+        ]));
     }
 }

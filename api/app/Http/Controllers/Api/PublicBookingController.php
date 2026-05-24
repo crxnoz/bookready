@@ -45,6 +45,9 @@ class PublicBookingController extends Controller
             'customer_email'   => 'nullable|email|max:255',
             'customer_phone'   => 'nullable|string|max:50',
             'notes'            => 'nullable|string|max:5000',
+            // Optional client preference when both deposit AND full
+            // payment are allowed. Ignored when only one is valid.
+            'payment_choice'   => 'sometimes|in:deposit,full',
         ]);
 
         $serviceId = (int)    $validated['service_id'];
@@ -167,19 +170,38 @@ class PublicBookingController extends Controller
         );
 
         // ── Payment branching ────────────────────────────────────────────
-        // Defaults: payments off, no deposit, no special status.
-        $payment = $this->loadPaymentSettings();
+        // Defaults: payments off, no charge, no special status.
+        $payment      = $this->loadPaymentSettings();
         $servicePrice = $service->price !== null ? (float) $service->price : null;
-        $deposit = AppointmentPaymentService::calculateDeposit($payment, $servicePrice);
-        $paymentRequired = $deposit !== null;
+
+        $depositAmount = AppointmentPaymentService::calculateDeposit($payment, $servicePrice);
+        $fullAmount    = AppointmentPaymentService::calculateFullPayment($payment, $servicePrice);
+        $depositAllowed = $depositAmount !== null;
+        $fullAllowed    = $fullAmount    !== null;
+
+        // Pick effective payment_type:
+        //  - both allowed → use client's payment_choice; default to deposit
+        //  - only one allowed → that one
+        //  - neither → no payment required
+        $clientChoice = $validated['payment_choice'] ?? null;
+        if ($depositAllowed && $fullAllowed) {
+            $paymentType  = $clientChoice === 'full' ? 'full' : 'deposit';
+        } elseif ($depositAllowed) {
+            $paymentType  = 'deposit';
+        } elseif ($fullAllowed) {
+            $paymentType  = 'full';
+        } else {
+            $paymentType  = null;
+        }
+        $paymentRequired = $paymentType !== null;
+        $chargeAmount    = $paymentType === 'full' ? $fullAmount : ($paymentType === 'deposit' ? $depositAmount : null);
 
         // Columns we set only when the migration has run (graceful fallback).
         $appointmentsHasPaymentCols = Schema::hasColumn('appointments', 'payment_status');
 
-        // Pre-check: if the booking would need a deposit, the tenant's
-        // Stripe Connect account must be ready BEFORE we insert anything.
-        // Otherwise we'd leave a pending_payment row that can never be
-        // collected on.
+        // Pre-check: any payment-required booking needs the tenant's Stripe
+        // Connect account ready BEFORE we insert anything. Otherwise we'd
+        // leave a pending_payment row that can never be collected on.
         if ($paymentRequired && ! StripeConnectService::isReady($payment)) {
             tenancy()->end();
             return response()->json([
@@ -222,13 +244,17 @@ class PublicBookingController extends Controller
 
         if ($appointmentsHasPaymentCols) {
             if ($paymentRequired) {
-                $insertData['payment_status']     = 'pending_payment';
-                $insertData['deposit_required']   = true;
-                $insertData['deposit_amount']     = $deposit;
+                $insertData['payment_status']      = 'pending_payment';
+                $insertData['deposit_required']    = $paymentType === 'deposit';
+                $insertData['deposit_amount']      = $chargeAmount;
                 $insertData['deposit_paid_amount'] = 0;
-                $insertData['amount_due'] = $servicePrice !== null
-                    ? max(0, round($servicePrice - $deposit, 2))
-                    : null;
+                // For 'full' the client is paying the whole service price
+                // up front, so no balance is owed at the appointment.
+                $insertData['amount_due'] = $paymentType === 'full'
+                    ? 0
+                    : ($servicePrice !== null
+                        ? max(0, round($servicePrice - $chargeAmount, 2))
+                        : null);
                 $insertData['currency'] = $payment['currency'] ?? 'USD';
             } else {
                 $insertData['payment_status']   = 'none';
@@ -264,12 +290,13 @@ class PublicBookingController extends Controller
         $checkoutUrl = null;
         if ($paymentRequired && $appointmentsHasPaymentCols) {
             try {
-                $session = AppointmentPaymentService::createDepositCheckoutSession([
+                $session = AppointmentPaymentService::createCheckoutSession([
                     'tenant_id'                 => (string) $tenant->id,
                     'tenant_slug'               => (string) $tenant->id,
                     'appointment_id'            => (int)    $appt['id'],
                     'service_name'              => (string) $appt['service_name'],
-                    'deposit_amount'            => (float)  $deposit,
+                    'payment_type'              =>          $paymentType,
+                    'amount'                    => (float)  $chargeAmount,
                     'currency'                  => $payment['currency'] ?? 'USD',
                     'customer_email'            => $appt['customer_email'],
                     'stripe_connect_account_id' => $payment['stripe_connect_account_id'] ?? null,
@@ -338,7 +365,10 @@ class PublicBookingController extends Controller
 
         if ($paymentRequired) {
             $response['payment_required'] = true;
-            $response['deposit_amount']   = (float) $deposit;
+            $response['payment_type']     = $paymentType;
+            $response['amount']           = (float) $chargeAmount;
+            // Back-compat field — older frontends look for deposit_amount.
+            $response['deposit_amount']   = (float) $chargeAmount;
             $response['currency']         = $payment['currency'] ?? 'USD';
             $response['checkout_url']     = $checkoutUrl;
         }
