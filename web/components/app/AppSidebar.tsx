@@ -38,7 +38,7 @@ const MAIN_NAV = [
   { href: '/editor/website',  label: 'Website',   icon: Globe,           matchPaths: WEBSITE_PATHS },
   { href: '/editor/bookings', label: 'Bookings',  icon: Calendar,        matchPaths: BOOKINGS_PATHS },
   { href: '/editor/customers', label: 'Customers', icon: Users },
-  { href: '#',                label: 'Payments',  icon: CreditCard,      soon: true },
+  { href: '/editor/payments', label: 'Payments',  icon: CreditCard },
   { href: '/editor/settings', label: 'Settings',  icon: Settings },
 ] as const
 

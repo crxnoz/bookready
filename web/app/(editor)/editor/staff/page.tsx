@@ -3,7 +3,10 @@ import StaffEditor from '@/components/editor/StaffEditor'
 
 export default function StaffPage() {
   return (
-    <EditorShell>
+    <EditorShell
+      title="Staff"
+      subtitle="Team members shown on your booking site."
+    >
       <StaffEditor />
     </EditorShell>
   )

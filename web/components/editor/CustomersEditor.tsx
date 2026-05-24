@@ -204,26 +204,16 @@ export default function CustomersEditor() {
 
   return (
     <div className="flex flex-col min-h-full bg-cream">
-
-      {/* Topbar */}
-      <div className="flex items-center justify-between gap-4 border-b border-[rgba(18,18,18,0.10)] bg-white px-5 py-3.5 flex-shrink-0">
-        <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">Customers</p>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-1.5 bg-near-black text-white px-3 py-1.5 text-[10px] font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors"
-        >
-          <Plus size={11} /> Add Customer
-        </button>
-      </div>
-
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
 
-        {/* Page head */}
-        <div>
-          <h1 className="text-2xl font-bold text-near-black tracking-tight">Customers</h1>
-          <p className="text-sm text-muted-text mt-0.5">
-            View client details, booking history, and contact info.
-          </p>
+        {/* Inline action bar — page title now lives in EditorShell */}
+        <div className="flex items-center justify-end">
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-1.5 bg-near-black text-white px-3 py-1.5 text-[10px] font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors"
+          >
+            <Plus size={11} /> Add Customer
+          </button>
         </div>
 
         {/* Stats */}

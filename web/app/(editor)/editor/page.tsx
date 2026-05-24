@@ -7,51 +7,35 @@ import {
   Clock,
   FileText,
   Calendar,
-  CreditCard,
   CheckCircle,
   AlertCircle,
   ChevronRight,
   ExternalLink,
 } from 'lucide-react'
+import EditorShell from '@/components/editor/EditorShell'
 
 export default function DashboardPage() {
-  return (
-    <div className="flex flex-col min-h-full">
-      {/* Topbar */}
-      <div className="flex items-center justify-between gap-4 border-b border-[rgba(18,18,18,0.10)] bg-white px-5 md:px-6 py-3.5 flex-shrink-0">
-        <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">
-          Dashboard / Overview
-        </p>
-        <div className="flex items-center gap-2 border border-[rgba(18,18,18,0.10)] px-2.5 py-1.5 text-[11px] font-medium text-near-black bg-white">
-          <span className="w-1.5 h-1.5 rounded-full bg-near-black" />
-          Lush Studio
-        </div>
-      </div>
+  const actions = (
+    <>
+      <Link
+        href="/editor/website?tab=business"
+        className="flex items-center gap-2 border border-[rgba(18,18,18,0.12)] bg-white px-3 py-2 text-xs font-semibold text-near-black hover:bg-cream transition-colors"
+      >
+        <Globe size={13} /> Edit Website
+      </Link>
+      <Link
+        href="/editor/bookings"
+        className="flex items-center gap-2 bg-near-black text-white px-3 py-2 text-xs font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors"
+      >
+        <Calendar size={13} /> Bookings
+      </Link>
+    </>
+  )
 
+  return (
+    <EditorShell actions={actions}>
       {/* Page content */}
       <div className="flex-1 p-5 md:p-6 md:overflow-y-auto space-y-6">
-
-        {/* Page head */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-1">Welcome back</p>
-            <h1 className="text-2xl font-bold text-near-black tracking-tight">Dashboard</h1>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/editor/website?tab=business"
-              className="flex items-center gap-2 border border-[rgba(18,18,18,0.12)] bg-white px-3 py-2 text-xs font-semibold text-near-black hover:bg-cream transition-colors"
-            >
-              <Globe size={13} /> Edit Website
-            </Link>
-            <Link
-              href="/editor/bookings"
-              className="flex items-center gap-2 bg-near-black text-white px-3 py-2 text-xs font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors"
-            >
-              <Calendar size={13} /> Bookings
-            </Link>
-          </div>
-        </div>
 
         {/* Stat cards — 3 across on desktop, 1 on mobile */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 border border-[rgba(18,18,18,0.10)] divide-y sm:divide-y-0 sm:divide-x divide-[rgba(18,18,18,0.10)]">
@@ -179,7 +163,7 @@ export default function DashboardPage() {
         </div>
 
       </div>
-    </div>
+    </EditorShell>
   )
 }
 

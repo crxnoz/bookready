@@ -384,10 +384,8 @@ export default function ServicesEditor() {
 
   return (
     <div className="p-5 space-y-5">
-      {/* Heading */}
+      {/* Heading — section + page titles live in EditorShell */}
       <div>
-        <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-1">Services</p>
-        <h2 className="text-lg font-bold text-near-black tracking-tight mb-0.5">Your services</h2>
         <p className="text-xs text-muted-text">
           {services.length} service{services.length !== 1 ? 's' : ''} · Drag or use arrows to reorder.
         </p>

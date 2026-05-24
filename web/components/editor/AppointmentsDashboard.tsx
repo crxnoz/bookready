@@ -109,19 +109,7 @@ export default function AppointmentsDashboard() {
 
   return (
     <div className="flex flex-col min-h-full bg-cream">
-
-      {/* Topbar */}
-      <div className="border-b border-[rgba(18,18,18,0.10)] bg-white px-5 py-3.5 flex-shrink-0">
-        <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">Bookings</p>
-      </div>
-
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
-
-        {/* Page head */}
-        <div>
-          <h1 className="text-2xl font-bold text-near-black tracking-tight">Bookings</h1>
-          <p className="text-sm text-muted-text mt-0.5">Overview of your booking activity and settings.</p>
-        </div>
 
         {/* Stats strip */}
         <div className="grid grid-cols-3 border border-[rgba(18,18,18,0.10)] divide-x divide-[rgba(18,18,18,0.10)] overflow-hidden">

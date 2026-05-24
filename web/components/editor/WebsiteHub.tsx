@@ -47,9 +47,16 @@ import { cn } from '@/lib/cn'
 
 // ── Types & constants ────────────────────────────────────────────────────────
 
-type SubTab = 'overview' | 'business' | 'header' | 'content' | 'additionals' | 'footer'
+type SubTab =
+  | 'overview' | 'business' | 'header' | 'content'
+  | 'gallery'  | 'before_after' | 'policies'
+  | 'additionals' | 'footer' | 'seo'
 
-const VALID_TABS: SubTab[] = ['overview', 'business', 'header', 'content', 'additionals', 'footer']
+const VALID_TABS: SubTab[] = [
+  'overview', 'business', 'header', 'content',
+  'gallery', 'before_after', 'policies',
+  'additionals', 'footer', 'seo',
+]
 
 function hrefFor(tab: SubTab): string {
   return tab === 'overview' ? '/editor/website' : `/editor/website?tab=${tab}`
@@ -161,31 +168,20 @@ export default function WebsiteHub() {
       <div className="flex-1">
         <div className="px-4 md:px-8 py-6 w-full">
 
-          {/* Page head */}
-          <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
-            <div className="min-w-0">
-              <h1 className="text-2xl font-bold text-near-black tracking-tight">Website</h1>
-              <p className="text-sm text-muted-text mt-0.5">
-                Manage your public website content, template sections, and preview.
-              </p>
+          {/* Site link toolbar — page title now lives in EditorShell */}
+          {slug && (
+            <div className="flex items-center justify-end gap-2 mb-4">
+              <CopyLinkButton url={publicUrl} />
+              <a
+                href={publicUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black border border-[rgba(18,18,18,0.15)] bg-white px-2.5 py-1.5 hover:border-near-black"
+              >
+                <ExternalLink size={12} /> View Site
+              </a>
             </div>
-            {slug && (
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <CopyLinkButton url={publicUrl} />
-                <a
-                  href={publicUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black border border-[rgba(18,18,18,0.15)] bg-white px-2.5 py-1.5 hover:border-near-black"
-                >
-                  <ExternalLink size={12} /> View Site
-                </a>
-              </div>
-            )}
-          </div>
-
-          <div className="mb-6" />
-
+          )}
 
           {/* Editor + preview split */}
           <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_440px] gap-6">
@@ -221,6 +217,10 @@ export default function WebsiteHub() {
                 />
               )}
 
+              {tab === 'gallery'      && <GalleryManagerPanel />}
+              {tab === 'before_after' && <BeforeAfterManagerPanel />}
+              {tab === 'policies'     && <PoliciesEditorPanel />}
+
               {tab === 'additionals' && (
                 <AdditionalsPanel settings={settings} onSave={saveSettings} />
               )}
@@ -228,6 +228,8 @@ export default function WebsiteHub() {
               {tab === 'footer' && (
                 <FooterPanel settings={settings} onSave={saveSettings} />
               )}
+
+              {tab === 'seo' && <SeoComingSoonPanel />}
             </div>
 
             {/* Preview — sticky on desktop, stacks below on mobile */}
@@ -1059,10 +1061,6 @@ function ContentTabsPanel({
         />
       </CollapsibleSection>
 
-      <GalleryManagerPanel />
-
-      <BeforeAfterManagerPanel />
-
       <InstructionsEditorPanel
         title="Advice"
         subtitle="Tips, advice, or care instructions shown on the Advice tab."
@@ -1090,8 +1088,23 @@ function ContentTabsPanel({
         about={settings.about}
         onSave={(next) => onSaveSettings({ about: next })}
       />
+    </div>
+  )
+}
 
-      <PoliciesEditorPanel />
+// ── SEO placeholder ─────────────────────────────────────────────────────────
+
+function SeoComingSoonPanel() {
+  return (
+    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-6 sm:p-8 text-center">
+      <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-2">
+        Coming Soon
+      </p>
+      <h2 className="text-base font-bold text-near-black mb-1">SEO &amp; meta tags</h2>
+      <p className="text-xs text-muted-text max-w-md mx-auto">
+        Configure your site title, meta description, social share image,
+        and structured data here. We&apos;re finishing this up.
+      </p>
     </div>
   )
 }

@@ -362,10 +362,8 @@ export default function AvailabilityEditor() {
 
   return (
     <div className="pb-8">
-      {/* Page heading */}
+      {/* Page heading — section + title live in EditorShell */}
       <div className="px-5 pt-5 pb-4 border-b border-[rgba(18,18,18,0.08)]">
-        <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-1">Availability</p>
-        <h2 className="text-lg font-bold text-near-black tracking-tight mb-0.5">When you&apos;re open</h2>
         <p className="text-xs text-muted-text">Set your weekly hours, booking rules, and how clients book with you.</p>
       </div>
 
