@@ -4,15 +4,16 @@ import { useEffect, useState } from 'react'
 import { HoursEntry, AvailabilitySettings, AvailabilityData } from '@/lib/types'
 import { getEditorAvailability, updateEditorAvailability } from '@/lib/api'
 import Button from '@/components/ui/Button'
+import Link from 'next/link'
 import {
   Clock,
   Calendar,
-  Timer,
   Settings2,
   Lock,
   ChevronDown,
   ChevronUp,
   CheckCircle2,
+  ExternalLink,
 } from 'lucide-react'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -36,26 +37,6 @@ const DEFAULT_SETTINGS: AvailabilitySettings = {
 }
 
 const BUFFER_OPTIONS = [0, 5, 10, 15, 20, 30, 45, 60]
-
-const NOTICE_OPTIONS = [
-  { value: 0,    label: 'No minimum' },
-  { value: 60,   label: '1 hour' },
-  { value: 180,  label: '3 hours' },
-  { value: 360,  label: '6 hours' },
-  { value: 720,  label: '12 hours' },
-  { value: 1440, label: '24 hours' },
-  { value: 2880, label: '48 hours' },
-]
-
-const INTERVAL_OPTIONS = [15, 30, 60]
-const MAX_DAYS_OPTIONS  = [7, 14, 30, 60, 90]
-
-const FREQ_OPTIONS = [
-  { value: 'weekly',   label: 'Weekly' },
-  { value: 'biweekly', label: 'Every 2 weeks' },
-  { value: 'monthly',  label: 'Monthly' },
-  { value: 'custom',   label: 'Custom' },
-]
 
 // ── Primitives ────────────────────────────────────────────────────────────────
 
@@ -228,43 +209,6 @@ function DayCard({
   )
 }
 
-// ── SlotReleaseExample ────────────────────────────────────────────────────────
-
-function SlotReleaseExample({ s }: { s: AvailabilitySettings }) {
-  if (!s.slot_release_enabled || !s.slot_release_frequency) return null
-
-  const days  = s.slot_release_window_days ?? 14
-  const time  = s.slot_release_time ? ` at ${s.slot_release_time}` : ''
-  const dayAbbr = s.slot_release_day_of_week !== null
-    ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][s.slot_release_day_of_week]
-    : null
-
-  let example = ''
-  if (s.slot_release_frequency === 'weekly' && dayAbbr) {
-    example = `Every ${dayAbbr}${time}, open the next ${days} days of availability.`
-  } else if (s.slot_release_frequency === 'biweekly' && dayAbbr) {
-    example = `Every other ${dayAbbr}${time}, open the next ${days} days of availability.`
-  } else if (s.slot_release_frequency === 'monthly' && s.slot_release_day_of_month) {
-    example = `On the ${s.slot_release_day_of_month}${ordinal(s.slot_release_day_of_month)} of each month${time}, open the next ${days} days.`
-  } else if (s.slot_release_frequency === 'custom') {
-    example = `Custom schedule: opens ${days} days of availability${time}.`
-  }
-
-  if (!example) return null
-
-  return (
-    <div className="mt-3 px-3 py-2.5 bg-lavender border border-[rgba(18,18,18,0.06)]">
-      <p className="text-[11px] text-near-black font-medium">{example}</p>
-    </div>
-  )
-}
-
-function ordinal(n: number): string {
-  const s = ['th', 'st', 'nd', 'rd']
-  const v = n % 100
-  return s[(v - 20) % 10] || s[v] || s[0]
-}
-
 // ── AvailabilityEditor ────────────────────────────────────────────────────────
 
 type SaveState = 'idle' | 'loading' | 'saving' | 'saved' | 'error'
@@ -284,7 +228,7 @@ export default function AvailabilityEditor() {
   const [error, setError]         = useState<string | null>(null)
 
   // Section collapse state
-  const [openSection, setOpenSection] = useState<'hours' | 'rules' | 'release' | null>('hours')
+  const [openSection, setOpenSection] = useState<'hours' | 'limits' | null>('hours')
 
   useEffect(() => {
     getEditorAvailability()
@@ -364,7 +308,27 @@ export default function AvailabilityEditor() {
     <div className="pb-8">
       {/* Page heading — section + title live in EditorShell */}
       <div className="px-5 pt-5 pb-4 border-b border-[rgba(18,18,18,0.08)]">
-        <p className="text-xs text-muted-text">Set your weekly hours, booking rules, and how clients book with you.</p>
+        <p className="text-xs text-muted-text">Set your weekly hours, breaks, and per-day capacity.</p>
+      </div>
+
+      {/* Cross-link: booking rules live in Settings now */}
+      <div className="mx-5 mt-4">
+        <Link
+          href="/editor/settings?tab=booking"
+          className="group flex items-start gap-3 border border-[rgba(18,18,18,0.10)] bg-white px-3.5 py-3 hover:border-near-black transition-colors"
+        >
+          <span className="w-8 h-8 flex items-center justify-center bg-cream border border-[rgba(18,18,18,0.08)] text-near-black flex-shrink-0">
+            <Settings2 size={14} strokeWidth={1.8} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-semibold text-near-black">Booking rules moved to Settings</p>
+            <p className="text-[11px] text-muted-text mt-0.5">
+              Booking enabled, auto-confirm, minimum notice, max days ahead, slot interval, slot release,
+              cancellation, and reschedule windows now all live in Settings &rsaquo; Booking.
+            </p>
+          </div>
+          <ExternalLink size={13} className="text-muted-text group-hover:text-near-black mt-1 flex-shrink-0" />
+        </Link>
       </div>
 
       {error && saveState === 'error' && (
@@ -407,10 +371,10 @@ export default function AvailabilityEditor() {
       {/* ─── Section 2: Booking Rules ─── */}
       <CollapsibleSection
         icon={Settings2}
-        title="Booking Rules"
-        subtitle="Control how and when clients can book."
-        open={openSection === 'rules'}
-        onToggle={() => setOpenSection(s => s === 'rules' ? null : 'rules')}
+        title="Schedule Limits"
+        subtitle="Per-appointment buffers and daily capacity."
+        open={openSection === 'limits'}
+        onToggle={() => setOpenSection(s => s === 'limits' ? null : 'limits')}
       >
         <div className="space-y-5">
           {/* Buffer before / after */}
@@ -448,32 +412,6 @@ export default function AvailabilityEditor() {
 
           <hr className="border-[rgba(18,18,18,0.08)]" />
 
-          {/* Minimum notice */}
-          <SelectInput
-            label="Minimum notice"
-            value={settings.minimum_notice_minutes}
-            onChange={v => setSetting('minimum_notice_minutes', v)}
-            options={NOTICE_OPTIONS}
-          />
-
-          {/* Booking interval */}
-          <SelectInput
-            label="Booking slot interval"
-            value={settings.booking_interval_minutes}
-            onChange={v => setSetting('booking_interval_minutes', v)}
-            options={INTERVAL_OPTIONS.map(n => ({ value: n, label: `${n} min` }))}
-          />
-
-          {/* Max days ahead */}
-          <SelectInput
-            label="How far ahead clients can book"
-            value={settings.max_days_ahead}
-            onChange={v => setSetting('max_days_ahead', v)}
-            options={MAX_DAYS_OPTIONS.map(n => ({ value: n, label: `${n} days` }))}
-          />
-
-          <hr className="border-[rgba(18,18,18,0.08)]" />
-
           {/* Max per day */}
           <div>
             <label className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5 block">
@@ -492,117 +430,6 @@ export default function AvailabilityEditor() {
             />
             <p className="text-xs text-muted-text mt-1">Leave blank for no limit.</p>
           </div>
-
-          {/* Auto confirm */}
-          <div className="flex items-start gap-3 pt-1">
-            <Toggle
-              on={settings.auto_confirm_bookings}
-              onChange={v => setSetting('auto_confirm_bookings', v)}
-            />
-            <div>
-              <p className="text-sm font-medium text-near-black">Auto-confirm bookings</p>
-              <p className="text-xs text-muted-text mt-0.5">
-                Bookings are confirmed instantly without manual approval.
-              </p>
-            </div>
-          </div>
-        </div>
-      </CollapsibleSection>
-
-      {/* ─── Section 3: Slot Release ─── */}
-      <CollapsibleSection
-        icon={Timer}
-        title="Slot Release"
-        subtitle="Open your calendar on a schedule instead of anytime."
-        open={openSection === 'release'}
-        onToggle={() => setOpenSection(s => s === 'release' ? null : 'release')}
-      >
-        <div className="space-y-5">
-          {/* Main toggle */}
-          <div className="flex items-start gap-3">
-            <Toggle
-              on={settings.slot_release_enabled}
-              onChange={v => setSetting('slot_release_enabled', v)}
-            />
-            <div>
-              <p className="text-sm font-medium text-near-black">Release booking slots on a schedule</p>
-              <p className="text-xs text-muted-text mt-0.5">
-                Use this if you open your books weekly, bi-weekly, or monthly rather than letting clients book anytime.
-              </p>
-            </div>
-          </div>
-
-          {settings.slot_release_enabled && (
-            <div className="space-y-4 pt-1">
-              {/* Frequency */}
-              <SelectInput
-                label="Release frequency"
-                value={settings.slot_release_frequency ?? 'weekly'}
-                onChange={v => setSetting('slot_release_frequency', v as AvailabilitySettings['slot_release_frequency'])}
-                options={FREQ_OPTIONS}
-              />
-
-              {/* Day of week — shown for weekly / biweekly */}
-              {(settings.slot_release_frequency === 'weekly' || settings.slot_release_frequency === 'biweekly') && (
-                <SelectInput
-                  label="Release on day"
-                  value={settings.slot_release_day_of_week ?? 1}
-                  onChange={v => setSetting('slot_release_day_of_week', v)}
-                  options={DAY_NAMES.map((d, i) => ({ value: i, label: d }))}
-                />
-              )}
-
-              {/* Day of month — shown for monthly */}
-              {settings.slot_release_frequency === 'monthly' && (
-                <div>
-                  <label className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5 block">
-                    Release on day of month
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={31}
-                    placeholder="1"
-                    value={settings.slot_release_day_of_month ?? ''}
-                    onChange={e => setSetting(
-                      'slot_release_day_of_month',
-                      e.target.value ? parseInt(e.target.value, 10) : null,
-                    )}
-                    className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black/30 transition-colors"
-                  />
-                </div>
-              )}
-
-              {/* Release time */}
-              <TimeInput
-                label="Release at time"
-                value={settings.slot_release_time}
-                onChange={v => setSetting('slot_release_time', v)}
-              />
-
-              {/* Window days */}
-              <div>
-                <label className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5 block">
-                  Open how many days of availability
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={365}
-                  placeholder="14"
-                  value={settings.slot_release_window_days ?? ''}
-                  onChange={e => setSetting(
-                    'slot_release_window_days',
-                    e.target.value ? parseInt(e.target.value, 10) : null,
-                  )}
-                  className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black/30 transition-colors"
-                />
-              </div>
-
-              {/* Live example */}
-              <SlotReleaseExample s={settings} />
-            </div>
-          )}
         </div>
       </CollapsibleSection>
 

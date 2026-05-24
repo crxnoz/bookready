@@ -133,6 +133,12 @@ class AvailabilityController extends Controller
 
     public function update(Request $request): JsonResponse
     {
+        // NOTE: booking rules (booking_enabled, auto_confirm_bookings, min
+        //       notice, max_days_ahead, booking_interval_minutes, slot_release_*)
+        //       are managed by /editor/settings/bookings now. Availability owns
+        //       schedule-only fields here. We deliberately drop the booking-rule
+        //       keys from the validation allowlist so they can't be spoofed
+        //       through this surface and so the two editors never disagree.
         $request->validate([
             'hours'                             => 'sometimes|array|size:7',
             'hours.*.day_of_week'               => 'required_with:hours|integer|between:0,6',
@@ -145,17 +151,7 @@ class AvailabilityController extends Controller
             'settings'                          => 'sometimes|array',
             'settings.buffer_before_minutes'    => 'sometimes|integer|min:0|max:120',
             'settings.buffer_after_minutes'     => 'sometimes|integer|min:0|max:120',
-            'settings.minimum_notice_minutes'   => 'sometimes|integer|min:0',
-            'settings.booking_interval_minutes' => 'sometimes|integer|in:15,30,60',
-            'settings.max_days_ahead'           => 'sometimes|integer|min:1|max:365',
             'settings.max_appointments_per_day' => 'nullable|integer|min:1',
-            'settings.auto_confirm_bookings'    => 'sometimes|boolean',
-            'settings.slot_release_enabled'     => 'sometimes|boolean',
-            'settings.slot_release_frequency'   => 'nullable|in:weekly,biweekly,monthly,custom',
-            'settings.slot_release_day_of_week' => 'nullable|integer|between:0,6',
-            'settings.slot_release_day_of_month'=> 'nullable|integer|between:1,31',
-            'settings.slot_release_time'        => 'nullable|date_format:H:i',
-            'settings.slot_release_window_days' => 'nullable|integer|min:1|max:365',
         ]);
 
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
@@ -180,17 +176,12 @@ class AvailabilityController extends Controller
             }
         }
 
-        // ── Update settings ───────────────────────────────────────────────────
+        // ── Update settings (schedule-only fields) ────────────────────────────
         if ($request->has('settings')) {
             $s = $request->input('settings');
             $patch = ['updated_at' => now()];
 
-            $intFields = [
-                'buffer_before_minutes', 'buffer_after_minutes',
-                'minimum_notice_minutes', 'booking_interval_minutes',
-                'max_days_ahead',
-            ];
-            foreach ($intFields as $f) {
+            foreach (['buffer_before_minutes', 'buffer_after_minutes'] as $f) {
                 if (isset($s[$f])) $patch[$f] = (int) $s[$f];
             }
 
@@ -200,28 +191,14 @@ class AvailabilityController extends Controller
                     : null;
             }
 
-            $boolFields = ['auto_confirm_bookings', 'slot_release_enabled'];
-            foreach ($boolFields as $f) {
-                if (isset($s[$f])) $patch[$f] = (bool) $s[$f];
-            }
+            // Booking-rule fields (minimum_notice_minutes, booking_interval_minutes,
+            // max_days_ahead, auto_confirm_bookings, slot_release_*) are managed
+            // by /editor/settings/bookings — they're stripped from validation
+            // above and intentionally not written here.
 
-            $nullableFields = [
-                'slot_release_frequency', 'slot_release_time',
-            ];
-            foreach ($nullableFields as $f) {
-                if (array_key_exists($f, $s)) $patch[$f] = $s[$f];
+            if (count($patch) > 1) {
+                DB::table('booking_settings')->update($patch);
             }
-
-            $nullableInts = [
-                'slot_release_day_of_week', 'slot_release_day_of_month', 'slot_release_window_days',
-            ];
-            foreach ($nullableInts as $f) {
-                if (array_key_exists($f, $s)) {
-                    $patch[$f] = $s[$f] !== null ? (int) $s[$f] : null;
-                }
-            }
-
-            DB::table('booking_settings')->update($patch);
         }
 
         // ── Read back (still inside tenant context) ───────────────────────────
