@@ -2,7 +2,7 @@
   'preheader' => 'Your appointment with ' . $businessName . ' has been cancelled.',
   'eyebrow'   => 'Appointment cancelled',
   'headline'  => 'Your appointment was cancelled.',
-  'intro'     => $businessName . ' cancelled the appointment below. If this wasn&rsquo;t expected, reply to this email and they&rsquo;ll be in touch.',
+  'intro'     => $businessName . ' cancelled the appointment below. If this wasn’t expected, reply to this email and they’ll be in touch.',
 ])
 
 @section('details')

@@ -1,8 +1,8 @@
 @extends('mail.layouts.bookready', [
   'preheader' => 'Your appointment with ' . $businessName . ' is confirmed.',
   'eyebrow'   => 'Appointment confirmed',
-  'headline'  => 'You&rsquo;re booked in!',
-  'intro'     => $businessName . ' just confirmed your appointment. We&rsquo;ll see you soon.',
+  'headline'  => 'You’re booked in!',
+  'intro'     => $businessName . ' just confirmed your appointment. We’ll see you soon.',
 ])
 
 @section('details')
