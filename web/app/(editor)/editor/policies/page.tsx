@@ -1,10 +1,5 @@
-import EditorShell from '@/components/editor/EditorShell'
-import PoliciesEditor from '@/components/editor/PoliciesEditor'
+import { redirect } from 'next/navigation'
 
 export default function PoliciesPage() {
-  return (
-    <EditorShell>
-      <PoliciesEditor />
-    </EditorShell>
-  )
+  redirect('/editor/website?tab=content')
 }

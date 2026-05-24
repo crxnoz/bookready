@@ -67,7 +67,7 @@ function SuccessContent() {
               subscription reliably. This page is confirmation-only. */}
 
           <Link
-            href="/editor/business"
+            href="/editor/website?tab=business"
             className="block w-full bg-near-black text-white text-[11px] font-bold tracking-[0.18em] uppercase py-3 hover:bg-[#2a2a2a] transition-colors text-center"
           >
             Go to Editor →

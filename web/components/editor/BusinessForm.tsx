@@ -23,7 +23,7 @@ const EMPTY: BusinessProfile = {
 
 type Status = 'idle' | 'loading' | 'saving' | 'saved' | 'error'
 
-export default function BusinessForm() {
+export default function BusinessForm({ onAfterSave }: { onAfterSave?: () => void } = {}) {
   const [form, setForm] = useState<BusinessProfile>(EMPTY)
   const [status, setStatus] = useState<Status>('loading')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -52,6 +52,7 @@ export default function BusinessForm() {
       const updated = await updateEditorBusiness(form)
       setForm({ ...EMPTY, ...updated })
       setStatus('saved')
+      onAfterSave?.()
       setTimeout(() => setStatus('idle'), 2500)
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Save failed')

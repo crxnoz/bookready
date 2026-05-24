@@ -1,10 +1,5 @@
-import EditorShell from '@/components/editor/EditorShell'
-import BusinessForm from '@/components/editor/BusinessForm'
+import { redirect } from 'next/navigation'
 
 export default function BusinessPage() {
-  return (
-    <EditorShell>
-      <BusinessForm />
-    </EditorShell>
-  )
+  redirect('/editor/website?tab=business')
 }

@@ -39,7 +39,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
-              href="/editor/business"
+              href="/editor/website?tab=business"
               className="flex items-center gap-2 border border-[rgba(18,18,18,0.12)] bg-white px-3 py-2 text-xs font-semibold text-near-black hover:bg-cream transition-colors"
             >
               <Globe size={13} /> Edit Website
@@ -63,7 +63,7 @@ export default function DashboardPage() {
               { label: 'Template', value: 'The Fade Room' },
               { label: 'Subscription', value: 'Active' },
             ]}
-            action={{ label: 'Edit Website', href: '/editor/business' }}
+            action={{ label: 'Edit Website', href: '/editor/website?tab=business' }}
           />
           <div className="bg-white p-5">
             <p className={eyebrow}>Setup Checklist</p>
@@ -96,10 +96,10 @@ export default function DashboardPage() {
             label="Quick Actions"
             title="Jump in"
             quickLinks={[
-              { label: 'Edit Business Info', href: '/editor/business' },
+              { label: 'Edit Business Info', href: '/editor/website?tab=business' },
               { label: 'Add Service', href: '/editor/services' },
               { label: 'Set Hours', href: '/editor/hours' },
-              { label: 'Add Policies', href: '/editor/policies' },
+              { label: 'Add Policies', href: '/editor/website?tab=content' },
             ]}
           />
         </div>
@@ -135,10 +135,10 @@ export default function DashboardPage() {
           <p className="text-xs text-muted-text mb-3">Sections clients see on your booking site.</p>
           <div className="grid grid-cols-2 md:grid-cols-4 border border-[rgba(18,18,18,0.10)] divide-x divide-[rgba(18,18,18,0.10)]">
             {[
-              { label: 'Business Info', icon: Globe, status: 'Complete', href: '/editor/business' },
+              { label: 'Business Info', icon: Globe, status: 'Complete', href: '/editor/website?tab=business' },
               { label: 'Services', icon: Scissors, status: '4 active', href: '/editor/services' },
               { label: 'Hours', icon: Clock, status: 'Needs setup', href: '/editor/hours', warn: true },
-              { label: 'Policies', icon: FileText, status: 'Needs setup', href: '/editor/policies', warn: true },
+              { label: 'Policies', icon: FileText, status: 'Needs setup', href: '/editor/website?tab=content', warn: true },
             ].map(({ label, icon: Icon, status, href, warn }) => (
               <div key={label} className="bg-white p-4">
                 <div className="flex items-center gap-2 mb-2">

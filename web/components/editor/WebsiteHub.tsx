@@ -9,8 +9,9 @@ import {
   Check, Loader2, Heart, Phone, Mail, Instagram, MapPin, Sparkles,
   Megaphone, MessageSquare, ChevronRight, AlertCircle, RefreshCw,
   Edit2, Trash2, X, Link as LinkIcon, ArrowUp, ArrowDown, ChevronDown,
-  Clock,
+  Clock, Building2,
 } from 'lucide-react'
+import BusinessForm from '@/components/editor/BusinessForm'
 import {
   getCurrentUser,
   getEditorTemplateSettings,
@@ -45,9 +46,9 @@ import { cn } from '@/lib/cn'
 
 // ── Types & constants ────────────────────────────────────────────────────────
 
-type SubTab = 'overview' | 'header' | 'content' | 'additionals' | 'footer'
+type SubTab = 'overview' | 'business' | 'header' | 'content' | 'additionals' | 'footer'
 
-const VALID_TABS: SubTab[] = ['overview', 'header', 'content', 'additionals', 'footer']
+const VALID_TABS: SubTab[] = ['overview', 'business', 'header', 'content', 'additionals', 'footer']
 
 function hrefFor(tab: SubTab): string {
   return tab === 'overview' ? '/editor/website' : `/editor/website?tab=${tab}`
@@ -198,6 +199,12 @@ export default function WebsiteHub() {
                   publicUrl={publicUrl}
                   onToggleSection={toggleSection}
                 />
+              )}
+
+              {tab === 'business' && (
+                <div className="bg-white border border-[rgba(18,18,18,0.10)]">
+                  <BusinessForm onAfterSave={() => setPreviewKey(k => k + 1)} />
+                </div>
               )}
 
               {tab === 'header' && (
@@ -550,8 +557,9 @@ function OverviewPanel({
   const enabledCount = sections.filter(s => s.is_enabled).length
 
   const QUICK_LINKS: { tab: SubTab; label: string; icon: React.ElementType; hint: string }[] = [
+    { tab: 'business',    label: 'Business Info',  icon: Building2,  hint: 'Name, tagline, contact, address' },
     { tab: 'header',      label: 'Header / Hero',  icon: Sparkles,   hint: 'Announcement, tagline, buttons' },
-    { tab: 'content',     label: 'Content / Tabs', icon: ListChecks, hint: 'Tab labels and section content' },
+    { tab: 'content',     label: 'Content / Tabs', icon: ListChecks, hint: 'Tab labels, gallery, policies' },
     { tab: 'additionals', label: 'Additionals',    icon: Plus,       hint: 'Thank-you, extra sections' },
     { tab: 'footer',      label: 'Footer',         icon: Info,       hint: 'Subtext, links, BookReady badge' },
   ]
@@ -672,12 +680,10 @@ function OverviewPanel({
 
       {/* Core data hints */}
       <Panel
-        title="Core data lives in Bookings & Business"
-        subtitle="These editors are separate from website settings — change them once and they update everywhere."
+        title="Bookings data"
+        subtitle="Services and availability live under Bookings — change them once and they update everywhere."
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          <CoreLink href="/editor/business"  label="Business Info" hint="Name, tagline, contact, address" />
-          <CoreLink href="/editor/policies"  label="Policies"      hint="Cancellation, deposits, no-show" />
           <CoreLink href="/editor/services"  label="Services"      hint="Lives under Bookings" />
           <CoreLink href="/editor/availability" label="Availability" hint="Lives under Bookings" />
         </div>
@@ -766,7 +772,7 @@ function HeaderPanel({
           <Info size={13} className="text-muted-text flex-shrink-0 mt-0.5" />
           <p className="text-[11px] text-muted-text leading-relaxed">
             Business name comes from your{' '}
-            <Link href="/editor/business" className="text-near-black font-semibold underline">Business Info</Link>.
+            <Link href="/editor/website?tab=business" scroll={false} className="text-near-black font-semibold underline">Business Info</Link>.
             The tagline below overrides the displayed subtext on this template.
           </p>
         </div>
@@ -1239,7 +1245,7 @@ function AboutEditorPanel({
   )
 }
 
-// ── Policies editor (reuses existing /editor/policies API) ───────────────────
+// ── Policies editor (the single source of truth for policy editing) ─────────
 
 const POLICY_FIELDS: { key: keyof BusinessPolicy; label: string; placeholder: string }[] = [
   { key: 'cancellation_policy', label: 'Cancellation policy', placeholder: 'How much notice do clients need to give?' },
@@ -1344,7 +1350,7 @@ function PoliciesEditorPanel() {
       {policies && (
         <>
           <p className="text-[11px] text-muted-text bg-cream border border-[rgba(18,18,18,0.08)] px-3 py-2">
-            Policies are part of your core business info — edits here save to the same place as <span className="font-mono">/editor/policies</span>.
+            Edit your cancellation, late, no-show, deposit, and reschedule policies here. They appear on your public site under the Policy tab.
           </p>
           {POLICY_FIELDS.map(({ key, label, placeholder }) => (
             <TextareaField
@@ -1474,7 +1480,7 @@ function FooterPanel({
         <Info size={13} className="text-muted-text flex-shrink-0 mt-0.5" />
         <p className="text-[11px] text-muted-text leading-relaxed">
           Phone, email, address, and hours come from{' '}
-          <Link href="/editor/business" className="text-near-black font-semibold underline">Business Info</Link>
+          <Link href="/editor/website?tab=business" scroll={false} className="text-near-black font-semibold underline">Business Info</Link>
           {' '}and Bookings. Toggle below to choose what shows in the footer.
         </p>
       </div>

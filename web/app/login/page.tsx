@@ -23,7 +23,7 @@ export default function LoginPage() {
       setToken(res.token)
       const tenantId = res.tenant_id ?? res.user.tenant_id
       setTenantId(tenantId)
-      router.push('/editor/business')
+      router.push('/editor/website?tab=business')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed.')
     } finally {

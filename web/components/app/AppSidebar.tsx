@@ -16,11 +16,10 @@ import {
 import { cn } from '@/lib/cn'
 import { clearAuth } from '@/lib/auth'
 
+// Business Info, Policies, Gallery, etc. now live as tabs inside /editor/website.
+// Legacy /editor/business and /editor/policies routes redirect to the matching tab.
 const WEBSITE_PATHS = [
   '/editor/website',
-  '/editor/business',
-  '/editor/policies',
-  '/editor/gallery',
   '/editor/branding',
   '/editor/template',
 ]

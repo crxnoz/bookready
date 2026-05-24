@@ -10,10 +10,11 @@ import { ArrowLeft } from 'lucide-react'
 
 // ── Section nav config ────────────────────────────────────────────────────────
 
-type WebsiteTabId = 'overview' | 'header' | 'content' | 'additionals' | 'footer'
+type WebsiteTabId = 'overview' | 'business' | 'header' | 'content' | 'additionals' | 'footer'
 
 const WEBSITE_NAV: { id: WebsiteTabId; label: string }[] = [
   { id: 'overview',    label: 'Overview'        },
+  { id: 'business',    label: 'Business Info'   },
   { id: 'header',      label: 'Header / Hero'   },
   { id: 'content',     label: 'Content / Tabs'  },
   { id: 'additionals', label: 'Additionals'     },
@@ -28,11 +29,10 @@ const BOOKINGS_NAV = [
   { href: '/editor/staff',         label: 'Staff' },
 ] as const
 
+// Business Info, Policies, Gallery, etc. are all now tabs inside /editor/website.
+// Legacy /editor/business and /editor/policies routes redirect to the matching tab.
 const WEBSITE_PATHS = [
   '/editor/website',
-  '/editor/business',
-  '/editor/policies',
-  '/editor/gallery',
   '/editor/branding',
   '/editor/template',
 ]
@@ -114,7 +114,7 @@ function BookingsSectionNav({ nav, path }: { nav: readonly BookingsNavItem[]; pa
 
 // ── Shell ─────────────────────────────────────────────────────────────────────
 
-const VALID_WEBSITE_TABS: WebsiteTabId[] = ['overview', 'header', 'content', 'additionals', 'footer']
+const VALID_WEBSITE_TABS: WebsiteTabId[] = ['overview', 'business', 'header', 'content', 'additionals', 'footer']
 
 export default function EditorShell({ children }: { children: React.ReactNode }) {
   const path = usePathname()
@@ -133,14 +133,11 @@ export default function EditorShell({ children }: { children: React.ReactNode })
 
   const sectionLabel = isWebsite ? 'Website' : isBookings ? 'Bookings' : isCustomers ? 'Customers' : 'Editor'
 
-  // A "sub-page" inside the Website group (e.g. /editor/business) gets a
+  // A "sub-page" inside the Website group (e.g. /editor/branding) gets a
   // small back link so users can always return to the Website hub.
   const isWebsiteSubpage = isWebsite && !isWebsiteHub
   const subpageBackHref  = '/editor/website'
   const subpageBackLabel = (() => {
-    if (path.startsWith('/editor/business')) return 'Business Info'
-    if (path.startsWith('/editor/policies')) return 'Policies'
-    if (path.startsWith('/editor/gallery'))  return 'Gallery'
     if (path.startsWith('/editor/branding')) return 'Branding'
     if (path.startsWith('/editor/template')) return 'Template'
     return 'Page'
