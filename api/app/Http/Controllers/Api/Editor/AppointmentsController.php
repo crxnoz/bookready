@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Editor;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Services\AppointmentMailer;
+use App\Services\NotificationSettingsService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -271,6 +272,7 @@ class AppointmentsController extends Controller
 
         $emailAppt     = null;
         $emailBusiness = null;
+        $emailNotify   = null;
 
         if ($statusChanged && in_array($newStatus, ['confirmed', 'cancelled']) && ! empty($row->customer_email)) {
             $emailAppt = [
@@ -285,6 +287,7 @@ class AppointmentsController extends Controller
                 'notes'            => $row->notes,
             ];
             $emailBusiness = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
+            $emailNotify   = NotificationSettingsService::load();
         }
 
         tenancy()->end();
@@ -292,9 +295,9 @@ class AppointmentsController extends Controller
         // Send email outside tenancy with plain-array data
         if ($emailAppt !== null && $emailBusiness !== null) {
             if ($newStatus === 'confirmed') {
-                AppointmentMailer::sendConfirmed($emailAppt, $emailBusiness);
+                AppointmentMailer::sendConfirmed($emailAppt, $emailBusiness, $emailNotify);
             } elseif ($newStatus === 'cancelled') {
-                AppointmentMailer::sendCancelled($emailAppt, $emailBusiness);
+                AppointmentMailer::sendCancelled($emailAppt, $emailBusiness, $emailNotify);
             }
         }
 
@@ -322,6 +325,7 @@ class AppointmentsController extends Controller
         // Collect email payload before ending tenancy
         $emailAppt     = null;
         $emailBusiness = null;
+        $emailNotify   = null;
 
         if (! empty($appt->customer_email) && $appt->status !== 'cancelled') {
             $emailAppt = [
@@ -336,12 +340,13 @@ class AppointmentsController extends Controller
                 'notes'            => $appt->notes,
             ];
             $emailBusiness = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
+            $emailNotify   = NotificationSettingsService::load();
         }
 
         tenancy()->end();
 
         if ($emailAppt !== null && $emailBusiness !== null) {
-            AppointmentMailer::sendCancelled($emailAppt, $emailBusiness);
+            AppointmentMailer::sendCancelled($emailAppt, $emailBusiness, $emailNotify);
         }
 
         return response()->json(null, 204);

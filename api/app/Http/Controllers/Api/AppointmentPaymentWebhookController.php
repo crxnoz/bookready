@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Services\AppointmentMailer;
 use App\Services\AppointmentPaymentService;
+use App\Services\NotificationSettingsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -158,12 +159,13 @@ class AppointmentPaymentWebhookController extends Controller
             ];
 
             $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
+            $notify       = NotificationSettingsService::load();
 
             tenancy()->end();
 
             // Now that deposit is paid, send the booking-request emails that we
             // intentionally held back when the booking was created.
-            AppointmentMailer::sendBookingRequest($appt, $businessName, $ownerEmail);
+            AppointmentMailer::sendBookingRequest($appt, $businessName, $ownerEmail, $notify);
         } catch (\Throwable $e) {
             Log::error('Appointment webhook processing error', [
                 'tenant_id'      => $tenantId,

@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Editor\BusinessProfileController;
 use App\Http\Controllers\Api\Editor\CustomersController;
 use App\Http\Controllers\Api\Editor\HoursController;
 use App\Http\Controllers\Api\Editor\BookingSettingsController;
+use App\Http\Controllers\Api\Editor\NotificationSettingsController;
 use App\Http\Controllers\Api\Editor\PaymentSettingsController;
 use App\Http\Controllers\Api\Editor\StripeConnectController;
 use App\Http\Controllers\Api\Editor\BeforeAfterItemsController;
@@ -110,6 +111,9 @@ Route::prefix('v1')->group(function () {
 
         Route::get('settings/bookings',               [BookingSettingsController::class, 'show']);
         Route::patch('settings/bookings',             [BookingSettingsController::class, 'update']);
+
+        Route::get('settings/notifications',          [NotificationSettingsController::class, 'show']);
+        Route::patch('settings/notifications',        [NotificationSettingsController::class, 'update']);
 
         Route::get('settings/payments',               [PaymentSettingsController::class, 'show']);
         Route::patch('settings/payments',             [PaymentSettingsController::class, 'update']);

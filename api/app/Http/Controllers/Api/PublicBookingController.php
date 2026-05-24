@@ -7,6 +7,7 @@ use App\Models\Tenant;
 use App\Services\AppointmentMailer;
 use App\Exceptions\StripeConnectNotReadyException;
 use App\Services\AppointmentPaymentService;
+use App\Services\NotificationSettingsService;
 use App\Services\SlotGenerator;
 use App\Services\StripeConnectService;
 use Carbon\Carbon;
@@ -234,6 +235,7 @@ class PublicBookingController extends Controller
         ];
 
         $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
+        $notify       = NotificationSettingsService::load();
 
         // ── Payment-required path: create Stripe Checkout session ────────
         $checkoutUrl = null;
@@ -295,7 +297,7 @@ class PublicBookingController extends Controller
         // until the webhook confirms the deposit. When payment is not
         // required, behavior is byte-identical to the previous flow.
         if (! $paymentRequired) {
-            AppointmentMailer::sendBookingRequest($appt, $businessName, $ownerEmail);
+            AppointmentMailer::sendBookingRequest($appt, $businessName, $ownerEmail, $notify);
         }
 
         $response = [

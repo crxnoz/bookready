@@ -349,6 +349,25 @@ export interface StripeConnectStartResponse {
   stripe_connect_account_id: string
 }
 
+// ── Notification settings ───────────────────────────────────────────────────
+
+export interface NotificationSettings {
+  id?:                                  number
+  owner_booking_email_enabled:          boolean
+  client_booking_email_enabled:         boolean
+  appointment_confirmed_email_enabled:  boolean
+  appointment_cancelled_email_enabled:  boolean
+  reminder_email_enabled:               boolean
+  reminder_hours_before:                number
+  reply_to_email:                       string | null
+  sender_name:                          string | null
+  created_at?:                          string
+  updated_at?:                          string
+}
+
+export type NotificationSettingsPayload = Partial<Omit<NotificationSettings,
+  'id' | 'created_at' | 'updated_at'>>
+
 // ── Booking settings ────────────────────────────────────────────────────────
 
 export type SlotReleaseMode = 'always_open' | 'weekly' | 'biweekly' | 'monthly'

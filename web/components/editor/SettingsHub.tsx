@@ -16,11 +16,15 @@ import {
   refreshStripeConnectOnboarding,
   getEditorBookingSettings,
   updateEditorBookingSettings,
+  getEditorNotificationSettings,
+  updateEditorNotificationSettings,
 } from '@/lib/api'
 import type {
   BookingSettings,
   BookingSettingsPayload,
   DepositType,
+  NotificationSettings,
+  NotificationSettingsPayload,
   PaymentSettings,
   PaymentSettingsPayload,
   SlotReleaseMode,
@@ -52,7 +56,7 @@ const GROUPS: GroupDef[] = [
   { tab: 'business',      label: 'Business Settings',  hint: 'Hours, time zone, contact basics',           icon: Building2,    status: 'soon' },
   { tab: 'booking',       label: 'Booking Settings',   hint: 'Booking window, notice, auto-confirm, rules', icon: Calendar,     status: 'ready' },
   { tab: 'payments',      label: 'Payment Settings',   hint: 'Customer payments, deposits, currency',      icon: CreditCard,   status: 'ready' },
-  { tab: 'notifications', label: 'Notifications',      hint: 'Email + SMS templates and recipients',       icon: Bell,         status: 'soon' },
+  { tab: 'notifications', label: 'Notifications',      hint: 'Toggle booking emails, reply-to, sender',    icon: Bell,         status: 'ready' },
   { tab: 'policies',      label: 'Policies',           hint: 'Cancellation, late, no-show, deposits',      icon: FileText,     status: 'soon' },
   { tab: 'account',       label: 'Account',            hint: 'Owner profile, password, sign-in security',  icon: UserCircle,   status: 'soon' },
   { tab: 'integrations',  label: 'Integrations',       hint: 'Stripe, Google, Instagram, Resend, etc.',    icon: Plug,         status: 'soon' },
@@ -77,7 +81,8 @@ export default function SettingsHub() {
       {tab === 'overview'      && <OverviewPanel />}
       {tab === 'payments'      && <PaymentSettingsPanel />}
       {tab === 'booking'       && <BookingSettingsPanel />}
-      {tab !== 'overview' && tab !== 'payments' && tab !== 'booking' && <PlaceholderPanel tab={tab} />}
+      {tab === 'notifications' && <NotificationSettingsPanel />}
+      {tab !== 'overview' && tab !== 'payments' && tab !== 'booking' && tab !== 'notifications' && <PlaceholderPanel tab={tab} />}
     </div>
   )
 }
@@ -732,6 +737,225 @@ function stripMeta(s: BookingSettings) {
   // Ignore created_at/updated_at/id when computing dirty state.
   const { id: _id, created_at: _c, updated_at: _u, ...rest } = s
   return rest
+}
+
+// ── Notification Settings panel ─────────────────────────────────────────────
+
+function NotificationSettingsPanel() {
+  const [data,    setData]    = useState<NotificationSettings | null>(null)
+  const [draft,   setDraft]   = useState<NotificationSettings | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadErr, setLoadErr] = useState<string | null>(null)
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [saveErr,   setSaveErr]   = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getEditorNotificationSettings()
+      .then(d => { if (!cancelled) { setData(d); setDraft(d) } })
+      .catch(e => { if (!cancelled) setLoadErr(e instanceof Error ? e.message : 'Failed to load') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const dirty = useMemo(() => {
+    if (!data || !draft) return false
+    const a = { ...data,  id: undefined, created_at: undefined, updated_at: undefined }
+    const b = { ...draft, id: undefined, created_at: undefined, updated_at: undefined }
+    return JSON.stringify(a) !== JSON.stringify(b)
+  }, [data, draft])
+
+  function patch(p: Partial<NotificationSettings>) {
+    setDraft(d => d ? { ...d, ...p } : d)
+    setSaveState('idle')
+    setSaveErr(null)
+  }
+
+  async function save() {
+    if (!draft) return
+    setSaveState('saving')
+    setSaveErr(null)
+    try {
+      const payload: NotificationSettingsPayload = {
+        owner_booking_email_enabled:         draft.owner_booking_email_enabled,
+        client_booking_email_enabled:        draft.client_booking_email_enabled,
+        appointment_confirmed_email_enabled: draft.appointment_confirmed_email_enabled,
+        appointment_cancelled_email_enabled: draft.appointment_cancelled_email_enabled,
+        reminder_email_enabled:              draft.reminder_email_enabled,
+        reminder_hours_before:               draft.reminder_hours_before,
+        reply_to_email:                      draft.reply_to_email,
+        sender_name:                         draft.sender_name,
+      }
+      const next = await updateEditorNotificationSettings(payload)
+      setData(next)
+      setDraft(next)
+      setSaveState('saved')
+    } catch (e) {
+      setSaveState('error')
+      setSaveErr(e instanceof Error ? e.message : 'Save failed')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-text px-1 py-8">
+        <Loader2 size={14} className="animate-spin" /> Loading notification settings…
+      </div>
+    )
+  }
+  if (loadErr || !draft) {
+    return (
+      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-[#b42828] flex items-center gap-2">
+        <AlertCircle size={14} /> {loadErr ?? 'Could not load notification settings'}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <Link
+        href={hrefFor('overview')}
+        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
+      >
+        ← Back to Settings
+      </Link>
+
+      <header className="px-1">
+        <h1 className="text-base font-bold text-near-black">Notifications</h1>
+        <p className="text-xs text-muted-text mt-0.5">
+          Choose which emails your business and your clients receive when a booking happens.
+        </p>
+      </header>
+
+      {/* Booking emails */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Booking emails</p>
+        <Toggle
+          label="Owner — new booking request"
+          hint="Notify you when a client submits a booking request or pays a deposit."
+          icon={Bell}
+          on={draft.owner_booking_email_enabled}
+          onToggle={() => patch({ owner_booking_email_enabled: !draft.owner_booking_email_enabled })}
+        />
+        <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
+          <Toggle
+            label="Client — request received"
+            hint="Send a receipt to the client when their booking request comes in."
+            on={draft.client_booking_email_enabled}
+            onToggle={() => patch({ client_booking_email_enabled: !draft.client_booking_email_enabled })}
+          />
+        </div>
+        <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
+          <Toggle
+            label="Client — appointment confirmed"
+            hint="Send when you confirm an appointment."
+            on={draft.appointment_confirmed_email_enabled}
+            onToggle={() => patch({ appointment_confirmed_email_enabled: !draft.appointment_confirmed_email_enabled })}
+          />
+        </div>
+        <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
+          <Toggle
+            label="Client — appointment cancelled"
+            hint="Send when an appointment is cancelled."
+            on={draft.appointment_cancelled_email_enabled}
+            onToggle={() => patch({ appointment_cancelled_email_enabled: !draft.appointment_cancelled_email_enabled })}
+          />
+        </div>
+      </section>
+
+      {/* Reminder */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3 opacity-95">
+        <div className="flex items-start gap-2">
+          <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Reminders</p>
+          <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.15)] bg-cream text-muted-text px-1.5 py-0.5">
+            Coming soon
+          </span>
+        </div>
+        <Toggle
+          label="Send appointment reminders"
+          hint="The scheduler hasn’t shipped yet — your preference will be stored and applied when it does."
+          on={draft.reminder_email_enabled}
+          onToggle={() => patch({ reminder_email_enabled: !draft.reminder_email_enabled })}
+        />
+        {draft.reminder_email_enabled && (
+          <NumberField
+            label="Hours before appointment"
+            suffix="hours"
+            min={1}
+            max={720}
+            value={draft.reminder_hours_before}
+            onChange={v => patch({ reminder_hours_before: v })}
+            hint="Default 24 hours before the appointment start time."
+          />
+        )}
+      </section>
+
+      {/* Reply-to + sender name */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Email identity</p>
+        <label className="block">
+          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Reply-to email</span>
+          <input
+            type="email"
+            value={draft.reply_to_email ?? ''}
+            onChange={e => patch({ reply_to_email: e.target.value || null })}
+            placeholder="hello@yourbusiness.com"
+            className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+            maxLength={255}
+          />
+          <p className="text-[10px] text-muted-text mt-1">
+            Replies from clients land here. Leave blank to use the owner email on file.
+          </p>
+        </label>
+        <label className="block">
+          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Sender name</span>
+          <input
+            type="text"
+            value={draft.sender_name ?? ''}
+            onChange={e => patch({ sender_name: e.target.value || null })}
+            placeholder="Your business name"
+            className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+            maxLength={120}
+          />
+          <p className="text-[10px] text-muted-text mt-1">
+            Shown as the From name on emails. Defaults to BookReady when blank.
+          </p>
+        </label>
+      </section>
+
+      {/* Save bar */}
+      <div className="sticky bottom-0 bg-cream/95 backdrop-blur border-t border-[rgba(18,18,18,0.08)] pt-3 pb-2 flex items-center justify-between gap-3">
+        <div className="text-[11px] text-muted-text">
+          {saveState === 'saved' && (
+            <span className="inline-flex items-center gap-1 text-near-black">
+              <Check size={12} /> Saved
+            </span>
+          )}
+          {saveState === 'error' && (
+            <span className="inline-flex items-center gap-1 text-[#b42828]">
+              <AlertCircle size={12} /> {saveErr ?? 'Could not save'}
+            </span>
+          )}
+          {saveState === 'idle' && dirty && <span>Unsaved changes</span>}
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          disabled={!dirty || saveState === 'saving'}
+          className={cn(
+            'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase px-3 py-2',
+            dirty
+              ? 'bg-near-black text-white hover:bg-white hover:text-near-black border border-near-black'
+              : 'bg-cream text-muted-text border border-[rgba(18,18,18,0.10)] cursor-not-allowed',
+          )}
+        >
+          {saveState === 'saving'
+            ? <><Loader2 size={11} className="animate-spin" /> Saving</>
+            : <><Check size={12} /> Save changes</>}
+        </button>
+      </div>
+    </div>
+  )
 }
 
 function NumberField({

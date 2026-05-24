@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Services\PlatformMailer;
 use App\Services\TenantProvisioningService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,14 @@ class RegisterController extends Controller
         ['tenant' => $tenant, 'owner' => $owner] = $this->provisioner->provision($data);
 
         $token = $owner->createToken('api')->plainTextToken;
+
+        // Welcome email — best-effort, never blocks signup. PlatformMailer
+        // catches and logs failures internally.
+        PlatformMailer::sendWelcome(
+            ownerEmail:   $owner->email,
+            ownerName:    $owner->name,
+            businessName: $data['business_name'],
+        );
 
         return response()->json([
             'token'     => $token,

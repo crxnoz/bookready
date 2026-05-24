@@ -27,6 +27,8 @@ import {
   GalleryItemPayload,
   BookingSettings,
   BookingSettingsPayload,
+  NotificationSettings,
+  NotificationSettingsPayload,
   PaymentSettings,
   PaymentSettingsPayload,
   StripeConnectStartResponse,
@@ -258,6 +260,21 @@ export async function updateEditorPolicies(data: Partial<BusinessPolicy>): Promi
   return request<BusinessPolicy>('/editor/policies', {
     method: 'PATCH',
     body: JSON.stringify(data),
+  })
+}
+
+// ── Settings: Notifications ─────────────────────────────────────────────────
+
+export async function getEditorNotificationSettings(): Promise<NotificationSettings> {
+  return request<NotificationSettings>('/editor/settings/notifications')
+}
+
+export async function updateEditorNotificationSettings(
+  payload: NotificationSettingsPayload,
+): Promise<NotificationSettings> {
+  return request<NotificationSettings>('/editor/settings/notifications', {
+    method: 'PATCH',
+    body:   JSON.stringify(payload),
   })
 }
 
