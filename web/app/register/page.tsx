@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { register } from '@/lib/api'
@@ -8,6 +8,7 @@ import { setToken, setTenantId } from '@/lib/auth'
 import AuthShell from '@/components/auth/AuthShell'
 
 const TEMPLATE_KEY = 'br_template'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
 
 function RegisterForm() {
   const router = useRouter()
@@ -23,6 +24,25 @@ function RegisterForm() {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Surface any error bounced back from the Google OAuth bridge.
+  useEffect(() => {
+    const gerr = searchParams?.get('google_error')
+    if (gerr) setError(gerr)
+  }, [searchParams])
+
+  // Build the Google signup URL with business_name + template baked into
+  // the OAuth state. Backend reads these on callback to provision the tenant.
+  const googleSignupHref = (() => {
+    const bn = form.business_name.trim()
+    if (! bn) return null
+    const payload = btoa(JSON.stringify({
+      business_name: bn,
+      template:      templateSlug === 'thefaderoom' ? 'the-fade-room' : templateSlug,
+      owner_name:    form.owner_name.trim() || undefined,
+    }))
+    return `${API_BASE}/auth/google/redirect?intent=signup&payload=${encodeURIComponent(payload)}`
+  })()
 
   function set(key: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -182,16 +202,32 @@ function RegisterForm() {
         <div className="flex-1 h-px bg-[rgba(18,18,18,0.10)]" />
       </div>
 
-      {/* Google placeholder */}
-      <button
-        type="button"
-        disabled
-        className="w-full flex items-center justify-center gap-3 border border-[rgba(18,18,18,0.12)] bg-white py-3 text-sm font-medium text-muted-text cursor-not-allowed opacity-60"
-        title="Google signup coming soon"
-      >
-        <GoogleIcon />
-        Continue with Google
-      </button>
+      {/* Google sign-up — needs a business name first so the OAuth state
+          can carry it through Google's redirect. */}
+      {googleSignupHref ? (
+        <a
+          href={googleSignupHref}
+          className="w-full flex items-center justify-center gap-3 border border-[rgba(18,18,18,0.15)] bg-white py-3 text-sm font-medium text-near-black hover:border-near-black transition-colors"
+        >
+          <GoogleIcon />
+          Continue with Google
+        </a>
+      ) : (
+        <button
+          type="button"
+          disabled
+          className="w-full flex items-center justify-center gap-3 border border-[rgba(18,18,18,0.12)] bg-white py-3 text-sm font-medium text-muted-text cursor-not-allowed opacity-60"
+          title="Add a business name above to continue with Google"
+        >
+          <GoogleIcon />
+          Continue with Google
+        </button>
+      )}
+      {! googleSignupHref && (
+        <p className="text-[10px] text-muted-text mt-1.5 text-center">
+          Add a business name above to sign up with Google.
+        </p>
+      )}
 
       {/* Footer */}
       <p className="text-xs text-muted-text mt-6 text-center">

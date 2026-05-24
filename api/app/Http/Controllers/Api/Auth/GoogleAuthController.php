@@ -4,36 +4,52 @@ namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\PlatformMailer;
+use App\Services\TenantProvisioningService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 
 /**
- * Google "Sign in" only — matches an existing user by email.
+ * Google OAuth — supports both sign-in (existing accounts) and sign-up
+ * (new tenants). Intent + signup metadata flow through the OAuth `state`
+ * param so we don't need a server-side session.
  *
- * Sign-UP via Google is intentionally not supported in this MVP: new
- * tenants still need to pick a business name + template, which the
- * email/password register flow already handles. If we add Google sign-up
- * later, branch in handleCallback() when no user is found.
+ *   /api/v1/auth/google/redirect?intent=signin                          ← default
+ *   /api/v1/auth/google/redirect?intent=signup&payload=BASE64(json)     ← sign-up flow
  *
- * Flow:
- *   1. Frontend opens /api/v1/auth/google/redirect → 302 to Google
- *   2. Google sends user to /api/v1/auth/google/callback
- *   3. We look up the user by email, mint a Sanctum token, and 302 to
- *      the editor app at /auth/google/complete?token=... (frontend
- *      stores it then routes to /editor).
- *   4. On no-match / error, we 302 to /login?google_error=...
+ * Sign-up payload shape (base64 of JSON):
+ *   { business_name: string, template?: string, owner_name?: string }
+ *
+ * Caveat: stateless OAuth means we can't CSRF-validate the state. A
+ * tampered state can at worst cause a sign-up with a different business
+ * name than the user intended — they'll see the mismatch in the editor
+ * and can delete the tenant from the admin area.
  */
 class GoogleAuthController extends Controller
 {
     private const APP_BASE = 'https://app.bkrdy.me';
 
-    public function redirect(): RedirectResponse
+    public function __construct(
+        private readonly TenantProvisioningService $provisioner,
+    ) {}
+
+    public function redirect(Request $request): RedirectResponse
     {
+        $intent  = $request->query('intent', 'signin');
+        $payload = (string) $request->query('payload', '');
+
+        $state = base64_encode(json_encode([
+            'intent'  => $intent === 'signup' ? 'signup' : 'signin',
+            'payload' => $payload,
+        ]));
+
         return Socialite::driver('google')
             ->stateless()
             ->scopes(['openid', 'profile', 'email'])
+            ->with(['state' => $state])
             ->redirect();
     }
 
@@ -41,33 +57,113 @@ class GoogleAuthController extends Controller
     {
         // Surface Google's error param (e.g. user clicked "Cancel") cleanly.
         if ($request->query('error')) {
-            return redirect()->away(self::APP_BASE . '/login?google_error=' . urlencode((string) $request->query('error')));
+            return $this->errorBack('signin', (string) $request->query('error'));
         }
+
+        // Decode our state envelope first so we know which flow to run.
+        $stateRaw = (string) $request->query('state', '');
+        $envelope = $this->decodeState($stateRaw);
+        $intent   = $envelope['intent'] ?? 'signin';
 
         try {
             $google = Socialite::driver('google')->stateless()->user();
         } catch (\Throwable $e) {
             Log::warning('Google OAuth callback failed', ['error' => $e->getMessage()]);
-            return redirect()->away(self::APP_BASE . '/login?google_error=' . urlencode('Could not complete Google sign-in.'));
+            return $this->errorBack($intent, 'Could not complete Google sign-in.');
         }
 
         $email = strtolower((string) ($google->getEmail() ?? ''));
         if ($email === '') {
-            return redirect()->away(self::APP_BASE . '/login?google_error=' . urlencode('Google did not share an email.'));
+            return $this->errorBack($intent, 'Google did not share an email.');
         }
 
-        $user = User::where('email', $email)->first();
+        $existing = User::where('email', $email)->first();
+
+        if ($intent === 'signup') {
+            return $this->handleSignup($google, $email, $existing, $envelope['payload'] ?? '');
+        }
+
+        return $this->handleSignin($google, $email, $existing);
+    }
+
+    // ── Sign-in (existing account) ───────────────────────────────────────
+
+    private function handleSignin($google, string $email, ?User $user): RedirectResponse
+    {
         if (! $user) {
-            return redirect()->away(self::APP_BASE . '/login?google_error=' . urlencode(
+            return $this->errorBack('signin',
                 'No BookReady account uses this Google email. Sign up first.'
-            ));
+            );
+        }
+        return $this->finishWithUser($user, 'google-oauth');
+    }
+
+    // ── Sign-up (new tenant) ─────────────────────────────────────────────
+
+    private function handleSignup($google, string $email, ?User $existing, string $rawPayload): RedirectResponse
+    {
+        if ($existing) {
+            return $this->errorBack('signup',
+                'An account already exists for this Google email. Sign in instead.'
+            );
         }
 
-        // Issue a Sanctum token tagged so we can audit Google sessions later.
-        $token = $user->createToken('google-oauth')->plainTextToken;
+        $payload = $this->decodePayload($rawPayload);
+        $businessName = trim((string) ($payload['business_name'] ?? ''));
+        $template     = (string) ($payload['template'] ?? 'the-fade-room');
 
-        // Send to the frontend's bridge page. Keep the token in the
-        // fragment (after #) so it never hits server logs.
+        if ($businessName === '' || strlen($businessName) > 100) {
+            return $this->errorBack('signup',
+                'Pick a business name on the sign-up page before continuing with Google.'
+            );
+        }
+        if (! in_array($template, ['the-fade-room'], true)) {
+            $template = 'the-fade-room';
+        }
+
+        // Owner name: prefer payload, fall back to Google profile, then email handle.
+        $ownerName = trim((string) ($payload['owner_name'] ?? ''))
+            ?: trim((string) $google->getName())
+            ?: explode('@', $email, 2)[0];
+        $ownerName = mb_substr($ownerName, 0, 100);
+
+        // Google users don't pick a password during signup — generate a strong
+        // random one. They can sign in via Google going forward, or use the
+        // password change flow in Settings → Account to set a real password.
+        $generatedPassword = Str::random(32);
+
+        try {
+            ['tenant' => $tenant, 'owner' => $owner] = $this->provisioner->provision([
+                'owner_name'    => $ownerName,
+                'email'         => $email,
+                'password'      => $generatedPassword,
+                'business_name' => $businessName,
+                'template'      => $template,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Google signup provisioning failed', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorBack('signup', 'Could not finish creating your workspace. Try again.');
+        }
+
+        // Best-effort welcome email (never blocks signup).
+        PlatformMailer::sendWelcome(
+            ownerEmail:   $owner->email,
+            ownerName:    $owner->name,
+            businessName: $businessName,
+        );
+
+        return $this->finishWithUser($owner, 'google-oauth-signup');
+    }
+
+    // ── Shared finalization ──────────────────────────────────────────────
+
+    private function finishWithUser(User $user, string $tokenName): RedirectResponse
+    {
+        $token = $user->createToken($tokenName)->plainTextToken;
+
         $payload = [
             'token'     => $token,
             'tenant_id' => $user->tenant_id,
@@ -80,8 +176,35 @@ class GoogleAuthController extends Controller
                 'is_admin'  => (bool) ($user->is_admin ?? false),
             ],
         ];
-
         $fragment = base64_encode(json_encode($payload));
         return redirect()->away(self::APP_BASE . '/auth/google/complete#' . $fragment);
+    }
+
+    // ── State / payload helpers ──────────────────────────────────────────
+
+    /** @return array{intent?: string, payload?: string} */
+    private function decodeState(string $stateRaw): array
+    {
+        if ($stateRaw === '') return [];
+        $json = base64_decode($stateRaw, true);
+        if ($json === false) return [];
+        $decoded = json_decode($json, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /** @return array<string, mixed> */
+    private function decodePayload(string $rawPayload): array
+    {
+        if ($rawPayload === '') return [];
+        $json = base64_decode($rawPayload, true);
+        if ($json === false) return [];
+        $decoded = json_decode($json, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function errorBack(string $intent, string $message): RedirectResponse
+    {
+        $dest = $intent === 'signup' ? '/register' : '/login';
+        return redirect()->away(self::APP_BASE . $dest . '?google_error=' . urlencode($message));
     }
 }
