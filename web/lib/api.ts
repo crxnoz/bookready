@@ -25,6 +25,8 @@ import {
   BeforeAfterItemPayload,
   GalleryItem,
   GalleryItemPayload,
+  PaymentSettings,
+  PaymentSettingsPayload,
   Service,
   StaffMemberPayload,
   TemplateSettings,
@@ -252,6 +254,21 @@ export async function updateEditorPolicies(data: Partial<BusinessPolicy>): Promi
   return request<BusinessPolicy>('/editor/policies', {
     method: 'PATCH',
     body: JSON.stringify(data),
+  })
+}
+
+// ── Settings: Payments ───────────────────────────────────────────────────────
+
+export async function getEditorPaymentSettings(): Promise<PaymentSettings> {
+  return request<PaymentSettings>('/editor/settings/payments')
+}
+
+export async function updateEditorPaymentSettings(
+  payload: PaymentSettingsPayload,
+): Promise<PaymentSettings> {
+  return request<PaymentSettings>('/editor/settings/payments', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
   })
 }
 

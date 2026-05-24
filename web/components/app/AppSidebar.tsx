@@ -39,7 +39,7 @@ const MAIN_NAV = [
   { href: '/editor/bookings', label: 'Bookings',  icon: Calendar,        matchPaths: BOOKINGS_PATHS },
   { href: '/editor/customers', label: 'Customers', icon: Users },
   { href: '#',                label: 'Payments',  icon: CreditCard,      soon: true },
-  { href: '#',                label: 'Settings',  icon: Settings,        soon: true },
+  { href: '/editor/settings', label: 'Settings',  icon: Settings },
 ] as const
 
 export default function AppSidebar({ slug }: { slug: string }) {

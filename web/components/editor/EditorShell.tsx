@@ -48,6 +48,26 @@ const BOOKINGS_PATHS = [
 
 const CUSTOMERS_PATHS = ['/editor/customers']
 
+const SETTINGS_PATHS = ['/editor/settings']
+
+type SettingsTabId =
+  | 'overview' | 'business' | 'booking' | 'payments'
+  | 'notifications' | 'policies' | 'account' | 'integrations' | 'danger'
+
+const SETTINGS_NAV: { id: SettingsTabId; label: string }[] = [
+  { id: 'overview',      label: 'Overview' },
+  { id: 'business',      label: 'Business' },
+  { id: 'booking',       label: 'Booking' },
+  { id: 'payments',      label: 'Payments' },
+  { id: 'notifications', label: 'Notifications' },
+  { id: 'policies',      label: 'Policies' },
+  { id: 'account',       label: 'Account' },
+  { id: 'integrations',  label: 'Integrations' },
+  { id: 'danger',        label: 'Danger' },
+]
+
+const VALID_SETTINGS_TABS: SettingsTabId[] = SETTINGS_NAV.map(n => n.id)
+
 // ── Website tab strip (top horizontal nav) ────────────────────────────────────
 
 function WebsiteSectionNav({ activeTab }: { activeTab: WebsiteTabId }) {
@@ -112,6 +132,37 @@ function BookingsSectionNav({ nav, path }: { nav: readonly BookingsNavItem[]; pa
   )
 }
 
+// ── Settings tab strip ───────────────────────────────────────────────────────
+
+function SettingsSectionNav({ activeTab }: { activeTab: SettingsTabId }) {
+  return (
+    <div className="flex flex-row overflow-x-auto border-b border-[rgba(18,18,18,0.10)] bg-white flex-shrink-0">
+      <div className="flex flex-row px-2 gap-0 min-w-max">
+        {SETTINGS_NAV.map(({ id, label }) => {
+          const active = activeTab === id
+          const href = id === 'overview' ? '/editor/settings' : `/editor/settings?tab=${id}`
+          return (
+            <Link
+              key={id}
+              href={href}
+              scroll={false}
+              className={cn(
+                'px-3 py-3 text-[11px] font-medium whitespace-nowrap flex-shrink-0',
+                'border-b-2 -mb-px transition-colors',
+                active
+                  ? 'border-near-black text-near-black font-semibold'
+                  : 'border-transparent text-[rgba(18,18,18,0.6)] hover:text-near-black',
+              )}
+            >
+              {label}
+            </Link>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── Shell ─────────────────────────────────────────────────────────────────────
 
 const VALID_WEBSITE_TABS: WebsiteTabId[] = ['overview', 'business', 'header', 'content', 'additionals', 'footer']
@@ -130,8 +181,17 @@ export default function EditorShell({ children }: { children: React.ReactNode })
   const isWebsite    = WEBSITE_PATHS.some(p => path === p || path.startsWith(p + '/'))
   const isBookings   = BOOKINGS_PATHS.some(p => path === p || path.startsWith(p + '/'))
   const isCustomers  = CUSTOMERS_PATHS.some(p => path === p || path.startsWith(p + '/'))
+  const isSettings   = SETTINGS_PATHS.some(p => path === p || path.startsWith(p + '/'))
 
-  const sectionLabel = isWebsite ? 'Website' : isBookings ? 'Bookings' : isCustomers ? 'Customers' : 'Editor'
+  const sectionLabel = isWebsite
+    ? 'Website'
+    : isBookings
+    ? 'Bookings'
+    : isCustomers
+    ? 'Customers'
+    : isSettings
+    ? 'Settings'
+    : 'Editor'
 
   // A "sub-page" inside the Website group (e.g. /editor/branding) gets a
   // small back link so users can always return to the Website hub.
@@ -149,6 +209,10 @@ export default function EditorShell({ children }: { children: React.ReactNode })
     ? (rawTab as WebsiteTabId)
     : 'overview'
 
+  const activeSettingsTab: SettingsTabId = VALID_SETTINGS_TABS.includes(rawTab as SettingsTabId)
+    ? (rawTab as SettingsTabId)
+    : 'overview'
+
   return (
     <EditorProvider>
       {/* Topbar */}
@@ -161,6 +225,7 @@ export default function EditorShell({ children }: { children: React.ReactNode })
       {/* Section tab nav — only the Website hub gets the new tab strip */}
       {isWebsiteHub && <WebsiteSectionNav activeTab={activeWebsiteTab} />}
       {isBookings   && <BookingsSectionNav nav={BOOKINGS_NAV} path={path} />}
+      {isSettings   && <SettingsSectionNav activeTab={activeSettingsTab} />}
 
       {/* Back link for Website sub-pages (Business Info, Policies, etc.) */}
       {isWebsiteSubpage && (

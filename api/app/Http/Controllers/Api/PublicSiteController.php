@@ -157,6 +157,29 @@ class PublicSiteController extends Controller
                 ->all();
         }
 
+        // ── Payment settings (graceful fallback if migrations not yet run) ──
+        $paymentSettings = [
+            'payments_enabled'   => false,
+            'deposits_enabled'   => false,
+            'deposit_type'       => null,
+            'deposit_amount'     => null,
+            'allow_full_payment' => false,
+            'currency'           => 'USD',
+        ];
+        if (Schema::hasTable('payment_settings')) {
+            $psRow = DB::table('payment_settings')->first();
+            if ($psRow) {
+                $paymentSettings = [
+                    'payments_enabled'   => (bool) $psRow->payments_enabled,
+                    'deposits_enabled'   => (bool) $psRow->deposits_enabled,
+                    'deposit_type'       =>        $psRow->deposit_type,
+                    'deposit_amount'     => $psRow->deposit_amount !== null ? (float) $psRow->deposit_amount : null,
+                    'allow_full_payment' => (bool) $psRow->allow_full_payment,
+                    'currency'           =>        $psRow->currency ?? 'USD',
+                ];
+            }
+        }
+
         // ── Template settings + sections (graceful fallback if migrations not yet run) ──
         $templateSlug = TemplateDefaults::DEFAULT_TEMPLATE_SLUG;
         $templateSettings = TemplateDefaults::settingsFor($templateSlug);
@@ -220,6 +243,7 @@ class PublicSiteController extends Controller
                 'settings' => $templateSettings,
                 'sections' => $templateSections,
             ],
+            'payment_settings' => $paymentSettings,
         ]);
     }
 }

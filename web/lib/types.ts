@@ -280,6 +280,34 @@ export interface PublicSite {
   gallery?: PublicGalleryItem[]
   before_after?: PublicBeforeAfterItem[]
   template?: PublicTemplate | null
+  payment_settings?: PublicPaymentSettings | null
+}
+
+// ── Payment settings ─────────────────────────────────────────────────────────
+
+export type DepositType = 'flat' | 'percent'
+
+export interface PaymentSettings {
+  id?: number
+  payments_enabled:    boolean
+  deposits_enabled:    boolean
+  deposit_type:        DepositType | null
+  deposit_amount:      number | null
+  allow_full_payment:  boolean
+  currency:            string
+  created_at?:         string
+  updated_at?:         string
+}
+
+export type PaymentSettingsPayload = Partial<Omit<PaymentSettings, 'id' | 'created_at' | 'updated_at'>>
+
+export interface PublicPaymentSettings {
+  payments_enabled:    boolean
+  deposits_enabled:    boolean
+  deposit_type:        DepositType | null
+  deposit_amount:      number | null
+  allow_full_payment:  boolean
+  currency:            string
 }
 
 // Appointments & Customers

@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Editor\BusinessPolicyController;
 use App\Http\Controllers\Api\Editor\BusinessProfileController;
 use App\Http\Controllers\Api\Editor\CustomersController;
 use App\Http\Controllers\Api\Editor\HoursController;
+use App\Http\Controllers\Api\Editor\PaymentSettingsController;
 use App\Http\Controllers\Api\Editor\BeforeAfterItemsController;
 use App\Http\Controllers\Api\Editor\GalleryItemsController;
 use App\Http\Controllers\Api\Editor\ServicesController;
@@ -103,6 +104,9 @@ Route::prefix('v1')->group(function () {
         Route::delete('before-after/{item}',          [BeforeAfterItemsController::class, 'destroy']);
 
         Route::post('uploads',                        [UploadsController::class, 'store']);
+
+        Route::get('settings/payments',               [PaymentSettingsController::class, 'show']);
+        Route::patch('settings/payments',             [PaymentSettingsController::class, 'update']);
 
         Route::get('website/template',                [WebsiteTemplateController::class, 'show']);
         Route::patch('website/template',              [WebsiteTemplateController::class, 'update']);
