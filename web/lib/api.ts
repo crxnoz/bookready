@@ -27,10 +27,14 @@ import {
   BeforeAfterItemPayload,
   GalleryItem,
   GalleryItemPayload,
+  AccountProfile,
+  AccountUpdatePayload,
   BookingSettings,
   BookingSettingsPayload,
+  ChangePasswordPayload,
   NotificationSettings,
   NotificationSettingsPayload,
+  SignOutEverywhereResponse,
   PaymentSettings,
   PaymentSettingsPayload,
   StripeConnectStartResponse,
@@ -308,6 +312,33 @@ export async function updateEditorPolicies(data: Partial<BusinessPolicy>): Promi
   return request<BusinessPolicy>('/editor/policies', {
     method: 'PATCH',
     body: JSON.stringify(data),
+  })
+}
+
+// ── Account ─────────────────────────────────────────────────────────────────
+
+export async function getEditorAccount(): Promise<AccountProfile> {
+  return request<AccountProfile>('/editor/account')
+}
+
+export async function updateEditorAccount(payload: AccountUpdatePayload): Promise<AccountProfile> {
+  return request<AccountProfile>('/editor/account', {
+    method: 'PATCH',
+    body:   JSON.stringify(payload),
+  })
+}
+
+export async function changeEditorPassword(payload: ChangePasswordPayload): Promise<{ message: string }> {
+  return request<{ message: string }>('/editor/account/password', {
+    method: 'POST',
+    body:   JSON.stringify(payload),
+  })
+}
+
+export async function signOutEverywhere(): Promise<SignOutEverywhereResponse> {
+  return request<SignOutEverywhereResponse>('/editor/account/sign-out-everywhere', {
+    method: 'POST',
+    body:   JSON.stringify({}),
   })
 }
 

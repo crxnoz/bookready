@@ -349,6 +349,34 @@ export interface StripeConnectStartResponse {
   stripe_connect_account_id: string
 }
 
+// ── Account (owner profile + password + sessions) ───────────────────────────
+
+export interface AccountProfile {
+  id:          number
+  name:        string
+  email:       string
+  is_owner:    boolean
+  tenant_id:   string
+  created_at?: string
+  updated_at?: string
+}
+
+export interface AccountUpdatePayload {
+  name?:  string
+  email?: string
+}
+
+export interface ChangePasswordPayload {
+  current_password:           string
+  new_password:               string
+  new_password_confirmation:  string
+}
+
+export interface SignOutEverywhereResponse {
+  message:       string
+  revoked_count: number
+}
+
 // ── Manage booking (public, token-gated) ────────────────────────────────────
 
 export interface ManageBookingView {

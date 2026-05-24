@@ -18,8 +18,13 @@ import {
   updateEditorBookingSettings,
   getEditorNotificationSettings,
   updateEditorNotificationSettings,
+  getEditorAccount,
+  updateEditorAccount,
+  changeEditorPassword,
+  signOutEverywhere,
 } from '@/lib/api'
 import type {
+  AccountProfile,
   BookingSettings,
   BookingSettingsPayload,
   DepositType,
@@ -58,7 +63,7 @@ const GROUPS: GroupDef[] = [
   { tab: 'payments',      label: 'Payment Settings',   hint: 'Customer payments, deposits, currency',      icon: CreditCard,   status: 'ready' },
   { tab: 'notifications', label: 'Notifications',      hint: 'Toggle booking emails, reply-to, sender',    icon: Bell,         status: 'ready' },
   { tab: 'policies',      label: 'Policies',           hint: 'Cancellation, late, no-show, deposits',      icon: FileText,     status: 'soon' },
-  { tab: 'account',       label: 'Account',            hint: 'Owner profile, password, sign-in security',  icon: UserCircle,   status: 'soon' },
+  { tab: 'account',       label: 'Account',            hint: 'Owner profile, password, sign-out everywhere', icon: UserCircle,   status: 'ready' },
   { tab: 'integrations',  label: 'Integrations',       hint: 'Stripe, Google, Instagram, Resend, etc.',    icon: Plug,         status: 'soon' },
   { tab: 'danger',        label: 'Danger Zone',        hint: 'Disable booking, delete tenant, exports',    icon: AlertTriangle, status: 'soon', tone: 'danger' },
 ]
@@ -82,7 +87,8 @@ export default function SettingsHub() {
       {tab === 'payments'      && <PaymentSettingsPanel />}
       {tab === 'booking'       && <BookingSettingsPanel />}
       {tab === 'notifications' && <NotificationSettingsPanel />}
-      {tab !== 'overview' && tab !== 'payments' && tab !== 'booking' && tab !== 'notifications' && <PlaceholderPanel tab={tab} />}
+      {tab === 'account'       && <AccountSettingsPanel />}
+      {tab !== 'overview' && tab !== 'payments' && tab !== 'booking' && tab !== 'notifications' && tab !== 'account' && <PlaceholderPanel tab={tab} />}
     </div>
   )
 }
@@ -1020,6 +1026,303 @@ function SelectField({
       </div>
       {hint && <p className="text-[10px] text-muted-text mt-1">{hint}</p>}
     </label>
+  )
+}
+
+// ── Account Settings panel ──────────────────────────────────────────────────
+
+function AccountSettingsPanel() {
+  const [profile,    setProfile]    = useState<AccountProfile | null>(null)
+  const [loadErr,    setLoadErr]    = useState<string | null>(null)
+  const [loading,    setLoading]    = useState(true)
+
+  // Profile form state
+  const [name,       setName]       = useState('')
+  const [email,      setEmail]      = useState('')
+  const [profSave,   setProfSave]   = useState<SaveState>('idle')
+  const [profErr,    setProfErr]    = useState<string | null>(null)
+
+  // Password form state
+  const [currentPw,  setCurrentPw]  = useState('')
+  const [newPw,      setNewPw]      = useState('')
+  const [newPw2,     setNewPw2]     = useState('')
+  const [pwSave,     setPwSave]     = useState<SaveState>('idle')
+  const [pwErr,      setPwErr]      = useState<string | null>(null)
+
+  // Sign-out-everywhere
+  const [signoutBusy, setSignoutBusy] = useState(false)
+  const [signoutMsg,  setSignoutMsg]  = useState<string | null>(null)
+  const [signoutErr,  setSignoutErr]  = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getEditorAccount()
+      .then(p => { if (!cancelled) { setProfile(p); setName(p.name); setEmail(p.email) } })
+      .catch(e => { if (!cancelled) setLoadErr(e instanceof Error ? e.message : 'Failed to load') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const profileDirty = useMemo(() => {
+    if (!profile) return false
+    return name.trim() !== profile.name || email.trim() !== profile.email
+  }, [name, email, profile])
+
+  const pwReady =
+    currentPw.length > 0 &&
+    newPw.length >= 8 &&
+    newPw === newPw2
+
+  async function saveProfile() {
+    if (!profileDirty) return
+    setProfSave('saving'); setProfErr(null)
+    try {
+      const next = await updateEditorAccount({
+        name:  name.trim(),
+        email: email.trim(),
+      })
+      setProfile(next)
+      setName(next.name)
+      setEmail(next.email)
+      setProfSave('saved')
+    } catch (e) {
+      setProfErr(e instanceof Error ? e.message : 'Save failed')
+      setProfSave('error')
+    }
+  }
+
+  async function changePw() {
+    if (!pwReady) return
+    setPwSave('saving'); setPwErr(null)
+    try {
+      await changeEditorPassword({
+        current_password:           currentPw,
+        new_password:               newPw,
+        new_password_confirmation:  newPw2,
+      })
+      setCurrentPw(''); setNewPw(''); setNewPw2('')
+      setPwSave('saved')
+    } catch (e) {
+      setPwErr(e instanceof Error ? e.message : 'Password change failed')
+      setPwSave('error')
+    }
+  }
+
+  async function handleSignOutEverywhere() {
+    if (! confirm('Sign out every other device that has used this account?')) return
+    setSignoutBusy(true); setSignoutErr(null); setSignoutMsg(null)
+    try {
+      const res = await signOutEverywhere()
+      setSignoutMsg(res.revoked_count > 0
+        ? `${res.revoked_count} other session${res.revoked_count === 1 ? '' : 's'} signed out.`
+        : 'No other sessions were active.')
+    } catch (e) {
+      setSignoutErr(e instanceof Error ? e.message : 'Sign out failed')
+    } finally {
+      setSignoutBusy(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-text px-1 py-8">
+        <Loader2 size={14} className="animate-spin" /> Loading account…
+      </div>
+    )
+  }
+  if (loadErr || !profile) {
+    return (
+      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-[#b42828] flex items-center gap-2">
+        <AlertCircle size={14} /> {loadErr ?? 'Could not load account'}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <Link
+        href={hrefFor('overview')}
+        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
+      >
+        ← Back to Settings
+      </Link>
+
+      <header className="px-1">
+        <h1 className="text-base font-bold text-near-black">Account</h1>
+        <p className="text-xs text-muted-text mt-0.5">
+          Your owner profile, sign-in credentials, and active sessions.
+        </p>
+      </header>
+
+      {/* Profile */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Profile</p>
+        <label className="block">
+          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Name</span>
+          <input
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            maxLength={100}
+            className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+          />
+        </label>
+        <label className="block">
+          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Email</span>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            maxLength={255}
+            className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+          />
+          <p className="text-[10px] text-muted-text mt-1">
+            Used for signing in and as the default reply-to for booking emails.
+          </p>
+        </label>
+
+        <div className="flex items-center justify-between gap-3 pt-1 border-t border-[rgba(18,18,18,0.06)]">
+          <div className="text-[11px] text-muted-text">
+            {profSave === 'saved' && (
+              <span className="inline-flex items-center gap-1 text-near-black">
+                <Check size={12} /> Saved
+              </span>
+            )}
+            {profSave === 'error' && (
+              <span className="inline-flex items-center gap-1 text-[#b42828]">
+                <AlertCircle size={12} /> {profErr ?? 'Could not save'}
+              </span>
+            )}
+            {profSave === 'idle' && profileDirty && <span>Unsaved changes</span>}
+          </div>
+          <button
+            type="button"
+            onClick={saveProfile}
+            disabled={! profileDirty || profSave === 'saving'}
+            className={cn(
+              'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase px-3 py-2',
+              profileDirty
+                ? 'bg-near-black text-white hover:bg-white hover:text-near-black border border-near-black'
+                : 'bg-cream text-muted-text border border-[rgba(18,18,18,0.10)] cursor-not-allowed',
+            )}
+          >
+            {profSave === 'saving'
+              ? <><Loader2 size={11} className="animate-spin" /> Saving</>
+              : <><Check size={12} /> Save changes</>}
+          </button>
+        </div>
+      </section>
+
+      {/* Password */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Change password</p>
+        <label className="block">
+          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Current password</span>
+          <input
+            type="password"
+            value={currentPw}
+            onChange={e => setCurrentPw(e.target.value)}
+            autoComplete="current-password"
+            className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+          />
+        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="block">
+            <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">New password</span>
+            <input
+              type="password"
+              value={newPw}
+              onChange={e => setNewPw(e.target.value)}
+              autoComplete="new-password"
+              minLength={8}
+              className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+            />
+            <p className="text-[10px] text-muted-text mt-1">At least 8 characters.</p>
+          </label>
+          <label className="block">
+            <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Confirm new password</span>
+            <input
+              type="password"
+              value={newPw2}
+              onChange={e => setNewPw2(e.target.value)}
+              autoComplete="new-password"
+              minLength={8}
+              className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+            />
+            {newPw && newPw2 && newPw !== newPw2 && (
+              <p className="text-[10px] text-[#b42828] mt-1">Passwords don&rsquo;t match.</p>
+            )}
+          </label>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 pt-1 border-t border-[rgba(18,18,18,0.06)]">
+          <div className="text-[11px] text-muted-text">
+            {pwSave === 'saved' && (
+              <span className="inline-flex items-center gap-1 text-near-black">
+                <Check size={12} /> Password updated
+              </span>
+            )}
+            {pwSave === 'error' && (
+              <span className="inline-flex items-center gap-1 text-[#b42828]">
+                <AlertCircle size={12} /> {pwErr ?? 'Password change failed'}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={changePw}
+            disabled={! pwReady || pwSave === 'saving'}
+            className={cn(
+              'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase px-3 py-2',
+              pwReady
+                ? 'bg-near-black text-white hover:bg-white hover:text-near-black border border-near-black'
+                : 'bg-cream text-muted-text border border-[rgba(18,18,18,0.10)] cursor-not-allowed',
+            )}
+          >
+            {pwSave === 'saving'
+              ? <><Loader2 size={11} className="animate-spin" /> Updating</>
+              : <><Lock size={12} /> Update password</>}
+          </button>
+        </div>
+      </section>
+
+      {/* Security — sign out everywhere */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Security</p>
+        <div className="flex items-start gap-3">
+          <UserCircle size={14} className="text-near-black flex-shrink-0 mt-1" strokeWidth={1.8} />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-near-black">Sign out everywhere else</p>
+            <p className="text-[11px] text-muted-text mt-0.5">
+              Ends every active session for your account except this device.
+              Useful if you logged in somewhere you shouldn&rsquo;t still be signed in.
+            </p>
+            {signoutMsg && (
+              <p className="text-[11px] text-[#0f6f3d] mt-2 inline-flex items-center gap-1">
+                <Check size={11} /> {signoutMsg}
+              </p>
+            )}
+            {signoutErr && (
+              <p className="text-[11px] text-[#b42828] mt-2 inline-flex items-center gap-1">
+                <AlertCircle size={11} /> {signoutErr}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center justify-end pt-1 border-t border-[rgba(18,18,18,0.06)]">
+          <button
+            type="button"
+            onClick={handleSignOutEverywhere}
+            disabled={signoutBusy}
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-60"
+          >
+            {signoutBusy
+              ? <><Loader2 size={11} className="animate-spin" /> Signing out</>
+              : 'Sign out everywhere'}
+          </button>
+        </div>
+      </section>
+    </div>
   )
 }
 
