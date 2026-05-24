@@ -12,6 +12,7 @@ import {
   Clock, Building2,
 } from 'lucide-react'
 import BusinessForm from '@/components/editor/BusinessForm'
+import ImageUploadField from '@/components/editor/ImageUploadField'
 import {
   getCurrentUser,
   getEditorTemplateSettings,
@@ -801,20 +802,22 @@ function HeaderPanel({
       </div>
 
       {/* Images */}
-      <div className="space-y-2.5 pt-2 border-t border-[rgba(18,18,18,0.08)]">
-        <TextField
-          label="Cover image URL"
-          value={form.value.cover_image_url ?? ''}
-          onChange={v => form.patch({ cover_image_url: v || null })}
-          placeholder="https://…"
-          disabledHint="Uploads coming soon — for now, paste a hosted image URL."
+      <div className="space-y-4 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+        <ImageUploadField
+          label="Cover image"
+          value={form.value.cover_image_url ?? null}
+          onChange={v => form.patch({ cover_image_url: v })}
+          kind="header"
+          aspectClass="aspect-[16/9]"
+          hint="Wide image shown behind your header. JPG, PNG, WebP, or HEIC up to 10 MB."
         />
-        <TextField
-          label="Avatar / logo image URL"
-          value={form.value.avatar_image_url ?? ''}
-          onChange={v => form.patch({ avatar_image_url: v || null })}
-          placeholder="https://…"
-          disabledHint="Uploads coming soon — for now, paste a hosted image URL."
+        <ImageUploadField
+          label="Avatar / logo image"
+          value={form.value.avatar_image_url ?? null}
+          onChange={v => form.patch({ avatar_image_url: v })}
+          kind="header"
+          aspectClass="aspect-square"
+          hint="Square photo or logo shown over the header."
         />
       </div>
 
@@ -2051,24 +2054,13 @@ function GalleryItemDialog({
         </div>
 
         <form onSubmit={submit} className="p-4 space-y-3">
-          <TextField
-            label="Image URL *"
-            value={imageUrl}
-            onChange={setImageUrl}
-            placeholder="https://images.unsplash.com/…"
-            maxLength={2000}
+          <ImageUploadField
+            label="Image *"
+            value={imageUrl || null}
+            onChange={v => setImageUrl(v ?? '')}
+            kind="gallery"
+            aspectClass="aspect-[4/3]"
           />
-
-          {imageUrl && (
-            <div className="bg-cream border border-[rgba(18,18,18,0.08)] p-2 flex justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={imageUrl}
-                alt="Preview"
-                style={{ maxHeight: 240, maxWidth: '100%', objectFit: 'contain' }}
-              />
-            </div>
-          )}
 
           <TextField
             label="Title"
@@ -2425,28 +2417,22 @@ function BeforeAfterItemDialog({
         </div>
 
         <form onSubmit={submit} className="p-4 space-y-3">
-          <TextField
-            label="Before image URL *"
-            value={beforeUrl}
-            onChange={setBeforeUrl}
-            placeholder="https://…/before.jpg"
-            maxLength={2000}
-          />
-          <TextField
-            label="After image URL *"
-            value={afterUrl}
-            onChange={setAfterUrl}
-            placeholder="https://…/after.jpg"
-            maxLength={2000}
-          />
-
-          {/* Live side-by-side preview */}
-          {(beforeUrl || afterUrl) && (
-            <div className="bg-cream border border-[rgba(18,18,18,0.08)] p-2 grid grid-cols-2 gap-2">
-              <BAPreviewBox url={beforeUrl} label="Before" />
-              <BAPreviewBox url={afterUrl}  label="After" />
-            </div>
-          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <ImageUploadField
+              label="Before image *"
+              value={beforeUrl || null}
+              onChange={v => setBeforeUrl(v ?? '')}
+              kind="before_after"
+              aspectClass="aspect-square"
+            />
+            <ImageUploadField
+              label="After image *"
+              value={afterUrl || null}
+              onChange={v => setAfterUrl(v ?? '')}
+              kind="before_after"
+              aspectClass="aspect-square"
+            />
+          </div>
 
           <TextField
             label="Title"
@@ -2522,17 +2508,3 @@ function BeforeAfterItemDialog({
   )
 }
 
-function BAPreviewBox({ url, label }: { url: string; label: string }) {
-  return (
-    <div className="relative bg-white border border-[rgba(18,18,18,0.08)] overflow-hidden" style={{ aspectRatio: '1/1' }}>
-      {url
-        /* eslint-disable-next-line @next/next/no-img-element */
-        ? <img src={url} alt={label} className="w-full h-full object-cover" />
-        : <div className="w-full h-full flex items-center justify-center text-muted-text"><ImageIcon size={20} /></div>
-      }
-      <span className="absolute top-1.5 left-1.5 text-[9px] font-bold tracking-[0.16em] uppercase text-white bg-black/55 px-1.5 py-0.5">
-        {label}
-      </span>
-    </div>
-  )
-}

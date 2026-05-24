@@ -32,6 +32,21 @@ return [
             'throw'                   => false,
         ],
 
+        // Cloudflare R2 — S3-compatible. Reads env via R2_* vars.
+        // `url` is the public CDN base served by the bucket's custom domain
+        // (e.g. https://cdn.bkrdy.me). Returned by Storage::url() on this disk.
+        'r2' => [
+            'driver'                  => 's3',
+            'key'                     => env('R2_ACCESS_KEY_ID'),
+            'secret'                  => env('R2_SECRET_ACCESS_KEY'),
+            'region'                  => 'auto',
+            'bucket'                  => env('R2_BUCKET'),
+            'endpoint'                => env('R2_ENDPOINT'),
+            'url'                     => env('R2_PUBLIC_BASE'),
+            'use_path_style_endpoint' => true,
+            'throw'                   => true,
+        ],
+
     ],
 
     'links' => [

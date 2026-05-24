@@ -11,7 +11,9 @@
         "laravel/cashier": "^15.0",
         "stancl/tenancy": "^3.8",
         "resend/resend-laravel": "^0.13",
-        "predis/predis": "^2.2"
+        "predis/predis": "^2.2",
+        "league/flysystem-aws-s3-v3": "^3.0",
+        "intervention/image": "^3.7"
     },
     "require-dev": {
         "laravel/pint": "^1.13",

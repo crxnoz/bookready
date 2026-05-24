@@ -82,6 +82,36 @@ export async function getCurrentUser(): Promise<AuthUser> {
   return request<AuthUser>('/auth/me')
 }
 
+// ── Image uploads ────────────────────────────────────────────────────────────
+
+export type UploadKind = 'gallery' | 'before_after' | 'header' | 'logo'
+
+export interface UploadResponse {
+  url: string
+  key: string
+  bytes: number
+}
+
+export async function uploadEditorImage(file: File, kind: UploadKind): Promise<UploadResponse> {
+  const token = getToken()
+  const form  = new FormData()
+  form.append('file', file)
+  form.append('kind', kind)
+  const res = await fetch(`${API_BASE}/editor/uploads`, {
+    method:  'POST',
+    body:    form,
+    headers: {
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }))
+    throw new Error(err.message ?? 'Upload failed')
+  }
+  return res.json() as Promise<UploadResponse>
+}
+
 export async function logout(): Promise<void> {
   await request('/auth/logout', { method: 'POST' })
 }

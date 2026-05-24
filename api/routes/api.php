@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\Editor\BeforeAfterItemsController;
 use App\Http\Controllers\Api\Editor\GalleryItemsController;
 use App\Http\Controllers\Api\Editor\ServicesController;
 use App\Http\Controllers\Api\Editor\StaffController;
+use App\Http\Controllers\Api\Editor\UploadsController;
 use App\Http\Controllers\Api\Editor\WebsiteSectionsController;
 use App\Http\Controllers\Api\Editor\WebsiteTemplateController;
 use App\Http\Controllers\Api\PublicAvailabilityController;
@@ -100,6 +101,8 @@ Route::prefix('v1')->group(function () {
         Route::post('before-after',                   [BeforeAfterItemsController::class, 'store']);
         Route::patch('before-after/{item}',           [BeforeAfterItemsController::class, 'update']);
         Route::delete('before-after/{item}',          [BeforeAfterItemsController::class, 'destroy']);
+
+        Route::post('uploads',                        [UploadsController::class, 'store']);
 
         Route::get('website/template',                [WebsiteTemplateController::class, 'show']);
         Route::patch('website/template',              [WebsiteTemplateController::class, 'update']);
