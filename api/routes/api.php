@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Editor\BusinessPolicyController;
 use App\Http\Controllers\Api\Editor\BusinessProfileController;
 use App\Http\Controllers\Api\Editor\CustomersController;
 use App\Http\Controllers\Api\Editor\HoursController;
+use App\Http\Controllers\Api\Editor\BookingSettingsController;
 use App\Http\Controllers\Api\Editor\PaymentSettingsController;
 use App\Http\Controllers\Api\Editor\StripeConnectController;
 use App\Http\Controllers\Api\Editor\BeforeAfterItemsController;
@@ -106,6 +107,9 @@ Route::prefix('v1')->group(function () {
         Route::delete('before-after/{item}',          [BeforeAfterItemsController::class, 'destroy']);
 
         Route::post('uploads',                        [UploadsController::class, 'store']);
+
+        Route::get('settings/bookings',               [BookingSettingsController::class, 'show']);
+        Route::patch('settings/bookings',             [BookingSettingsController::class, 'update']);
 
         Route::get('settings/payments',               [PaymentSettingsController::class, 'show']);
         Route::patch('settings/payments',             [PaymentSettingsController::class, 'update']);

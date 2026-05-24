@@ -157,6 +157,46 @@ class PublicSiteController extends Controller
                 ->all();
         }
 
+        // ── Booking settings (graceful fallback if migrations not yet run) ──
+        $bookingSettings = [
+            'booking_enabled'                   => true,
+            'auto_confirm_bookings'             => false,
+            'minimum_notice_minutes'            => 120,
+            'max_days_ahead'                    => 30,
+            'slot_interval_minutes'             => 30,
+            'slot_release_mode'                 => 'always_open',
+            'slot_release_window_days'          => null,
+            'cancellation_window_hours'         => 24,
+            'reschedule_window_hours'           => 24,
+            'prevent_duplicate_client_bookings' => false,
+        ];
+        if (Schema::hasTable('booking_settings')) {
+            $bsRow = DB::table('booking_settings')->first();
+            if ($bsRow) {
+                $bsGet = static fn(string $k, $default = null) =>
+                    property_exists($bsRow, $k) ? $bsRow->{$k} : $default;
+                $releaseEnabled = (bool) ($bsRow->slot_release_enabled ?? false);
+                $releaseFreq    = $bsRow->slot_release_frequency ?? null;
+                $mode = (! $releaseEnabled || ! in_array($releaseFreq, ['weekly', 'biweekly', 'monthly'], true))
+                    ? 'always_open'
+                    : $releaseFreq;
+                $bookingSettings = [
+                    'booking_enabled'                   => (bool) ($bsGet('booking_enabled', true)),
+                    'auto_confirm_bookings'             => (bool) $bsRow->auto_confirm_bookings,
+                    'minimum_notice_minutes'            => (int)  $bsRow->minimum_notice_minutes,
+                    'max_days_ahead'                    => (int)  $bsRow->max_days_ahead,
+                    'slot_interval_minutes'             => (int)  $bsRow->booking_interval_minutes,
+                    'slot_release_mode'                 =>        $mode,
+                    'slot_release_window_days'          => $bsRow->slot_release_window_days !== null
+                                                                ? (int) $bsRow->slot_release_window_days
+                                                                : null,
+                    'cancellation_window_hours'         => (int)  ($bsGet('cancellation_window_hours', 24)),
+                    'reschedule_window_hours'           => (int)  ($bsGet('reschedule_window_hours', 24)),
+                    'prevent_duplicate_client_bookings' => (bool) ($bsGet('prevent_duplicate_client_bookings', false)),
+                ];
+            }
+        }
+
         // ── Payment settings (graceful fallback if migrations not yet run) ──
         $paymentSettings = [
             'payments_enabled'   => false,
@@ -244,6 +284,7 @@ class PublicSiteController extends Controller
                 'sections' => $templateSections,
             ],
             'payment_settings' => $paymentSettings,
+            'booking_settings' => $bookingSettings,
         ]);
     }
 }

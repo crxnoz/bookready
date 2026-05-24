@@ -196,7 +196,13 @@ export interface BusinessProfile {
   site_status: string
 }
 
-export interface BookingSettings {
+/**
+ * Shape returned by GET /api/v1/editor/availability — owned by the
+ * Availability editor. Different from {@link BookingSettings} below,
+ * which is the simplified business-rules shape exposed under
+ * /api/v1/editor/settings/bookings.
+ */
+export interface AvailabilitySettings {
   id?: number
   buffer_before_minutes: number
   buffer_after_minutes: number
@@ -215,7 +221,7 @@ export interface BookingSettings {
 
 export interface AvailabilityData {
   hours: HoursEntry[]
-  settings: BookingSettings
+  settings: AvailabilitySettings
 }
 
 export interface BusinessPolicy {
@@ -281,6 +287,7 @@ export interface PublicSite {
   before_after?: PublicBeforeAfterItem[]
   template?: PublicTemplate | null
   payment_settings?: PublicPaymentSettings | null
+  booking_settings?: PublicBookingSettings | null
 }
 
 // ── Payment settings ─────────────────────────────────────────────────────────
@@ -340,6 +347,41 @@ export interface StripeConnectStatusResponse {
 export interface StripeConnectStartResponse {
   onboarding_url:            string
   stripe_connect_account_id: string
+}
+
+// ── Booking settings ────────────────────────────────────────────────────────
+
+export type SlotReleaseMode = 'always_open' | 'weekly' | 'biweekly' | 'monthly'
+
+export interface BookingSettings {
+  id?:                                 number
+  booking_enabled:                     boolean
+  auto_confirm_bookings:               boolean
+  minimum_notice_minutes:              number
+  max_days_ahead:                      number
+  slot_interval_minutes:               number
+  slot_release_mode:                   SlotReleaseMode
+  slot_release_window_days:            number | null
+  cancellation_window_hours:           number
+  reschedule_window_hours:             number
+  prevent_duplicate_client_bookings:   boolean
+  created_at?:                         string
+  updated_at?:                         string
+}
+
+export type BookingSettingsPayload = Partial<Omit<BookingSettings, 'id' | 'created_at' | 'updated_at'>>
+
+export interface PublicBookingSettings {
+  booking_enabled:                     boolean
+  auto_confirm_bookings:               boolean
+  minimum_notice_minutes:              number
+  max_days_ahead:                      number
+  slot_interval_minutes:               number
+  slot_release_mode:                   SlotReleaseMode
+  slot_release_window_days:            number | null
+  cancellation_window_hours:           number
+  reschedule_window_hours:             number
+  prevent_duplicate_client_bookings:   boolean
 }
 
 export interface PublicPaymentSettings {

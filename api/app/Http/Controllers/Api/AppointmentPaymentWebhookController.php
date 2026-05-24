@@ -120,15 +120,27 @@ class AppointmentPaymentWebhookController extends Controller
                 return response()->json(['received' => true]);
             }
 
-            DB::table('appointments')->where('id', $appointmentId)->update([
+            // Honor auto_confirm_bookings: when the deposit clears, if the
+            // tenant has auto-confirm on, jump the appointment straight to
+            // 'confirmed'. Otherwise keep 'pending' for the owner to review.
+            $autoConfirm = false;
+            if (Schema::hasTable('booking_settings')) {
+                $bs = DB::table('booking_settings')->first();
+                $autoConfirm = (bool) ($bs->auto_confirm_bookings ?? false);
+            }
+
+            $update = [
                 'payment_status'           => 'deposit_paid',
                 'deposit_paid_amount'      => $amountTotal ?? $row->deposit_amount,
                 'stripe_payment_intent_id' => $paymentIntent,
                 'paid_at'                  => now(),
-                // Keep status as 'pending' so the owner still confirms manually
-                // (matches existing behavior for non-payment bookings).
                 'updated_at'               => now(),
-            ]);
+            ];
+            if ($autoConfirm && $row->status === 'pending') {
+                $update['status'] = 'confirmed';
+            }
+
+            DB::table('appointments')->where('id', $appointmentId)->update($update);
 
             $updated = DB::table('appointments')->find($appointmentId);
 

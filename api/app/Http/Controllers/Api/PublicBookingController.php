@@ -68,6 +68,25 @@ class PublicBookingController extends Controller
         $dayOfWeek    = (int) Carbon::parse($date)->dayOfWeek;
         $hoursRow     = DB::table('hours')->where('day_of_week', $dayOfWeek)->first();
         $settings     = DB::table('booking_settings')->first();
+
+        // ── Global booking gate ──────────────────────────────────────────
+        if ($settings && property_exists($settings, 'booking_enabled') && ! $settings->booking_enabled) {
+            tenancy()->end();
+            return response()->json(['message' => 'Booking is currently unavailable.'], 422);
+        }
+
+        // ── max_days_ahead guard (slot generator also enforces, but
+        //    fail fast here so we never insert past the window) ──
+        $maxDaysAhead = $settings ? (int) ($settings->max_days_ahead ?? 30) : 30;
+        $today        = Carbon::now(config('app.timezone'))->format('Y-m-d');
+        $maxDate      = Carbon::parse($today)->addDays($maxDaysAhead)->format('Y-m-d');
+        if ($date > $maxDate) {
+            tenancy()->end();
+            return response()->json([
+                'message' => "Bookings are only available up to {$maxDaysAhead} days in advance.",
+            ], 422);
+        }
+
         $appointments = DB::table('appointments')
             ->where('appointment_date', $date)
             ->whereNotIn('status', ['cancelled'])
@@ -99,6 +118,33 @@ class PublicBookingController extends Controller
             ->addMinutes($duration)
             ->format('H:i');
 
+        // ── Duplicate-booking guard ──────────────────────────────────────
+        // When enabled, the same client (matched by email OR phone) cannot
+        // book the same service at the same date+start time more than once.
+        $preventDup = (bool) ($settings->prevent_duplicate_client_bookings ?? false);
+        if ($preventDup) {
+            $email = $validated['customer_email'] ?? null;
+            $phone = $validated['customer_phone'] ?? null;
+            if ($email || $phone) {
+                $exists = DB::table('appointments')
+                    ->where('service_id', $serviceId)
+                    ->where('appointment_date', $date)
+                    ->where('start_time', $startTime . ':00')
+                    ->whereNotIn('status', ['cancelled'])
+                    ->where(function ($q) use ($email, $phone) {
+                        if ($email) $q->orWhere('customer_email', $email);
+                        if ($phone) $q->orWhere('customer_phone', $phone);
+                    })
+                    ->exists();
+                if ($exists) {
+                    tenancy()->end();
+                    return response()->json([
+                        'message' => 'You already have a booking for this service at this time.',
+                    ], 422);
+                }
+            }
+        }
+
         // ── Find or create client ────────────────────────────────────────
         $clientId = $this->findOrCreateClient(
             $validated['customer_name'],
@@ -127,6 +173,13 @@ class PublicBookingController extends Controller
             ], 422);
         }
 
+        // auto_confirm_bookings only applies when no deposit is required.
+        // When a deposit IS required, status stays 'pending' until the
+        // webhook fires; the post-webhook auto-confirm path is handled
+        // in AppointmentPaymentWebhookController.
+        $autoConfirm    = (bool) ($settings->auto_confirm_bookings ?? false);
+        $initialStatus  = (! $paymentRequired && $autoConfirm) ? 'confirmed' : 'pending';
+
         $insertData = [
             'client_id'                => $clientId,
             'service_id'               => (int) $service->id,
@@ -139,7 +192,7 @@ class PublicBookingController extends Controller
             'appointment_date'         => $date,
             'start_time'               => $startTime,
             'end_time'                 => $endTime,
-            'status'                   => 'pending',
+            'status'                   => $initialStatus,
             'notes'                    => $validated['notes'] ?? null,
             'internal_notes'           => null,
             'created_at'               => now(),

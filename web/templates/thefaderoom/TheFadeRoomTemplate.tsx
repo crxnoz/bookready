@@ -364,13 +364,24 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
 
           {/* ── Book ── */}
           <div className={`tfr-tab-panel${active === 'book' ? ' is-active' : ''}`}>
-            <TheFadeRoomBooking
-              slug={slug}
-              services={services}
-              displayName={displayName}
-              availability={availability}
-              paymentSettings={site.payment_settings ?? null}
-            />
+            {site.booking_settings && site.booking_settings.booking_enabled === false ? (
+              <section className="tfr-booking-section">
+                <div className="tfr-booking-summary" style={{ maxWidth: 480, margin: '40px auto' }}>
+                  <span className="tfr-booking-block-label">Booking unavailable</span>
+                  <p style={{ marginTop: 8, fontSize: 14, opacity: 0.85 }}>
+                    Online booking is currently paused. Please check back soon — or reach out to the business directly.
+                  </p>
+                </div>
+              </section>
+            ) : (
+              <TheFadeRoomBooking
+                slug={slug}
+                services={services}
+                displayName={displayName}
+                availability={availability}
+                paymentSettings={site.payment_settings ?? null}
+              />
+            )}
           </div>
 
           {/* ── Gallery ── */}

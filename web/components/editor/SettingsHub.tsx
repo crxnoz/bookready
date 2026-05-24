@@ -14,11 +14,16 @@ import {
   getStripeConnectStatus,
   startStripeConnect,
   refreshStripeConnectOnboarding,
+  getEditorBookingSettings,
+  updateEditorBookingSettings,
 } from '@/lib/api'
 import type {
+  BookingSettings,
+  BookingSettingsPayload,
   DepositType,
   PaymentSettings,
   PaymentSettingsPayload,
+  SlotReleaseMode,
   StripeConnectStatus,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
@@ -45,7 +50,7 @@ interface GroupDef {
 
 const GROUPS: GroupDef[] = [
   { tab: 'business',      label: 'Business Settings',  hint: 'Hours, time zone, contact basics',           icon: Building2,    status: 'soon' },
-  { tab: 'booking',       label: 'Booking Settings',   hint: 'Buffers, lead time, booking window',         icon: Calendar,     status: 'soon' },
+  { tab: 'booking',       label: 'Booking Settings',   hint: 'Booking window, notice, auto-confirm, rules', icon: Calendar,     status: 'ready' },
   { tab: 'payments',      label: 'Payment Settings',   hint: 'Customer payments, deposits, currency',      icon: CreditCard,   status: 'ready' },
   { tab: 'notifications', label: 'Notifications',      hint: 'Email + SMS templates and recipients',       icon: Bell,         status: 'soon' },
   { tab: 'policies',      label: 'Policies',           hint: 'Cancellation, late, no-show, deposits',      icon: FileText,     status: 'soon' },
@@ -71,7 +76,8 @@ export default function SettingsHub() {
     <div className="w-full p-3 sm:p-5 md:p-6 space-y-4">
       {tab === 'overview'      && <OverviewPanel />}
       {tab === 'payments'      && <PaymentSettingsPanel />}
-      {tab !== 'overview' && tab !== 'payments' && <PlaceholderPanel tab={tab} />}
+      {tab === 'booking'       && <BookingSettingsPanel />}
+      {tab !== 'overview' && tab !== 'payments' && tab !== 'booking' && <PlaceholderPanel tab={tab} />}
     </div>
   )
 }
@@ -481,6 +487,315 @@ function PaymentSettingsPanel() {
         </button>
       </div>
     </div>
+  )
+}
+
+// ── Booking Settings panel ──────────────────────────────────────────────────
+
+const SLOT_INTERVALS = [15, 30, 45, 60] as const
+
+function BookingSettingsPanel() {
+  const [data,    setData]    = useState<BookingSettings | null>(null)
+  const [draft,   setDraft]   = useState<BookingSettings | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadErr, setLoadErr] = useState<string | null>(null)
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [saveErr,   setSaveErr]   = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getEditorBookingSettings()
+      .then(d => { if (!cancelled) { setData(d); setDraft(d) } })
+      .catch(e => { if (!cancelled) setLoadErr(e instanceof Error ? e.message : 'Failed to load') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const dirty = useMemo(() => {
+    if (!data || !draft) return false
+    return JSON.stringify(stripMeta(data)) !== JSON.stringify(stripMeta(draft))
+  }, [data, draft])
+
+  function patch(p: Partial<BookingSettings>) {
+    setDraft(d => d ? { ...d, ...p } : d)
+    setSaveState('idle')
+    setSaveErr(null)
+  }
+
+  async function save() {
+    if (!draft) return
+    setSaveState('saving')
+    setSaveErr(null)
+    try {
+      const payload: BookingSettingsPayload = {
+        booking_enabled:                   draft.booking_enabled,
+        auto_confirm_bookings:             draft.auto_confirm_bookings,
+        minimum_notice_minutes:            draft.minimum_notice_minutes,
+        max_days_ahead:                    draft.max_days_ahead,
+        slot_interval_minutes:             draft.slot_interval_minutes,
+        slot_release_mode:                 draft.slot_release_mode,
+        slot_release_window_days:          draft.slot_release_mode === 'always_open' ? null : draft.slot_release_window_days,
+        cancellation_window_hours:         draft.cancellation_window_hours,
+        reschedule_window_hours:           draft.reschedule_window_hours,
+        prevent_duplicate_client_bookings: draft.prevent_duplicate_client_bookings,
+      }
+      const next = await updateEditorBookingSettings(payload)
+      setData(next)
+      setDraft(next)
+      setSaveState('saved')
+    } catch (e) {
+      setSaveState('error')
+      setSaveErr(e instanceof Error ? e.message : 'Save failed')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-text px-1 py-8">
+        <Loader2 size={14} className="animate-spin" /> Loading booking settings…
+      </div>
+    )
+  }
+  if (loadErr || !draft) {
+    return (
+      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-[#b42828] flex items-center gap-2">
+        <AlertCircle size={14} /> {loadErr ?? 'Could not load booking settings'}
+      </div>
+    )
+  }
+
+  const releaseHasWindow = draft.slot_release_mode !== 'always_open'
+
+  return (
+    <div className="space-y-3">
+      <Link
+        href={hrefFor('overview')}
+        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
+      >
+        ← Back to Settings
+      </Link>
+
+      <header className="px-1">
+        <h1 className="text-base font-bold text-near-black">Booking Settings</h1>
+        <p className="text-xs text-muted-text mt-0.5">
+          Business-wide rules for how clients book with you.
+        </p>
+      </header>
+
+      {/* Booking enabled */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-2">
+        <Toggle
+          label="Booking enabled"
+          hint="Master switch. When off, your public site shows a friendly unavailable message and no new bookings can be made."
+          icon={Calendar}
+          on={draft.booking_enabled}
+          onToggle={() => patch({ booking_enabled: !draft.booking_enabled })}
+        />
+      </section>
+
+      {/* Confirmation + duplicate guard */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <Toggle
+          label="Auto-confirm bookings"
+          hint="Newly booked appointments are marked confirmed immediately (or right after the deposit clears) instead of pending review."
+          on={draft.auto_confirm_bookings}
+          onToggle={() => patch({ auto_confirm_bookings: !draft.auto_confirm_bookings })}
+        />
+        <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
+          <Toggle
+            label="Prevent duplicate client bookings"
+            hint="Reject a booking when the same client (by email or phone) already holds the same service at the same time."
+            on={draft.prevent_duplicate_client_bookings}
+            onToggle={() => patch({ prevent_duplicate_client_bookings: !draft.prevent_duplicate_client_bookings })}
+          />
+        </div>
+      </section>
+
+      {/* Booking window */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <NumberField
+            label="Minimum notice"
+            suffix="minutes"
+            min={0}
+            max={10080}
+            value={draft.minimum_notice_minutes}
+            onChange={v => patch({ minimum_notice_minutes: v })}
+            hint="How far ahead a client must book (e.g. 120 = 2 hours)."
+          />
+          <NumberField
+            label="Max days ahead"
+            suffix="days"
+            min={1}
+            max={365}
+            value={draft.max_days_ahead}
+            onChange={v => patch({ max_days_ahead: v })}
+            hint="How far in the future bookings can be made."
+          />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-[rgba(18,18,18,0.06)] pt-3">
+          <SelectField
+            label="Slot interval"
+            value={String(draft.slot_interval_minutes)}
+            onChange={v => patch({ slot_interval_minutes: Number(v) })}
+            options={SLOT_INTERVALS.map(n => ({ value: String(n), label: `${n} minutes` }))}
+            hint="Spacing between available start times."
+          />
+          <SelectField
+            label="Slot release mode"
+            value={draft.slot_release_mode}
+            onChange={v => patch({ slot_release_mode: v as SlotReleaseMode })}
+            options={[
+              { value: 'always_open', label: 'Always open' },
+              { value: 'weekly',      label: 'Weekly' },
+              { value: 'biweekly',    label: 'Biweekly' },
+              { value: 'monthly',     label: 'Monthly' },
+            ]}
+            hint="When new dates open up for booking."
+          />
+        </div>
+        {releaseHasWindow && (
+          <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
+            <NumberField
+              label="Release window"
+              suffix="days"
+              min={1}
+              max={365}
+              value={draft.slot_release_window_days ?? 14}
+              onChange={v => patch({ slot_release_window_days: v })}
+              hint="How many days are visible at once in the release window."
+            />
+          </div>
+        )}
+      </section>
+
+      {/* Cancellation / reschedule */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <NumberField
+            label="Cancellation window"
+            suffix="hours"
+            min={0}
+            max={720}
+            value={draft.cancellation_window_hours}
+            onChange={v => patch({ cancellation_window_hours: v })}
+            hint="Minimum notice required for clients to cancel."
+          />
+          <NumberField
+            label="Reschedule window"
+            suffix="hours"
+            min={0}
+            max={720}
+            value={draft.reschedule_window_hours}
+            onChange={v => patch({ reschedule_window_hours: v })}
+            hint="Minimum notice required for clients to reschedule."
+          />
+        </div>
+      </section>
+
+      {/* Save bar */}
+      <div className="sticky bottom-0 bg-cream/95 backdrop-blur border-t border-[rgba(18,18,18,0.08)] pt-3 pb-2 flex items-center justify-between gap-3">
+        <div className="text-[11px] text-muted-text">
+          {saveState === 'saved' && (
+            <span className="inline-flex items-center gap-1 text-near-black">
+              <Check size={12} /> Saved
+            </span>
+          )}
+          {saveState === 'error' && (
+            <span className="inline-flex items-center gap-1 text-[#b42828]">
+              <AlertCircle size={12} /> {saveErr ?? 'Could not save'}
+            </span>
+          )}
+          {saveState === 'idle' && dirty && <span>Unsaved changes</span>}
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          disabled={!dirty || saveState === 'saving'}
+          className={cn(
+            'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase px-3 py-2',
+            dirty
+              ? 'bg-near-black text-white hover:bg-white hover:text-near-black border border-near-black'
+              : 'bg-cream text-muted-text border border-[rgba(18,18,18,0.10)] cursor-not-allowed',
+          )}
+        >
+          {saveState === 'saving'
+            ? <><Loader2 size={11} className="animate-spin" /> Saving</>
+            : <><Check size={12} /> Save changes</>}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function stripMeta(s: BookingSettings) {
+  // Ignore created_at/updated_at/id when computing dirty state.
+  const { id: _id, created_at: _c, updated_at: _u, ...rest } = s
+  return rest
+}
+
+function NumberField({
+  label, value, onChange, suffix, hint, min, max,
+}: {
+  label:   string
+  value:   number
+  onChange:(v: number) => void
+  suffix?: string
+  hint?:   string
+  min?:    number
+  max?:    number
+}) {
+  return (
+    <label className="block">
+      <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">{label}</span>
+      <div className="mt-1.5 flex items-center border border-[rgba(18,18,18,0.15)] bg-white focus-within:border-near-black">
+        <input
+          type="number"
+          inputMode="numeric"
+          min={min}
+          max={max}
+          value={Number.isFinite(value) ? value : ''}
+          onChange={e => {
+            const n = Number(e.target.value)
+            if (!Number.isFinite(n)) return
+            onChange(n)
+          }}
+          className="w-full px-3 py-2 text-sm text-near-black bg-transparent focus:outline-none tabular-nums"
+        />
+        {suffix && <span className="px-2 text-[11px] text-muted-text">{suffix}</span>}
+      </div>
+      {hint && <p className="text-[10px] text-muted-text mt-1">{hint}</p>}
+    </label>
+  )
+}
+
+function SelectField({
+  label, value, onChange, options, hint,
+}: {
+  label:   string
+  value:   string
+  onChange:(v: string) => void
+  options: { value: string; label: string }[]
+  hint?:   string
+}) {
+  return (
+    <label className="block">
+      <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">{label}</span>
+      <div className="relative mt-1.5">
+        <select
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="w-full appearance-none bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 pr-8 text-sm text-near-black focus:outline-none focus:border-near-black"
+        >
+          {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        <ChevronRight
+          size={12}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 rotate-90 text-muted-text pointer-events-none"
+        />
+      </div>
+      {hint && <p className="text-[10px] text-muted-text mt-1">{hint}</p>}
+    </label>
   )
 }
 

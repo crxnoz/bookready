@@ -59,6 +59,22 @@ class PublicAvailabilityController extends Controller
         // Load booking settings
         $settings = DB::table('booking_settings')->first();
 
+        // Short-circuit if booking has been turned off business-wide.
+        if ($settings && property_exists($settings, 'booking_enabled') && ! $settings->booking_enabled) {
+            tenancy()->end();
+            return response()->json([
+                'date'    => $date,
+                'service' => [
+                    'id'               => (int)   $service->id,
+                    'name'             =>          $service->name,
+                    'duration_minutes' => (int)   $service->duration,
+                    'price'            => (float) $service->price,
+                ],
+                'slots'   => [],
+                'message' => 'Booking is currently unavailable.',
+            ]);
+        }
+
         // Load existing appointments for this date (exclude cancelled)
         $appointments = DB::table('appointments')
             ->where('appointment_date', $date)

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { HoursEntry, BookingSettings, AvailabilityData } from '@/lib/types'
+import { HoursEntry, AvailabilitySettings, AvailabilityData } from '@/lib/types'
 import { getEditorAvailability, updateEditorAvailability } from '@/lib/api'
 import Button from '@/components/ui/Button'
 import {
@@ -19,7 +19,7 @@ import {
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
-const DEFAULT_SETTINGS: BookingSettings = {
+const DEFAULT_SETTINGS: AvailabilitySettings = {
   buffer_before_minutes: 0,
   buffer_after_minutes: 15,
   minimum_notice_minutes: 720,
@@ -230,7 +230,7 @@ function DayCard({
 
 // ── SlotReleaseExample ────────────────────────────────────────────────────────
 
-function SlotReleaseExample({ s }: { s: BookingSettings }) {
+function SlotReleaseExample({ s }: { s: AvailabilitySettings }) {
   if (!s.slot_release_enabled || !s.slot_release_frequency) return null
 
   const days  = s.slot_release_window_days ?? 14
@@ -279,7 +279,7 @@ function sortedDisplay(hours: HoursEntry[]): HoursEntry[] {
 
 export default function AvailabilityEditor() {
   const [hours, setHours]       = useState<HoursEntry[]>([])
-  const [settings, setSettings] = useState<BookingSettings>(DEFAULT_SETTINGS)
+  const [settings, setSettings] = useState<AvailabilitySettings>(DEFAULT_SETTINGS)
   const [saveState, setSaveState] = useState<SaveState>('loading')
   const [error, setError]         = useState<string | null>(null)
 
@@ -304,7 +304,7 @@ export default function AvailabilityEditor() {
     if (saveState === 'saved') setSaveState('idle')
   }
 
-  function setSetting<K extends keyof BookingSettings>(key: K, value: BookingSettings[K]) {
+  function setSetting<K extends keyof AvailabilitySettings>(key: K, value: AvailabilitySettings[K]) {
     setSettings(prev => ({ ...prev, [key]: value }))
     if (saveState === 'saved') setSaveState('idle')
   }
@@ -538,7 +538,7 @@ export default function AvailabilityEditor() {
               <SelectInput
                 label="Release frequency"
                 value={settings.slot_release_frequency ?? 'weekly'}
-                onChange={v => setSetting('slot_release_frequency', v as BookingSettings['slot_release_frequency'])}
+                onChange={v => setSetting('slot_release_frequency', v as AvailabilitySettings['slot_release_frequency'])}
                 options={FREQ_OPTIONS}
               />
 
