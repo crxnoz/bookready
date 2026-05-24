@@ -14,6 +14,12 @@ class AppointmentsController extends Controller
 {
     private function format(object $row): array
     {
+        // Payment columns are nullable in the model row when the tenant
+        // migration hasn't run yet — guard each access with property_exists
+        // so old appointments and un-migrated tenants stay safe.
+        $get = static fn(string $k, $default = null) =>
+            property_exists($row, $k) ? $row->{$k} : $default;
+
         return [
             'id'                       => (int) $row->id,
             'customer_id'              => $row->client_id !== null ? (int) $row->client_id : null,
@@ -32,6 +38,15 @@ class AppointmentsController extends Controller
             'internal_notes'           => $row->internal_notes,
             'created_at'               => $row->created_at,
             'updated_at'               => $row->updated_at,
+
+            // ── Payment snapshot (nullable for old rows / un-migrated tenants) ──
+            'payment_status'           => $get('payment_status', 'none'),
+            'deposit_required'         => (bool) $get('deposit_required', false),
+            'deposit_amount'           => $get('deposit_amount') !== null ? (float) $get('deposit_amount') : null,
+            'deposit_paid_amount'      => $get('deposit_paid_amount') !== null ? (float) $get('deposit_paid_amount') : null,
+            'amount_due'               => $get('amount_due') !== null ? (float) $get('amount_due') : null,
+            'currency'                 => $get('currency', 'USD'),
+            'paid_at'                  => $get('paid_at'),
         ];
     }
 

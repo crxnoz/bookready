@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AppointmentPaymentWebhookController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\BillingController;
@@ -119,4 +120,9 @@ Route::prefix('v1')->group(function () {
     // ── Stripe webhook (no auth, no CSRF) ────────────────────────────────
     // Signature verified by Cashier using STRIPE_WEBHOOK_SECRET
     Route::post('webhooks/stripe', [WebhookController::class, 'handleWebhook']);
+
+    // ── Stripe webhook (customer APPOINTMENT payments) ───────────────────
+    // INTENTIONALLY a separate endpoint + secret from the SaaS webhook above.
+    // Signature verified manually with STRIPE_APPOINTMENT_WEBHOOK_SECRET.
+    Route::post('webhooks/stripe/appointments', [AppointmentPaymentWebhookController::class, 'handle']);
 });

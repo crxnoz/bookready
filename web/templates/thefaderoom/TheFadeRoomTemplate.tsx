@@ -369,6 +369,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
               services={services}
               displayName={displayName}
               availability={availability}
+              paymentSettings={site.payment_settings ?? null}
             />
           </div>
 

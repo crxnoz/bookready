@@ -55,6 +55,47 @@ function StatusPill({ status }: { status: string }) {
   )
 }
 
+const PAYMENT_CFG: Record<string, { label: string; cls: string }> = {
+  pending_payment: { label: 'Deposit pending', cls: 'bg-white border border-[rgba(180,120,0,0.35)] text-[#8a5a00]' },
+  deposit_paid:    { label: 'Deposit paid',    cls: 'bg-white border border-[rgba(20,140,80,0.40)] text-[#0f6f3d]' },
+  paid:            { label: 'Paid',            cls: 'bg-white border border-[rgba(20,140,80,0.40)] text-[#0f6f3d]' },
+  failed:          { label: 'Payment failed',  cls: 'bg-white border border-[rgba(180,40,40,0.40)] text-[#b42828]' },
+  refunded:        { label: 'Refunded',        cls: 'bg-white border border-[rgba(18,18,18,0.20)] text-muted-text' },
+}
+
+function PaymentPill({ appt }: { appt: Appointment }) {
+  const status = appt.payment_status
+  if (!status || status === 'none') return null
+  const cfg = PAYMENT_CFG[status] ?? { label: status, cls: 'bg-white border border-[rgba(18,18,18,0.12)] text-near-black' }
+  return (
+    <span className={cn('text-[9px] font-bold tracking-[0.06em] uppercase px-2 py-0.5 flex-shrink-0 whitespace-nowrap', cfg.cls)}>
+      {cfg.label}
+    </span>
+  )
+}
+
+function PaymentSummary({ appt }: { appt: Appointment }) {
+  const status = appt.payment_status
+  if (!status || status === 'none') return null
+  const cur = (appt.currency ?? 'USD').toUpperCase()
+  const sym = cur === 'USD' ? '$' : ''
+  const dep    = appt.deposit_amount       ?? null
+  const depPd  = appt.deposit_paid_amount  ?? null
+  const due    = appt.amount_due           ?? null
+  const parts: string[] = []
+  if (dep != null) parts.push(`Deposit ${sym}${dep.toFixed(2)}`)
+  if (depPd != null && depPd > 0 && status !== 'pending_payment') {
+    parts.push(`paid ${sym}${depPd.toFixed(2)}`)
+  }
+  if (due != null && due > 0) parts.push(`balance ${sym}${due.toFixed(2)}`)
+  if (parts.length === 0) return null
+  return (
+    <p className="text-[11px] text-muted-text truncate mt-0.5">
+      {parts.join(' · ')}
+    </p>
+  )
+}
+
 // ── Main component (Bookings Hub) ─────────────────────────────────────────────
 
 export default function AppointmentsDashboard() {
@@ -259,10 +300,12 @@ function PreviewCard({
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
             <p className="text-sm font-bold text-near-black truncate">{appt.customer_name}</p>
             <StatusPill status={appt.status} />
+            <PaymentPill appt={appt} />
           </div>
           <p className="text-[11px] text-muted-text truncate">
             {appt.service_name} · {fmtDate(appt.appointment_date)} at {fmt12(appt.start_time)}
           </p>
+          <PaymentSummary appt={appt} />
           {(appt.customer_email || appt.customer_phone) && (
             <p className="text-[11px] text-muted-text truncate mt-0.5">
               {appt.customer_email || appt.customer_phone}

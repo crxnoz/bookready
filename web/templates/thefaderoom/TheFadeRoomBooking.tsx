@@ -8,7 +8,7 @@ import {
 import { getPublicAvailability, createPublicAppointment } from '@/lib/api'
 import type {
   AvailableSlot, PublicBookingPayload, Service,
-  AvailabilityData,
+  AvailabilityData, PublicPaymentSettings,
 } from '@/lib/types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -70,11 +70,13 @@ export default function TheFadeRoomBooking({
   services,
   displayName,
   availability,
+  paymentSettings,
 }: {
   slug: string
   services: Service[]
   displayName: string
   availability: AvailabilityData | null
+  paymentSettings: PublicPaymentSettings | null
 }) {
   const [step,         setStep]         = useState<Step>(1)
   const [serviceId,    setServiceId]    = useState<number | null>(null)
@@ -145,6 +147,30 @@ export default function TheFadeRoomBooking({
       })
   }, [serviceId, date, slug])
 
+  // Compute a preview of the deposit the client will be charged. Used to
+  // show the deposit notice on the Confirm step. Authoritative calc still
+  // runs on the server — this is just a friendly heads-up.
+  const depositPreview: number | null = (() => {
+    if (!paymentSettings) return null
+    if (!paymentSettings.payments_enabled) return null
+    if (!paymentSettings.deposits_enabled) return null
+    const amount = paymentSettings.deposit_amount
+    if (amount == null || amount <= 0) return null
+    if (paymentSettings.deposit_type === 'flat') {
+      return Math.round(amount * 100) / 100
+    }
+    if (paymentSettings.deposit_type === 'percent') {
+      const price = selectedService?.price ?? null
+      if (price == null || price <= 0) return null
+      const pct = Math.max(0, Math.min(100, amount))
+      const dep = Math.min(price, (price * pct) / 100)
+      return Math.round(dep * 100) / 100
+    }
+    return null
+  })()
+
+  const depositRequired = depositPreview != null
+
   async function handleSubmit() {
     if (!serviceId || !date || !selectedSlot || !name.trim()) return
     setSubmitting(true)
@@ -159,7 +185,13 @@ export default function TheFadeRoomBooking({
         customer_phone:   phone.trim()  || undefined,
         notes:            notes.trim()  || undefined,
       }
-      await createPublicAppointment(slug, payload)
+      const res = await createPublicAppointment(slug, payload)
+      if (res.checkout_url) {
+        // Hand control off to Stripe — webhook will finalize the booking
+        // once payment completes.
+        window.location.href = res.checkout_url
+        return
+      }
       setSuccess(true)
     } catch (err) {
       const raw = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
@@ -521,6 +553,27 @@ export default function TheFadeRoomBooking({
               </dl>
             </div>
 
+            {depositRequired && (
+              <div className="tfr-booking-summary" style={{ marginTop: 12 }}>
+                <span className="tfr-booking-block-label">Deposit Required</span>
+                <dl>
+                  <div className="tfr-booking-total">
+                    <dt>Deposit due now</dt>
+                    <dd>${depositPreview!.toFixed(2)}</dd>
+                  </div>
+                  {selectedService && selectedService.price > depositPreview! && (
+                    <div>
+                      <dt>Balance at appointment</dt>
+                      <dd>${(selectedService.price - depositPreview!).toFixed(2)}</dd>
+                    </div>
+                  )}
+                </dl>
+                <p style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
+                  You&apos;ll be sent to a secure Stripe page to pay your deposit. Your booking is reserved once the deposit clears.
+                </p>
+              </div>
+            )}
+
             {submitError && (
               <div className="tfr-booking-error">{submitError}</div>
             )}
@@ -535,15 +588,19 @@ export default function TheFadeRoomBooking({
                 onClick={handleSubmit}
               >
                 {submitting
-                  ? 'Sending…'
-                  : <>Confirm Booking <Check size={14} strokeWidth={3} /></>
+                  ? (depositRequired ? 'Redirecting to payment…' : 'Sending…')
+                  : depositRequired
+                    ? <>Pay Deposit & Book <Check size={14} strokeWidth={3} /></>
+                    : <>Confirm Booking <Check size={14} strokeWidth={3} /></>
                 }
               </button>
             </div>
 
             <p className="tfr-booking-disclaimer">
               <CalendarCheck size={11} style={{ verticalAlign: -1, marginRight: 4 }} />
-              No payment required — the business will confirm your appointment.
+              {depositRequired
+                ? 'A deposit is required to reserve your appointment.'
+                : 'No payment required — the business will confirm your appointment.'}
             </p>
           </div>
         </div>

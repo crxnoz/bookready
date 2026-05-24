@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Services\AppointmentMailer;
+use App\Services\AppointmentPaymentService;
 use App\Services\SlotGenerator;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class PublicBookingController extends Controller
 {
@@ -101,8 +104,17 @@ class PublicBookingController extends Controller
             $validated['customer_phone'] ?? null,
         );
 
-        // ── Insert appointment ───────────────────────────────────────────
-        $id = DB::table('appointments')->insertGetId([
+        // ── Payment branching ────────────────────────────────────────────
+        // Defaults: payments off, no deposit, no special status.
+        $payment = $this->loadPaymentSettings();
+        $servicePrice = $service->price !== null ? (float) $service->price : null;
+        $deposit = AppointmentPaymentService::calculateDeposit($payment, $servicePrice);
+        $paymentRequired = $deposit !== null;
+
+        // Columns we set only when the migration has run (graceful fallback).
+        $appointmentsHasPaymentCols = Schema::hasColumn('appointments', 'payment_status');
+
+        $insertData = [
             'client_id'                => $clientId,
             'service_id'               => (int) $service->id,
             'customer_name'            => $validated['customer_name'],
@@ -119,10 +131,29 @@ class PublicBookingController extends Controller
             'internal_notes'           => null,
             'created_at'               => now(),
             'updated_at'               => now(),
-        ]);
+        ];
 
-        // ── Collect data for response + emails before ending tenancy ─────
+        if ($appointmentsHasPaymentCols) {
+            if ($paymentRequired) {
+                $insertData['payment_status']     = 'pending_payment';
+                $insertData['deposit_required']   = true;
+                $insertData['deposit_amount']     = $deposit;
+                $insertData['deposit_paid_amount'] = 0;
+                $insertData['amount_due'] = $servicePrice !== null
+                    ? max(0, round($servicePrice - $deposit, 2))
+                    : null;
+                $insertData['currency'] = $payment['currency'] ?? 'USD';
+            } else {
+                $insertData['payment_status']   = 'none';
+                $insertData['deposit_required'] = false;
+                $insertData['currency']         = $payment['currency'] ?? 'USD';
+            }
+        }
+
+        $id  = DB::table('appointments')->insertGetId($insertData);
         $row = DB::table('appointments')->find($id);
+
+        // Build a plain-array snapshot for use after tenancy ends.
         $appt = [
             'id'               => (int) $row->id,
             'customer_name'    => $row->customer_name,
@@ -138,13 +169,64 @@ class PublicBookingController extends Controller
 
         $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
 
+        // ── Payment-required path: create Stripe Checkout session ────────
+        $checkoutUrl = null;
+        if ($paymentRequired && $appointmentsHasPaymentCols) {
+            try {
+                $session = AppointmentPaymentService::createDepositCheckoutSession([
+                    'tenant_id'      => (string) $tenant->id,
+                    'tenant_slug'    => (string) $tenant->id,
+                    'appointment_id' => (int)    $appt['id'],
+                    'service_name'   => (string) $appt['service_name'],
+                    'deposit_amount' => (float)  $deposit,
+                    'currency'       => $payment['currency'] ?? 'USD',
+                    'customer_email' => $appt['customer_email'],
+                    'success_url'    => sprintf(
+                        'https://%s.bkrdy.me/?booking=success&appointment=%d&session_id={CHECKOUT_SESSION_ID}',
+                        $tenant->id, $appt['id'],
+                    ),
+                    'cancel_url'     => sprintf(
+                        'https://%s.bkrdy.me/?booking=cancelled&appointment=%d',
+                        $tenant->id, $appt['id'],
+                    ),
+                ]);
+
+                DB::table('appointments')->where('id', $id)->update([
+                    'stripe_checkout_session_id' => $session['id'],
+                    'updated_at'                 => now(),
+                ]);
+
+                $checkoutUrl = $session['url'];
+            } catch (\Throwable $e) {
+                Log::error('Stripe checkout session creation failed', [
+                    'tenant'   => $tenant->id,
+                    'appointment_id' => $appt['id'],
+                    'error'    => $e->getMessage(),
+                ]);
+                // Roll back: mark appointment failed and let the caller see an error.
+                DB::table('appointments')->where('id', $id)->update([
+                    'payment_status' => 'failed',
+                    'updated_at'     => now(),
+                ]);
+                tenancy()->end();
+                return response()->json([
+                    'message' => 'Could not start payment. Please try again in a moment.',
+                ], 502);
+            }
+        }
+
         tenancy()->end();
 
-        // ── Send emails (outside tenancy, with plain-array data) ─────────
-        AppointmentMailer::sendBookingRequest($appt, $businessName, $ownerEmail);
+        // ── Email behavior ───────────────────────────────────────────────
+        // When payment is required, hold off on the booking-request emails
+        // until the webhook confirms the deposit. When payment is not
+        // required, behavior is byte-identical to the previous flow.
+        if (! $paymentRequired) {
+            AppointmentMailer::sendBookingRequest($appt, $businessName, $ownerEmail);
+        }
 
-        return response()->json([
-            'message'     => 'Booking request received',
+        $response = [
+            'message'     => $paymentRequired ? 'Deposit required to confirm booking' : 'Booking request received',
             'appointment' => [
                 'id'               => $appt['id'],
                 'service_name'     => $appt['service_name'],
@@ -154,7 +236,51 @@ class PublicBookingController extends Controller
                 'status'           => $appt['status'],
                 'customer_name'    => $appt['customer_name'],
             ],
-        ], 201);
+        ];
+
+        if ($paymentRequired) {
+            $response['payment_required'] = true;
+            $response['deposit_amount']   = (float) $deposit;
+            $response['currency']         = $payment['currency'] ?? 'USD';
+            $response['checkout_url']     = $checkoutUrl;
+        }
+
+        return response()->json($response, 201);
+    }
+
+    /**
+     * Load payment_settings inside the current tenant context. Returns
+     * sensible defaults so older tenants without the table behave like
+     * payments are off.
+     */
+    private function loadPaymentSettings(): array
+    {
+        $defaults = [
+            'payments_enabled'   => false,
+            'deposits_enabled'   => false,
+            'deposit_type'       => null,
+            'deposit_amount'     => null,
+            'allow_full_payment' => false,
+            'currency'           => 'USD',
+        ];
+
+        if (! Schema::hasTable('payment_settings')) {
+            return $defaults;
+        }
+
+        $row = DB::table('payment_settings')->first();
+        if (! $row) {
+            return $defaults;
+        }
+
+        return [
+            'payments_enabled'   => (bool) $row->payments_enabled,
+            'deposits_enabled'   => (bool) $row->deposits_enabled,
+            'deposit_type'       =>        $row->deposit_type,
+            'deposit_amount'     => $row->deposit_amount !== null ? (float) $row->deposit_amount : null,
+            'allow_full_payment' => (bool) $row->allow_full_payment,
+            'currency'           =>        $row->currency ?? 'USD',
+        ];
     }
 
     private function findOrCreateClient(string $name, ?string $email, ?string $phone): ?int

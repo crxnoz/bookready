@@ -349,6 +349,9 @@ export interface CustomerUpdatePayload {
   notes?: string | null
 }
 
+export type PaymentStatus =
+  | 'none' | 'pending_payment' | 'deposit_paid' | 'paid' | 'failed' | 'refunded'
+
 export interface Appointment {
   id: number
   customer_id: number | null
@@ -367,6 +370,15 @@ export interface Appointment {
   internal_notes: string | null
   created_at: string
   updated_at: string
+  // Payment snapshot — nullable / 'none' for old appointments created
+  // before the payment columns existed.
+  payment_status?:       PaymentStatus
+  deposit_required?:     boolean
+  deposit_amount?:       number | null
+  deposit_paid_amount?:  number | null
+  amount_due?:           number | null
+  currency?:             string
+  paid_at?:              string | null
 }
 
 export interface CreateAppointmentPayload {
@@ -434,6 +446,12 @@ export interface PublicBookingResponse {
     status: string
     customer_name: string
   }
+  // Present when the tenant requires a deposit and a Stripe Checkout
+  // session was created — frontend should redirect to checkout_url.
+  payment_required?: boolean
+  deposit_amount?:   number
+  currency?:         string
+  checkout_url?:     string
 }
 
 // Auth
