@@ -260,7 +260,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 const override = ensureScheme(header.call_button_url, 'tel')
                 const href = override ?? (p?.public_phone ? `tel:${p.public_phone.replace(/[^\d+]/g, '')}` : null)
                 return (
-                  <a className="tfr-header-btn tfr-header-btn-call" href={href ?? '#'} aria-disabled={!href || undefined}>
+                  <a className="tfr-header-btn tfr-header-btn-call tfr-header-btn-mobile-only" href={href ?? '#'} aria-disabled={!href || undefined}>
                     <Phone size={16} /><span>Call</span>
                   </a>
                 )
@@ -1134,8 +1134,13 @@ const TFR_CSS = `
 }
 .tfr-header-buttons {
   width:min(100%,880px); margin:0 auto;
-  display:grid; grid-template-columns:repeat(5,minmax(100px,1fr)); gap:10px;
+  display:flex; flex-wrap:wrap; justify-content:center; gap:10px;
   align-items:stretch;
+}
+.tfr-header-buttons > .tfr-header-btn { flex:0 0 calc((100% - 40px) / 5); }
+/* Hide call button on devices with a precise pointer (desktops, laptops). */
+@media (hover:hover) and (pointer:fine) {
+  .tfr-header-btn-mobile-only { display:none !important; }
 }
 .tfr-header-btn {
   width:100%; min-width:0; min-height:56px; padding:0 14px;
@@ -1628,7 +1633,8 @@ img.tfr-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filte
   .tfr-header-cover { height:auto; min-height:640px; order:1; }
   .tfr-header-avatar { position:absolute; top:56px; left:56px; width:140px; height:140px; border-width:6px; box-shadow:none; transform:none; z-index:3; }
   .tfr-header-content { order:2; max-width:none; margin:0; padding:90px 72px 72px; text-align:left; display:flex; flex-direction:column; justify-content:center; }
-  .tfr-header-buttons { width:100%; max-width:520px; margin:0; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .tfr-header-buttons { width:100%; max-width:520px; margin:0; gap:12px; }
+  .tfr-header-buttons > .tfr-header-btn { flex:0 0 calc((100% - 12px) / 2); }
   .tfr-header-btn { min-height:62px; font-size:16px; border-radius:14px; }
   .tfr-tab-slider { justify-content:center; padding:8px 40px; gap:12px; }
   .tfr-tab-pill { padding:22px 18px; font-size:12px; letter-spacing:0.2em; }
@@ -1694,7 +1700,8 @@ img.tfr-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filte
   .tfr-header-cover { height:320px; min-height:320px; }
   .tfr-header-avatar { top:calc(320px - 95px); width:190px; height:190px; border-width:7px; box-shadow:none; }
   .tfr-header-content { padding:115px 40px 64px; max-width:720px; }
-  .tfr-header-buttons { width:min(100%,560px); grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+  .tfr-header-buttons { width:min(100%,560px); gap:10px; }
+  .tfr-header-buttons > .tfr-header-btn { flex:0 0 calc((100% - 20px) / 3); }
   .tfr-header-btn { min-height:54px; font-size:15px; }
   .tfr-tab-slider { padding:6px 28px; justify-content:center; gap:8px; }
   .tfr-gallery-group, .tfr-before-after-section, .tfr-about-section, .tfr-policy-section, .tfr-before-appointment-section, .tfr-aftercare-section { width:min(100%,720px); }
@@ -1714,7 +1721,8 @@ img.tfr-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filte
   .tfr-header-content { order:3; padding:8px 22px 52px; text-align:center; width:100%; }
   .tfr-header-content h1 { font-size:clamp(28px,7vw,48px); }
   .tfr-header-content p { font-size:clamp(24px,6vw,38px); margin:4px 0 32px; }
-  .tfr-header-buttons { width:min(100%,348px); max-width:none; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin:0 auto; }
+  .tfr-header-buttons { width:min(100%,348px); max-width:none; gap:6px; margin:0 auto; }
+  .tfr-header-buttons > .tfr-header-btn { flex:0 0 calc((100% - 6px) / 2); }
   .tfr-header-btn { min-height:48px; height:48px; border-radius:10px; font-size:13px; padding-inline:8px; }
   .tfr-tab-pill { padding:14px 12px; font-size:10px; letter-spacing:0.12em; }
   .tfr-tab-pill::after { left:12px; right:12px; }
