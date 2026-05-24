@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\Api\Editor;
 
 use App\Http\Controllers\Controller;
+use App\Mail\EmailChangedMail;
+use App\Mail\PasswordChangedMail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -56,11 +60,47 @@ class AccountController extends Controller
             ],
         ]);
 
+        $oldEmail = $user->email;
+
         if (array_key_exists('name', $validated))  $user->name  = $validated['name'];
         if (array_key_exists('email', $validated)) $user->email = $validated['email'];
 
+        $emailChanged = $user->isDirty('email');
+
         if ($user->isDirty()) {
             $user->save();
+        }
+
+        // Security notice when email changes — sent to BOTH old + new so
+        // the legit user always sees it even if their account was hijacked.
+        if ($emailChanged) {
+            $changedAt = now()->toRfc2822String();
+            try {
+                Mail::to($oldEmail)->send(new EmailChangedMail(
+                    ownerName:     $user->name,
+                    oldEmail:      $oldEmail,
+                    newEmail:      $user->email,
+                    changedAt:     $changedAt,
+                    recipientRole: 'old',
+                ));
+            } catch (\Throwable $e) {
+                Log::error('[BookReady] EmailChangedMail to old address failed', [
+                    'old_email' => $oldEmail, 'error' => $e->getMessage(),
+                ]);
+            }
+            try {
+                Mail::to($user->email)->send(new EmailChangedMail(
+                    ownerName:     $user->name,
+                    oldEmail:      $oldEmail,
+                    newEmail:      $user->email,
+                    changedAt:     $changedAt,
+                    recipientRole: 'new',
+                ));
+            } catch (\Throwable $e) {
+                Log::error('[BookReady] EmailChangedMail to new address failed', [
+                    'new_email' => $user->email, 'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         return response()->json($this->format($user->refresh()));
@@ -84,6 +124,19 @@ class AccountController extends Controller
 
         $user->password = Hash::make($validated['new_password']);
         $user->save();
+
+        // Security notice. Best-effort — don't block the response on mail failure.
+        try {
+            Mail::to($user->email)->send(new PasswordChangedMail(
+                ownerName: $user->name,
+                changedAt: now()->toRfc2822String(),
+            ));
+        } catch (\Throwable $e) {
+            Log::error('[BookReady] PasswordChangedMail failed', [
+                'email' => $user->email,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return response()->json([
             'message' => 'Password updated.',

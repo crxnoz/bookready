@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Mail\StripeConnectRestrictedMail;
+use App\Mail\StripeConnectVerifiedMail;
 use App\Services\AppointmentMailer;
 use App\Services\AppointmentPaymentService;
 use App\Services\NotificationSettingsService;
@@ -250,6 +251,7 @@ class AppointmentPaymentWebhookController extends Controller
         }
 
         $shouldAlertRestricted = false;
+        $shouldCelebrateActive = false;
         $ownerEmail            = $tenant->owner?->email;
         $ownerName             = $tenant->owner?->name ?? 'there';
 
@@ -298,6 +300,14 @@ class AppointmentPaymentWebhookController extends Controller
                 $shouldAlertRestricted = true;
             }
 
+            // Detect transition INTO 'active' — celebratory email, fires
+            // once when onboarding completes (or when Stripe lifts a
+            // previous restriction).
+            if ($status === StripeConnectService::STATUS_ACTIVE
+                && $previousStatus !== StripeConnectService::STATUS_ACTIVE) {
+                $shouldCelebrateActive = true;
+            }
+
             // Snapshot business name now (we can't read tenant DB after end()).
             $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
 
@@ -311,6 +321,21 @@ class AppointmentPaymentWebhookController extends Controller
                     ));
                 } catch (\Throwable $e) {
                     Log::error('[BookReady] StripeConnectRestrictedMail failed', [
+                        'tenant_id'   => $tenantId,
+                        'owner_email' => $ownerEmail,
+                        'error'       => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            if ($shouldCelebrateActive && $ownerEmail) {
+                try {
+                    Mail::to($ownerEmail)->send(new StripeConnectVerifiedMail(
+                        ownerName:    $ownerName,
+                        businessName: $businessName,
+                    ));
+                } catch (\Throwable $e) {
+                    Log::error('[BookReady] StripeConnectVerifiedMail failed', [
                         'tenant_id'   => $tenantId,
                         'owner_email' => $ownerEmail,
                         'error'       => $e->getMessage(),
