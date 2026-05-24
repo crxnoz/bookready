@@ -114,9 +114,9 @@ function LoginInner() {
             <input type="checkbox" className="accent-[#121212]" />
             Remember me
           </label>
-          <a href="#" className="text-muted-text hover:text-near-black transition-colors">
+          <Link href="/forgot-password" className="text-muted-text hover:text-near-black transition-colors">
             Forgot password?
-          </a>
+          </Link>
         </div>
 
         <button type="submit" disabled={loading} className={submitCls}>

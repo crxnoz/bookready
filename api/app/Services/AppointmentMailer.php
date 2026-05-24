@@ -4,8 +4,11 @@ namespace App\Services;
 
 use App\Mail\AppointmentCancelledClientMail;
 use App\Mail\AppointmentConfirmedClientMail;
+use App\Mail\AppointmentReminderClientMail;
 use App\Mail\BookingRequestClientMail;
 use App\Mail\BookingRequestOwnerMail;
+use App\Mail\ClientCancelledOwnerMail;
+use App\Mail\ClientRescheduledOwnerMail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -69,6 +72,72 @@ class AppointmentMailer
             Mail::to($appt['customer_email'])->send(new AppointmentConfirmedClientMail($appt, $businessName));
         } catch (\Throwable $e) {
             Log::error('[BookReady] AppointmentConfirmedClientMail failed', [
+                'appointment_id' => $appt['id'] ?? null,
+                'customer_email' => $appt['customer_email'],
+                'error'          => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Notify the owner when a CLIENT cancels their own booking via the
+     * public manage-booking link. Always sent if we have an owner email —
+     * we treat client-initiated changes as ops events the owner needs to
+     * see (not gated by client_booking_email toggle).
+     */
+    public static function sendClientCancelledToOwner(
+        array   $appt,
+        string  $businessName,
+        ?string $ownerEmail,
+    ): void {
+        if (! $ownerEmail) return;
+        try {
+            Mail::to($ownerEmail)->send(new ClientCancelledOwnerMail($appt, $businessName));
+        } catch (\Throwable $e) {
+            Log::error('[BookReady] ClientCancelledOwnerMail failed', [
+                'appointment_id' => $appt['id'] ?? null,
+                'owner_email'    => $ownerEmail,
+                'error'          => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Notify the owner when a CLIENT reschedules their own booking via
+     * the public manage-booking link.
+     */
+    public static function sendClientRescheduledToOwner(
+        array   $appt,
+        array   $oldAppt,
+        string  $businessName,
+        ?string $ownerEmail,
+    ): void {
+        if (! $ownerEmail) return;
+        try {
+            Mail::to($ownerEmail)->send(new ClientRescheduledOwnerMail($appt, $oldAppt, $businessName));
+        } catch (\Throwable $e) {
+            Log::error('[BookReady] ClientRescheduledOwnerMail failed', [
+                'appointment_id' => $appt['id'] ?? null,
+                'owner_email'    => $ownerEmail,
+                'error'          => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Send an appointment reminder to the client. Caller is responsible
+     * for honoring the tenant's reminder_email_enabled toggle and for
+     * idempotency (don't double-send for the same appointment).
+     */
+    public static function sendReminder(array $appt, string $businessName, int $hoursBefore): void
+    {
+        if (empty($appt['customer_email'])) return;
+        try {
+            Mail::to($appt['customer_email'])->send(
+                new AppointmentReminderClientMail($appt, $businessName, $hoursBefore),
+            );
+        } catch (\Throwable $e) {
+            Log::error('[BookReady] AppointmentReminderClientMail failed', [
                 'appointment_id' => $appt['id'] ?? null,
                 'customer_email' => $appt['customer_email'],
                 'error'          => $e->getMessage(),

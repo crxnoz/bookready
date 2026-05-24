@@ -131,6 +131,27 @@ export async function logout(): Promise<void> {
   await request('/auth/logout', { method: 'POST' })
 }
 
+// ── Password reset (public — no auth) ───────────────────────────────────────
+
+export async function requestPasswordReset(email: string): Promise<{ message: string }> {
+  return request<{ message: string }>('/auth/password/forgot', {
+    method: 'POST',
+    body:   JSON.stringify({ email }),
+  })
+}
+
+export async function resetPassword(payload: {
+  email:                 string
+  token:                 string
+  password:              string
+  password_confirmation: string
+}): Promise<{ message: string }> {
+  return request<{ message: string }>('/auth/password/reset', {
+    method: 'POST',
+    body:   JSON.stringify(payload),
+  })
+}
+
 // ── Public ────────────────────────────────────────────────────────────────────
 
 export async function getPublicSite(slug: string): Promise<PublicSite> {

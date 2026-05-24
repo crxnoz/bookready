@@ -163,7 +163,12 @@ class PublicManageBookingController extends Controller
 
         tenancy()->end();
 
+        // Client gets a cancellation receipt (gated by notification toggle).
         AppointmentMailer::sendCancelled($appt, $businessName, $notify);
+
+        // Owner ALWAYS gets a heads-up when a client cancels — this is an
+        // ops event, not a marketing email, so it ignores the toggle.
+        AppointmentMailer::sendClientCancelledToOwner($appt, $businessName, $ownerEmail);
 
         return response()->json([
             'message' => 'Your booking has been cancelled.',
@@ -182,6 +187,8 @@ class PublicManageBookingController extends Controller
 
         $tenant = $this->resolveTenant($slug);
         if (! $tenant) return response()->json(['message' => 'Booking not found'], 404);
+
+        $ownerEmail = $tenant->owner?->email;
 
         tenancy()->initialize($tenant);
 
@@ -287,6 +294,13 @@ class PublicManageBookingController extends Controller
             ->addMinutes($duration)
             ->format('H:i');
 
+        // Snapshot the OLD time before we overwrite — used in the owner email.
+        $oldApptSnap = [
+            'appointment_date' => $row->appointment_date,
+            'start_time'       => substr($row->start_time, 0, 5),
+            'end_time'         => substr($row->end_time,   0, 5),
+        ];
+
         DB::table('appointments')->where('id', $row->id)->update([
             'appointment_date' => $newDate,
             'start_time'       => $newStart,
@@ -294,10 +308,29 @@ class PublicManageBookingController extends Controller
             'updated_at'       => now(),
         ]);
 
-        $updated = DB::table('appointments')->find($row->id);
-        $publicView = $this->formatPublic($updated, $bs);
+        $updated     = DB::table('appointments')->find($row->id);
+        $publicView  = $this->formatPublic($updated, $bs);
+        $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
+
+        // Plain-array snapshot for the owner email.
+        $apptForMail = [
+            'id'               => (int) $updated->id,
+            'customer_name'    => $updated->customer_name,
+            'customer_email'   => $updated->customer_email,
+            'customer_phone'   => $updated->customer_phone,
+            'service_name'     => $updated->service_name,
+            'appointment_date' => $updated->appointment_date,
+            'start_time'       => substr($updated->start_time, 0, 5),
+            'end_time'         => substr($updated->end_time,   0, 5),
+            'status'           => $updated->status,
+        ];
 
         tenancy()->end();
+
+        // Owner ALWAYS gets a heads-up when a client reschedules.
+        AppointmentMailer::sendClientRescheduledToOwner(
+            $apptForMail, $oldApptSnap, $businessName, $ownerEmail,
+        );
 
         return response()->json([
             'message'     => 'Your booking has been rescheduled.',
