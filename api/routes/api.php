@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\AdminTenantsController;
 use App\Http\Controllers\Api\AppointmentPaymentWebhookController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\RegisterController;
@@ -142,6 +143,12 @@ Route::prefix('v1')->group(function () {
         Route::post('website/sections',               [WebsiteSectionsController::class, 'store']);
         Route::patch('website/sections/{section}',    [WebsiteSectionsController::class, 'update']);
         Route::delete('website/sections/{section}',   [WebsiteSectionsController::class, 'destroy']);
+    });
+
+    // ── BookReady platform admin (super-admin only) ──────────────────────
+    Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+        Route::get   ('tenants',          [AdminTenantsController::class, 'index']);
+        Route::delete('tenants/{id}',     [AdminTenantsController::class, 'destroy']);
     });
 
     // ── Stripe webhook (no auth, no CSRF) ────────────────────────────────

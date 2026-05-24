@@ -60,6 +60,7 @@ class AuthController extends Controller
             'email'     => $user->email,
             'tenant_id' => $user->tenant_id,
             'is_owner'  => $user->is_owner,
+            'is_admin'  => (bool) ($user->is_admin ?? false),
         ]);
     }
 }

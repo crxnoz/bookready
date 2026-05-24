@@ -349,6 +349,26 @@ export interface StripeConnectStartResponse {
   stripe_connect_account_id: string
 }
 
+// ── Platform admin (super-admin only) ───────────────────────────────────────
+
+export interface AdminTenantRow {
+  id:            string
+  plan:          string | null
+  created_at:    string | null
+  updated_at:    string | null
+  domain:        string | null
+  owner_id:      number | null
+  owner_name:    string | null
+  owner_email:   string | null
+  stripe_id:     string | null
+  trial_ends_at: string | null
+}
+
+export interface AdminTenantsResponse {
+  tenants: AdminTenantRow[]
+  count:   number
+}
+
 // ── Account (owner profile + password + sessions) ───────────────────────────
 
 export interface AccountProfile {
@@ -625,6 +645,7 @@ export interface AuthUser {
   email: string
   tenant_id: string
   is_owner: boolean
+  is_admin?: boolean
 }
 
 export interface RegisterPayload {

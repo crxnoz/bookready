@@ -29,6 +29,7 @@ import {
   GalleryItemPayload,
   AccountProfile,
   AccountUpdatePayload,
+  AdminTenantsResponse,
   BookingSettings,
   BookingSettingsPayload,
   ChangePasswordPayload,
@@ -339,6 +340,19 @@ export async function signOutEverywhere(): Promise<SignOutEverywhereResponse> {
   return request<SignOutEverywhereResponse>('/editor/account/sign-out-everywhere', {
     method: 'POST',
     body:   JSON.stringify({}),
+  })
+}
+
+// ── Platform admin ──────────────────────────────────────────────────────────
+
+export async function getAdminTenants(): Promise<AdminTenantsResponse> {
+  return request<AdminTenantsResponse>('/admin/tenants')
+}
+
+export async function deleteAdminTenant(id: string, confirmSlug: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`/admin/tenants/${id}`, {
+    method: 'DELETE',
+    body:   JSON.stringify({ confirm_slug: confirmSlug }),
   })
 }
 

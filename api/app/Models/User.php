@@ -17,6 +17,7 @@ class User extends Authenticatable
         'password',
         'tenant_id',
         'is_owner',
+        'is_admin',
     ];
 
     protected $hidden = [
@@ -28,6 +29,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'is_owner' => 'boolean',
+        'is_admin' => 'boolean',
     ];
 
     public function tenant()
