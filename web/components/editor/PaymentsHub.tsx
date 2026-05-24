@@ -29,7 +29,7 @@ export default function PaymentsHub() {
   const tab: SubTab = VALID_TABS.includes(raw as SubTab) ? (raw as SubTab) : 'overview'
 
   return (
-    <div className="mx-auto w-full max-w-3xl p-3 sm:p-5 md:p-6 space-y-4">
+    <div className="w-full p-3 sm:p-5 md:p-6 space-y-4">
       {tab === 'overview'     && <PaymentsOverview />}
       {tab === 'deposits'     && <DepositsList />}
       {tab === 'transactions' && <ComingSoonCard label="Transactions" icon={Receipt}

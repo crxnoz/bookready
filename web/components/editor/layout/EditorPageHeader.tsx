@@ -21,20 +21,20 @@ export default function EditorPageHeader({
   actions?:  React.ReactNode
 }) {
   return (
-    <header className="border-b border-[rgba(18,18,18,0.10)] bg-white px-4 sm:px-5 md:px-6 py-4 flex-shrink-0">
+    <header className="px-4 sm:px-5 md:px-6 pt-4 pb-2 flex-shrink-0">
       {backHref && (
         <Link
           href={backHref}
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline mb-2"
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline mb-1.5"
         >
           <ArrowLeft size={12} /> Back to {backLabel ?? 'Overview'}
         </Link>
       )}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold text-near-black tracking-tight">{title}</h1>
           {subtitle && (
-            <p className="text-xs sm:text-[13px] text-muted-text mt-1 max-w-2xl">{subtitle}</p>
+            <p className="text-xs sm:text-[13px] text-muted-text mt-0.5 max-w-2xl">{subtitle}</p>
           )}
         </div>
         {actions && (

@@ -64,7 +64,7 @@ export default function SettingsHub() {
     : 'overview'
 
   return (
-    <div className="mx-auto w-full max-w-3xl p-3 sm:p-5 md:p-6 space-y-4">
+    <div className="w-full p-3 sm:p-5 md:p-6 space-y-4">
       {tab === 'overview'      && <OverviewPanel />}
       {tab === 'payments'      && <PaymentSettingsPanel />}
       {tab !== 'overview' && tab !== 'payments' && <PlaceholderPanel tab={tab} />}
