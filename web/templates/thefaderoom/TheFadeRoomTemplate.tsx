@@ -45,6 +45,21 @@ function fmt12(t: string) {
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`
 }
 
+// User-entered URL overrides may be raw phone numbers or email addresses
+// without a scheme. Coerce them so the resulting <a href> actually works.
+const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i
+function ensureScheme(raw: string | null | undefined, fallback: 'tel' | 'mailto' | 'sms'): string | null {
+  if (!raw) return null
+  const v = raw.trim()
+  if (!v) return null
+  if (SCHEME_RE.test(v)) return v                  // already tel:/mailto:/sms:/http:/etc.
+  if (v.startsWith('//')) return `https:${v}`      // protocol-relative
+  if (fallback === 'mailto' && v.includes('@')) return `mailto:${v}`
+  if (fallback === 'tel') return `tel:${v.replace(/[^\d+]/g, '')}`
+  if (fallback === 'sms') return `sms:${v.replace(/[^\d+]/g, '')}`
+  return v
+}
+
 // ── Profile shape ─────────────────────────────────────────────────────────────
 
 interface Profile {
@@ -242,8 +257,8 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 )
               })()}
               {header.show_call_button && (() => {
-                const override = header.call_button_url?.trim() || null
-                const href = override ?? (p?.public_phone ? `tel:${p.public_phone}` : null)
+                const override = ensureScheme(header.call_button_url, 'tel')
+                const href = override ?? (p?.public_phone ? `tel:${p.public_phone.replace(/[^\d+]/g, '')}` : null)
                 return (
                   <a className="tfr-header-btn tfr-header-btn-call" href={href ?? '#'} aria-disabled={!href || undefined}>
                     <Phone size={16} /><span>Call</span>
@@ -251,7 +266,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 )
               })()}
               {header.show_email_button && (() => {
-                const override = header.email_button_url?.trim() || null
+                const override = ensureScheme(header.email_button_url, 'mailto')
                 const href = override ?? (p?.public_email ? `mailto:${p.public_email}` : null)
                 return (
                   <a className="tfr-header-btn tfr-header-btn-chat" href={href ?? '#'} aria-disabled={!href || undefined}>
@@ -260,9 +275,10 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 )
               })()}
               {header.show_message_button && (() => {
-                const href = header.message_button_url?.trim() || null
+                const href = ensureScheme(header.message_button_url, 'sms')
+                const isWeb = !!href && /^https?:/i.test(href)
                 return (
-                  <a className="tfr-header-btn tfr-header-btn-message" href={href ?? '#'} target={href?.startsWith('http') ? '_blank' : undefined} rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
+                  <a className="tfr-header-btn tfr-header-btn-message" href={href ?? '#'} target={isWeb ? '_blank' : undefined} rel={isWeb ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
                     <MessageSquare size={16} /><span>Message</span>
                   </a>
                 )
