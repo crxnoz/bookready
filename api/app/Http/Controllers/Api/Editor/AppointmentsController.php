@@ -236,9 +236,12 @@ class AppointmentsController extends Controller
             return response()->json(['message' => 'Appointment not found'], 404);
         }
 
-        $oldStatus = $appt->status;
-        $data      = ['updated_at' => now()];
-        $duration  = (int) ($appt->service_duration_minutes ?? 30);
+        $oldStatus    = $appt->status;
+        $oldDate      = $appt->appointment_date;
+        $oldStartTime = substr($appt->start_time, 0, 5);
+        $oldEndTime   = substr($appt->end_time,   0, 5);
+        $data         = ['updated_at' => now()];
+        $duration     = (int) ($appt->service_duration_minutes ?? 30);
 
         // If service_id is changing, update snapshot and recalculate duration
         if (isset($validated['service_id'])) {
@@ -272,15 +275,23 @@ class AppointmentsController extends Controller
         $row       = DB::table('appointments')->find($appointment);
         $formatted = $this->format($row);
 
-        // Collect email payload before ending tenancy if status changed to confirmed/cancelled
-        $newStatus    = $row->status;
+        // Collect email payload before ending tenancy if status changed
+        // to confirmed/cancelled OR if date/time was rescheduled.
+        $newStatus     = $row->status;
+        $newDate       = $row->appointment_date;
+        $newStartTime  = substr($row->start_time, 0, 5);
         $statusChanged = isset($validated['status']) && $newStatus !== $oldStatus;
+        $dateChanged   = $newDate      !== $oldDate;
+        $timeChanged   = $newStartTime !== $oldStartTime;
+        $rescheduled   = ($dateChanged || $timeChanged) && $newStatus !== 'cancelled';
 
-        $emailAppt     = null;
-        $emailBusiness = null;
-        $emailNotify   = null;
+        $emailAppt          = null;
+        $emailBusiness      = null;
+        $emailNotify        = null;
+        $oldApptSnapshot    = null;
+        $shouldSendRescheduled = false;
 
-        if ($statusChanged && in_array($newStatus, ['confirmed', 'cancelled']) && ! empty($row->customer_email)) {
+        if (! empty($row->customer_email) && ($statusChanged || $rescheduled)) {
             $manageToken = property_exists($row, 'manage_token') ? $row->manage_token : null;
             $manageUrl   = $manageToken ? sprintf('https://%s.bkrdy.me/manage/%s', $tenant->id, $manageToken) : null;
             $emailAppt = [
@@ -297,15 +308,29 @@ class AppointmentsController extends Controller
             ];
             $emailBusiness = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
             $emailNotify   = NotificationSettingsService::load();
+
+            if ($rescheduled) {
+                $oldApptSnapshot       = [
+                    'appointment_date' => $oldDate,
+                    'start_time'       => $oldStartTime,
+                    'end_time'         => $oldEndTime,
+                ];
+                $shouldSendRescheduled = true;
+            }
         }
 
         tenancy()->end();
 
         // Send email outside tenancy with plain-array data
         if ($emailAppt !== null && $emailBusiness !== null) {
-            if ($newStatus === 'confirmed') {
+            if ($shouldSendRescheduled) {
+                AppointmentMailer::sendRescheduled(
+                    $emailAppt, $oldApptSnapshot, $emailBusiness, 'owner', $emailNotify,
+                );
+            }
+            if ($statusChanged && $newStatus === 'confirmed') {
                 AppointmentMailer::sendConfirmed($emailAppt, $emailBusiness, $emailNotify);
-            } elseif ($newStatus === 'cancelled') {
+            } elseif ($statusChanged && $newStatus === 'cancelled') {
                 AppointmentMailer::sendCancelled($emailAppt, $emailBusiness, $emailNotify);
             }
         }

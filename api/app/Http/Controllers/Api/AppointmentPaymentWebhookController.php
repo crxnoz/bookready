@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
+use App\Mail\StripeConnectRestrictedMail;
 use App\Services\AppointmentMailer;
 use App\Services\AppointmentPaymentService;
 use App\Services\NotificationSettingsService;
+use App\Services\PlatformMailer;
 use App\Services\StripeConnectService;
+use Illuminate\Support\Facades\Mail;
 use Stripe\Account as StripeAccount;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -183,11 +186,25 @@ class AppointmentPaymentWebhookController extends Controller
             $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
             $notify       = NotificationSettingsService::load();
 
+            // Is this the tenant's first-ever real booking? (best-effort —
+            // counts non-cancelled including the one we just paid for.)
+            $isFirstBooking = DB::table('appointments')
+                ->whereNotIn('status', ['cancelled'])
+                ->count() === 1;
+            $ownerName = $tenant->owner?->name ?? 'there';
+
             tenancy()->end();
 
             // Now that deposit is paid, send the booking-request emails that we
             // intentionally held back when the booking was created.
             AppointmentMailer::sendBookingRequest($appt, $businessName, $ownerEmail, $notify);
+
+            // Celebrate the first booking (deposit just cleared, so it's real).
+            if ($isFirstBooking) {
+                PlatformMailer::sendFirstBookingCelebration(
+                    $ownerEmail, $ownerName, $businessName, $appt,
+                );
+            }
         } catch (\Throwable $e) {
             Log::error('Appointment webhook processing error', [
                 'tenant_id'      => $tenantId,
@@ -232,6 +249,10 @@ class AppointmentPaymentWebhookController extends Controller
             return response()->json(['received' => true]);
         }
 
+        $shouldAlertRestricted = false;
+        $ownerEmail            = $tenant->owner?->email;
+        $ownerName             = $tenant->owner?->name ?? 'there';
+
         try {
             tenancy()->initialize($tenant);
 
@@ -247,6 +268,8 @@ class AppointmentPaymentWebhookController extends Controller
                 tenancy()->end();
                 return response()->json(['received' => true]);
             }
+
+            $previousStatus = $row->stripe_connect_status ?? null;
 
             $charges = (bool) ($account->charges_enabled   ?? false);
             $payouts = (bool) ($account->payouts_enabled   ?? false);
@@ -267,7 +290,33 @@ class AppointmentPaymentWebhookController extends Controller
 
             DB::table('payment_settings')->where('id', $row->id)->update($update);
 
+            // Detect transition INTO 'restricted'. We don't want to spam the
+            // owner with one email per webhook — only when status actually
+            // flips from non-restricted to restricted.
+            if ($status === StripeConnectService::STATUS_RESTRICTED
+                && $previousStatus !== StripeConnectService::STATUS_RESTRICTED) {
+                $shouldAlertRestricted = true;
+            }
+
+            // Snapshot business name now (we can't read tenant DB after end()).
+            $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
+
             tenancy()->end();
+
+            if ($shouldAlertRestricted && $ownerEmail) {
+                try {
+                    Mail::to($ownerEmail)->send(new StripeConnectRestrictedMail(
+                        ownerName:    $ownerName,
+                        businessName: $businessName,
+                    ));
+                } catch (\Throwable $e) {
+                    Log::error('[BookReady] StripeConnectRestrictedMail failed', [
+                        'tenant_id'   => $tenantId,
+                        'owner_email' => $ownerEmail,
+                        'error'       => $e->getMessage(),
+                    ]);
+                }
+            }
         } catch (\Throwable $e) {
             Log::error('Connect account.updated sync failed', [
                 'tenant_id'  => $tenantId,

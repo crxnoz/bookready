@@ -8,6 +8,7 @@ use App\Services\AppointmentMailer;
 use App\Exceptions\StripeConnectNotReadyException;
 use App\Services\AppointmentPaymentService;
 use App\Services\NotificationSettingsService;
+use App\Services\PlatformMailer;
 use App\Services\SlotGenerator;
 use App\Services\StripeConnectService;
 use Carbon\Carbon;
@@ -56,6 +57,7 @@ class PublicBookingController extends Controller
 
         // Fetch owner email from central DB before switching tenant connection.
         $ownerEmail = $tenant->owner?->email;
+        $ownerName  = $tenant->owner?->name ?? 'there';
 
         tenancy()->initialize($tenant);
 
@@ -340,6 +342,14 @@ class PublicBookingController extends Controller
             }
         }
 
+        // Was this the tenant's first-ever real booking? "Real" = not
+        // cancelled, so a test booking that got cancelled doesn't disqualify
+        // them from the celebration. Best-effort; small race conditions are
+        // fine because the worst case is missing the email once.
+        $isFirstBooking = DB::table('appointments')
+            ->whereNotIn('status', ['cancelled'])
+            ->count() === 1;
+
         tenancy()->end();
 
         // ── Email behavior ───────────────────────────────────────────────
@@ -348,6 +358,15 @@ class PublicBookingController extends Controller
         // required, behavior is byte-identical to the previous flow.
         if (! $paymentRequired) {
             AppointmentMailer::sendBookingRequest($appt, $businessName, $ownerEmail, $notify);
+
+            // First-booking celebration runs alongside the regular request
+            // email. Payment-required path fires this from the webhook so
+            // it doesn't celebrate a pending_payment that never clears.
+            if ($isFirstBooking) {
+                PlatformMailer::sendFirstBookingCelebration(
+                    $ownerEmail, $ownerName, $businessName, $appt,
+                );
+            }
         }
 
         $response = [

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Mail\AppointmentCancelledClientMail;
 use App\Mail\AppointmentConfirmedClientMail;
 use App\Mail\AppointmentReminderClientMail;
+use App\Mail\AppointmentRescheduledClientMail;
 use App\Mail\BookingRequestClientMail;
 use App\Mail\BookingRequestOwnerMail;
 use App\Mail\ClientCancelledOwnerMail;
@@ -119,6 +120,38 @@ class AppointmentMailer
             Log::error('[BookReady] ClientRescheduledOwnerMail failed', [
                 'appointment_id' => $appt['id'] ?? null,
                 'owner_email'    => $ownerEmail,
+                'error'          => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Notify the client when their appointment is rescheduled — by EITHER
+     * the owner (from the editor) or the client themselves (via the
+     * manage page). The mail subject/copy adapts per $initiatedBy.
+     *
+     * Gated by the appointment_confirmed_email toggle since semantically
+     * this is the "new confirmation" for the new time.
+     */
+    public static function sendRescheduled(
+        array   $appt,
+        array   $oldAppt,
+        string  $businessName,
+        string  $initiatedBy,            // 'owner' | 'client'
+        ?array  $notify = null,
+    ): void {
+        if (empty($appt['customer_email'])) return;
+        if (! NotificationSettingsService::shouldSendConfirmedEmail($notify)) return;
+
+        try {
+            Mail::to($appt['customer_email'])->send(
+                new AppointmentRescheduledClientMail($appt, $oldAppt, $businessName, $initiatedBy),
+            );
+        } catch (\Throwable $e) {
+            Log::error('[BookReady] AppointmentRescheduledClientMail failed', [
+                'appointment_id' => $appt['id'] ?? null,
+                'customer_email' => $appt['customer_email'],
+                'initiated_by'   => $initiatedBy,
                 'error'          => $e->getMessage(),
             ]);
         }

@@ -294,7 +294,7 @@ class PublicManageBookingController extends Controller
             ->addMinutes($duration)
             ->format('H:i');
 
-        // Snapshot the OLD time before we overwrite — used in the owner email.
+        // Snapshot the OLD time before we overwrite — used in both emails.
         $oldApptSnap = [
             'appointment_date' => $row->appointment_date,
             'start_time'       => substr($row->start_time, 0, 5),
@@ -311,8 +311,11 @@ class PublicManageBookingController extends Controller
         $updated     = DB::table('appointments')->find($row->id);
         $publicView  = $this->formatPublic($updated, $bs);
         $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
+        $notify       = NotificationSettingsService::load();
 
-        // Plain-array snapshot for the owner email.
+        // Plain-array snapshot for both emails.
+        $manageToken = property_exists($updated, 'manage_token') ? $updated->manage_token : null;
+        $manageUrl   = $manageToken ? sprintf('https://%s.bkrdy.me/manage/%s', $tenant->id, $manageToken) : null;
         $apptForMail = [
             'id'               => (int) $updated->id,
             'customer_name'    => $updated->customer_name,
@@ -323,6 +326,7 @@ class PublicManageBookingController extends Controller
             'start_time'       => substr($updated->start_time, 0, 5),
             'end_time'         => substr($updated->end_time,   0, 5),
             'status'           => $updated->status,
+            'manage_url'       => $manageUrl,
         ];
 
         tenancy()->end();
@@ -330,6 +334,12 @@ class PublicManageBookingController extends Controller
         // Owner ALWAYS gets a heads-up when a client reschedules.
         AppointmentMailer::sendClientRescheduledToOwner(
             $apptForMail, $oldApptSnap, $businessName, $ownerEmail,
+        );
+
+        // Client gets a receipt for the new time (gated by the
+        // appointment_confirmed_email toggle in NotificationSettingsService).
+        AppointmentMailer::sendRescheduled(
+            $apptForMail, $oldApptSnap, $businessName, 'client', $notify,
         );
 
         return response()->json([
