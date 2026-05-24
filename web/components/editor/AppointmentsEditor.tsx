@@ -27,6 +27,7 @@ import type {
   Service,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
+import { PaymentPill, PaymentSummary } from '@/components/editor/AppointmentPaymentStatus'
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -745,6 +746,7 @@ function WeekGridView({
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[11px] font-bold text-near-black whitespace-nowrap">{fmt12(a.start_time)}</span>
                           <StatusBadge status={a.status} />
+                          <PaymentPill appt={a} />
                         </div>
                         <p className="text-xs text-muted-text truncate mt-0.5">
                           {a.customer_name} · {a.service_name}
@@ -886,6 +888,7 @@ function MonthCalendarView({
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[11px] font-bold text-near-black whitespace-nowrap">{fmt12(a.start_time)}</span>
                           <StatusBadge status={a.status} />
+                          <PaymentPill appt={a} />
                         </div>
                         <p className="text-xs text-muted-text truncate mt-0.5">
                           {a.customer_name} · {a.service_name}
@@ -939,12 +942,14 @@ function AppointmentCard({
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-sm font-bold text-near-black truncate">{appt.customer_name}</p>
               <StatusBadge status={appt.status} />
+              <PaymentPill appt={appt} />
             </div>
             {(appt.customer_email || appt.customer_phone) && (
               <p className="text-[11px] text-muted-text mt-0.5 truncate">
                 {appt.customer_email || appt.customer_phone}
               </p>
             )}
+            <PaymentSummary appt={appt} />
           </div>
           <button
             onClick={onEdit}
