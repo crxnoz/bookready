@@ -441,12 +441,31 @@ export interface AuthResponse {
 // ── Website / Template system ────────────────────────────────────────────────
 
 export interface TemplateHeaderSettings {
-  tagline: string
+  /** @deprecated tagline now lives on the business profile */
+  tagline?: string
   show_book_button: boolean
   show_call_button: boolean
   show_email_button: boolean
   show_instagram_button: boolean
   show_directions_button: boolean
+  show_pinterest_button?: boolean
+  show_youtube_button?: boolean
+  show_whatsapp_button?: boolean
+  show_tiktok_button?: boolean
+  show_facebook_button?: boolean
+  show_message_button?: boolean
+  // Per-button URL overrides — when null/empty, fall back to business profile or scroll target.
+  book_button_url?: string | null
+  call_button_url?: string | null
+  email_button_url?: string | null
+  instagram_button_url?: string | null
+  directions_button_url?: string | null
+  pinterest_button_url?: string | null
+  youtube_button_url?: string | null
+  whatsapp_button_url?: string | null
+  tiktok_button_url?: string | null
+  facebook_button_url?: string | null
+  message_button_url?: string | null
   announcement_text?: string | null
   show_announcement?: boolean
   cover_image_url?: string | null

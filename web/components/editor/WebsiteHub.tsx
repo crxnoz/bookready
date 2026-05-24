@@ -452,6 +452,58 @@ function ToggleRow({
   )
 }
 
+function HeaderButtonRow({
+  label, icon: Icon, on, onToggle, url, onUrlChange, placeholder,
+}: {
+  label: string
+  icon: React.ElementType
+  on: boolean
+  onToggle: () => void
+  url: string
+  onUrlChange: (v: string) => void
+  placeholder?: string
+}) {
+  return (
+    <div className="border border-[rgba(18,18,18,0.08)] bg-white">
+      <div className="flex items-center justify-between gap-3 px-3 py-2.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <Icon size={14} className="text-near-black flex-shrink-0" strokeWidth={1.8} />
+          <span className="text-sm text-near-black">{label}</span>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          onClick={onToggle}
+          className={cn(
+            'relative inline-flex items-center w-10 h-5 transition-colors border flex-shrink-0',
+            on ? 'bg-near-black border-near-black' : 'bg-white border-[rgba(18,18,18,0.25)]',
+          )}
+        >
+          <span className={cn(
+            'absolute top-0.5 w-3.5 h-3.5 bg-white border border-[rgba(18,18,18,0.15)] transition-all',
+            on ? 'left-[22px]' : 'left-0.5',
+          )} />
+        </button>
+      </div>
+      {on && (
+        <div className="px-3 pb-2.5 -mt-0.5">
+          <div className="flex items-center gap-2 border border-[rgba(18,18,18,0.15)] px-2 focus-within:border-near-black">
+            <LinkIcon size={12} className="text-muted-text flex-shrink-0" />
+            <input
+              type="text"
+              value={url}
+              onChange={e => onUrlChange(e.target.value)}
+              placeholder={placeholder}
+              className="w-full bg-transparent py-1.5 text-xs text-near-black focus:outline-none"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SaveBar({
   dirty, saving, saved, error, onSave,
 }: {
@@ -766,35 +818,126 @@ function HeaderPanel({
         />
       </div>
 
-      {/* Identity */}
-      <div className="space-y-2.5 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+      {/* Identity note */}
+      <div className="pt-2 border-t border-[rgba(18,18,18,0.08)]">
         <div className="bg-cream border border-[rgba(18,18,18,0.08)] px-3 py-2.5 flex items-start gap-2">
           <Info size={13} className="text-muted-text flex-shrink-0 mt-0.5" />
           <p className="text-[11px] text-muted-text leading-relaxed">
-            Business name comes from your{' '}
+            Business name and tagline come from your{' '}
             <Link href="/editor/website?tab=business" scroll={false} className="text-near-black font-semibold underline">Business Info</Link>.
-            The tagline below overrides the displayed subtext on this template.
           </p>
         </div>
-        <TextField
-          label="Tagline / subtext"
-          value={form.value.tagline}
-          onChange={v => form.patch({ tagline: v })}
-          placeholder="Sharp cuts. Smooth booking."
-          maxLength={120}
-        />
       </div>
 
       {/* Header buttons */}
-      <div className="space-y-1.5 pt-2 border-t border-[rgba(18,18,18,0.08)]">
-        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1">
-          Header buttons
-        </p>
-        <ToggleRow label="Show Book button"       icon={Heart}     on={form.value.show_book_button}       onToggle={() => form.patch({ show_book_button: !form.value.show_book_button })} />
-        <ToggleRow label="Show Call button"       icon={Phone}     on={form.value.show_call_button}       onToggle={() => form.patch({ show_call_button: !form.value.show_call_button })} />
-        <ToggleRow label="Show Email button"      icon={Mail}      on={form.value.show_email_button}      onToggle={() => form.patch({ show_email_button: !form.value.show_email_button })} />
-        <ToggleRow label="Show Instagram button"  icon={Instagram} on={form.value.show_instagram_button}  onToggle={() => form.patch({ show_instagram_button: !form.value.show_instagram_button })} />
-        <ToggleRow label="Show Directions button" icon={MapPin}    on={form.value.show_directions_button} onToggle={() => form.patch({ show_directions_button: !form.value.show_directions_button })} />
+      <div className="space-y-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+        <div>
+          <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+            Header buttons
+          </p>
+          <p className="text-[11px] text-muted-text mt-0.5">
+            Toggle visibility and (optionally) override the link each button opens. Leave a URL blank to use the default from Business Info.
+          </p>
+        </div>
+        <HeaderButtonRow
+          label="Book"
+          icon={Heart}
+          on={form.value.show_book_button}
+          onToggle={() => form.patch({ show_book_button: !form.value.show_book_button })}
+          url={form.value.book_button_url ?? ''}
+          onUrlChange={v => form.patch({ book_button_url: v || null })}
+          placeholder="Defaults to scroll-to-booking"
+        />
+        <HeaderButtonRow
+          label="Call"
+          icon={Phone}
+          on={form.value.show_call_button}
+          onToggle={() => form.patch({ show_call_button: !form.value.show_call_button })}
+          url={form.value.call_button_url ?? ''}
+          onUrlChange={v => form.patch({ call_button_url: v || null })}
+          placeholder="tel:+1… (defaults to business phone)"
+        />
+        <HeaderButtonRow
+          label="Email"
+          icon={Mail}
+          on={form.value.show_email_button}
+          onToggle={() => form.patch({ show_email_button: !form.value.show_email_button })}
+          url={form.value.email_button_url ?? ''}
+          onUrlChange={v => form.patch({ email_button_url: v || null })}
+          placeholder="mailto:you@… (defaults to business email)"
+        />
+        <HeaderButtonRow
+          label="Message"
+          icon={MessageSquare}
+          on={form.value.show_message_button ?? false}
+          onToggle={() => form.patch({ show_message_button: !(form.value.show_message_button ?? false) })}
+          url={form.value.message_button_url ?? ''}
+          onUrlChange={v => form.patch({ message_button_url: v || null })}
+          placeholder="sms:+1… or any chat link"
+        />
+        <HeaderButtonRow
+          label="Directions"
+          icon={MapPin}
+          on={form.value.show_directions_button}
+          onToggle={() => form.patch({ show_directions_button: !form.value.show_directions_button })}
+          url={form.value.directions_button_url ?? ''}
+          onUrlChange={v => form.patch({ directions_button_url: v || null })}
+          placeholder="https://maps… (defaults to address lookup)"
+        />
+        <HeaderButtonRow
+          label="Instagram"
+          icon={Instagram}
+          on={form.value.show_instagram_button}
+          onToggle={() => form.patch({ show_instagram_button: !form.value.show_instagram_button })}
+          url={form.value.instagram_button_url ?? ''}
+          onUrlChange={v => form.patch({ instagram_button_url: v || null })}
+          placeholder="https://instagram.com/… (defaults to Business Info)"
+        />
+        <HeaderButtonRow
+          label="TikTok"
+          icon={Sparkles}
+          on={form.value.show_tiktok_button ?? false}
+          onToggle={() => form.patch({ show_tiktok_button: !(form.value.show_tiktok_button ?? false) })}
+          url={form.value.tiktok_button_url ?? ''}
+          onUrlChange={v => form.patch({ tiktok_button_url: v || null })}
+          placeholder="https://tiktok.com/@…"
+        />
+        <HeaderButtonRow
+          label="YouTube"
+          icon={Sparkles}
+          on={form.value.show_youtube_button ?? false}
+          onToggle={() => form.patch({ show_youtube_button: !(form.value.show_youtube_button ?? false) })}
+          url={form.value.youtube_button_url ?? ''}
+          onUrlChange={v => form.patch({ youtube_button_url: v || null })}
+          placeholder="https://youtube.com/@…"
+        />
+        <HeaderButtonRow
+          label="Facebook"
+          icon={Sparkles}
+          on={form.value.show_facebook_button ?? false}
+          onToggle={() => form.patch({ show_facebook_button: !(form.value.show_facebook_button ?? false) })}
+          url={form.value.facebook_button_url ?? ''}
+          onUrlChange={v => form.patch({ facebook_button_url: v || null })}
+          placeholder="https://facebook.com/…"
+        />
+        <HeaderButtonRow
+          label="Pinterest"
+          icon={Sparkles}
+          on={form.value.show_pinterest_button ?? false}
+          onToggle={() => form.patch({ show_pinterest_button: !(form.value.show_pinterest_button ?? false) })}
+          url={form.value.pinterest_button_url ?? ''}
+          onUrlChange={v => form.patch({ pinterest_button_url: v || null })}
+          placeholder="https://pinterest.com/…"
+        />
+        <HeaderButtonRow
+          label="WhatsApp"
+          icon={MessageSquare}
+          on={form.value.show_whatsapp_button ?? false}
+          onToggle={() => form.patch({ show_whatsapp_button: !(form.value.show_whatsapp_button ?? false) })}
+          url={form.value.whatsapp_button_url ?? ''}
+          onUrlChange={v => form.patch({ whatsapp_button_url: v || null })}
+          placeholder="https://wa.me/1… or chat link"
+        />
       </div>
 
       <SaveBar

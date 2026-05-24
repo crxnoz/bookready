@@ -3,7 +3,31 @@
 import { useState, useRef } from 'react'
 import {
   Heart, Phone, Mail, Instagram, MapPin, Dot, CalendarCheck,
+  MessageSquare, Youtube, Facebook,
 } from 'lucide-react'
+
+// Brand glyphs that lucide doesn't ship.
+function TikTokGlyph({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5.8 20.1a6.34 6.34 0 0 0 10.86-4.43V8.91a8.16 8.16 0 0 0 4.77 1.52V7a4.85 4.85 0 0 1-1.84-.31z"/>
+    </svg>
+  )
+}
+function PinterestGlyph({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12.04 2C6.5 2 2 6.5 2 12.04c0 4.25 2.65 7.88 6.39 9.34-.09-.79-.17-2 .03-2.86.18-.78 1.17-4.97 1.17-4.97s-.3-.6-.3-1.48c0-1.39.81-2.43 1.81-2.43.85 0 1.27.64 1.27 1.41 0 .86-.55 2.14-.83 3.34-.24 1 .5 1.81 1.49 1.81 1.79 0 3.17-1.89 3.17-4.62 0-2.42-1.74-4.11-4.22-4.11-2.87 0-4.56 2.15-4.56 4.38 0 .87.33 1.8.75 2.31a.3.3 0 0 1 .07.29c-.08.32-.26 1.04-.29 1.18-.05.2-.16.24-.36.15-1.34-.62-2.17-2.59-2.17-4.16 0-3.39 2.46-6.5 7.09-6.5 3.72 0 6.61 2.65 6.61 6.19 0 3.7-2.33 6.68-5.57 6.68-1.09 0-2.11-.57-2.46-1.24l-.67 2.55c-.24.93-.89 2.1-1.33 2.81.99.31 2.04.47 3.13.47 5.54 0 10.04-4.5 10.04-10.04C22.08 6.5 17.58 2 12.04 2z"/>
+    </svg>
+  )
+}
+function WhatsAppGlyph({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M17.47 14.38c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.47-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.47.13-.62.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51l-.57-.01c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.49 0 1.47 1.07 2.88 1.22 3.08.15.2 2.1 3.2 5.07 4.49.71.31 1.27.49 1.7.62.71.23 1.36.2 1.87.12.57-.08 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.13-.27-.2-.57-.35zM12.04 2C6.5 2 2 6.5 2 12.04c0 1.94.55 3.74 1.5 5.27L2 22l4.84-1.46a10.05 10.05 0 0 0 5.2 1.46c5.54 0 10.04-4.5 10.04-10.04S17.58 2 12.04 2zm0 18.13a8.07 8.07 0 0 1-4.4-1.27l-.31-.19-2.87.87.86-2.8-.2-.32a8.07 8.07 0 0 1-1.27-4.38c0-4.47 3.63-8.1 8.1-8.1s8.1 3.63 8.1 8.1-3.63 8.09-8.09 8.09z"/>
+    </svg>
+  )
+}
 import TheFadeRoomBooking from './TheFadeRoomBooking'
 import type { PublicSite, Service } from '@/lib/types'
 
@@ -56,12 +80,28 @@ const SECTION_KEY_TO_TAB: Record<string, TabId | null> = {
 
 // Fallback defaults so the template never crashes if backend is offline.
 const FALLBACK_HEADER_SETTINGS = {
-  tagline: 'Sharp cuts. Smooth booking.',
   show_book_button: true,
   show_call_button: true,
   show_email_button: true,
   show_instagram_button: true,
   show_directions_button: true,
+  show_pinterest_button: false,
+  show_youtube_button: false,
+  show_whatsapp_button: false,
+  show_tiktok_button: false,
+  show_facebook_button: false,
+  show_message_button: false,
+  book_button_url: null as string | null,
+  call_button_url: null as string | null,
+  email_button_url: null as string | null,
+  instagram_button_url: null as string | null,
+  directions_button_url: null as string | null,
+  pinterest_button_url: null as string | null,
+  youtube_button_url: null as string | null,
+  whatsapp_button_url: null as string | null,
+  tiktok_button_url: null as string | null,
+  facebook_button_url: null as string | null,
+  message_button_url: null as string | null,
   announcement_text: 'Now booking for the season — limited weekend slots.',
   show_announcement: true,
   cover_image_url: null as string | null,
@@ -183,54 +223,107 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
 
           <div className="tfr-header-content">
             <h1>{displayName}</h1>
-            <p>{p?.tagline ?? header.tagline}</p>
+            {p?.tagline && <p>{p.tagline}</p>}
 
             <div className="tfr-header-buttons">
-              {header.show_book_button && (
-                <button className="tfr-header-btn tfr-header-btn-book" onClick={goBook}>
-                  <Heart size={16} fill="currentColor" /><span>Book</span>
-                </button>
-              )}
-              {header.show_call_button && (
-                <a
-                  className="tfr-header-btn tfr-header-btn-call"
-                  href={p?.public_phone ? `tel:${p.public_phone}` : '#'}
-                  aria-disabled={!p?.public_phone || undefined}
-                >
-                  <Phone size={16} /><span>Call</span>
-                </a>
-              )}
-              {header.show_email_button && (
-                <a
-                  className="tfr-header-btn tfr-header-btn-chat"
-                  href={p?.public_email ? `mailto:${p.public_email}` : '#'}
-                  aria-disabled={!p?.public_email || undefined}
-                >
-                  <Mail size={16} /><span>Email</span>
-                </a>
-              )}
-              {header.show_instagram_button && (
-                <a
-                  className="tfr-header-btn tfr-header-btn-instagram"
-                  href={p?.instagram_url ?? '#'}
-                  target={p?.instagram_url ? '_blank' : undefined}
-                  rel={p?.instagram_url ? 'noopener noreferrer' : undefined}
-                  aria-disabled={!p?.instagram_url || undefined}
-                >
-                  <Instagram size={16} /><span>Instagram</span>
-                </a>
-              )}
-              {header.show_directions_button && (
-                <a
-                  className="tfr-header-btn tfr-header-btn-tiktok"
-                  href={address ? `https://maps.google.com/?q=${encodeURIComponent(address)}` : '#'}
-                  target={address ? '_blank' : undefined}
-                  rel={address ? 'noopener noreferrer' : undefined}
-                  aria-disabled={!address || undefined}
-                >
-                  <MapPin size={16} /><span>Directions</span>
-                </a>
-              )}
+              {header.show_book_button && (() => {
+                const url = header.book_button_url?.trim() || null
+                if (url) {
+                  return (
+                    <a className="tfr-header-btn tfr-header-btn-book" href={url} target="_blank" rel="noopener noreferrer">
+                      <Heart size={16} fill="currentColor" /><span>Book</span>
+                    </a>
+                  )
+                }
+                return (
+                  <button className="tfr-header-btn tfr-header-btn-book" onClick={goBook}>
+                    <Heart size={16} fill="currentColor" /><span>Book</span>
+                  </button>
+                )
+              })()}
+              {header.show_call_button && (() => {
+                const override = header.call_button_url?.trim() || null
+                const href = override ?? (p?.public_phone ? `tel:${p.public_phone}` : null)
+                return (
+                  <a className="tfr-header-btn tfr-header-btn-call" href={href ?? '#'} aria-disabled={!href || undefined}>
+                    <Phone size={16} /><span>Call</span>
+                  </a>
+                )
+              })()}
+              {header.show_email_button && (() => {
+                const override = header.email_button_url?.trim() || null
+                const href = override ?? (p?.public_email ? `mailto:${p.public_email}` : null)
+                return (
+                  <a className="tfr-header-btn tfr-header-btn-chat" href={href ?? '#'} aria-disabled={!href || undefined}>
+                    <Mail size={16} /><span>Email</span>
+                  </a>
+                )
+              })()}
+              {header.show_message_button && (() => {
+                const href = header.message_button_url?.trim() || null
+                return (
+                  <a className="tfr-header-btn tfr-header-btn-message" href={href ?? '#'} target={href?.startsWith('http') ? '_blank' : undefined} rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
+                    <MessageSquare size={16} /><span>Message</span>
+                  </a>
+                )
+              })()}
+              {header.show_directions_button && (() => {
+                const override = header.directions_button_url?.trim() || null
+                const href = override ?? (address ? `https://maps.google.com/?q=${encodeURIComponent(address)}` : null)
+                return (
+                  <a className="tfr-header-btn tfr-header-btn-directions" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
+                    <MapPin size={16} /><span>Directions</span>
+                  </a>
+                )
+              })()}
+              {header.show_instagram_button && (() => {
+                const href = header.instagram_button_url?.trim() || p?.instagram_url || null
+                return (
+                  <a className="tfr-header-btn tfr-header-btn-instagram" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
+                    <Instagram size={16} /><span>Instagram</span>
+                  </a>
+                )
+              })()}
+              {header.show_tiktok_button && (() => {
+                const href = header.tiktok_button_url?.trim() || null
+                return (
+                  <a className="tfr-header-btn tfr-header-btn-tiktok" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
+                    <TikTokGlyph size={16} /><span>TikTok</span>
+                  </a>
+                )
+              })()}
+              {header.show_youtube_button && (() => {
+                const href = header.youtube_button_url?.trim() || null
+                return (
+                  <a className="tfr-header-btn tfr-header-btn-youtube" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
+                    <Youtube size={16} /><span>YouTube</span>
+                  </a>
+                )
+              })()}
+              {header.show_facebook_button && (() => {
+                const href = header.facebook_button_url?.trim() || null
+                return (
+                  <a className="tfr-header-btn tfr-header-btn-facebook" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
+                    <Facebook size={16} /><span>Facebook</span>
+                  </a>
+                )
+              })()}
+              {header.show_pinterest_button && (() => {
+                const href = header.pinterest_button_url?.trim() || null
+                return (
+                  <a className="tfr-header-btn tfr-header-btn-pinterest" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
+                    <PinterestGlyph size={16} /><span>Pinterest</span>
+                  </a>
+                )
+              })()}
+              {header.show_whatsapp_button && (() => {
+                const href = header.whatsapp_button_url?.trim() || null
+                return (
+                  <a className="tfr-header-btn tfr-header-btn-whatsapp" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
+                    <WhatsAppGlyph size={16} /><span>WhatsApp</span>
+                  </a>
+                )
+              })()}
             </div>
           </div>
         </section>
@@ -1039,12 +1132,17 @@ const TFR_CSS = `
 .tfr-header-btn:hover { filter:brightness(1.1); transform:translateY(-2px); }
 .tfr-header-btn[aria-disabled] { opacity:0.5; cursor:default; transform:none !important; }
 .tfr-header-btn span:first-child { font-size:18px; }
-.tfr-header-btn-book      { background:var(--tfr-pink); box-shadow:0 0 18px rgba(255,61,190,0.4); }
-.tfr-header-btn-call      { background:linear-gradient(45deg,#A281FF 0%,#FF9CD7 100%); }
-.tfr-header-btn-chat      { background:linear-gradient(45deg,#FF987E 0%,#FF7EAC 100%); }
-.tfr-header-btn-tiktok    { background:linear-gradient(45deg,#EA5F96 36%,#2FC2BF 100%); }
-.tfr-header-btn-youtube   { background:linear-gradient(45deg,#FB3354 49%,#FE879C 100%); }
-.tfr-header-btn-instagram { background:linear-gradient(45deg,#F9CE34 0%,#EE2A7B 50%,#6228D7 100%); }
+.tfr-header-btn-book       { background:var(--tfr-pink); box-shadow:0 0 18px rgba(255,61,190,0.4); }
+.tfr-header-btn-call       { background:linear-gradient(45deg,#A281FF 0%,#FF9CD7 100%); }
+.tfr-header-btn-chat       { background:linear-gradient(45deg,#FF987E 0%,#FF7EAC 100%); }
+.tfr-header-btn-message    { background:linear-gradient(45deg,#5B6CFF 0%,#9CC3FF 100%); }
+.tfr-header-btn-directions { background:linear-gradient(45deg,#34D399 0%,#60A5FA 100%); }
+.tfr-header-btn-tiktok     { background:linear-gradient(45deg,#EA5F96 36%,#2FC2BF 100%); }
+.tfr-header-btn-youtube    { background:linear-gradient(45deg,#FB3354 49%,#FE879C 100%); }
+.tfr-header-btn-instagram  { background:linear-gradient(45deg,#F9CE34 0%,#EE2A7B 50%,#6228D7 100%); }
+.tfr-header-btn-facebook   { background:linear-gradient(45deg,#1877F2 0%,#5DA8FF 100%); }
+.tfr-header-btn-pinterest  { background:linear-gradient(45deg,#E60023 0%,#FF6E80 100%); }
+.tfr-header-btn-whatsapp   { background:linear-gradient(45deg,#25D366 0%,#A4F4C5 100%); }
 
 /* ── Floating hearts ── */
 .tfr-floating-heart { position:absolute; color:var(--tfr-pink); pointer-events:none; z-index:1; display:inline-flex; filter:drop-shadow(0 0 8px rgba(255,61,190,0.85)) drop-shadow(0 0 16px rgba(255,61,190,0.5)); animation:tfrFloat 6s ease-in-out infinite; }
