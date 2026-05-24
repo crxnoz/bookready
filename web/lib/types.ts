@@ -473,6 +473,18 @@ export interface TemplateInstructionBlock {
   items: TemplateInstructionItem[]
 }
 
+export interface TemplateAboutHighlight {
+  title: string
+  body:  string
+}
+
+export interface TemplateAboutSettings {
+  heading?:    string
+  eyebrow?:    string
+  body?:       string
+  highlights?: TemplateAboutHighlight[]
+}
+
 export interface TemplateFooterSettings {
   show_powered_by: boolean
   business_name_override?: string | null
@@ -495,6 +507,7 @@ export interface TemplateSettings {
   before_appointment: TemplateInstructionBlock
   footer: TemplateFooterSettings
   additionals?: TemplateAdditionalsSettings
+  about?: TemplateAboutSettings
 }
 
 export interface TemplateSettingsResponse {

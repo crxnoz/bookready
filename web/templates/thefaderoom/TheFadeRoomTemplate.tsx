@@ -73,8 +73,10 @@ const FALLBACK_TAB_LABELS = {
   policy_label: 'Policy',
   about_label: 'About',
   results_label: 'Before & After',
-  steps_label: 'Steps',
-  before_appointment_label: 'Before Your Appointment',
+  // Internal keys stay `steps` and `before_appointment`; user-facing
+  // fallback labels are now Advice + Timeline.
+  steps_label: 'Advice',
+  before_appointment_label: 'Timeline',
 }
 
 // ── Main template ─────────────────────────────────────────────────────────────
@@ -278,7 +280,11 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
           {/* ── About ── */}
           {enabledByTab.about && (
             <div className={`tfr-tab-panel${active === 'about' ? ' is-active' : ''}`}>
-              <AboutPanel profile={p} displayName={displayName} />
+              <AboutPanel
+                profile={p}
+                displayName={displayName}
+                about={site.template?.settings.about}
+              />
             </div>
           )}
 
@@ -583,8 +589,29 @@ function ResultsPanel({ items }: { items: PublicBeforeAfterItem[] }) {
 
 // ── About panel ───────────────────────────────────────────────────────────────
 
-function AboutPanel({ profile: p, displayName }: { profile: Profile | null; displayName: string }) {
+interface PublicAboutSettings {
+  heading?: string
+  eyebrow?: string
+  body?: string
+  highlights?: { title: string; body: string }[]
+}
+
+function AboutPanel({
+  profile: p, displayName, about,
+}: {
+  profile: Profile | null
+  displayName: string
+  about?: PublicAboutSettings
+}) {
   const businessWord = displayName.split(' ')[0].toUpperCase()
+
+  // Saved values win; fall back to the previous default styling.
+  const heading      = about?.heading?.trim()    || `The ${displayName.split(' ')[0]} Experience`
+  const eyebrow      = about?.eyebrow?.trim()    || `About ${displayName}`
+  const bodyOverride = about?.body?.trim()       || ''
+  const highlights   = about?.highlights?.filter(h => h.title?.trim() || h.body?.trim()) ?? []
+  const useHighlights = highlights.length > 0
+
   return (
     <section className="tfr-about-section">
       <div className="tfr-about-images">
@@ -595,23 +622,40 @@ function AboutPanel({ profile: p, displayName }: { profile: Profile | null; disp
       <div>
         <div className="tfr-about-heading-wrap">
           <div className="tfr-about-backdrop">{businessWord}</div>
-          <h2>The {displayName.split(' ')[0]} Experience</h2>
+          <h2>{heading}</h2>
         </div>
         <div className="tfr-about-copy">
           <p>
-            <span>About {displayName}</span>
-            {p?.tagline
-              ? `${p.tagline} — we're dedicated to delivering an exceptional experience every visit.`
-              : `At ${displayName}, every appointment is an experience. We bring precision, care, and craft to every client.`}
+            <span>{eyebrow}</span>
+            {bodyOverride
+              ? bodyOverride
+              : (p?.tagline
+                  ? `${p.tagline} — we're dedicated to delivering an exceptional experience every visit.`
+                  : `At ${displayName}, every appointment is an experience. We bring precision, care, and craft to every client.`)}
           </p>
-          <div className="tfr-about-list">
-            <span>What we deliver</span>
-            <ul>
-              <li><strong>Expert technique</strong> refined through years of hands-on practice.</li>
-              <li><strong>Personalized service</strong> tailored to your style and preferences.</li>
-              <li><strong>A welcoming atmosphere</strong> where you can relax and trust the process.</li>
-            </ul>
-          </div>
+          {useHighlights ? (
+            <div className="tfr-about-list">
+              <span>What we deliver</span>
+              <ul>
+                {highlights.map((h, i) => (
+                  <li key={i}>
+                    {h.title?.trim() && <strong>{h.title}</strong>}
+                    {h.title?.trim() && h.body?.trim() && ' '}
+                    {h.body?.trim()}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <div className="tfr-about-list">
+              <span>What we deliver</span>
+              <ul>
+                <li><strong>Expert technique</strong> refined through years of hands-on practice.</li>
+                <li><strong>Personalized service</strong> tailored to your style and preferences.</li>
+                <li><strong>A welcoming atmosphere</strong> where you can relax and trust the process.</li>
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </section>

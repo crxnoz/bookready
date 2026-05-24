@@ -50,25 +50,36 @@ class TemplateDefaults
                 'policy_label'             => 'Policy',
                 'about_label'              => 'About',
                 'results_label'            => 'Before & After',
-                'steps_label'              => 'Steps',
-                'before_appointment_label' => 'Before Your Appointment',
+                // Internal keys stay `steps` and `before_appointment` for backwards compatibility.
+                // User-facing defaults are now Advice + Timeline.
+                'steps_label'              => 'Advice',
+                'before_appointment_label' => 'Timeline',
+            ],
+            'about' => [
+                'heading'    => 'About',
+                'eyebrow'    => 'The Studio',
+                'body'       => 'Tell visitors who you are, what you do, and what makes your work different.',
+                'highlights' => [
+                    ['title' => 'Detail-focused',  'body' => 'Every appointment is handled with care, from start to finish.'],
+                    ['title' => 'Tailored to you', 'body' => 'Each service is shaped around what works best for your look.'],
+                ],
             ],
             'steps' => [
-                'heading' => 'Steps',
+                'heading' => 'Advice',
                 'items'   => [
-                    ['title' => 'Choose your service',  'body' => 'Pick the service that fits your appointment.'],
-                    ['title' => 'Select your time',     'body' => 'Choose an available date and time from the booking calendar.'],
-                    ['title' => 'Send your request',    'body' => 'Add your contact details and submit your booking request.'],
-                    ['title' => 'Wait for confirmation','body' => 'The business will confirm your appointment soon.'],
+                    ['title' => 'Keep it fresh',       'body' => 'Book maintenance regularly to keep your look at its best.'],
+                    ['title' => 'Prep at home',        'body' => 'A clean canvas helps your stylist do their best work.'],
+                    ['title' => 'Bring inspiration',   'body' => 'Photos and references help us nail what you want.'],
+                    ['title' => 'Follow the care guide','body' => 'Aftercare keeps your service looking great for longer.'],
                 ],
             ],
             'before_appointment' => [
-                'heading' => 'Before Your Appointment',
+                'heading' => 'Timeline',
                 'items'   => [
-                    ['title' => 'Arrive on time',         'body' => 'Late arrivals may need to be rescheduled.'],
-                    ['title' => 'Come prepared',          'body' => 'Arrive ready for the service you booked.'],
-                    ['title' => 'Bring reference photos', 'body' => 'If you have a specific look in mind, bring photos.'],
-                    ['title' => 'Review policies',        'body' => 'Please review cancellation, late, and no-show policies before booking.'],
+                    ['title' => 'Pick your service',  'body' => 'Choose the service that fits your appointment.'],
+                    ['title' => 'Select a time',      'body' => 'Pick an available date and time from the booking calendar.'],
+                    ['title' => 'Send your request',  'body' => 'Add your contact details and submit your booking request.'],
+                    ['title' => 'Get confirmation',   'body' => 'The business will review and confirm your appointment soon.'],
                 ],
             ],
             'additionals' => [

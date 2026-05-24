@@ -8,7 +8,8 @@ import {
   Eye, EyeOff, Lock, Plus, Smartphone, Monitor, ExternalLink, Copy,
   Check, Loader2, Heart, Phone, Mail, Instagram, MapPin, Sparkles,
   Megaphone, MessageSquare, ChevronRight, AlertCircle, RefreshCw,
-  Edit2, Trash2, X, Link as LinkIcon, ArrowUp, ArrowDown,
+  Edit2, Trash2, X, Link as LinkIcon, ArrowUp, ArrowDown, ChevronDown,
+  Clock,
 } from 'lucide-react'
 import {
   getCurrentUser,
@@ -24,17 +25,21 @@ import {
   createEditorBeforeAfterItem,
   updateEditorBeforeAfterItem,
   deleteEditorBeforeAfterItem,
+  getEditorPolicies,
+  updateEditorPolicies,
 } from '@/lib/api'
 import type {
   TemplateSettings,
   TemplateHeaderSettings,
   TemplateFooterSettings,
   TemplateAdditionalsSettings,
+  TemplateAboutSettings,
   WebsiteSection,
   GalleryItem,
   GalleryItemPayload,
   BeforeAfterItem,
   BeforeAfterItemPayload,
+  BusinessPolicy,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
 
@@ -259,6 +264,75 @@ function Panel({ title, subtitle, children }: { title: string; subtitle?: string
       </div>
       {children}
     </div>
+  )
+}
+
+/**
+ * Collapsible variant of Panel. Same look + same children, but the header
+ * row is a button that toggles a local open state, and an optional
+ * statusBadge surfaces an at-a-glance summary while the section is closed.
+ */
+function CollapsibleSection({
+  title, subtitle, statusBadge, defaultOpen = false, icon: Icon, children,
+}: {
+  title:        string
+  subtitle?:    string
+  statusBadge?: React.ReactNode
+  defaultOpen?: boolean
+  icon?:        React.ElementType
+  children:     React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className="bg-white border border-[rgba(18,18,18,0.10)]">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-cream/50 transition-colors"
+      >
+        {Icon && (
+          <div className="w-8 h-8 flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-cream flex-shrink-0">
+            <Icon size={14} className="text-near-black" strokeWidth={1.7} />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-base font-bold text-near-black">{title}</h2>
+            {statusBadge}
+          </div>
+          {subtitle && <p className="text-xs text-muted-text mt-0.5">{subtitle}</p>}
+        </div>
+        <ChevronDown
+          size={16}
+          className={cn(
+            'text-muted-text flex-shrink-0 transition-transform',
+            open ? 'rotate-180' : 'rotate-0',
+          )}
+        />
+      </button>
+      {open && (
+        <div className="px-5 pb-5 pt-1 space-y-4 border-t border-[rgba(18,18,18,0.06)]">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function StatusBadge({ children, tone = 'neutral' }: {
+  children: React.ReactNode
+  tone?: 'neutral' | 'muted' | 'accent'
+}) {
+  return (
+    <span className={cn(
+      'inline-flex items-center gap-1 text-[9px] font-bold tracking-[0.06em] uppercase px-1.5 py-0.5 border',
+      tone === 'neutral' && 'border-[rgba(18,18,18,0.15)] bg-cream text-[rgba(18,18,18,0.7)]',
+      tone === 'muted'   && 'border-transparent bg-lavender text-[rgba(18,18,18,0.55)]',
+      tone === 'accent'  && 'border-transparent bg-blush text-[rgba(18,18,18,0.7)]',
+    )}>
+      {children}
+    </span>
   )
 }
 
@@ -765,11 +839,19 @@ function ContentTabsPanel({
     finally { setBusyId(null) }
   }
 
+  const hiddenCount = TAB_LABEL_FIELDS.filter(({ sectionKey }) => {
+    const sec = sectionByKey[sectionKey]
+    return sec && !sec.is_locked && !sec.is_enabled
+  }).length
+
   return (
-    <div className="space-y-5">
-      <Panel
-        title="Content / Tabs"
+    <div className="space-y-4">
+      <CollapsibleSection
+        title="Tab Labels & Visibility"
         subtitle="Rename the tabs your visitors see and choose which sections appear. Booking is always visible."
+        icon={ListChecks}
+        defaultOpen
+        statusBadge={hiddenCount > 0 && <StatusBadge tone="muted">{hiddenCount} hidden</StatusBadge>}
       >
         <div className="space-y-3">
           {TAB_LABEL_FIELDS.map(({ key, sectionKey, label }) => {
@@ -819,31 +901,40 @@ function ContentTabsPanel({
           dirty={form.dirty} saving={form.saving} saved={form.saved}
           error={form.error} onSave={form.doSave}
         />
-      </Panel>
+      </CollapsibleSection>
 
       <GalleryManagerPanel />
 
       <BeforeAfterManagerPanel />
 
       <InstructionsEditorPanel
-        title="Steps content"
-        subtitle="Card-style instructions shown on the Steps tab."
-        addLabel="Add Step"
-        emptyText="No steps yet — add your first one."
-        block={settings.steps ?? { heading: 'Steps', items: [] }}
-        defaultHeading="Steps"
+        title="Advice"
+        subtitle="Tips, advice, or care instructions shown on the Advice tab."
+        addLabel="Add Tip"
+        emptyText="No tips yet — add your first one."
+        block={settings.steps ?? { heading: 'Advice', items: [] }}
+        defaultHeading="Advice"
+        icon={ListChecks}
         onSave={(next) => onSaveSettings({ steps: next })}
       />
 
       <InstructionsEditorPanel
-        title="Before Your Appointment content"
-        subtitle="Numbered timeline shown on the Before Your Appointment tab."
-        addLabel="Add Instruction"
-        emptyText="No instructions yet — add your first one."
-        block={settings.before_appointment ?? { heading: 'Before Your Appointment', items: [] }}
-        defaultHeading="Before Your Appointment"
+        title="Timeline"
+        subtitle="A numbered list shown on the Timeline tab — great for booking flow or appointment prep."
+        addLabel="Add Step"
+        emptyText="No steps yet — add your first one."
+        block={settings.before_appointment ?? { heading: 'Timeline', items: [] }}
+        defaultHeading="Timeline"
+        icon={Clock}
         onSave={(next) => onSaveSettings({ before_appointment: next })}
       />
+
+      <AboutEditorPanel
+        about={settings.about}
+        onSave={(next) => onSaveSettings({ about: next })}
+      />
+
+      <PoliciesEditorPanel />
     </div>
   )
 }
@@ -856,7 +947,7 @@ interface InstructionItem { title: string; body: string }
 interface InstructionBlock { heading: string; items: InstructionItem[] }
 
 function InstructionsEditorPanel({
-  title, subtitle, addLabel, emptyText, block, defaultHeading, onSave,
+  title, subtitle, addLabel, emptyText, block, defaultHeading, icon, onSave,
 }: {
   title:          string
   subtitle:       string
@@ -864,6 +955,7 @@ function InstructionsEditorPanel({
   emptyText:      string
   block:          InstructionBlock
   defaultHeading: string
+  icon?:          React.ElementType
   onSave:         (next: InstructionBlock) => Promise<void>
 }) {
   // Seed with at least one empty item so the user has something to fill in.
@@ -906,7 +998,12 @@ function InstructionsEditorPanel({
   const hasValidationError = invalidIndexes.length > 0
 
   return (
-    <Panel title={title} subtitle={subtitle}>
+    <CollapsibleSection
+      title={title}
+      subtitle={subtitle}
+      icon={icon}
+      statusBadge={<StatusBadge>{value.items.length} item{value.items.length === 1 ? '' : 's'}</StatusBadge>}
+    >
       <TextField
         label="Section heading"
         value={value.heading}
@@ -1013,7 +1110,261 @@ function InstructionsEditorPanel({
         error={error ?? (dirty && hasValidationError ? 'Fix the highlighted items before saving.' : null)}
         onSave={doSave}
       />
-    </Panel>
+    </CollapsibleSection>
+  )
+}
+
+// ── About editor (template settings.about) ──────────────────────────────────
+
+const ABOUT_MAX_HIGHLIGHTS = 3
+
+function AboutEditorPanel({
+  about, onSave,
+}: {
+  about: TemplateAboutSettings | undefined
+  onSave: (next: TemplateAboutSettings) => Promise<void>
+}) {
+  const initial: TemplateAboutSettings = {
+    heading:    about?.heading    ?? 'About',
+    eyebrow:    about?.eyebrow    ?? '',
+    body:       about?.body       ?? '',
+    highlights: about?.highlights ?? [],
+  }
+  const form = useSettingsForm<TemplateAboutSettings>(initial, onSave)
+  const { value, patch, dirty, saving, saved, error, doSave } = form
+
+  const highlights = value.highlights ?? []
+  function setHighlights(next: { title: string; body: string }[]) {
+    patch({ highlights: next })
+  }
+  function addHighlight() {
+    if (highlights.length >= ABOUT_MAX_HIGHLIGHTS) return
+    setHighlights([...highlights, { title: '', body: '' }])
+  }
+  function updateHighlight(i: number, p: Partial<{ title: string; body: string }>) {
+    setHighlights(highlights.map((h, idx) => idx === i ? { ...h, ...p } : h))
+  }
+  function removeHighlight(i: number) {
+    setHighlights(highlights.filter((_, idx) => idx !== i))
+  }
+
+  const filled = !!(value.body && value.body.trim().length > 0)
+
+  return (
+    <CollapsibleSection
+      title="About"
+      subtitle="The story shown on your About tab — who you are, what you do, what makes your work different."
+      icon={Info}
+      statusBadge={<StatusBadge tone={filled ? 'neutral' : 'muted'}>{filled ? 'Set' : 'Default'}</StatusBadge>}
+    >
+      <TextField
+        label="Eyebrow (small label above the heading)"
+        value={value.eyebrow ?? ''}
+        onChange={v => patch({ eyebrow: v })}
+        placeholder="The Studio"
+        maxLength={60}
+      />
+      <TextField
+        label="Heading"
+        value={value.heading ?? ''}
+        onChange={v => patch({ heading: v })}
+        placeholder="About"
+        maxLength={120}
+      />
+      <TextareaField
+        label="Body"
+        value={value.body ?? ''}
+        onChange={v => patch({ body: v })}
+        placeholder="Tell visitors who you are, what you do, and what makes your work different."
+        rows={5}
+        maxLength={2000}
+      />
+
+      <div className="space-y-2.5 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+            Highlights ({highlights.length}/{ABOUT_MAX_HIGHLIGHTS})
+          </p>
+          <button
+            type="button"
+            onClick={addHighlight}
+            disabled={highlights.length >= ABOUT_MAX_HIGHLIGHTS}
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-1.5 hover:border-near-black disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Plus size={12} /> Add Highlight
+          </button>
+        </div>
+        {highlights.length === 0 && (
+          <p className="text-xs text-muted-text">Optional — add small highlight cards under your About copy.</p>
+        )}
+        {highlights.map((h, i) => (
+          <div key={i} className="bg-white border border-[rgba(18,18,18,0.10)] p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+                Highlight {i + 1}
+              </span>
+              <button
+                type="button"
+                onClick={() => removeHighlight(i)}
+                className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600"
+                title="Delete"
+              >
+                <Trash2 size={11} />
+              </button>
+            </div>
+            <input
+              type="text"
+              value={h.title}
+              onChange={e => updateHighlight(i, { title: e.target.value })}
+              placeholder="Title"
+              maxLength={120}
+              className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+            />
+            <textarea
+              value={h.body}
+              onChange={e => updateHighlight(i, { body: e.target.value })}
+              placeholder="Body"
+              rows={2}
+              maxLength={400}
+              className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black resize-y"
+            />
+          </div>
+        ))}
+      </div>
+
+      <SaveBar dirty={dirty} saving={saving} saved={saved} error={error} onSave={doSave} />
+    </CollapsibleSection>
+  )
+}
+
+// ── Policies editor (reuses existing /editor/policies API) ───────────────────
+
+const POLICY_FIELDS: { key: keyof BusinessPolicy; label: string; placeholder: string }[] = [
+  { key: 'cancellation_policy', label: 'Cancellation policy', placeholder: 'How much notice do clients need to give?' },
+  { key: 'late_policy',         label: 'Late arrival policy', placeholder: 'What happens if a client arrives late?' },
+  { key: 'no_show_policy',      label: 'No-show policy',      placeholder: 'What happens if a client doesn\'t show up?' },
+  { key: 'deposit_policy',      label: 'Deposit policy',      placeholder: 'Is a deposit required to book?' },
+  { key: 'reschedule_policy',   label: 'Reschedule policy',   placeholder: 'How can clients reschedule?' },
+  { key: 'extra_notes',         label: 'Additional notes',    placeholder: 'Anything else clients should know.' },
+]
+
+function PoliciesEditorPanel() {
+  const [policies, setPolicies] = useState<BusinessPolicy | null>(null)
+  const [loading, setLoading]   = useState(true)
+  const [saving, setSaving]     = useState(false)
+  const [saved, setSaved]       = useState(false)
+  const [error, setError]       = useState<string | null>(null)
+  const [baseline, setBaseline] = useState<BusinessPolicy | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getEditorPolicies()
+      .then(p => {
+        if (cancelled) return
+        const normalized: BusinessPolicy = {
+          id: p.id,
+          cancellation_policy: p.cancellation_policy ?? '',
+          late_policy:         p.late_policy         ?? '',
+          no_show_policy:      p.no_show_policy      ?? '',
+          deposit_policy:      p.deposit_policy      ?? '',
+          reschedule_policy:   p.reschedule_policy   ?? '',
+          extra_notes:         p.extra_notes         ?? '',
+        }
+        setPolicies(normalized)
+        setBaseline(normalized)
+      })
+      .catch(e => { if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load policies') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const dirty = useMemo(
+    () => JSON.stringify(policies) !== JSON.stringify(baseline),
+    [policies, baseline],
+  )
+
+  const setCount = useMemo(() => {
+    if (!policies) return 0
+    return POLICY_FIELDS.filter(({ key }) => {
+      const v = policies[key]
+      return typeof v === 'string' && v.trim().length > 0
+    }).length
+  }, [policies])
+
+  function patchField(key: keyof BusinessPolicy, value: string) {
+    setPolicies(prev => prev ? { ...prev, [key]: value } : prev)
+    if (saved) setSaved(false)
+  }
+
+  async function save() {
+    if (!policies) return
+    setSaving(true); setError(null); setSaved(false)
+    try {
+      const payload: Record<string, string | null> = {}
+      for (const { key } of POLICY_FIELDS) {
+        const v = policies[key] as string
+        payload[key] = v && v.trim().length > 0 ? v : null
+      }
+      const res = await updateEditorPolicies(payload)
+      const normalized: BusinessPolicy = {
+        id: res.id,
+        cancellation_policy: res.cancellation_policy ?? '',
+        late_policy:         res.late_policy         ?? '',
+        no_show_policy:      res.no_show_policy      ?? '',
+        deposit_policy:      res.deposit_policy      ?? '',
+        reschedule_policy:   res.reschedule_policy   ?? '',
+        extra_notes:         res.extra_notes         ?? '',
+      }
+      setPolicies(normalized)
+      setBaseline(normalized)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 1800)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save policies')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <CollapsibleSection
+      title="Policies"
+      subtitle="Cancellation, late arrival, no-show, deposit, and reschedule policies shown on the Policy tab."
+      icon={FileText}
+      statusBadge={!loading && (
+        <StatusBadge tone={setCount > 0 ? 'neutral' : 'muted'}>
+          {setCount}/{POLICY_FIELDS.length} set
+        </StatusBadge>
+      )}
+    >
+      {loading && <p className="text-xs text-muted-text">Loading…</p>}
+      {!loading && !policies && error && <p className="text-xs text-red-700">{error}</p>}
+      {policies && (
+        <>
+          <p className="text-[11px] text-muted-text bg-cream border border-[rgba(18,18,18,0.08)] px-3 py-2">
+            Policies are part of your core business info — edits here save to the same place as <span className="font-mono">/editor/policies</span>.
+          </p>
+          {POLICY_FIELDS.map(({ key, label, placeholder }) => (
+            <TextareaField
+              key={key}
+              label={label}
+              value={(policies[key] as string) ?? ''}
+              onChange={v => patchField(key, v)}
+              placeholder={placeholder}
+              rows={2}
+              maxLength={2000}
+            />
+          ))}
+          <SaveBar
+            dirty={dirty}
+            saving={saving}
+            saved={saved}
+            error={error}
+            onSave={save}
+          />
+        </>
+      )}
+    </CollapsibleSection>
   )
 }
 
@@ -1352,13 +1703,17 @@ function GalleryManagerPanel() {
   }
 
   return (
-    <Panel
+    <CollapsibleSection
       title="Gallery"
-      subtitle="Add image URLs to show your work on your public website. Add cuts, lashes, nails, facials, studio shots, or before/after photos."
+      subtitle="Add image URLs to show your work on your public website."
+      icon={ImageIcon}
+      statusBadge={!loading && (
+        <StatusBadge>{sorted.length} image{sorted.length === 1 ? '' : 's'}</StatusBadge>
+      )}
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-muted-text">
-          {loading ? 'Loading…' : `${sorted.length} image${sorted.length === 1 ? '' : 's'}`}
+          {loading ? 'Loading…' : 'Cuts, lashes, nails, facials, studio shots, or before/after photos.'}
         </p>
         <button
           onClick={() => setAdding(true)}
@@ -1494,7 +1849,7 @@ function GalleryManagerPanel() {
           onSave={handleSave}
         />
       )}
-    </Panel>
+    </CollapsibleSection>
   )
 }
 
@@ -1712,14 +2067,15 @@ function BeforeAfterManagerPanel() {
   }
 
   return (
-    <Panel
+    <CollapsibleSection
       title="Before & After"
       subtitle="Add transformation pairs to show results on your public website."
+      icon={Sparkles}
+      statusBadge={!loading && (
+        <StatusBadge>{sorted.length} pair{sorted.length === 1 ? '' : 's'}</StatusBadge>
+      )}
     >
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs text-muted-text">
-          {loading ? 'Loading…' : `${sorted.length} pair${sorted.length === 1 ? '' : 's'}`}
-        </p>
+      <div className="flex items-center justify-end gap-3">
         <button
           onClick={() => setAdding(true)}
           className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2"
@@ -1847,7 +2203,7 @@ function BeforeAfterManagerPanel() {
           onSave={handleSave}
         />
       )}
-    </Panel>
+    </CollapsibleSection>
   )
 }
 
