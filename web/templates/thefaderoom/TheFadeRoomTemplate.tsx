@@ -269,7 +269,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 const override = ensureScheme(header.email_button_url, 'mailto')
                 const href = override ?? (p?.public_email ? `mailto:${p.public_email}` : null)
                 return (
-                  <a className="tfr-header-btn tfr-header-btn-chat" href={href ?? '#'} aria-disabled={!href || undefined}>
+                  <a className="tfr-header-btn tfr-header-btn-chat tfr-header-btn-mobile-only" href={href ?? '#'} aria-disabled={!href || undefined}>
                     <Mail size={16} /><span>Email</span>
                   </a>
                 )
@@ -278,7 +278,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 const href = ensureScheme(header.message_button_url, 'sms')
                 const isWeb = !!href && /^https?:/i.test(href)
                 return (
-                  <a className="tfr-header-btn tfr-header-btn-message" href={href ?? '#'} target={isWeb ? '_blank' : undefined} rel={isWeb ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
+                  <a className={`tfr-header-btn tfr-header-btn-message${isWeb ? '' : ' tfr-header-btn-mobile-only'}`} href={href ?? '#'} target={isWeb ? '_blank' : undefined} rel={isWeb ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
                     <MessageSquare size={16} /><span>Message</span>
                   </a>
                 )
@@ -1150,7 +1150,11 @@ const TFR_CSS = `
   font-family:var(--tfr-ui); font-size:15px; font-weight:500; line-height:1;
   transition:transform .18s ease,filter .18s ease; cursor:pointer;
 }
-.tfr-header-btn:hover { filter:brightness(1.1); transform:translateY(-2px); }
+@media (hover:hover) and (pointer:fine) {
+  .tfr-header-btn:hover { filter:brightness(1.1); transform:translateY(-2px); }
+}
+.tfr-header-btn:active { filter:brightness(1.05); transform:translateY(-1px); }
+.tfr-header-btn { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
 .tfr-header-btn[aria-disabled] { opacity:0.5; cursor:default; transform:none !important; }
 .tfr-header-btn span:first-child { font-size:18px; }
 .tfr-header-btn-book       { background:var(--tfr-pink); box-shadow:0 0 18px rgba(255,61,190,0.4); }
