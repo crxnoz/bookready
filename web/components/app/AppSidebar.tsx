@@ -12,6 +12,7 @@ import {
   Eye,
   Copy,
   LogOut,
+  X,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { clearAuth } from '@/lib/auth'
@@ -42,7 +43,13 @@ const MAIN_NAV = [
   { href: '/editor/settings', label: 'Settings',  icon: Settings },
 ] as const
 
-export default function AppSidebar({ slug }: { slug: string }) {
+interface Props {
+  slug:       string
+  drawerOpen: boolean
+  onClose:    () => void
+}
+
+export default function AppSidebar({ slug, drawerOpen, onClose }: Props) {
   const path = usePathname()
   const router = useRouter()
 
@@ -63,106 +70,152 @@ export default function AppSidebar({ slug }: { slug: string }) {
     router.push('/login')
   }
 
+  const navItems = MAIN_NAV.map(item => {
+    const active = isActive(item)
+    const Icon   = item.icon
+    return { item, active, Icon }
+  })
+
   return (
-    <aside
-      className={cn(
-        'bg-white border-[rgba(18,18,18,0.10)] flex-shrink-0 z-10',
-        // Mobile: horizontal bar at top
-        'flex flex-row w-full border-b overflow-x-auto',
-        // Desktop: vertical sidebar — h-screen so flex-1 nav + bottom actions pin correctly
-        'md:flex-col md:w-[220px] md:h-screen md:border-r md:border-b-0 md:overflow-x-visible md:overflow-y-auto',
-      )}
-    >
-      {/* Brand — desktop only */}
-      <div className="hidden md:flex items-center gap-3 px-5 py-4 border-b border-[rgba(18,18,18,0.08)] flex-shrink-0">
-        <div className="w-7 h-7 bg-near-black flex items-center justify-center flex-shrink-0">
-          <img src="/logo.svg" alt="" className="w-4 h-4 invert" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-near-black tracking-tight">BookReady</p>
-          {slug && (
-            <p className="text-[11px] text-muted-text truncate">{slug}.bkrdy.me</p>
+    <>
+      {/* ── Desktop sidebar (md and above) ─────────────────────────────── */}
+      <aside className="hidden md:flex md:flex-col md:w-[220px] md:h-screen md:border-r md:border-[rgba(18,18,18,0.10)] md:bg-white md:flex-shrink-0 md:overflow-y-auto">
+        <SidebarBrand slug={slug} />
+        <SidebarNav navItems={navItems} variant="desktop" />
+        <SidebarBottomActions slug={slug} onCopy={handleCopy} onSignOut={handleSignOut} variant="desktop" />
+      </aside>
+
+      {/* ── Mobile drawer (below md) — overlay + slide-in panel ────────── */}
+      <div
+        className={cn(
+          'fixed inset-0 z-40 md:hidden',
+          drawerOpen ? '' : 'pointer-events-none',
+        )}
+        aria-hidden={!drawerOpen}
+      >
+        {/* Backdrop */}
+        <div
+          onClick={onClose}
+          className={cn(
+            'absolute inset-0 bg-black/50 transition-opacity duration-200',
+            drawerOpen ? 'opacity-100' : 'opacity-0',
           )}
-        </div>
-      </div>
-
-      {/* Main nav */}
-      <nav className="flex flex-row md:flex-col flex-1 p-2 md:p-0 md:py-3 gap-0.5 min-w-0">
-        <p className="hidden md:block px-4 pt-1 pb-1.5 text-[9px] font-bold tracking-[0.2em] uppercase text-muted-text">
-          Workspace
-        </p>
-        {MAIN_NAV.map(item => {
-          const active = isActive(item)
-          const Icon = item.icon
-          const soon = 'soon' in item && item.soon
-          return (
-            <Link
-              key={item.href}
-              href={soon ? '#' : item.href}
-              onClick={soon ? e => e.preventDefault() : undefined}
-              className={cn(
-                'flex flex-col md:flex-row items-center gap-1 md:gap-3 px-3 md:px-4 py-2 md:py-2.5',
-                'text-[11px] md:text-[13px] font-medium transition-colors whitespace-nowrap flex-shrink-0',
-                active
-                  ? 'bg-near-black text-white'
-                  : soon
-                  ? 'text-[rgba(18,18,18,0.3)] cursor-default'
-                  : 'text-[rgba(18,18,18,0.7)] hover:bg-[rgba(18,18,18,0.04)] hover:text-near-black',
-              )}
+        />
+        {/* Panel */}
+        <aside
+          className={cn(
+            'absolute left-0 top-0 bottom-0 w-[280px] max-w-[85%] bg-white border-r border-[rgba(18,18,18,0.10)]',
+            'flex flex-col overflow-y-auto transition-transform duration-200 ease-out',
+            drawerOpen ? 'translate-x-0' : '-translate-x-full',
+          )}
+          aria-label="Workspace navigation"
+        >
+          <div className="flex items-center justify-between border-b border-[rgba(18,18,18,0.08)] flex-shrink-0">
+            <SidebarBrand slug={slug} dense />
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close menu"
+              className="m-2 mr-3 w-8 h-8 flex items-center justify-center text-muted-text hover:text-near-black border border-[rgba(18,18,18,0.10)] flex-shrink-0"
             >
-              <Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
-              <span>{item.label}</span>
-            </Link>
-          )
-        })}
-      </nav>
-
-      {/* Bottom actions — desktop */}
-      <div className="hidden md:block border-t border-[rgba(18,18,18,0.08)] p-3 flex-shrink-0">
-        <a
-          href={`https://${slug}.bkrdy.me`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full flex items-center gap-3 px-3 py-2 text-[13px] font-medium text-muted-text hover:text-near-black hover:bg-[rgba(18,18,18,0.04)] transition-colors"
-        >
-          <Eye size={14} />
-          View Site
-        </a>
-        <button
-          onClick={handleCopy}
-          className="w-full flex items-center gap-3 px-3 py-2 text-[13px] font-medium text-muted-text hover:text-near-black hover:bg-[rgba(18,18,18,0.04)] transition-colors text-left"
-        >
-          <Copy size={14} />
-          Copy Link
-        </button>
-        <button
-          onClick={handleSignOut}
-          className="w-full flex items-center gap-3 px-3 py-2 text-[13px] font-medium text-muted-text hover:text-near-black hover:bg-[rgba(18,18,18,0.04)] transition-colors text-left"
-        >
-          <LogOut size={14} />
-          Sign Out
-        </button>
+              <X size={14} />
+            </button>
+          </div>
+          <SidebarNav navItems={navItems} variant="drawer" onItemClick={onClose} />
+          <SidebarBottomActions slug={slug} onCopy={handleCopy} onSignOut={handleSignOut} variant="drawer" />
+        </aside>
       </div>
+    </>
+  )
+}
 
-      {/* Bottom actions — mobile (appended to scroll strip) */}
-      <div className="md:hidden flex items-center border-l border-[rgba(18,18,18,0.10)] ml-1 flex-shrink-0">
-        <a
-          href={`https://${slug}.bkrdy.me`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex flex-col items-center gap-1 px-3 py-2 text-[11px] font-medium text-muted-text hover:text-near-black transition-colors whitespace-nowrap"
-        >
-          <Eye size={15} strokeWidth={1.8} />
-          <span>Site</span>
-        </a>
-        <button
-          onClick={handleSignOut}
-          className="flex flex-col items-center gap-1 px-3 py-2 text-[11px] font-medium text-muted-text hover:text-near-black transition-colors"
-        >
-          <LogOut size={15} strokeWidth={1.8} />
-          <span>Out</span>
-        </button>
+// ── Sub-components ──────────────────────────────────────────────────────────
+
+function SidebarBrand({ slug, dense = false }: { slug: string; dense?: boolean }) {
+  return (
+    <div className={cn(
+      'flex items-center gap-3 px-5 border-b border-[rgba(18,18,18,0.08)] flex-shrink-0',
+      dense ? 'py-3 border-b-0' : 'py-4',
+    )}>
+      <div className="w-7 h-7 bg-near-black flex items-center justify-center flex-shrink-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.svg" alt="" className="w-4 h-4 invert" />
       </div>
-    </aside>
+      <div className="min-w-0">
+        <p className="text-sm font-bold text-near-black tracking-tight">BookReady</p>
+        {slug && (
+          <p className="text-[11px] text-muted-text truncate">{slug}.bkrdy.me</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function SidebarNav({
+  navItems, variant, onItemClick,
+}: {
+  navItems: { item: typeof MAIN_NAV[number]; active: boolean; Icon: React.ElementType }[]
+  variant:  'desktop' | 'drawer'
+  onItemClick?: () => void
+}) {
+  return (
+    <nav className="flex flex-col flex-1 py-3 gap-0.5 min-w-0">
+      <p className="px-4 pt-1 pb-1.5 text-[9px] font-bold tracking-[0.2em] uppercase text-muted-text">
+        Workspace
+      </p>
+      {navItems.map(({ item, active, Icon }) => (
+        <Link
+          key={item.href}
+          href={item.href}
+          onClick={onItemClick}
+          className={cn(
+            'flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium transition-colors whitespace-nowrap',
+            active
+              ? 'bg-near-black text-white'
+              : 'text-[rgba(18,18,18,0.7)] hover:bg-[rgba(18,18,18,0.04)] hover:text-near-black',
+          )}
+        >
+          <Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
+          <span>{item.label}</span>
+        </Link>
+      ))}
+    </nav>
+  )
+}
+
+function SidebarBottomActions({
+  slug, onCopy, onSignOut, variant,
+}: {
+  slug:      string
+  onCopy:    () => void
+  onSignOut: () => void
+  variant:   'desktop' | 'drawer'
+}) {
+  return (
+    <div className="border-t border-[rgba(18,18,18,0.08)] p-3 flex-shrink-0">
+      <a
+        href={`https://${slug}.bkrdy.me`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="w-full flex items-center gap-3 px-3 py-2 text-[13px] font-medium text-muted-text hover:text-near-black hover:bg-[rgba(18,18,18,0.04)] transition-colors"
+      >
+        <Eye size={14} />
+        View Site
+      </a>
+      <button
+        onClick={onCopy}
+        className="w-full flex items-center gap-3 px-3 py-2 text-[13px] font-medium text-muted-text hover:text-near-black hover:bg-[rgba(18,18,18,0.04)] transition-colors text-left"
+      >
+        <Copy size={14} />
+        Copy Link
+      </button>
+      <button
+        onClick={onSignOut}
+        className="w-full flex items-center gap-3 px-3 py-2 text-[13px] font-medium text-muted-text hover:text-near-black hover:bg-[rgba(18,18,18,0.04)] transition-colors text-left"
+      >
+        <LogOut size={14} />
+        Sign Out
+      </button>
+    </div>
   )
 }

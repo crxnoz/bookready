@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { HoursEntry, AvailabilitySettings, AvailabilityData } from '@/lib/types'
 import { getEditorAvailability, updateEditorAvailability } from '@/lib/api'
 import Button from '@/components/ui/Button'
-import Link from 'next/link'
 import {
   Clock,
   Calendar,
@@ -13,7 +12,6 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCircle2,
-  ExternalLink,
 } from 'lucide-react'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -309,26 +307,6 @@ export default function AvailabilityEditor() {
       {/* Page heading — section + title live in EditorShell */}
       <div className="px-5 pt-5 pb-4 border-b border-[rgba(18,18,18,0.08)]">
         <p className="text-xs text-muted-text">Set your weekly hours, breaks, and per-day capacity.</p>
-      </div>
-
-      {/* Cross-link: booking rules live in Settings now */}
-      <div className="mx-5 mt-4">
-        <Link
-          href="/editor/settings?tab=booking"
-          className="group flex items-start gap-3 border border-[rgba(18,18,18,0.10)] bg-white px-3.5 py-3 hover:border-near-black transition-colors"
-        >
-          <span className="w-8 h-8 flex items-center justify-center bg-cream border border-[rgba(18,18,18,0.08)] text-near-black flex-shrink-0">
-            <Settings2 size={14} strokeWidth={1.8} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-semibold text-near-black">Booking rules moved to Settings</p>
-            <p className="text-[11px] text-muted-text mt-0.5">
-              Booking enabled, auto-confirm, minimum notice, max days ahead, slot interval, slot release,
-              cancellation, and reschedule windows now all live in Settings &rsaquo; Booking.
-            </p>
-          </div>
-          <ExternalLink size={13} className="text-muted-text group-hover:text-near-black mt-1 flex-shrink-0" />
-        </Link>
       </div>
 
       {error && saveState === 'error' && (
