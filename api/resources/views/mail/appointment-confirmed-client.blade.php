@@ -14,6 +14,18 @@
 </table>
 @endsection
 
+@if (! empty($appt['manage_url']))
+@section('cta')
+<a href="{{ $appt['manage_url'] }}" style="display:inline-block;background:#121212;color:#FFFFFF;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:14px 22px;border:1px solid #121212;">
+  Manage your booking &rarr;
+</a>
+@endsection
+@endif
+
 @section('extra')
+@if (! empty($appt['manage_url']))
+Use the button above to reschedule or cancel within your business&rsquo;s policy window. You can also reply to this email if you need help.
+@else
 Need to reschedule or cancel? Reply to this email and the team will take care of it.
+@endif
 @endsection

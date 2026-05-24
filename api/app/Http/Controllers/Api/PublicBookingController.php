@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class PublicBookingController extends Controller
 {
@@ -97,6 +98,18 @@ class PublicBookingController extends Controller
                 'end_time'   => substr($r->end_time,   0, 5),
             ])
             ->all();
+
+        // ── Daily-capacity guard ────────────────────────────────────────
+        // booking_settings.max_appointments_per_day is nullable; null = no cap.
+        if ($settings && isset($settings->max_appointments_per_day) && $settings->max_appointments_per_day !== null) {
+            $cap = (int) $settings->max_appointments_per_day;
+            if ($cap > 0 && count($appointments) >= $cap) {
+                tenancy()->end();
+                return response()->json([
+                    'message' => 'This day is fully booked. Please choose another date.',
+                ], 422);
+            }
+        }
 
         // ── Re-verify slot is still available (anti-double-booking) ──────
         $result = SlotGenerator::generate(
@@ -181,6 +194,10 @@ class PublicBookingController extends Controller
         $autoConfirm    = (bool) ($settings->auto_confirm_bookings ?? false);
         $initialStatus  = (! $paymentRequired && $autoConfirm) ? 'confirmed' : 'pending';
 
+        $manageToken = Schema::hasColumn('appointments', 'manage_token')
+            ? Str::random(40)
+            : null;
+
         $insertData = [
             'client_id'                => $clientId,
             'service_id'               => (int) $service->id,
@@ -199,6 +216,9 @@ class PublicBookingController extends Controller
             'created_at'               => now(),
             'updated_at'               => now(),
         ];
+        if ($manageToken !== null) {
+            $insertData['manage_token'] = $manageToken;
+        }
 
         if ($appointmentsHasPaymentCols) {
             if ($paymentRequired) {
@@ -221,6 +241,8 @@ class PublicBookingController extends Controller
         $row = DB::table('appointments')->find($id);
 
         // Build a plain-array snapshot for use after tenancy ends.
+        $apptToken = property_exists($row, 'manage_token') ? $row->manage_token : null;
+        $manageUrl = $apptToken ? sprintf('https://%s.bkrdy.me/manage/%s', $tenant->id, $apptToken) : null;
         $appt = [
             'id'               => (int) $row->id,
             'customer_name'    => $row->customer_name,
@@ -232,6 +254,7 @@ class PublicBookingController extends Controller
             'end_time'         => substr($row->end_time,   0, 5),
             'status'           => $row->status,
             'notes'            => $row->notes,
+            'manage_url'       => $manageUrl,
         ];
 
         $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);

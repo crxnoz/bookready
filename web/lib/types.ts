@@ -349,6 +349,34 @@ export interface StripeConnectStartResponse {
   stripe_connect_account_id: string
 }
 
+// ── Manage booking (public, token-gated) ────────────────────────────────────
+
+export interface ManageBookingView {
+  id:                          number
+  customer_name:               string
+  customer_email:              string | null
+  service_id:                  number | null
+  service_name:                string
+  service_duration_minutes:    number | null
+  service_price:               number | null
+  appointment_date:            string   // "YYYY-MM-DD"
+  start_time:                  string   // "HH:MM"
+  end_time:                    string   // "HH:MM"
+  status:                      string
+  is_terminal:                 boolean
+  hours_until_appointment:     number
+  can_cancel:                  boolean
+  can_reschedule:              boolean
+  cancellation_window_hours:   number
+  reschedule_window_hours:     number
+}
+
+export interface ManageBookingActionResponse {
+  message:     string
+  status?:     string
+  appointment?: ManageBookingView
+}
+
 // ── Notification settings ───────────────────────────────────────────────────
 
 export interface NotificationSettings {

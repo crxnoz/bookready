@@ -19,6 +19,8 @@ import {
   PublicAvailabilityResponse,
   PublicBookingPayload,
   PublicBookingResponse,
+  ManageBookingView,
+  ManageBookingActionResponse,
   PublicSite,
   RegisterPayload,
   BeforeAfterItem,
@@ -166,6 +168,52 @@ export async function createPublicAppointment(
     throw new Error(err.message ?? 'Booking failed')
   }
   return res.json() as Promise<PublicBookingResponse>
+}
+
+// ── Public manage-booking (token-gated, no auth) ────────────────────────────
+
+export async function getManageBooking(slug: string, token: string): Promise<ManageBookingView> {
+  const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
+  const res = await fetch(`${base}/public/sites/${slug}/manage/${token}`, {
+    cache:   'no-store',
+    headers: { Accept: 'application/json' },
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }))
+    throw new Error(err.message ?? 'Booking not found')
+  }
+  return res.json() as Promise<ManageBookingView>
+}
+
+export async function cancelManageBooking(slug: string, token: string): Promise<ManageBookingActionResponse> {
+  const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
+  const res = await fetch(`${base}/public/sites/${slug}/manage/${token}/cancel`, {
+    method:  'POST',
+    headers: { Accept: 'application/json' },
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }))
+    throw new Error(err.message ?? 'Cancellation failed')
+  }
+  return res.json() as Promise<ManageBookingActionResponse>
+}
+
+export async function rescheduleManageBooking(
+  slug:  string,
+  token: string,
+  data:  { appointment_date: string; start_time: string },
+): Promise<ManageBookingActionResponse> {
+  const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
+  const res = await fetch(`${base}/public/sites/${slug}/manage/${token}/reschedule`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body:    JSON.stringify(data),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }))
+    throw new Error(err.message ?? 'Reschedule failed')
+  }
+  return res.json() as Promise<ManageBookingActionResponse>
 }
 
 // ── Billing ───────────────────────────────────────────────────────────────────

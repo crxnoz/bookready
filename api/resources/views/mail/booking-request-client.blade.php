@@ -17,3 +17,11 @@
   You&rsquo;ll get another email as soon as your appointment is confirmed. No action needed from you in the meantime.
 </div>
 @endsection
+
+@if (! empty($appt['manage_url']))
+@section('cta')
+<a href="{{ $appt['manage_url'] }}" style="display:inline-block;background:#121212;color:#FFFFFF;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:14px 22px;border:1px solid #121212;">
+  Manage your booking &rarr;
+</a>
+@endsection
+@endif

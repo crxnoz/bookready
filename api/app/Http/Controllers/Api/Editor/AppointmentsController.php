@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Services\AppointmentMailer;
 use App\Services\NotificationSettingsService;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -160,7 +162,7 @@ class AppointmentsController extends Controller
             $validated['customer_phone'] ?? null,
         );
 
-        $id = DB::table('appointments')->insertGetId([
+        $insertData = [
             'client_id'                => $clientId,
             'service_id'               => (int) $service->id,
             'customer_name'            => $validated['customer_name'],
@@ -177,7 +179,11 @@ class AppointmentsController extends Controller
             'internal_notes'           => $validated['internal_notes'] ?? null,
             'created_at'               => now(),
             'updated_at'               => now(),
-        ]);
+        ];
+        if (Schema::hasColumn('appointments', 'manage_token')) {
+            $insertData['manage_token'] = Str::random(40);
+        }
+        $id = DB::table('appointments')->insertGetId($insertData);
 
         $row = DB::table('appointments')->find($id);
         $formatted = $this->format($row);
@@ -275,6 +281,8 @@ class AppointmentsController extends Controller
         $emailNotify   = null;
 
         if ($statusChanged && in_array($newStatus, ['confirmed', 'cancelled']) && ! empty($row->customer_email)) {
+            $manageToken = property_exists($row, 'manage_token') ? $row->manage_token : null;
+            $manageUrl   = $manageToken ? sprintf('https://%s.bkrdy.me/manage/%s', $tenant->id, $manageToken) : null;
             $emailAppt = [
                 'id'               => (int) $row->id,
                 'customer_name'    => $row->customer_name,
@@ -285,6 +293,7 @@ class AppointmentsController extends Controller
                 'end_time'         => substr($row->end_time, 0, 5),
                 'status'           => $row->status,
                 'notes'            => $row->notes,
+                'manage_url'       => $manageUrl,
             ];
             $emailBusiness = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
             $emailNotify   = NotificationSettingsService::load();
@@ -328,6 +337,8 @@ class AppointmentsController extends Controller
         $emailNotify   = null;
 
         if (! empty($appt->customer_email) && $appt->status !== 'cancelled') {
+            $manageToken = property_exists($appt, 'manage_token') ? $appt->manage_token : null;
+            $manageUrl   = $manageToken ? sprintf('https://%s.bkrdy.me/manage/%s', $tenant->id, $manageToken) : null;
             $emailAppt = [
                 'id'               => (int) $appt->id,
                 'customer_name'    => $appt->customer_name,
@@ -338,6 +349,7 @@ class AppointmentsController extends Controller
                 'end_time'         => substr($appt->end_time, 0, 5),
                 'status'           => 'cancelled',
                 'notes'            => $appt->notes,
+                'manage_url'       => $manageUrl,
             ];
             $emailBusiness = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
             $emailNotify   = NotificationSettingsService::load();

@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\Editor\WebsiteSectionsController;
 use App\Http\Controllers\Api\Editor\WebsiteTemplateController;
 use App\Http\Controllers\Api\PublicAvailabilityController;
 use App\Http\Controllers\Api\PublicBookingController;
+use App\Http\Controllers\Api\PublicManageBookingController;
 use App\Http\Controllers\Api\PublicSiteController;
 use App\Http\Controllers\Api\WebhookController;
 use Illuminate\Support\Facades\Route;
@@ -42,6 +43,11 @@ Route::prefix('v1')->group(function () {
     Route::get('public/sites/{slug}',                     [PublicSiteController::class,       'show']);
     Route::get('public/sites/{slug}/availability',        [PublicAvailabilityController::class, 'show']);
     Route::post('public/sites/{slug}/appointments',       [PublicBookingController::class,     'store']);
+
+    // ── Public manage-booking (token-gated) ──────────────────────────────
+    Route::get ('public/sites/{slug}/manage/{token}',             [PublicManageBookingController::class, 'show']);
+    Route::post('public/sites/{slug}/manage/{token}/cancel',      [PublicManageBookingController::class, 'cancel']);
+    Route::post('public/sites/{slug}/manage/{token}/reschedule',  [PublicManageBookingController::class, 'reschedule']);
 
     // ── Authentication (central) ───────────────────────────────────────────
     Route::prefix('auth')->group(function () {
