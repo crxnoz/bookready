@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Admin\AdminTenantsController;
 use App\Http\Controllers\Api\AppointmentPaymentWebhookController;
 use App\Http\Controllers\Api\Auth\AuthController;
+use App\Http\Controllers\Api\Auth\GoogleAuthController;
 use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\Editor\AccountController;
@@ -55,6 +56,10 @@ Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('register', [RegisterController::class, 'store']);
         Route::post('login',    [AuthController::class, 'login']);
+
+        // Google sign-in — sign-up via Google is intentionally not supported.
+        Route::get('google/redirect', [GoogleAuthController::class, 'redirect']);
+        Route::get('google/callback', [GoogleAuthController::class, 'callback']);
 
         Route::middleware('auth:sanctum')->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);

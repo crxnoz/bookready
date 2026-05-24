@@ -1,18 +1,36 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { login } from '@/lib/api'
 import { setToken, setTenantId } from '@/lib/auth'
 import AuthShell from '@/components/auth/AuthShell'
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
+const GOOGLE_REDIRECT_URL = `${API_BASE}/auth/google/redirect`
+
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<AuthShell><p className="text-xs text-muted-text">Loading…</p></AuthShell>}>
+      <LoginInner />
+    </Suspense>
+  )
+}
+
+function LoginInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Surface any error returned from the Google OAuth bridge.
+  useEffect(() => {
+    const gerr = searchParams?.get('google_error')
+    if (gerr) setError(gerr)
+  }, [searchParams])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -113,16 +131,14 @@ export default function LoginPage() {
         <div className="flex-1 h-px bg-[rgba(18,18,18,0.10)]" />
       </div>
 
-      {/* Google placeholder */}
-      <button
-        type="button"
-        disabled
-        className="w-full flex items-center justify-center gap-3 border border-[rgba(18,18,18,0.12)] bg-white py-3 text-sm font-medium text-muted-text cursor-not-allowed opacity-60"
-        title="Google login coming soon"
+      {/* Google sign-in (existing accounts only) */}
+      <a
+        href={GOOGLE_REDIRECT_URL}
+        className="w-full flex items-center justify-center gap-3 border border-[rgba(18,18,18,0.15)] bg-white py-3 text-sm font-medium text-near-black hover:border-near-black transition-colors"
       >
         <GoogleIcon />
         Continue with Google
-      </button>
+      </a>
 
       {/* Footer */}
       <p className="text-xs text-muted-text mt-6 text-center">
