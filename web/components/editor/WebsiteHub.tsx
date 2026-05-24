@@ -802,23 +802,27 @@ function HeaderPanel({
       </div>
 
       {/* Images */}
-      <div className="space-y-4 pt-2 border-t border-[rgba(18,18,18,0.08)]">
-        <ImageUploadField
-          label="Cover image"
-          value={form.value.cover_image_url ?? null}
-          onChange={v => form.patch({ cover_image_url: v })}
-          kind="header"
-          aspectClass="aspect-[16/9]"
-          hint="Wide image shown behind your header. JPG, PNG, WebP, or HEIC up to 10 MB."
-        />
-        <ImageUploadField
-          label="Avatar / logo image"
-          value={form.value.avatar_image_url ?? null}
-          onChange={v => form.patch({ avatar_image_url: v })}
-          kind="header"
-          aspectClass="aspect-square"
-          hint="Square photo or logo shown over the header."
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+        <div className="max-w-[260px]">
+          <ImageUploadField
+            label="Cover image"
+            value={form.value.cover_image_url ?? null}
+            onChange={v => form.patch({ cover_image_url: v })}
+            kind="header"
+            aspectClass="aspect-[16/9]"
+            hint="Wide image behind your header."
+          />
+        </div>
+        <div className="max-w-[180px]">
+          <ImageUploadField
+            label="Avatar / logo"
+            value={form.value.avatar_image_url ?? null}
+            onChange={v => form.patch({ avatar_image_url: v })}
+            kind="header"
+            aspectClass="aspect-square"
+            hint="Square photo or logo."
+          />
+        </div>
       </div>
 
       {/* Identity note */}
