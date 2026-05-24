@@ -915,6 +915,7 @@ function ContentTabsPanel({
         block={settings.steps ?? { heading: 'Advice', items: [] }}
         defaultHeading="Advice"
         icon={ListChecks}
+        itemLabel="Box"
         onSave={(next) => onSaveSettings({ steps: next })}
       />
 
@@ -947,7 +948,7 @@ interface InstructionItem { title: string; body: string }
 interface InstructionBlock { heading: string; items: InstructionItem[] }
 
 function InstructionsEditorPanel({
-  title, subtitle, addLabel, emptyText, block, defaultHeading, icon, onSave,
+  title, subtitle, addLabel, emptyText, block, defaultHeading, icon, itemLabel = 'Step', onSave,
 }: {
   title:          string
   subtitle:       string
@@ -956,6 +957,7 @@ function InstructionsEditorPanel({
   block:          InstructionBlock
   defaultHeading: string
   icon?:          React.ElementType
+  itemLabel?:     string
   onSave:         (next: InstructionBlock) => Promise<void>
 }) {
   // Seed with at least one empty item so the user has something to fill in.
@@ -1033,7 +1035,7 @@ function InstructionsEditorPanel({
             >
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
-                  Step {i + 1}
+                  {itemLabel} {i + 1}
                 </span>
                 <div className="flex items-center gap-1 ml-auto flex-shrink-0">
                   <button
