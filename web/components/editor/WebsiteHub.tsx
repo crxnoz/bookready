@@ -711,7 +711,11 @@ function OverviewPanel({
         <div className="space-y-1.5">
           {sorted.map(s => {
             const Icon = SECTION_ICONS[s.section_type] ?? FileText
-            const label = s.title ?? SECTION_LABEL_FOR_KEY[s.section_key] ?? s.section_key
+            // SECTION_LABEL_FOR_KEY wins over the DB title so renames in
+            // this map propagate to all tenants without needing a per-row
+            // data migration. Fall back to s.title for anything we don't
+            // explicitly know about, then to the raw section_key.
+            const label = SECTION_LABEL_FOR_KEY[s.section_key] ?? s.title ?? s.section_key
             const busy = busyId === s.id
             // Row is no longer a Link — only the editor-jump icon is clickable
             // for navigation. The visibility toggle stays its own button.
