@@ -158,7 +158,33 @@ class DangerController extends Controller
         $tenantId   = $tenant->id;
         $ownerEmail = $user->email;
 
-        // ── Best-effort cleanups (R2 + Cashier subscription cancellation) ──
+        // ── Cancel BookReady SaaS subscription FIRST ──
+        // If we don't, the deleted owner keeps getting charged monthly
+        // with no UI to stop it. Cashier's cancelNow() terminates the
+        // Stripe subscription immediately (no prorated refund). Runs
+        // before the destructive DB delete so a Stripe failure surfaces
+        // cleanly instead of leaving the account in a half-deleted state.
+        try {
+            if (method_exists($tenant, 'subscriptions')) {
+                foreach ($tenant->subscriptions as $sub) {
+                    if ($sub->valid() || $sub->onGracePeriod() || $sub->onTrial()) {
+                        $sub->cancelNow();
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error('Self-delete: subscription cancellation failed', [
+                'tenant' => $tenant->id,
+                'error'  => $e->getMessage(),
+            ]);
+            // Don't proceed if we can't cancel billing — the user would
+            // keep getting charged. They can retry or contact support.
+            return response()->json([
+                'message' => 'Could not cancel your subscription. Try again, or email hello@mybookready.com so we can stop billing manually.',
+            ], 502);
+        }
+
+        // ── Best-effort cleanups (R2 uploads) ──
         try {
             Storage::disk('r2')->deleteDirectory("tenants/{$tenant->id}");
         } catch (\Throwable $e) {

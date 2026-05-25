@@ -3007,12 +3007,13 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           <div className="bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] px-3.5 py-3 text-[12px] leading-relaxed text-[#7a1f1f]">
-            <p className="font-semibold mb-1.5">This will permanently delete:</p>
+            <p className="font-semibold mb-1.5">This will permanently:</p>
             <ul className="list-disc list-outside pl-4 space-y-0.5">
-              <li>Your booking site at <span className="font-mono text-[11px]">{slug ?? '…'}.bkrdy.me</span></li>
-              <li>All appointments, customers, services, staff, and gallery items</li>
-              <li>Your owner login and every active session</li>
-              <li>Your Stripe Connect link (Stripe history is preserved)</li>
+              <li>Cancel your BookReady subscription &mdash; no more charges</li>
+              <li>Delete your booking site at <span className="font-mono text-[11px]">{slug ?? '…'}.bkrdy.me</span></li>
+              <li>Delete all appointments, customers, services, staff, and gallery items</li>
+              <li>Delete your owner login and every active session</li>
+              <li>Disconnect your Stripe Connect link (Stripe history + balance stays in Stripe)</li>
             </ul>
             <p className="mt-2 font-semibold">There is no undo. Export your data first if you need it.</p>
           </div>
