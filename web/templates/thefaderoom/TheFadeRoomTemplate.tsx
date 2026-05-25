@@ -1150,6 +1150,10 @@ const TFR_CSS = `
   display:flex; flex-wrap:wrap; justify-content:center; gap:10px;
   align-items:stretch;
 }
+/* When there's no tagline <p> between the H1 and the button row, the
+   buttons sit flush against the name. Fall back to a margin equivalent
+   to the missing tagline's bottom-margin so spacing stays consistent. */
+.tfr-header-content h1 + .tfr-header-buttons { margin-top: clamp(24px, 3vw, 38px); }
 .tfr-header-buttons > .tfr-header-btn { flex:0 0 calc((100% - 40px) / 5); }
 /* Hide call button on devices with a precise pointer (desktops, laptops). */
 @media (hover:hover) and (pointer:fine) {

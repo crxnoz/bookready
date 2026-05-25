@@ -13,6 +13,11 @@
  *   - 'route'     — separate routes per tab           (Bookings sub-pages)
  */
 
+import {
+  LayoutDashboard, Building2, Sparkles, FileText, Image as ImageIcon,
+  Shield, Plus, Settings as SettingsIcon, Search,
+} from 'lucide-react'
+
 export type EditorSectionKey =
   | 'dashboard'
   | 'website'
@@ -27,6 +32,8 @@ export interface InnerNavItem {
   /** Tab identifier (used as the ?tab= value for query-tab mode) */
   id: string
   label: string
+  /** Optional Lucide icon shown before the label */
+  icon?: React.ElementType
   /** Optional: full path override (route mode), or for routes that aren't `{hub}?tab={id}` */
   href?: string
   /** Optional soon/preview marker; the tab still renders but is visibly muted */
@@ -64,16 +71,18 @@ export const EDITOR_SECTIONS: EditorSectionConfig[] = [
     pathPrefixes: ['/editor/website', '/editor/branding', '/editor/template'],
     innerNavMode: 'query-tab',
     innerNav: [
-      { id: 'overview',     label: 'Overview' },
-      { id: 'business',     label: 'Business Info' },
-      { id: 'header',       label: 'Hero' },
-      { id: 'content',      label: 'Content' },
-      { id: 'gallery',      label: 'Gallery' },
-      { id: 'before_after', label: 'Before & After' },
-      { id: 'policies',     label: 'Policies' },
-      { id: 'additionals',  label: 'Additionals' },
-      { id: 'footer',       label: 'Footer' },
-      { id: 'seo',          label: 'SEO',           soon: true },
+      // Before & After merged into Gallery; user can manage both lists from
+      // a single 'gallery' tab. Keys for everything else stay stable so
+      // bookmarks + deep-links keep working.
+      { id: 'overview',     label: 'Overview',      icon: LayoutDashboard },
+      { id: 'business',     label: 'Business Info', icon: Building2 },
+      { id: 'header',       label: 'Hero',          icon: Sparkles },
+      { id: 'content',      label: 'Content',       icon: FileText },
+      { id: 'gallery',      label: 'Gallery',       icon: ImageIcon },
+      { id: 'policies',     label: 'Policies',      icon: Shield },
+      { id: 'additionals',  label: 'Additionals',   icon: Plus },
+      { id: 'footer',       label: 'Footer',        icon: SettingsIcon },
+      { id: 'seo',          label: 'SEO',           icon: Search, soon: true },
     ],
     defaultTitle:    'Website',
     defaultSubtitle: 'Manage your public site, template content, galleries, and brand details.',

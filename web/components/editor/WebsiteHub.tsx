@@ -49,12 +49,14 @@ import { cn } from '@/lib/cn'
 
 type SubTab =
   | 'overview' | 'business' | 'header' | 'content'
-  | 'gallery'  | 'before_after' | 'policies'
+  | 'gallery' | 'policies'
   | 'additionals' | 'footer' | 'seo'
 
+// 'before_after' kept as a redirect target so deep-links from old emails /
+// bookmarks land on the merged Gallery tab instead of 404ing.
 const VALID_TABS: SubTab[] = [
   'overview', 'business', 'header', 'content',
-  'gallery', 'before_after', 'policies',
+  'gallery', 'policies',
   'additionals', 'footer', 'seo',
 ]
 
@@ -69,9 +71,24 @@ const SECTION_LABEL_FOR_KEY: Record<string, string> = {
   policy:             'Policy',
   about:              'About',
   before_after:       'Before & After',
-  steps:              'Steps',
-  before_appointment: 'Before Your Appointment',
+  steps:              'Advice',
+  before_appointment: 'Timeline',
   footer:             'Footer',
+}
+
+// Maps a section key to the inner Website tab that edits it. Used by the
+// Section visibility row's link icon so owners can jump straight to the
+// right editor instead of hunting through tabs.
+const SECTION_KEY_TO_TAB: Record<string, SubTab> = {
+  header:             'header',
+  book:               'business',  // Booking section is configured via Business + Bookings hub
+  gallery:            'gallery',
+  policy:             'policies',
+  about:              'content',
+  before_after:       'gallery',
+  steps:              'content',
+  before_appointment: 'content',
+  footer:             'footer',
 }
 
 const SECTION_ICONS: Record<string, React.ElementType> = {
@@ -166,7 +183,8 @@ export default function WebsiteHub() {
     <div className="flex flex-col min-h-full bg-cream">
 
       <div className="flex-1">
-        <div className="px-4 md:px-8 py-6 w-full">
+        {/* Matches PaymentsHub/SettingsHub padding so all hubs feel aligned. */}
+        <div className="p-3 sm:p-5 md:p-6 w-full">
 
           {/* Site link toolbar — page title now lives in EditorShell */}
           {slug && (
@@ -217,8 +235,12 @@ export default function WebsiteHub() {
                 />
               )}
 
-              {tab === 'gallery'      && <GalleryManagerPanel />}
-              {tab === 'before_after' && <BeforeAfterManagerPanel />}
+              {tab === 'gallery' && (
+                <>
+                  <GalleryManagerPanel />
+                  <BeforeAfterManagerPanel />
+                </>
+              )}
               {tab === 'policies'     && <PoliciesEditorPanel />}
 
               {tab === 'additionals' && (
@@ -691,6 +713,8 @@ function OverviewPanel({
             const Icon = SECTION_ICONS[s.section_type] ?? FileText
             const label = s.title ?? SECTION_LABEL_FOR_KEY[s.section_key] ?? s.section_key
             const busy = busyId === s.id
+            // Row is no longer a Link — only the editor-jump icon is clickable
+            // for navigation. The visibility toggle stays its own button.
             return (
               <div
                 key={s.id}
@@ -710,23 +734,37 @@ function OverviewPanel({
                     </span>
                   )}
                 </div>
-                {s.is_locked ? (
-                  <span className="text-[10px] uppercase tracking-[0.08em] text-muted-text font-semibold">Always on</span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => toggle(s)}
-                    disabled={busy}
-                    className={cn(
-                      'inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.06em] uppercase border px-2 py-1.5 flex-shrink-0',
-                      s.is_enabled
-                        ? 'bg-white border-[rgba(18,18,18,0.15)] text-near-black hover:border-near-black'
-                        : 'bg-near-black border-near-black text-white',
-                    )}
-                  >
-                    {s.is_enabled ? <><Eye size={11} /> Visible</> : <><EyeOff size={11} /> Hidden</>}
-                  </button>
-                )}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {/* Jump-to-editor link — only this icon is clickable for nav. */}
+                  {SECTION_KEY_TO_TAB[s.section_key] && (
+                    <Link
+                      href={hrefFor(SECTION_KEY_TO_TAB[s.section_key])}
+                      scroll={false}
+                      title={`Edit ${label}`}
+                      aria-label={`Edit ${label}`}
+                      className="p-1.5 border border-[rgba(18,18,18,0.10)] bg-white text-muted-text hover:text-near-black hover:border-near-black transition-colors"
+                    >
+                      <LinkIcon size={11} />
+                    </Link>
+                  )}
+                  {s.is_locked ? (
+                    <span className="text-[10px] uppercase tracking-[0.08em] text-muted-text font-semibold pl-1">Always on</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => toggle(s)}
+                      disabled={busy}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.06em] uppercase border px-2 py-1.5',
+                        s.is_enabled
+                          ? 'bg-white border-[rgba(18,18,18,0.15)] text-near-black hover:border-near-black'
+                          : 'bg-near-black border-near-black text-white',
+                      )}
+                    >
+                      {s.is_enabled ? <><Eye size={11} /> Visible</> : <><EyeOff size={11} /> Hidden</>}
+                    </button>
+                  )}
+                </div>
               </div>
             )
           })}

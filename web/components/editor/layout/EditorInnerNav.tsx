@@ -22,11 +22,14 @@ export default function EditorInnerNav({
   if (section.innerNav.length === 0) return null
 
   return (
-    <div className="flex flex-row overflow-x-auto border-b border-[rgba(18,18,18,0.10)] bg-white flex-shrink-0">
+    // overflow-y-hidden kills the spurious vertical scrollbar that browsers
+    // sometimes show when the strip's content height is exactly its container.
+    <div className="flex flex-row overflow-x-auto overflow-y-hidden border-b border-[rgba(18,18,18,0.10)] bg-white flex-shrink-0">
       <div className="flex flex-row px-2 gap-0 min-w-max">
         {section.innerNav.map(item => {
           const active = activeId === item.id
           const href   = hrefForInnerTab(section, item)
+          const Icon   = item.icon
           return (
             <Link
               key={item.id}
@@ -35,6 +38,7 @@ export default function EditorInnerNav({
               aria-current={active ? 'page' : undefined}
               className={cn(
                 'px-3 py-3 text-[11px] font-medium whitespace-nowrap flex-shrink-0',
+                'inline-flex items-center gap-1.5',
                 'border-b-2 -mb-px transition-colors',
                 active
                   ? 'border-near-black text-near-black font-semibold'
@@ -43,9 +47,10 @@ export default function EditorInnerNav({
                   : 'border-transparent text-[rgba(18,18,18,0.6)] hover:text-near-black',
               )}
             >
-              {item.label}
+              {Icon && <Icon size={12} strokeWidth={1.8} />}
+              <span>{item.label}</span>
               {item.soon && (
-                <span className="ml-1.5 text-[8px] font-bold tracking-[0.06em] uppercase text-muted-text border border-[rgba(18,18,18,0.15)] bg-cream px-1 py-px align-middle">
+                <span className="ml-1 text-[8px] font-bold tracking-[0.06em] uppercase text-muted-text border border-[rgba(18,18,18,0.15)] bg-cream px-1 py-px align-middle">
                   Soon
                 </span>
               )}

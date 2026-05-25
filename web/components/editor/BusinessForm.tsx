@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import { getEditorBusiness, updateEditorBusiness } from '@/lib/api'
 import { BusinessProfile } from '@/lib/types'
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const EMPTY: BusinessProfile = {
   business_name: '',
@@ -40,12 +42,38 @@ export default function BusinessForm({ onAfterSave }: { onAfterSave?: () => void
       })
   }, [])
 
+  // Track which fields the user has interacted with — so we don't shout
+  // "required" before they've even touched the form.
+  const [touched, setTouched] = useState<{ business_name?: boolean; public_email?: boolean }>({})
+
   function set(field: keyof BusinessProfile, value: string | boolean) {
     setForm(prev => ({ ...prev, [field]: value }))
     if (status === 'saved' || status === 'error') setStatus('idle')
   }
 
+  // Required-field validation. Business name + public email are mandatory
+  // because they're used in client confirmation emails and on the public
+  // booking site — leaving them blank produces broken-looking output.
+  const validation = useMemo(() => {
+    const nameTrim  = (form.business_name ?? '').trim()
+    const emailTrim = (form.public_email ?? '').trim()
+    return {
+      business_name: nameTrim.length === 0 ? 'Business name is required.' : null,
+      public_email:  emailTrim.length === 0
+                       ? 'A public email is required.'
+                       : (! EMAIL_RE.test(emailTrim) ? 'Enter a valid email address.' : null),
+    }
+  }, [form.business_name, form.public_email])
+
+  const hasErrors = !! (validation.business_name || validation.public_email)
+
   async function handleSave() {
+    // Belt-and-suspenders: button is disabled too, but if a keyboard user
+    // gets here we still want to surface the errors instead of POSTing.
+    if (hasErrors) {
+      setTouched({ business_name: true, public_email: true })
+      return
+    }
     setStatus('saving')
     setErrorMsg(null)
     try {
@@ -85,11 +113,17 @@ export default function BusinessForm({ onAfterSave }: { onAfterSave?: () => void
 
       {/* Basic info */}
       <div className="space-y-4">
-        <Input
-          label="Business Name"
-          value={form.business_name ?? ''}
-          onChange={e => set('business_name', e.target.value)}
-        />
+        <div>
+          <Input
+            label="Business Name *"
+            value={form.business_name ?? ''}
+            onChange={e => set('business_name', e.target.value)}
+            onBlur={() => setTouched(t => ({ ...t, business_name: true }))}
+          />
+          {touched.business_name && validation.business_name && (
+            <p className="text-[11px] text-red-600 mt-1">{validation.business_name}</p>
+          )}
+        </div>
         <Input
           label="Tagline"
           value={form.tagline ?? ''}
@@ -118,12 +152,18 @@ export default function BusinessForm({ onAfterSave }: { onAfterSave?: () => void
             value={form.public_phone ?? ''}
             onChange={e => set('public_phone', e.target.value)}
           />
-          <Input
-            label="Email"
-            type="email"
-            value={form.public_email ?? ''}
-            onChange={e => set('public_email', e.target.value)}
-          />
+          <div>
+            <Input
+              label="Email *"
+              type="email"
+              value={form.public_email ?? ''}
+              onChange={e => set('public_email', e.target.value)}
+              onBlur={() => setTouched(t => ({ ...t, public_email: true }))}
+            />
+            {touched.public_email && validation.public_email && (
+              <p className="text-[11px] text-red-600 mt-1">{validation.public_email}</p>
+            )}
+          </div>
         </div>
 
         <Input
@@ -163,11 +203,18 @@ export default function BusinessForm({ onAfterSave }: { onAfterSave?: () => void
 
       {/* Save */}
       <div className="flex items-center gap-3 pt-1 pb-2">
-        <Button onClick={handleSave} size="md" disabled={status === 'saving'}>
+        <Button
+          onClick={handleSave}
+          size="md"
+          disabled={status === 'saving' || hasErrors}
+        >
           {status === 'saving' ? 'Saving…' : 'Save Changes'}
         </Button>
         {status === 'saved' && (
           <span className="text-xs text-green-600 font-semibold">Saved ✓</span>
+        )}
+        {hasErrors && (
+          <span className="text-xs text-muted-text">Fix required fields to save.</span>
         )}
       </div>
     </div>
