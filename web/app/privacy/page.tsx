@@ -13,7 +13,7 @@ export default function PrivacyPage() {
         BookReady is a booking-website and appointment-management tool for beauty
         professionals. We try to keep this policy plain enough that you can actually
         read it. If anything is unclear, email{' '}
-        <a href="mailto:hello@bkrdy.me">hello@bkrdy.me</a> and we will explain.
+        <a href="mailto:hello@mybookready.com">hello@mybookready.com</a> and we will explain.
       </p>
 
       <h2>Who this applies to</h2>
@@ -172,7 +172,7 @@ export default function PrivacyPage() {
         <code>app.bkrdy.me</code> — name, email, password, business details, photos.
       </p>
       <p>
-        You can also email <a href="mailto:hello@bkrdy.me">hello@bkrdy.me</a> to:
+        You can also email <a href="mailto:hello@mybookready.com">hello@mybookready.com</a> to:
       </p>
       <ul>
         <li>Ask what we have about you.</li>
@@ -209,7 +209,7 @@ export default function PrivacyPage() {
       <h2>Contact</h2>
       <p>
         Questions about this policy or anything we hold about you:{' '}
-        <a href="mailto:hello@bkrdy.me">hello@bkrdy.me</a>.
+        <a href="mailto:hello@mybookready.com">hello@mybookready.com</a>.
       </p>
     </LegalShell>
   )

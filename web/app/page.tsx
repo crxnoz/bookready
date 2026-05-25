@@ -248,8 +248,8 @@ function SiteFooter() {
           <Link href="/terms" className="hover:text-near-black transition-colors">Terms</Link>
           <Link href="/login" className="hover:text-near-black transition-colors">Log in</Link>
           <Link href="/register" className="hover:text-near-black transition-colors">Sign up</Link>
-          <a href="mailto:hello@bkrdy.me" className="hover:text-near-black transition-colors">
-            hello@bkrdy.me
+          <a href="mailto:hello@mybookready.com" className="hover:text-near-black transition-colors">
+            hello@mybookready.com
           </a>
         </div>
       </div>

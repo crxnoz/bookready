@@ -28,7 +28,7 @@ export default function TermsPage() {
         You need to be at least 18 and able to enter a contract. You are responsible
         for everything that happens under your account, including keeping your
         password safe. Tell us right away at{' '}
-        <a href="mailto:hello@bkrdy.me">hello@bkrdy.me</a> if you think your account
+        <a href="mailto:hello@mybookready.com">hello@mybookready.com</a> if you think your account
         has been used without your permission.
       </p>
       <p>
@@ -183,7 +183,7 @@ export default function TermsPage() {
 
       <h2>14. Contact</h2>
       <p>
-        Questions? <a href="mailto:hello@bkrdy.me">hello@bkrdy.me</a>.
+        Questions? <a href="mailto:hello@mybookready.com">hello@mybookready.com</a>.
       </p>
     </LegalShell>
   )
