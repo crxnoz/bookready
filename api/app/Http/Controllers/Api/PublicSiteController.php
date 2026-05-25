@@ -97,6 +97,35 @@ class PublicSiteController extends Controller
         $profileArr  = $profile  ? (array) $profile->toArray()  : null;
         $policiesArr = $policies ? (array) $policies->toArray() : null;
 
+        // Normalize custom_groups to always be an array on the public payload.
+        // The model casts null → null (not []), so older policy rows would
+        // come through with custom_groups: null. The template renders cleaner
+        // when it can iterate unconditionally.
+        if (is_array($policiesArr)) {
+            $rawGroups = $policiesArr['custom_groups'] ?? null;
+            $policiesArr['custom_groups'] = is_array($rawGroups)
+                ? array_values(array_map(function ($g) {
+                    if (! is_array($g)) return null;
+                    $items = is_array($g['items'] ?? null) ? $g['items'] : [];
+                    return [
+                        'heading' => (string) ($g['heading'] ?? ''),
+                        'items'   => array_values(array_filter(array_map(function ($it) {
+                            if (! is_array($it)) return null;
+                            return [
+                                'title'   => (string) ($it['title']   ?? ''),
+                                'content' => (string) ($it['content'] ?? ''),
+                            ];
+                        }, $items))),
+                    ];
+                }, $rawGroups))
+                : [];
+            // Filter nulls that array_map produced for non-array entries.
+            $policiesArr['custom_groups'] = array_values(array_filter(
+                $policiesArr['custom_groups'],
+                fn ($g) => $g !== null,
+            ));
+        }
+
         $staff = DB::table('staff')
             ->where('is_active', true)
             ->orderBy('sort_order', 'asc')
