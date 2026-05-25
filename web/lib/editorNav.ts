@@ -14,7 +14,7 @@
  */
 
 import {
-  LayoutDashboard, Building2, Sparkles, FileText, Image as ImageIcon,
+  LayoutDashboard, Info, Sparkles, FileText, Image as ImageIcon,
   Shield, Plus, Settings as SettingsIcon, Search,
 } from 'lucide-react'
 
@@ -75,7 +75,7 @@ export const EDITOR_SECTIONS: EditorSectionConfig[] = [
       // a single 'gallery' tab. Keys for everything else stay stable so
       // bookmarks + deep-links keep working.
       { id: 'overview',     label: 'Overview',      icon: LayoutDashboard },
-      { id: 'business',     label: 'Business Info', icon: Building2 },
+      { id: 'business',     label: 'Business Info', icon: Info },
       { id: 'header',       label: 'Hero',          icon: Sparkles },
       { id: 'content',      label: 'Content',       icon: FileText },
       { id: 'gallery',      label: 'Gallery',       icon: ImageIcon },

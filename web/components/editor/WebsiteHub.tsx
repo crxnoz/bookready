@@ -1003,8 +1003,8 @@ const TAB_LABEL_FIELDS: { key: keyof TemplateSettings['tabs']; sectionKey: strin
   { key: 'policy_label',             sectionKey: 'policy',             label: 'Policy tab' },
   { key: 'about_label',              sectionKey: 'about',              label: 'About tab' },
   { key: 'results_label',            sectionKey: 'before_after',       label: 'Before & After tab' },
-  { key: 'steps_label',              sectionKey: 'steps',              label: 'Steps tab' },
-  { key: 'before_appointment_label', sectionKey: 'before_appointment', label: 'Before Your Appointment tab' },
+  { key: 'steps_label',              sectionKey: 'steps',              label: 'Advice tab' },
+  { key: 'before_appointment_label', sectionKey: 'before_appointment', label: 'Timeline tab' },
 ]
 
 function ContentTabsPanel({
@@ -1147,7 +1147,7 @@ function SeoComingSoonPanel() {
   )
 }
 
-// ── Instructions editor (Steps & Before Your Appointment) ───────────────────
+// ── Instructions editor (Advice & Timeline — internal keys are 'steps' and 'before_appointment') ───────────────────
 
 const INSTRUCTIONS_MAX_ITEMS = 8
 

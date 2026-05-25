@@ -126,8 +126,8 @@ class TemplateDefaults
             ['section_key' => 'policy',             'section_type' => 'policy',        'title' => 'Policy',                  'is_locked' => false, 'sort_order' => 4],
             ['section_key' => 'about',              'section_type' => 'about',         'title' => 'About',                   'is_locked' => false, 'sort_order' => 5],
             ['section_key' => 'before_after',       'section_type' => 'before_after',  'title' => 'Before & After',          'is_locked' => false, 'sort_order' => 6],
-            ['section_key' => 'steps',              'section_type' => 'instructions',  'title' => 'Steps',                   'is_locked' => false, 'sort_order' => 7],
-            ['section_key' => 'before_appointment', 'section_type' => 'instructions',  'title' => 'Before Your Appointment', 'is_locked' => false, 'sort_order' => 8],
+            ['section_key' => 'steps',              'section_type' => 'instructions',  'title' => 'Advice',                  'is_locked' => false, 'sort_order' => 7],
+            ['section_key' => 'before_appointment', 'section_type' => 'instructions',  'title' => 'Timeline',                'is_locked' => false, 'sort_order' => 8],
             ['section_key' => 'footer',             'section_type' => 'footer',        'title' => 'Footer',                  'is_locked' => true,  'sort_order' => 99],
         ];
     }
