@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Auth\PasswordResetController;
 use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\Editor\AccountController;
+use App\Http\Controllers\Api\Editor\DangerController;
 use App\Http\Controllers\Api\Editor\AppointmentsController;
 use App\Http\Controllers\Api\Editor\AvailabilityController;
 use App\Http\Controllers\Api\Editor\BusinessPolicyController;
@@ -148,6 +149,11 @@ Route::prefix('v1')->group(function () {
         Route::patch ('account',                              [AccountController::class, 'update']);
         Route::post  ('account/password',                     [AccountController::class, 'changePassword']);
         Route::post  ('account/sign-out-everywhere',          [AccountController::class, 'signOutEverywhere']);
+
+        // ── Danger Zone (destructive owner actions) ────────────────────
+        Route::get   ('danger/export/{type}',                 [DangerController::class, 'export'])
+            ->where('type', 'appointments|customers');
+        Route::post  ('danger/delete-account',                [DangerController::class, 'deleteAccount']);
 
         Route::get('settings/payments',               [PaymentSettingsController::class, 'show']);
         Route::patch('settings/payments',             [PaymentSettingsController::class, 'update']);

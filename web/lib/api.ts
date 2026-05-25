@@ -563,6 +563,44 @@ export async function getConnectDashboardLink(): Promise<ConnectDashboardLinkRes
 }
 
 /**
+ * Build a download URL for a Danger Zone CSV export. The endpoint requires
+ * an Authorization header, so we can't just window.open it — we need to
+ * fetch with the token and trigger a blob download on the client.
+ */
+export async function downloadEditorExport(
+  type: 'appointments' | 'customers',
+): Promise<{ blob: Blob; filename: string }> {
+  const token = getToken()
+  if (! token) throw new Error('Not authenticated.')
+  const res = await fetch(`${API_BASE}/editor/danger/export/${type}`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: 'text/csv' },
+  })
+  if (! res.ok) {
+    const err = await res.json().catch(() => ({ message: 'Export failed' }))
+    throw new Error(err.message ?? 'Export failed')
+  }
+  const disp = res.headers.get('Content-Disposition') ?? ''
+  const match = disp.match(/filename="([^"]+)"/)
+  const filename = match?.[1] ?? `${type}.csv`
+  const blob = await res.blob()
+  return { blob, filename }
+}
+
+/**
+ * Permanently delete the owner's tenant. Caller is responsible for
+ * clearing local auth state + redirecting after a 200 response.
+ */
+export async function deleteEditorAccount(payload: {
+  password: string
+  confirm_slug: string
+}): Promise<{ message: string }> {
+  return request<{ message: string }>('/editor/danger/delete-account', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+/**
  * Sends the customer a Stripe Checkout link for the remaining balance
  * on this appointment, and returns the link itself so the owner can
  * also copy it manually. Each call mints a fresh Stripe session.

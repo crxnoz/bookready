@@ -3,11 +3,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
+import { clearAuth } from '@/lib/auth'
 import {
   Building2, Calendar, CalendarClock, CreditCard, Bell, FileText, UserCircle,
   Plug, AlertTriangle, ChevronRight, Loader2, Check, AlertCircle,
-  DollarSign, Instagram, Mail, MapPin, MessageSquare, Phone,
-  Percent, Lock, ExternalLink, RefreshCw, ShieldCheck, Send, Webhook, Sparkles,
+  DollarSign, Download, Instagram, Mail, MapPin, MessageSquare, Phone,
+  Percent, Lock, ExternalLink, RefreshCw, ShieldCheck, Send, Trash2, Webhook, Sparkles,
+  X,
 } from 'lucide-react'
 import {
   getEditorPaymentSettings,
@@ -27,6 +30,8 @@ import {
   updateEditorBusiness,
   getEditorPolicies,
   updateEditorPolicies,
+  downloadEditorExport,
+  deleteEditorAccount,
 } from '@/lib/api'
 import type {
   AccountProfile,
@@ -73,7 +78,7 @@ const GROUPS: GroupDef[] = [
   { tab: 'policies',      label: 'Policies',           hint: 'Enforcement rules + client-facing copy',         icon: FileText,     status: 'ready' },
   { tab: 'account',       label: 'Account',            hint: 'Owner profile, password, sign-out everywhere',   icon: UserCircle,   status: 'ready' },
   { tab: 'integrations',  label: 'Integrations',       hint: 'Stripe, calendar, SMS, webhooks',                icon: Plug,         status: 'ready' },
-  { tab: 'danger',        label: 'Danger Zone',        hint: 'Disable booking, delete tenant, exports',        icon: AlertTriangle, status: 'soon', tone: 'danger' },
+  { tab: 'danger',        label: 'Danger Zone',        hint: 'Pause bookings, export data, delete account',    icon: AlertTriangle, status: 'ready', tone: 'danger' },
 ]
 
 function hrefFor(tab: SettingsTab): string {
@@ -100,7 +105,7 @@ export default function SettingsHub() {
       {tab === 'policies'      && <PoliciesSettingsPanel />}
       {tab === 'account'       && <AccountSettingsPanel />}
       {tab === 'integrations'  && <IntegrationsSettingsPanel />}
-      {tab === 'danger'        && <PlaceholderPanel tab={tab} />}
+      {tab === 'danger'        && <DangerSettingsPanel />}
     </div>
   )
 }
@@ -2742,6 +2747,334 @@ function SaveBar({
           : <><Check size={12} /> Save changes</>
         }
       </button>
+    </div>
+  )
+}
+
+// ── Danger Zone panel ───────────────────────────────────────────────────────
+
+function DangerSettingsPanel() {
+  // We pull the booking-enabled state for the "pause bookings" status card
+  // — but the actual edit lives in Booking Settings to keep state in one place.
+  const [bookingSettings, setBookingSettings] = useState<BookingSettings | null>(null)
+  const [loading,         setLoading]         = useState(true)
+  const [exportBusy,      setExportBusy]      = useState<null | 'appointments' | 'customers'>(null)
+  const [exportErr,       setExportErr]       = useState<string | null>(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    getEditorBookingSettings()
+      .then(d => { if (!cancelled) setBookingSettings(d) })
+      .catch(() => { /* non-fatal — we still render the rest */ })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  async function handleExport(type: 'appointments' | 'customers') {
+    setExportBusy(type); setExportErr(null)
+    try {
+      const { blob, filename } = await downloadEditorExport(type)
+      const url = URL.createObjectURL(blob)
+      const a   = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setExportErr(e instanceof Error ? e.message : 'Export failed')
+    } finally {
+      setExportBusy(null)
+    }
+  }
+
+  const bookingsPaused = bookingSettings && bookingSettings.booking_enabled === false
+
+  return (
+    <div className="space-y-3">
+      <Link
+        href={hrefFor('overview')}
+        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
+      >
+        ← Back to Settings
+      </Link>
+
+      <header className="px-1">
+        <h1 className="text-base font-bold text-near-black">Danger Zone</h1>
+        <p className="text-xs text-muted-text mt-0.5">
+          Destructive and archival actions. Read carefully &mdash; these affect real client data and money.
+        </p>
+      </header>
+
+      {/* Pause bookings (read-only status with deep-link to source) */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <span className={cn(
+              'w-9 h-9 flex items-center justify-center border flex-shrink-0',
+              bookingsPaused
+                ? 'bg-[rgba(180,120,0,0.08)] border-[rgba(180,120,0,0.35)] text-[#8a5a00]'
+                : 'bg-cream border-[rgba(18,18,18,0.08)] text-near-black',
+            )}>
+              <Calendar size={15} strokeWidth={1.8} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-near-black">Pause bookings</p>
+              <p className="text-[11px] text-muted-text mt-0.5">
+                {loading
+                  ? 'Checking status…'
+                  : bookingsPaused
+                    ? 'Bookings are paused. Your site shows an unavailable message; existing appointments are untouched.'
+                    : 'Bookings are accepting new clients. Pause to temporarily stop accepting bookings without deleting anything.'}
+              </p>
+            </div>
+          </div>
+          <Link
+            href={hrefFor('booking')}
+            className="text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.20)] bg-white px-3 py-1.5 hover:border-near-black transition-colors flex-shrink-0"
+          >
+            {bookingsPaused ? 'Manage' : 'Pause →'}
+          </Link>
+        </div>
+      </section>
+
+      {/* Export data */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <SectionTitle
+          icon={Download}
+          label="Export your data"
+          hint="Download a CSV copy of your bookings and clients. Useful for backups, accounting, or moving off BookReady."
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <ExportCard
+            label="Appointments"
+            description="Every appointment with status, customer, payment, and timestamps."
+            busy={exportBusy === 'appointments'}
+            onClick={() => handleExport('appointments')}
+          />
+          <ExportCard
+            label="Customers"
+            description="Your client list with name, email, phone, and notes."
+            busy={exportBusy === 'customers'}
+            onClick={() => handleExport('customers')}
+          />
+        </div>
+        {exportErr && (
+          <div className="px-3 py-2 bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+            <AlertCircle size={12} /> {exportErr}
+          </div>
+        )}
+      </section>
+
+      {/* Delete account */}
+      <section className="bg-white border border-[rgba(180,40,40,0.30)] p-3.5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <span className="w-9 h-9 flex items-center justify-center border bg-[rgba(180,40,40,0.06)] border-[rgba(180,40,40,0.30)] text-[#b42828] flex-shrink-0">
+              <Trash2 size={15} strokeWidth={1.8} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-[#b42828]">Delete BookReady account</p>
+              <p className="text-[11px] text-muted-text mt-0.5 leading-snug">
+                Permanently deletes your booking site, every appointment, your customer list, and your owner login. Stripe transaction history is preserved in Stripe.
+                This cannot be undone &mdash; export your data first.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowDeleteModal(true)}
+            className="text-[11px] font-bold tracking-[0.08em] uppercase border border-[rgba(180,40,40,0.45)] bg-white text-[#b42828] px-3 py-1.5 hover:bg-[rgba(180,40,40,0.05)] transition-colors flex-shrink-0"
+          >
+            Delete account
+          </button>
+        </div>
+      </section>
+
+      {showDeleteModal && (
+        <DeleteAccountDialog onClose={() => setShowDeleteModal(false)} />
+      )}
+    </div>
+  )
+}
+
+function ExportCard({
+  label, description, busy, onClick,
+}: {
+  label: string
+  description: string
+  busy: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      className={cn(
+        'text-left bg-cream border border-[rgba(18,18,18,0.10)] p-3 flex items-start gap-3 transition-colors',
+        busy ? 'opacity-60 cursor-wait' : 'hover:border-near-black',
+      )}
+    >
+      <span className="w-7 h-7 flex items-center justify-center bg-white border border-[rgba(18,18,18,0.10)] text-near-black flex-shrink-0">
+        {busy
+          ? <Loader2 size={12} className="animate-spin" />
+          : <Download size={12} strokeWidth={1.8} />}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[12px] font-semibold text-near-black">{label}</p>
+        <p className="text-[10.5px] text-muted-text mt-0.5 leading-snug">{description}</p>
+      </div>
+      <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text flex-shrink-0 self-center">
+        {busy ? 'Exporting…' : 'CSV ↓'}
+      </span>
+    </button>
+  )
+}
+
+/**
+ * Multi-step "type your slug + password" deletion dialog. Reads the tenant
+ * slug from localStorage (where setTenantId() stored it at login). On
+ * success: clears local auth, redirects to /login with a deleted=1 flag.
+ */
+function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
+  const router = useRouter()
+  const [slug, setSlug]         = useState<string | null>(null)
+  const [typedSlug, setTyped]   = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy]         = useState(false)
+  const [err,  setErr]          = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setSlug(localStorage.getItem('br_tenant_id'))
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !busy) onClose() }
+    document.body.style.overflow = 'hidden'
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = ''
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [onClose, busy])
+
+  const slugMatches = slug !== null && typedSlug === slug
+  const canSubmit   = slugMatches && password.length > 0 && !busy
+
+  async function handleDelete() {
+    if (!canSubmit || !slug) return
+    setBusy(true); setErr(null)
+    try {
+      await deleteEditorAccount({ password, confirm_slug: slug })
+      clearAuth()
+      router.push('/login?deleted=1')
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Delete failed')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-near-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={() => { if (!busy) onClose() }}
+    >
+      <div
+        className="w-full sm:max-w-[460px] bg-white border-t sm:border border-[rgba(180,40,40,0.30)] flex flex-col max-h-[92vh]"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(180,40,40,0.20)]">
+          <div>
+            <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-[#b42828] mb-1">
+              Permanent deletion
+            </p>
+            <h2 className="text-base font-bold text-near-black tracking-tight">
+              Delete your BookReady account
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => { if (!busy) onClose() }}
+            disabled={busy}
+            className="p-1.5 hover:bg-[rgba(18,18,18,0.05)] transition-colors disabled:opacity-40"
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          <div className="bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] px-3.5 py-3 text-[12px] leading-relaxed text-[#7a1f1f]">
+            <p className="font-semibold mb-1.5">This will permanently delete:</p>
+            <ul className="list-disc list-outside pl-4 space-y-0.5">
+              <li>Your booking site at <span className="font-mono text-[11px]">{slug ?? '…'}.bkrdy.me</span></li>
+              <li>All appointments, customers, services, staff, and gallery items</li>
+              <li>Your owner login and every active session</li>
+              <li>Your Stripe Connect link (Stripe history is preserved)</li>
+            </ul>
+            <p className="mt-2 font-semibold">There is no undo. Export your data first if you need it.</p>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-1.5">
+              Type your workspace slug to confirm
+            </label>
+            <input
+              type="text"
+              value={typedSlug}
+              onChange={e => setTyped(e.target.value)}
+              placeholder={slug ?? 'yourslug'}
+              autoComplete="off"
+              className="w-full bg-white border border-[rgba(18,18,18,0.20)] px-3 py-2.5 text-sm text-near-black font-mono placeholder:text-[#c4bcb6] focus:outline-none focus:border-[#b42828] transition-colors"
+            />
+            {typedSlug && slug && !slugMatches && (
+              <p className="text-[11px] text-[#b42828] mt-1">
+                Doesn&rsquo;t match. Type <span className="font-mono">{slug}</span> exactly.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-1.5">
+              Your current password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              autoComplete="current-password"
+              className="w-full bg-white border border-[rgba(18,18,18,0.20)] px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-[#b42828] transition-colors"
+            />
+          </div>
+
+          {err && (
+            <div className="px-3 py-2 bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+              <AlertCircle size={12} /> {err}
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2 p-5 border-t border-[rgba(180,40,40,0.20)]">
+          <button
+            type="button"
+            onClick={() => { if (!busy) onClose() }}
+            disabled={busy}
+            className="flex-1 border border-[rgba(18,18,18,0.20)] bg-white text-[11px] font-bold tracking-[0.18em] uppercase py-3 text-near-black hover:border-near-black transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={!canSubmit}
+            className="flex-1 bg-[#b42828] text-white text-[11px] font-bold tracking-[0.18em] uppercase py-3 hover:bg-[#8a1d1d] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {busy ? 'Deleting…' : 'Delete forever'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
