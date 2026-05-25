@@ -3,20 +3,23 @@
   $sym       = $curr === 'USD' ? '$' : '';
   $amountStr = $sym . number_format($amount, 2) . ' ' . $curr;
   $apptStr   = \Illuminate\Support\Carbon::parse($appointmentDate)->format('l, F j') . ' at ' . $startTime;
+  $bal       = $isBalance ?? true;
 @endphp
 
 @extends('mail.layouts.bookready', [
-  'preheader' => 'Remaining balance: ' . $amountStr,
-  'eyebrow'   => 'Balance due',
-  'headline'  => 'Pay your remaining balance.',
-  'intro'     => 'Hi ' . $customerName . ' — ' . $businessName . ' is collecting the balance for your ' . $serviceName . ' on ' . $apptStr . '. The link below takes you straight to secure Stripe checkout.',
+  'preheader' => ($bal ? 'Remaining balance: ' : 'Payment to confirm your booking: ') . $amountStr,
+  'eyebrow'   => $bal ? 'Balance due' : 'Confirm your booking',
+  'headline'  => $bal ? 'Pay your remaining balance.' : 'Confirm your booking with a payment.',
+  'intro'     => $bal
+    ? 'Hi ' . $customerName . ' — ' . $businessName . ' is collecting the balance for your ' . $serviceName . ' on ' . $apptStr . '. The link below takes you straight to secure Stripe checkout.'
+    : 'Hi ' . $customerName . ' — ' . $businessName . ' is holding your ' . $serviceName . ' for ' . $apptStr . '. Pay below to lock in the appointment.',
 ])
 
 @section('details')
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
   <tr>
     <td style="padding:14px 16px;background:#F8F6F2;border-left:3px solid #E8C7DA;font-size:13px;line-height:1.7;color:#121212;">
-      <strong style="display:block;margin-bottom:6px;letter-spacing:0.02em;">Amount due</strong>
+      <strong style="display:block;margin-bottom:6px;letter-spacing:0.02em;">{{ $bal ? 'Amount due' : 'Amount to pay' }}</strong>
       <p style="margin:0;font-size:22px;font-weight:700;letter-spacing:-0.01em;color:#121212;">
         {{ $amountStr }}
       </p>

@@ -59,7 +59,8 @@ class AppointmentsController extends Controller
             'payment_method'           => $get('payment_method'),
             'payment_note'             => $get('payment_note'),
             // Stripe payment intent (presence = Stripe-eligible for refund)
-            'stripe_payment_intent_id' => $get('stripe_payment_intent_id'),
+            'stripe_payment_intent_id'    => $get('stripe_payment_intent_id'),
+            'stripe_checkout_session_id'  => $get('stripe_checkout_session_id'),
             // Balance-charge snapshot (null until owner clicks Charge balance)
             'balance_checkout_session_id' => $get('balance_checkout_session_id'),
             'balance_paid_amount'         => $get('balance_paid_amount') !== null ? (float) $get('balance_paid_amount') : null,
@@ -450,17 +451,24 @@ class AppointmentsController extends Controller
             return response()->json(['message' => 'Appointment not found.'], 404);
         }
 
-        $paymentIntent = $row->stripe_payment_intent_id ?? null;
-        if (! $paymentIntent) {
+        $paymentIntent  = $row->stripe_payment_intent_id ?? null;
+        $manualMethod   = $row->payment_method ?? null;
+        $isStripePayment = ! empty($paymentIntent);
+        $isManualPayment = ! $isStripePayment && ! empty($manualMethod);
+
+        if (! $isStripePayment && ! $isManualPayment) {
             tenancy()->end();
             return response()->json([
                 'message' => 'This appointment has no payment to refund.',
             ], 422);
         }
 
-        $paid           = (float) ($row->deposit_paid_amount ?? 0);
-        $alreadyRefunded= (float) ($row->refunded_amount ?? 0);
-        $remaining      = max(0.0, $paid - $alreadyRefunded);
+        // Total paid is deposit_paid_amount + any balance that was paid.
+        $depositPaid = (float) ($row->deposit_paid_amount ?? 0);
+        $balancePaid = (float) ($row->balance_paid_amount ?? 0);
+        $paid        = $depositPaid + $balancePaid;
+        $alreadyRefunded = (float) ($row->refunded_amount ?? 0);
+        $remaining   = max(0.0, $paid - $alreadyRefunded);
         if ($remaining <= 0.0) {
             tenancy()->end();
             return response()->json([
@@ -485,9 +493,28 @@ class AppointmentsController extends Controller
             ? $validated['reason']
             : null;
 
-        // Snapshot values we need for the optimistic update + response.
-        // We do the actual Stripe call OUTSIDE the tenancy scope so a slow
-        // network round-trip doesn't pin a tenant DB connection.
+        // Manual payments skip Stripe — record the refund locally only.
+        // The owner already gave the cash back; we just track that we did it.
+        if ($isManualPayment) {
+            $newRefunded = $alreadyRefunded + $requested;
+            $newStatus   = ($newRefunded + 0.001) >= $paid ? 'refunded' : 'partially_refunded';
+            DB::table('appointments')->where('id', $appointment)->update([
+                'payment_status'  => $newStatus,
+                'refunded_amount' => $newRefunded,
+                'refunded_at'     => now(),
+                'updated_at'      => now(),
+            ]);
+            $fresh = DB::table('appointments')->where('id', $appointment)->first();
+            $result = $this->format($fresh);
+            tenancy()->end();
+            return response()->json([
+                'message'     => $isFull ? 'Refund recorded.' : 'Partial refund recorded.',
+                'appointment' => $result,
+            ]);
+        }
+
+        // Stripe path: do the network call OUTSIDE the tenancy scope so a slow
+        // round-trip doesn't pin a tenant DB connection.
         $tenantId = $tenant->id;
         tenancy()->end();
 
@@ -512,7 +539,7 @@ class AppointmentsController extends Controller
                 'message' => 'Stripe refund failed: ' . $e->getMessage(),
             ], 422);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Refund failed', [
+            Log::error('Refund failed', [
                 'tenant_id'      => $tenantId,
                 'appointment_id' => $appointment,
                 'error'          => $e->getMessage(),
@@ -618,16 +645,22 @@ class AppointmentsController extends Controller
         ]);
     }
 
-    // ── Charge remaining balance ─────────────────────────────────────────
+    // ── Send payment link (balance OR full service price) ────────────────
 
     /**
-     * Owner-initiated: sends the customer a Stripe Checkout link for the
-     * remaining balance on an appointment that has a deposit paid. We
-     * store the new session id on the row so a second click "resends"
-     * by overwriting (Stripe sessions auto-expire in 24h).
+     * Owner-initiated: sends the customer a Stripe Checkout link covering
+     * whatever they owe on this appointment.
      *
-     * No body required. Optionally `resend: true` is accepted but treated
-     * the same — every call mints a fresh session.
+     * Two cases:
+     *   1. payment_status='deposit_paid' → charges amount_due (the
+     *      remaining balance after the deposit)
+     *   2. payment_status='none' (manually-created appointment, no payment
+     *      taken yet) → charges the full service_price as a TYPE_FULL
+     *      payment, marking the row paid in full when the customer pays.
+     *
+     * Each call mints a fresh Checkout session — clicking again "resends"
+     * by overwriting balance_checkout_session_id (Stripe sessions auto-
+     * expire in 24h).
      */
     public function chargeBalance(Request $request, int $appointment): JsonResponse
     {
@@ -637,7 +670,7 @@ class AppointmentsController extends Controller
         if (! Schema::hasColumn('appointments', 'balance_checkout_session_id')) {
             tenancy()->end();
             return response()->json([
-                'message' => 'Balance charging is not available for this workspace yet.',
+                'message' => 'Payment links are not available for this workspace yet.',
             ], 409);
         }
 
@@ -647,30 +680,51 @@ class AppointmentsController extends Controller
             return response()->json(['message' => 'Appointment not found.'], 404);
         }
 
-        // Pre-conditions for charging a balance.
+        // Pre-conditions.
         if (empty($row->customer_email)) {
             tenancy()->end();
             return response()->json([
                 'message' => 'This customer has no email on file — add one before sending a payment link.',
             ], 422);
         }
-        if (! in_array($row->payment_status, ['deposit_paid'], true)) {
+
+        // Decide what we're charging: balance vs full upfront.
+        $isBalanceCharge = false;
+        $amount          = 0.0;
+        $paymentType     = AppointmentPaymentService::TYPE_FULL;
+
+        if ($row->payment_status === 'deposit_paid') {
+            $balance = $row->amount_due !== null ? (float) $row->amount_due : null;
+            if ($balance === null || $balance <= 0) {
+                tenancy()->end();
+                return response()->json([
+                    'message' => 'There is no outstanding balance on this appointment.',
+                ], 422);
+            }
+            if ($row->balance_paid_at !== null) {
+                tenancy()->end();
+                return response()->json([
+                    'message' => 'The balance on this appointment has already been paid.',
+                ], 422);
+            }
+            $isBalanceCharge = true;
+            $amount          = $balance;
+            $paymentType     = AppointmentPaymentService::TYPE_BALANCE;
+        } elseif (! $row->payment_status || $row->payment_status === 'none' || $row->payment_status === 'failed') {
+            $price = $row->service_price !== null ? (float) $row->service_price : null;
+            if ($price === null || $price <= 0) {
+                tenancy()->end();
+                return response()->json([
+                    'message' => 'This service has no price set — add one before sending a payment link.',
+                ], 422);
+            }
+            $isBalanceCharge = false;
+            $amount          = $price;
+            $paymentType     = AppointmentPaymentService::TYPE_FULL;
+        } else {
             tenancy()->end();
             return response()->json([
-                'message' => 'Balance can only be charged on appointments with a paid deposit.',
-            ], 422);
-        }
-        $balance = $row->amount_due !== null ? (float) $row->amount_due : null;
-        if ($balance === null || $balance <= 0) {
-            tenancy()->end();
-            return response()->json([
-                'message' => 'There is no outstanding balance on this appointment.',
-            ], 422);
-        }
-        if ($row->balance_paid_at !== null) {
-            tenancy()->end();
-            return response()->json([
-                'message' => 'The balance on this appointment has already been paid.',
+                'message' => 'A payment link can only be sent for unpaid appointments or those with an outstanding balance.',
             ], 422);
         }
 
@@ -694,18 +748,20 @@ class AppointmentsController extends Controller
             'tenant_slug'               => (string) $tenant->id,
             'appointment_id'            => (int)    $appointment,
             'service_name'              => (string) $row->service_name,
-            'payment_type'              => AppointmentPaymentService::TYPE_BALANCE,
-            'amount'                    => (float)  $balance,
+            'payment_type'              => $paymentType,
+            'amount'                    => $amount,
             'currency'                  => $row->currency ?? 'USD',
             'customer_email'            => $row->customer_email,
             'stripe_connect_account_id' => $payment['stripe_connect_account_id'] ?? null,
             'stripe_connect_ready'      => true,
             'success_url' => sprintf(
-                'https://%s.bkrdy.me/?booking=balance_paid&appointment=%d&session_id={CHECKOUT_SESSION_ID}',
-                $tenant->id, $appointment,
+                'https://%s.bkrdy.me/?booking=%s&appointment=%d&session_id={CHECKOUT_SESSION_ID}',
+                $tenant->id,
+                $isBalanceCharge ? 'balance_paid' : 'paid',
+                $appointment,
             ),
             'cancel_url'  => sprintf(
-                'https://%s.bkrdy.me/?booking=balance_cancelled&appointment=%d',
+                'https://%s.bkrdy.me/?booking=cancelled&appointment=%d',
                 $tenant->id, $appointment,
             ),
         ];
@@ -721,7 +777,7 @@ class AppointmentsController extends Controller
         try {
             $session = AppointmentPaymentService::createCheckoutSession($context);
         } catch (\Throwable $e) {
-            Log::error('Charge-balance: Stripe session creation failed', [
+            Log::error('Payment-link: Stripe session creation failed', [
                 'tenant_id'      => $tenant->id,
                 'appointment_id' => $appointment,
                 'error'          => $e->getMessage(),
@@ -731,13 +787,23 @@ class AppointmentsController extends Controller
             ], 502);
         }
 
-        // Record the new session id so the webhook can correlate. Overwrite
-        // any prior balance_checkout_session_id from a previous "resend".
+        // Record the session. For balance charges this goes on the dedicated
+        // balance_checkout_session_id column; for full upfront we reuse the
+        // existing stripe_checkout_session_id (same column the public booking
+        // flow uses) so the webhook treats it like any other deposit/full
+        // payment when it lands.
         tenancy()->initialize($tenant);
-        DB::table('appointments')->where('id', $appointment)->update([
-            'balance_checkout_session_id' => $session['id'],
-            'updated_at'                  => now(),
-        ]);
+        $update = ['updated_at' => now()];
+        if ($isBalanceCharge) {
+            $update['balance_checkout_session_id'] = $session['id'];
+        } else {
+            $update['stripe_checkout_session_id'] = $session['id'];
+            $update['payment_status']             = 'pending_payment';
+            $update['deposit_required']           = true;
+            // amount_due defaults to 0 because TYPE_FULL means no balance later.
+            $update['amount_due']                 = 0;
+        }
+        DB::table('appointments')->where('id', $appointment)->update($update);
         $fresh  = DB::table('appointments')->where('id', $appointment)->first();
         $result = $this->format($fresh);
         $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
@@ -751,9 +817,10 @@ class AppointmentsController extends Controller
                 serviceName:     (string) $serviceName,
                 appointmentDate: (string) $apptDate,
                 startTime:       $startTime,
-                amount:          $balance,
+                amount:          $amount,
                 currency:        $currency,
                 checkoutUrl:     $session['url'],
+                isBalance:       $isBalanceCharge,
             ));
             $emailSent = true;
         } catch (\Throwable $e) {

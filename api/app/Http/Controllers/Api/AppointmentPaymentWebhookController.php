@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\DisputeClosedOwnerMail;
 use App\Mail\DisputeOpenedOwnerMail;
 use App\Mail\PaymentRefundedClientMail;
+use App\Mail\PayoutFailedOwnerMail;
 use App\Mail\StripeConnectRestrictedMail;
 use App\Mail\StripeConnectVerifiedMail;
 use App\Models\Tenant;
@@ -39,6 +40,8 @@ use Stripe\Webhook;
  *     charge.refunded              — refund issued (full or partial)
  *     charge.dispute.created       — chargeback opened against a Connect charge
  *     charge.dispute.closed        — dispute resolved (won/lost/warning)
+ *     payment_intent.payment_failed — customer's card actually declined
+ *     payout.failed                — Stripe couldn't deposit to owner's bank
  *     account.updated              — Connect account capability/requirement change
  *   Secret: STRIPE_APPOINTMENT_WEBHOOK_SECRET in the .env on the server
  */
@@ -77,6 +80,10 @@ class AppointmentPaymentWebhookController extends Controller
                 return $this->handleDisputeOpened($event);
             case 'charge.dispute.closed':
                 return $this->handleDisputeClosed($event);
+            case 'payment_intent.payment_failed':
+                return $this->handlePaymentFailed($event);
+            case 'payout.failed':
+                return $this->handlePayoutFailed($event);
             case 'checkout.session.completed':
                 break; // fall through to the checkout-completed handling below
             default:
@@ -558,6 +565,149 @@ class AppointmentPaymentWebhookController extends Controller
                 'error'          => $e->getMessage(),
             ]);
             try { tenancy()->end(); } catch (\Throwable) {}
+        }
+
+        return response()->json(['received' => true]);
+    }
+
+    // ── Payment failed (card declined after attempting checkout) ─────────
+
+    /**
+     * payment_intent.payment_failed fires when a Checkout customer's card
+     * genuinely fails (declined, expired, insufficient funds) after they
+     * tried to pay — distinct from checkout.session.expired which fires
+     * for tab-close abandonment. Stripe Checkout has its own retry UX so
+     * we don't email the customer; we just mark the local row 'failed'
+     * (if still pending) for owner visibility.
+     */
+    private function handlePaymentFailed($event): JsonResponse
+    {
+        $pi       = $event->data->object;
+        $metadata = $pi->metadata?->toArray() ?? [];
+        $piId     = $pi->id ?? null;
+
+        if (($metadata['purpose'] ?? null) !== AppointmentPaymentService::PURPOSE) {
+            return response()->json(['received' => true]);
+        }
+
+        $tenantId      = $metadata['tenant_id']      ?? null;
+        $appointmentId = isset($metadata['appointment_id']) ? (int) $metadata['appointment_id'] : null;
+        if (! $tenantId || ! $appointmentId) {
+            return response()->json(['received' => true]);
+        }
+
+        $tenant = Tenant::find($tenantId);
+        if (! $tenant) return response()->json(['received' => true]);
+
+        try {
+            tenancy()->initialize($tenant);
+            if (! Schema::hasColumn('appointments', 'payment_status')) {
+                tenancy()->end();
+                return response()->json(['received' => true]);
+            }
+
+            $row = DB::table('appointments')->where('id', $appointmentId)->first();
+            if (! $row) {
+                tenancy()->end();
+                return response()->json(['received' => true]);
+            }
+
+            // Only transition pending_payment → failed. If the customer
+            // already retried and succeeded, don't clobber that.
+            if ($row->payment_status === 'pending_payment') {
+                DB::table('appointments')->where('id', $appointmentId)->update([
+                    'payment_status' => 'failed',
+                    'updated_at'     => now(),
+                ]);
+                Log::info('Appointment payment failed', [
+                    'tenant_id'      => $tenantId,
+                    'appointment_id' => $appointmentId,
+                    'payment_intent' => $piId,
+                ]);
+            }
+
+            tenancy()->end();
+        } catch (\Throwable $e) {
+            Log::error('payment_intent.payment_failed processing error', [
+                'tenant_id'      => $tenantId,
+                'appointment_id' => $appointmentId,
+                'error'          => $e->getMessage(),
+            ]);
+            try { tenancy()->end(); } catch (\Throwable) {}
+        }
+
+        return response()->json(['received' => true]);
+    }
+
+    // ── Payout failed (bank rejected the deposit) ────────────────────────
+
+    /**
+     * payout.failed fires on a connected account when Stripe attempted to
+     * deposit funds to the owner's bank but the bank rejected (closed
+     * account, wrong routing, name mismatch, etc). Owner needs to know
+     * because there's now money stuck in Stripe that they can't access.
+     */
+    private function handlePayoutFailed($event): JsonResponse
+    {
+        $payout    = $event->data->object;
+        $accountId = $event->account ?? null; // Connect events include this at the event level
+        $amountCts = (int)    ($payout->amount   ?? 0);
+        $currency  = strtoupper((string) ($payout->currency ?? 'usd'));
+        $reason    = (string) ($payout->failure_message ?? $payout->failure_code ?? 'unknown reason');
+
+        if (! $accountId) return response()->json(['received' => true]);
+
+        // Find which of our tenants owns this connected account. Scan all
+        // tenants — cheap (we have <20) and avoids storing a reverse index.
+        $tenantId   = null;
+        $ownerEmail = null;
+        $ownerName  = 'there';
+        $businessName = '';
+
+        foreach (Tenant::all() as $t) {
+            try {
+                tenancy()->initialize($t);
+                if (! Schema::hasTable('payment_settings')) {
+                    tenancy()->end();
+                    continue;
+                }
+                $ps = DB::table('payment_settings')->first();
+                if ($ps && ($ps->stripe_connect_account_id ?? null) === $accountId) {
+                    $tenantId     = $t->id;
+                    $ownerEmail   = $t->owner?->email;
+                    $ownerName    = $t->owner?->name ?? 'there';
+                    $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $t->id);
+                    tenancy()->end();
+                    break;
+                }
+                tenancy()->end();
+            } catch (\Throwable $e) {
+                try { tenancy()->end(); } catch (\Throwable) {}
+            }
+        }
+
+        if (! $tenantId || ! $ownerEmail) {
+            Log::warning('payout.failed: tenant or owner email not found', [
+                'account_id' => $accountId,
+                'tenant_id'  => $tenantId,
+            ]);
+            return response()->json(['received' => true]);
+        }
+
+        try {
+            Mail::to($ownerEmail)->send(new PayoutFailedOwnerMail(
+                ownerName:     $ownerName,
+                businessName:  $businessName,
+                amount:        $amountCts / 100,
+                currency:      $currency,
+                failureReason: $reason,
+            ));
+        } catch (\Throwable $e) {
+            Log::error('[BookReady] PayoutFailedOwnerMail failed', [
+                'tenant_id'   => $tenantId,
+                'owner_email' => $ownerEmail,
+                'error'       => $e->getMessage(),
+            ]);
         }
 
         return response()->json(['received' => true]);

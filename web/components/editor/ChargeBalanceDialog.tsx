@@ -19,7 +19,10 @@ interface ChargeBalanceDialogProps {
  *      out-of-band via SMS as well)
  */
 export default function ChargeBalanceDialog({ appt, onSubmit, onClose }: ChargeBalanceDialogProps) {
-  const balance  = appt.amount_due ?? 0
+  // Same dialog covers two flows: deposit_paid → charges the balance;
+  // none/failed → charges the full service price.
+  const isBalanceFlow = appt.payment_status === 'deposit_paid'
+  const amount   = isBalanceFlow ? (appt.amount_due ?? 0) : (appt.service_price ?? 0)
   const currency = (appt.currency ?? 'USD').toUpperCase()
   const sym      = currency === 'USD' ? '$' : ''
 
@@ -27,7 +30,9 @@ export default function ChargeBalanceDialog({ appt, onSubmit, onClose }: ChargeB
   const [err,  setErr]        = useState('')
   const [sent, setSent]       = useState<{ url: string; emailed: boolean; message: string } | null>(null)
   const [copied, setCopied]   = useState(false)
-  const isResend = !! appt.balance_checkout_session_id
+  const isResend = isBalanceFlow
+    ? !! appt.balance_checkout_session_id
+    : !! appt.stripe_checkout_session_id
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !busy) onClose() }
@@ -72,7 +77,9 @@ export default function ChargeBalanceDialog({ appt, onSubmit, onClose }: ChargeB
         <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(18,18,18,0.10)]">
           <div>
             <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-1">
-              {sent ? 'Link sent' : (isResend ? 'Resend balance link' : 'Charge balance')}
+              {sent
+                ? 'Link sent'
+                : (isResend ? 'Resend payment link' : (isBalanceFlow ? 'Charge balance' : 'Send payment link'))}
             </p>
             <h2 className="text-base font-bold text-near-black tracking-tight">
               {appt.customer_name}
@@ -97,8 +104,8 @@ export default function ChargeBalanceDialog({ appt, onSubmit, onClose }: ChargeB
               {appt.appointment_date} · {appt.start_time}
             </p>
             <div className="mt-2.5 pt-2.5 border-t border-[rgba(18,18,18,0.08)] flex justify-between text-xs">
-              <span className="text-muted-text">Balance owed</span>
-              <span className="font-bold text-near-black">{sym}{balance.toFixed(2)} {currency}</span>
+              <span className="text-muted-text">{isBalanceFlow ? 'Balance owed' : 'Amount to charge'}</span>
+              <span className="font-bold text-near-black">{sym}{amount.toFixed(2)} {currency}</span>
             </div>
           </div>
 
@@ -106,7 +113,8 @@ export default function ChargeBalanceDialog({ appt, onSubmit, onClose }: ChargeB
             <>
               <p className="text-sm text-near-black leading-relaxed">
                 We&rsquo;ll email <span className="font-semibold">{appt.customer_email || 'the customer'}</span> a
-                secure Stripe Checkout link for the remaining balance. You&rsquo;ll
+                secure Stripe Checkout link for{' '}
+                {isBalanceFlow ? 'the remaining balance' : 'the full service price'}. You&rsquo;ll
                 also get a copy you can share over text or DM.
               </p>
               {isResend && (
@@ -171,10 +179,10 @@ export default function ChargeBalanceDialog({ appt, onSubmit, onClose }: ChargeB
               <button
                 type="button"
                 onClick={handleConfirm}
-                disabled={busy || balance <= 0}
+                disabled={busy || amount <= 0}
                 className="flex-1 bg-near-black text-white text-[11px] font-bold tracking-[0.18em] uppercase py-3 hover:bg-[#2a2a2a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {busy ? 'Sending…' : (isResend ? 'Resend link' : `Send ${sym}${balance.toFixed(2)} link`)}
+                {busy ? 'Sending…' : (isResend ? 'Resend link' : `Send ${sym}${amount.toFixed(2)} link`)}
               </button>
             </>
           ) : (

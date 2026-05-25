@@ -9,10 +9,11 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Customer-facing "pay your remaining balance" email. Fired when the
- * owner clicks "Charge balance" on an appointment that has a deposit
- * paid plus an outstanding amount_due. Contains the Stripe Checkout
- * URL for the balance amount only.
+ * Customer-facing payment-request email. Fired when the owner clicks
+ * "Send payment link" on an appointment. Two flavors:
+ *   - $isBalance=true  → "Pay your remaining balance" (deposit was already paid)
+ *   - $isBalance=false → "Confirm your booking" (full payment up front,
+ *                         for off-platform / phone bookings)
  */
 class BalanceDueClientMail extends Mailable
 {
@@ -27,13 +28,15 @@ class BalanceDueClientMail extends Mailable
         public readonly float  $amount,
         public readonly string $currency,
         public readonly string $checkoutUrl,
+        public readonly bool   $isBalance = true,
     ) {}
 
     public function envelope(): Envelope
     {
-        return new Envelope(
-            subject: 'Pay your remaining balance — ' . $this->businessName,
-        );
+        $subject = $this->isBalance
+            ? 'Pay your remaining balance — ' . $this->businessName
+            : 'Confirm your booking — ' . $this->businessName;
+        return new Envelope(subject: $subject);
     }
 
     public function content(): Content

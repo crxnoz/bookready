@@ -980,13 +980,16 @@ function AppointmentCard({
   const isFuture = appt.appointment_date >= today
   const terminal = appt.status === 'completed' || appt.status === 'cancelled' || appt.status === 'no_show'
 
-  // Refundable iff there's a Stripe payment with balance beyond what's
-  // already been refunded. Manual cash/Venmo payments can't refund via Stripe.
-  const paid          = appt.deposit_paid_amount ?? 0
+  // Refundable iff there's any payment beyond what's already been refunded —
+  // works for Stripe payments (real refund) AND manual cash/Venmo (recorded
+  // locally only; owner already gave the cash back). Total paid includes
+  // any balance payment that came in after the initial deposit.
+  const totalPaid     = (appt.deposit_paid_amount ?? 0) + (appt.balance_paid_amount ?? 0)
   const refunded      = appt.refunded_amount     ?? 0
   const isStripePaid  = !! appt.stripe_payment_intent_id
-  const isRefundable  = isStripePaid
-                        && paid > refunded + 0.001
+  const isManualPaid  = !! appt.payment_method && !isStripePaid
+  const isRefundable  = (isStripePaid || isManualPaid)
+                        && totalPaid > refunded + 0.001
                         && (appt.payment_status === 'deposit_paid'
                           || appt.payment_status === 'paid'
                           || appt.payment_status === 'partially_refunded')
@@ -998,16 +1001,22 @@ function AppointmentCard({
                        || appt.payment_status === 'failed'
   const showMarkPaid = !terminal && noPaymentYet
 
-  // Charge-balance shows when there's a deposit paid + outstanding balance
-  // + email on file. The balance hasn't been collected yet (balance_paid_at
-  // null). Label changes to "Resend link" if a session was already created.
+  // "Send payment link" covers two flows on the same button:
+  //   1. Appointment has a deposit and remaining balance owed → charges balance
+  //   2. Appointment has no payment yet (manually created / phone booking)
+  //      and a service price is set → charges the full service price
+  // Both require a customer email on file and a non-terminal status.
   const due           = appt.amount_due ?? 0
+  const price         = appt.service_price ?? 0
+  const hasBalance    = appt.payment_status === 'deposit_paid' && due > 0 && !appt.balance_paid_at
+  const hasNoPayment  = (!appt.payment_status || appt.payment_status === 'none' || appt.payment_status === 'failed')
+                        && price > 0
   const showCharge    = !terminal
-                        && appt.payment_status === 'deposit_paid'
-                        && due > 0
                         && !! appt.customer_email
-                        && !appt.balance_paid_at
-  const isResendCharge = showCharge && !! appt.balance_checkout_session_id
+                        && (hasBalance || hasNoPayment)
+  const chargeLabel   = hasBalance
+                        ? (appt.balance_checkout_session_id ? 'Resend link' : 'Charge balance')
+                        : (appt.stripe_checkout_session_id  ? 'Resend link' : 'Send payment link')
 
   const activeDispute = appt.dispute_status
     && ['warning_needs_response', 'warning_under_review', 'needs_response', 'under_review'].includes(appt.dispute_status)
@@ -1110,7 +1119,7 @@ function AppointmentCard({
                 onClick={onChargeBalance}
                 disabled={busy}
                 icon={<CreditCard size={11} />}
-                label={isResendCharge ? 'Resend link' : 'Charge balance'}
+                label={chargeLabel}
               />
             )}
             {isRefundable && (

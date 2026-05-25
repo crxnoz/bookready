@@ -17,11 +17,14 @@ interface RefundDialogProps {
  * of Stripe's enum reasons that show up in the Stripe dashboard.
  */
 export default function RefundDialog({ appt, onClose, onSubmit }: RefundDialogProps) {
-  const paid       = appt.deposit_paid_amount ?? 0
+  const paid       = (appt.deposit_paid_amount ?? 0) + (appt.balance_paid_amount ?? 0)
   const alreadyR   = appt.refunded_amount     ?? 0
   const refundable = Math.max(0, +(paid - alreadyR).toFixed(2))
   const currency   = (appt.currency ?? 'USD').toUpperCase()
   const sym        = currency === 'USD' ? '$' : ''
+  // Manual payments don't get a real Stripe refund — we just record it.
+  const isStripe   = !! appt.stripe_payment_intent_id
+  const methodLbl  = appt.payment_method ? appt.payment_method.charAt(0).toUpperCase() + appt.payment_method.slice(1) : ''
 
   const [mode, setMode]     = useState<'full' | 'partial'>('full')
   const [amount, setAmount] = useState<string>(refundable.toFixed(2))
@@ -166,22 +169,24 @@ export default function RefundDialog({ appt, onClose, onSubmit }: RefundDialogPr
             )}
           </div>
 
-          {/* Reason (optional, maps to Stripe enum) */}
-          <div>
-            <label className="block text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-2">
-              Reason <span className="text-muted-text/60 normal-case tracking-normal font-normal">(optional, shows in Stripe)</span>
-            </label>
-            <select
-              value={reason ?? ''}
-              onChange={e => setReason((e.target.value || null) as RefundPayload['reason'])}
-              className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black transition-colors"
-            >
-              <option value="">No reason given</option>
-              <option value="requested_by_customer">Requested by customer</option>
-              <option value="duplicate">Duplicate charge</option>
-              <option value="fraudulent">Fraudulent</option>
-            </select>
-          </div>
+          {/* Reason — only meaningful for Stripe refunds. */}
+          {isStripe && (
+            <div>
+              <label className="block text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-2">
+                Reason <span className="text-muted-text/60 normal-case tracking-normal font-normal">(optional, shows in Stripe)</span>
+              </label>
+              <select
+                value={reason ?? ''}
+                onChange={e => setReason((e.target.value || null) as RefundPayload['reason'])}
+                className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black transition-colors"
+              >
+                <option value="">No reason given</option>
+                <option value="requested_by_customer">Requested by customer</option>
+                <option value="duplicate">Duplicate charge</option>
+                <option value="fraudulent">Fraudulent</option>
+              </select>
+            </div>
+          )}
 
           {err && (
             <div className="px-3 py-2 bg-red-50 border border-red-200 text-xs text-red-700">
@@ -189,10 +194,18 @@ export default function RefundDialog({ appt, onClose, onSubmit }: RefundDialogPr
             </div>
           )}
 
-          <p className="text-[11px] text-muted-text">
-            The customer will receive an email confirming the refund. Card refunds take
-            5&ndash;10 business days to land on their statement.
-          </p>
+          {isStripe ? (
+            <p className="text-[11px] text-muted-text">
+              The customer will receive an email confirming the refund. Card refunds take
+              5&ndash;10 business days to land on their statement.
+            </p>
+          ) : (
+            <p className="text-[11px] text-muted-text">
+              You&rsquo;re recording a refund of a {methodLbl || 'manual'} payment. No
+              money moves through Stripe &mdash; refund the customer however you took
+              the payment (cash back, Venmo, etc), then click confirm.
+            </p>
+          )}
         </form>
 
         {/* Footer actions */}
