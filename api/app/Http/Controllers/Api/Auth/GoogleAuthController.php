@@ -49,21 +49,34 @@ class GoogleAuthController extends Controller
         return Socialite::driver('google')
             ->stateless()
             ->scopes(['openid', 'profile', 'email'])
-            ->with(['state' => $state])
+            // prompt=select_account makes Google always show the account
+            // chooser, so a logged-in-Google user can't accidentally sign
+            // up with the wrong identity. Critical for the signup path.
+            ->with([
+                'state'  => $state,
+                'prompt' => 'select_account',
+            ])
             ->redirect();
     }
 
     public function callback(Request $request): RedirectResponse
     {
-        // Surface Google's error param (e.g. user clicked "Cancel") cleanly.
-        if ($request->query('error')) {
-            return $this->errorBack('signin', (string) $request->query('error'));
-        }
-
         // Decode our state envelope first so we know which flow to run.
         $stateRaw = (string) $request->query('state', '');
         $envelope = $this->decodeState($stateRaw);
         $intent   = $envelope['intent'] ?? 'signin';
+
+        // Surface Google's error param (e.g. user clicked "Cancel") cleanly.
+        if ($request->query('error')) {
+            return $this->errorBack($intent, (string) $request->query('error'));
+        }
+
+        // Short-circuit on missing code — happens when someone hits the
+        // callback URL directly (refresh, bookmark, bot). Avoids a noisy
+        // Socialite exception + WARN log for non-error traffic.
+        if (! $request->filled('code')) {
+            return $this->errorBack($intent, 'Sign-in didn’t complete. Please start again.');
+        }
 
         try {
             $google = Socialite::driver('google')->stateless()->user();
