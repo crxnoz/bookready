@@ -3,15 +3,20 @@
 namespace App\Http\Controllers\Api\Editor;
 
 use App\Http\Controllers\Controller;
+use App\Mail\BalanceDueClientMail;
 use App\Models\Tenant;
 use App\Services\AppointmentMailer;
+use App\Services\AppointmentPaymentService;
 use App\Services\NotificationSettingsService;
+use App\Services\StripeConnectService;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AppointmentsController extends Controller
 {
@@ -55,6 +60,10 @@ class AppointmentsController extends Controller
             'payment_note'             => $get('payment_note'),
             // Stripe payment intent (presence = Stripe-eligible for refund)
             'stripe_payment_intent_id' => $get('stripe_payment_intent_id'),
+            // Balance-charge snapshot (null until owner clicks Charge balance)
+            'balance_checkout_session_id' => $get('balance_checkout_session_id'),
+            'balance_paid_amount'         => $get('balance_paid_amount') !== null ? (float) $get('balance_paid_amount') : null,
+            'balance_paid_at'             => $get('balance_paid_at'),
             // Refund snapshot
             'refunded_amount'          => $get('refunded_amount') !== null ? (float) $get('refunded_amount') : null,
             'refunded_at'              => $get('refunded_at'),
@@ -606,6 +615,162 @@ class AppointmentsController extends Controller
         return response()->json([
             'message'     => $isPaidInFull ? 'Marked as paid.' : 'Deposit recorded.',
             'appointment' => $result,
+        ]);
+    }
+
+    // ── Charge remaining balance ─────────────────────────────────────────
+
+    /**
+     * Owner-initiated: sends the customer a Stripe Checkout link for the
+     * remaining balance on an appointment that has a deposit paid. We
+     * store the new session id on the row so a second click "resends"
+     * by overwriting (Stripe sessions auto-expire in 24h).
+     *
+     * No body required. Optionally `resend: true` is accepted but treated
+     * the same — every call mints a fresh session.
+     */
+    public function chargeBalance(Request $request, int $appointment): JsonResponse
+    {
+        $tenant = Tenant::findOrFail($request->user()->tenant_id);
+        tenancy()->initialize($tenant);
+
+        if (! Schema::hasColumn('appointments', 'balance_checkout_session_id')) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'Balance charging is not available for this workspace yet.',
+            ], 409);
+        }
+
+        $row = DB::table('appointments')->where('id', $appointment)->first();
+        if (! $row) {
+            tenancy()->end();
+            return response()->json(['message' => 'Appointment not found.'], 404);
+        }
+
+        // Pre-conditions for charging a balance.
+        if (empty($row->customer_email)) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'This customer has no email on file — add one before sending a payment link.',
+            ], 422);
+        }
+        if (! in_array($row->payment_status, ['deposit_paid'], true)) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'Balance can only be charged on appointments with a paid deposit.',
+            ], 422);
+        }
+        $balance = $row->amount_due !== null ? (float) $row->amount_due : null;
+        if ($balance === null || $balance <= 0) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'There is no outstanding balance on this appointment.',
+            ], 422);
+        }
+        if ($row->balance_paid_at !== null) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'The balance on this appointment has already been paid.',
+            ], 422);
+        }
+
+        // Need Connect ready to charge anything new.
+        if (! Schema::hasTable('payment_settings')) {
+            tenancy()->end();
+            return response()->json(['message' => 'Payment settings not initialized.'], 422);
+        }
+        $payment = (array) (DB::table('payment_settings')->first() ?: []);
+        if (! StripeConnectService::isReady($payment)) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'Connect your Stripe account before charging customer payments.',
+            ], 422);
+        }
+
+        // Snapshot what we need for the Stripe call, then exit tenancy
+        // before the network round-trip.
+        $context = [
+            'tenant_id'                 => (string) $tenant->id,
+            'tenant_slug'               => (string) $tenant->id,
+            'appointment_id'            => (int)    $appointment,
+            'service_name'              => (string) $row->service_name,
+            'payment_type'              => AppointmentPaymentService::TYPE_BALANCE,
+            'amount'                    => (float)  $balance,
+            'currency'                  => $row->currency ?? 'USD',
+            'customer_email'            => $row->customer_email,
+            'stripe_connect_account_id' => $payment['stripe_connect_account_id'] ?? null,
+            'stripe_connect_ready'      => true,
+            'success_url' => sprintf(
+                'https://%s.bkrdy.me/?booking=balance_paid&appointment=%d&session_id={CHECKOUT_SESSION_ID}',
+                $tenant->id, $appointment,
+            ),
+            'cancel_url'  => sprintf(
+                'https://%s.bkrdy.me/?booking=balance_cancelled&appointment=%d',
+                $tenant->id, $appointment,
+            ),
+        ];
+
+        $customerEmail = $row->customer_email;
+        $customerName  = $row->customer_name;
+        $serviceName   = $row->service_name;
+        $apptDate      = $row->appointment_date;
+        $startTime     = substr((string) $row->start_time, 0, 5);
+        $currency      = strtoupper((string) ($row->currency ?? 'USD'));
+        tenancy()->end();
+
+        try {
+            $session = AppointmentPaymentService::createCheckoutSession($context);
+        } catch (\Throwable $e) {
+            Log::error('Charge-balance: Stripe session creation failed', [
+                'tenant_id'      => $tenant->id,
+                'appointment_id' => $appointment,
+                'error'          => $e->getMessage(),
+            ]);
+            return response()->json([
+                'message' => 'Could not create payment link. Try again in a moment.',
+            ], 502);
+        }
+
+        // Record the new session id so the webhook can correlate. Overwrite
+        // any prior balance_checkout_session_id from a previous "resend".
+        tenancy()->initialize($tenant);
+        DB::table('appointments')->where('id', $appointment)->update([
+            'balance_checkout_session_id' => $session['id'],
+            'updated_at'                  => now(),
+        ]);
+        $fresh  = DB::table('appointments')->where('id', $appointment)->first();
+        $result = $this->format($fresh);
+        $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
+        tenancy()->end();
+
+        $emailSent = false;
+        try {
+            Mail::to($customerEmail)->send(new BalanceDueClientMail(
+                customerName:    (string) $customerName,
+                businessName:    $businessName,
+                serviceName:     (string) $serviceName,
+                appointmentDate: (string) $apptDate,
+                startTime:       $startTime,
+                amount:          $balance,
+                currency:        $currency,
+                checkoutUrl:     $session['url'],
+            ));
+            $emailSent = true;
+        } catch (\Throwable $e) {
+            Log::error('[BookReady] BalanceDueClientMail failed', [
+                'tenant_id'      => $tenant->id,
+                'appointment_id' => $appointment,
+                'error'          => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'message'        => $emailSent
+                                  ? 'Payment link sent to ' . $customerEmail . '.'
+                                  : 'Payment link created. Email delivery failed — copy the link below and send it manually.',
+            'email_sent'     => $emailSent,
+            'checkout_url'   => $session['url'],
+            'appointment'    => $result,
         ]);
     }
 }

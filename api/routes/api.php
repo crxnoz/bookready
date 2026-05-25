@@ -106,8 +106,9 @@ Route::prefix('v1')->group(function () {
         Route::get('appointments/{appointment}',     [AppointmentsController::class, 'show']);
         Route::patch('appointments/{appointment}',         [AppointmentsController::class, 'update']);
         Route::delete('appointments/{appointment}',        [AppointmentsController::class, 'destroy']);
-        Route::post('appointments/{appointment}/refund',     [AppointmentsController::class, 'refund']);
-        Route::post('appointments/{appointment}/mark-paid',  [AppointmentsController::class, 'markPaid']);
+        Route::post('appointments/{appointment}/refund',          [AppointmentsController::class, 'refund']);
+        Route::post('appointments/{appointment}/mark-paid',       [AppointmentsController::class, 'markPaid']);
+        Route::post('appointments/{appointment}/charge-balance',  [AppointmentsController::class, 'chargeBalance']);
 
         Route::get('customers',              [CustomersController::class, 'index']);
         Route::post('customers',             [CustomersController::class, 'store']);

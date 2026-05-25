@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  CreditCard,
   DollarSign,
   Plus,
   Scissors,
@@ -17,6 +18,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import {
+  chargeEditorAppointmentBalance,
   createEditorAppointment,
   deleteEditorAppointment,
   getEditorAppointments,
@@ -37,6 +39,7 @@ import { cn } from '@/lib/cn'
 import { PaymentPill, PaymentSummary } from '@/components/editor/AppointmentPaymentStatus'
 import RefundDialog from '@/components/editor/RefundDialog'
 import MarkPaidDialog from '@/components/editor/MarkPaidDialog'
+import ChargeBalanceDialog from '@/components/editor/ChargeBalanceDialog'
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -215,8 +218,9 @@ export default function AppointmentsEditor() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
-  const [refundTarget, setRefundTarget]     = useState<Appointment | null>(null)
-  const [markPaidTarget, setMarkPaidTarget] = useState<Appointment | null>(null)
+  const [refundTarget, setRefundTarget]         = useState<Appointment | null>(null)
+  const [markPaidTarget, setMarkPaidTarget]     = useState<Appointment | null>(null)
+  const [chargeBalanceTarget, setChargeBalanceTarget] = useState<Appointment | null>(null)
 
   useEffect(() => {
     Promise.all([getEditorAppointments({ limit: 200 }), getEditorServices()])
@@ -379,6 +383,12 @@ export default function AppointmentsEditor() {
   async function handleMarkPaid(id: number, payload: MarkPaidPayload) {
     const res = await markEditorAppointmentPaid(id, payload)
     setAppointments(prev => prev.map(a => a.id === id ? res.appointment : a))
+  }
+
+  async function handleChargeBalance(id: number) {
+    const res = await chargeEditorAppointmentBalance(id)
+    setAppointments(prev => prev.map(a => a.id === id ? res.appointment : a))
+    return { checkout_url: res.checkout_url, email_sent: res.email_sent, message: res.message }
   }
 
   const selectedService = services.find(s => s.id === Number(form.service_id))
@@ -646,6 +656,7 @@ export default function AppointmentsEditor() {
                 onCancel={() => handleCancel(appt.id)}
                 onRefund={() => setRefundTarget(appt)}
                 onMarkPaid={() => setMarkPaidTarget(appt)}
+                onChargeBalance={() => setChargeBalanceTarget(appt)}
               />
             ))}
           </div>
@@ -666,6 +677,14 @@ export default function AppointmentsEditor() {
           appt={markPaidTarget}
           onClose={() => setMarkPaidTarget(null)}
           onSubmit={payload => handleMarkPaid(markPaidTarget.id, payload)}
+        />
+      )}
+
+      {chargeBalanceTarget && (
+        <ChargeBalanceDialog
+          appt={chargeBalanceTarget}
+          onClose={() => setChargeBalanceTarget(null)}
+          onSubmit={() => handleChargeBalance(chargeBalanceTarget.id)}
         />
       )}
     </div>
@@ -945,6 +964,7 @@ function AppointmentCard({
   onCancel,
   onRefund,
   onMarkPaid,
+  onChargeBalance,
 }: {
   appt: Appointment
   busy: boolean
@@ -953,6 +973,7 @@ function AppointmentCard({
   onCancel: () => void
   onRefund: () => void
   onMarkPaid: () => void
+  onChargeBalance: () => void
 }) {
   const today = todayStr()
   const isToday = appt.appointment_date === today
@@ -976,6 +997,17 @@ function AppointmentCard({
                        || appt.payment_status === 'none'
                        || appt.payment_status === 'failed'
   const showMarkPaid = !terminal && noPaymentYet
+
+  // Charge-balance shows when there's a deposit paid + outstanding balance
+  // + email on file. The balance hasn't been collected yet (balance_paid_at
+  // null). Label changes to "Resend link" if a session was already created.
+  const due           = appt.amount_due ?? 0
+  const showCharge    = !terminal
+                        && appt.payment_status === 'deposit_paid'
+                        && due > 0
+                        && !! appt.customer_email
+                        && !appt.balance_paid_at
+  const isResendCharge = showCharge && !! appt.balance_checkout_session_id
 
   const activeDispute = appt.dispute_status
     && ['warning_needs_response', 'warning_under_review', 'needs_response', 'under_review'].includes(appt.dispute_status)
@@ -1072,6 +1104,14 @@ function AppointmentCard({
             )}
             {showMarkPaid && (
               <ActionBtn onClick={onMarkPaid} disabled={busy} icon={<DollarSign size={11} />} label="Mark paid" />
+            )}
+            {showCharge && (
+              <ActionBtn
+                onClick={onChargeBalance}
+                disabled={busy}
+                icon={<CreditCard size={11} />}
+                label={isResendCharge ? 'Resend link' : 'Charge balance'}
+              />
             )}
             {isRefundable && (
               <ActionBtn onClick={onRefund} disabled={busy} icon={<Undo2 size={11} />} label="Refund" />

@@ -61,12 +61,17 @@ export function PaymentSummary({ appt }: { appt: Appointment }) {
   const depPd = appt.deposit_paid_amount  ?? null
   const due   = appt.amount_due           ?? null
   const parts: string[] = []
-  const refunded = appt.refunded_amount ?? null
+  const refunded = appt.refunded_amount     ?? null
+  const balPaid  = appt.balance_paid_amount ?? null
   if (dep != null) parts.push(`Deposit ${sym}${dep.toFixed(2)}`)
   if (depPd != null && depPd > 0 && status !== 'pending_payment') {
     parts.push(`paid ${sym}${depPd.toFixed(2)}`)
   }
-  if (due != null && due > 0) parts.push(`balance ${sym}${due.toFixed(2)}`)
+  if (balPaid != null && balPaid > 0) {
+    parts.push(`balance paid ${sym}${balPaid.toFixed(2)}`)
+  } else if (due != null && due > 0) {
+    parts.push(`balance ${sym}${due.toFixed(2)}${appt.balance_checkout_session_id ? ' · link sent' : ''}`)
+  }
   if (refunded != null && refunded > 0) parts.push(`refunded ${sym}${refunded.toFixed(2)}`)
   if (parts.length === 0) return null
   return (

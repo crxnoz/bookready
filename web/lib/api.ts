@@ -21,6 +21,7 @@ import {
   PublicBookingResponse,
   ManageBookingView,
   ManageBookingActionResponse,
+  ChargeBalanceResponse,
   ConnectDashboardLinkResponse,
   MarkPaidPayload,
   MarkPaidResponse,
@@ -556,6 +557,20 @@ export async function markEditorAppointmentPaid(
  */
 export async function getConnectDashboardLink(): Promise<ConnectDashboardLinkResponse> {
   return request<ConnectDashboardLinkResponse>('/editor/settings/payments/connect/dashboard-link')
+}
+
+/**
+ * Sends the customer a Stripe Checkout link for the remaining balance
+ * on this appointment, and returns the link itself so the owner can
+ * also copy it manually. Each call mints a fresh Stripe session.
+ */
+export async function chargeEditorAppointmentBalance(
+  id: number,
+): Promise<ChargeBalanceResponse> {
+  return request<ChargeBalanceResponse>(`/editor/appointments/${id}/charge-balance`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
 }
 
 export async function getEditorCustomers(params?: {

@@ -570,6 +570,10 @@ export interface Appointment {
   payment_note?:         string | null
   // Presence signals "refund button works" — Stripe payments only.
   stripe_payment_intent_id?: string | null
+  // Balance-charge snapshot — null until owner clicks "Charge balance".
+  balance_checkout_session_id?: string | null
+  balance_paid_amount?:         number | null
+  balance_paid_at?:             string | null
   // Refund snapshot — null when nothing has been refunded yet.
   refunded_amount?:      number | null
   refunded_at?:          string | null
@@ -606,6 +610,13 @@ export interface MarkPaidResponse {
 
 export interface ConnectDashboardLinkResponse {
   url: string
+}
+
+export interface ChargeBalanceResponse {
+  message: string
+  email_sent: boolean
+  checkout_url: string
+  appointment: Appointment
 }
 
 export interface CreateAppointmentPayload {

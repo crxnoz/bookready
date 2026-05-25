@@ -115,6 +115,19 @@ class AppointmentPaymentWebhookController extends Controller
             return response()->json(['received' => true]);
         }
 
+        // Balance payments take a fundamentally different path — they update
+        // the balance_* columns and never re-fire booking-request emails
+        // (those went out when the deposit cleared). Route early.
+        if (($metadata['payment_type'] ?? null) === AppointmentPaymentService::TYPE_BALANCE) {
+            return $this->handleBalancePaid(
+                tenant:        $tenant,
+                appointmentId: $appointmentId,
+                sessionId:     $sessionId,
+                paymentIntent: $paymentIntent,
+                amountTotal:   $amountTotal,
+            );
+        }
+
         $ownerEmail = $tenant->owner?->email;
 
         tenancy()->initialize($tenant);
@@ -373,6 +386,111 @@ class AppointmentPaymentWebhookController extends Controller
             try { tenancy()->end(); } catch (\Throwable) {}
             // 200 so Stripe doesn't retry; failure is logged.
             return response()->json(['received' => true, 'note' => 'logged']);
+        }
+
+        return response()->json(['received' => true]);
+    }
+
+    // ── Balance payments (remaining-balance Checkout sessions) ───────────
+
+    /**
+     * The customer just paid the remaining balance on an appointment that
+     * had a deposit. Updates the balance_* columns, flips payment_status
+     * to 'paid', zeros amount_due, and sends a "balance received" client
+     * receipt. Idempotent: re-firing this webhook is a no-op.
+     */
+    private function handleBalancePaid(
+        Tenant   $tenant,
+        int      $appointmentId,
+        string   $sessionId,
+        ?string  $paymentIntent,
+        ?float   $amountTotal,
+    ): JsonResponse {
+        $shouldEmail  = false;
+        $emailCtx     = [];
+        $businessName = $tenant->id;
+
+        try {
+            tenancy()->initialize($tenant);
+            if (! Schema::hasColumn('appointments', 'balance_paid_at')) {
+                tenancy()->end();
+                return response()->json(['received' => true]);
+            }
+
+            // Look up by appointment_id AND the balance session we kicked off.
+            $row = DB::table('appointments')
+                ->where('id', $appointmentId)
+                ->where('balance_checkout_session_id', $sessionId)
+                ->first();
+
+            // Idempotency: balance already recorded — ack and bail.
+            if ($row && $row->balance_paid_at !== null) {
+                tenancy()->end();
+                return response()->json(['received' => true]);
+            }
+
+            if (! $row) {
+                Log::warning('Balance webhook: appointment not found', [
+                    'tenant_id'      => $tenant->id,
+                    'appointment_id' => $appointmentId,
+                    'session_id'     => $sessionId,
+                ]);
+                tenancy()->end();
+                return response()->json(['received' => true]);
+            }
+
+            DB::table('appointments')->where('id', $appointmentId)->update([
+                'payment_status'             => 'paid',
+                'amount_due'                 => 0,
+                'balance_paid_amount'        => $amountTotal,
+                'balance_payment_intent_id'  => $paymentIntent,
+                'balance_paid_at'            => now(),
+                'updated_at'                 => now(),
+            ]);
+
+            if (! empty($row->customer_email)) {
+                $shouldEmail  = true;
+                $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
+                $emailCtx     = [
+                    'customer_email'  => $row->customer_email,
+                    'customer_name'   => $row->customer_name,
+                    'service_name'    => $row->service_name,
+                    'appointment_date'=> $row->appointment_date,
+                    'start_time'      => substr((string) $row->start_time, 0, 5),
+                    'amount'          => $amountTotal,
+                    'currency'        => $row->currency ?? 'USD',
+                ];
+            }
+
+            tenancy()->end();
+        } catch (\Throwable $e) {
+            Log::error('Balance webhook processing error', [
+                'tenant_id'      => $tenant->id,
+                'appointment_id' => $appointmentId,
+                'error'          => $e->getMessage(),
+            ]);
+            try { tenancy()->end(); } catch (\Throwable) {}
+            return response()->json(['received' => true, 'note' => 'logged']);
+        }
+
+        if ($shouldEmail) {
+            try {
+                Mail::to($emailCtx['customer_email'])->send(new \App\Mail\BalancePaidClientMail(
+                    customerName:    (string) $emailCtx['customer_name'],
+                    businessName:    $businessName,
+                    serviceName:     (string) $emailCtx['service_name'],
+                    appointmentDate: (string) $emailCtx['appointment_date'],
+                    startTime:       (string) $emailCtx['start_time'],
+                    amount:          (float)  $emailCtx['amount'],
+                    currency:        (string) $emailCtx['currency'],
+                ));
+            } catch (\Throwable $e) {
+                Log::error('[BookReady] BalancePaidClientMail failed', [
+                    'tenant_id'      => $tenant->id,
+                    'appointment_id' => $appointmentId,
+                    'error'          => $e->getMessage(),
+                ]);
+            }
         }
 
         return response()->json(['received' => true]);

@@ -22,6 +22,7 @@ class AppointmentPaymentService
 
     public const TYPE_DEPOSIT = 'deposit';
     public const TYPE_FULL    = 'full';
+    public const TYPE_BALANCE = 'balance';
 
     /**
      * Compute the deposit amount in major units (e.g. dollars) given the
@@ -106,7 +107,7 @@ class AppointmentPaymentService
         }
 
         $paymentType = $context['payment_type'] ?? self::TYPE_DEPOSIT;
-        if (! in_array($paymentType, [self::TYPE_DEPOSIT, self::TYPE_FULL], true)) {
+        if (! in_array($paymentType, [self::TYPE_DEPOSIT, self::TYPE_FULL, self::TYPE_BALANCE], true)) {
             $paymentType = self::TYPE_DEPOSIT;
         }
 
@@ -116,8 +117,16 @@ class AppointmentPaymentService
         $amount   = (int) round(((float) $context['amount']) * 100); // minor units
 
         $serviceName = $context['service_name'] ?? 'Appointment';
-        $itemName    = ($paymentType === self::TYPE_FULL ? 'Booking · ' : 'Deposit · ') . $serviceName;
-        $itemDesc    = $paymentType === self::TYPE_FULL ? 'Full booking payment' : 'Booking deposit';
+        $itemName    = match ($paymentType) {
+            self::TYPE_FULL    => 'Booking · ' . $serviceName,
+            self::TYPE_BALANCE => 'Balance · ' . $serviceName,
+            default            => 'Deposit · ' . $serviceName,
+        };
+        $itemDesc    = match ($paymentType) {
+            self::TYPE_FULL    => 'Full booking payment',
+            self::TYPE_BALANCE => 'Remaining balance for your booking',
+            default            => 'Booking deposit',
+        };
 
         $metadata = [
             'purpose'        => self::PURPOSE,
