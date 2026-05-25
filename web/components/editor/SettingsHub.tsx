@@ -47,11 +47,11 @@ import { cn } from '@/lib/cn'
 // ── Sub-tab plumbing ─────────────────────────────────────────────────────────
 
 type SettingsTab =
-  | 'overview' | 'business' | 'booking' | 'payments'
+  | 'overview' | 'business' | 'preferences' | 'booking' | 'payments'
   | 'notifications' | 'policies' | 'account' | 'integrations' | 'danger'
 
 const VALID_TABS: SettingsTab[] = [
-  'overview', 'business', 'booking', 'payments',
+  'overview', 'business', 'preferences', 'booking', 'payments',
   'notifications', 'policies', 'account', 'integrations', 'danger',
 ]
 
@@ -65,14 +65,15 @@ interface GroupDef {
 }
 
 const GROUPS: GroupDef[] = [
-  { tab: 'business',      label: 'Business Settings',  hint: 'Name, contact, address, socials',            icon: Building2,    status: 'ready' },
-  { tab: 'booking',       label: 'Booking Settings',   hint: 'Booking window, notice, auto-confirm, rules', icon: Calendar,     status: 'ready' },
-  { tab: 'payments',      label: 'Payment Settings',   hint: 'Customer payments, deposits, currency',      icon: CreditCard,   status: 'ready' },
-  { tab: 'notifications', label: 'Notifications',      hint: 'Toggle booking emails, reply-to, sender',    icon: Bell,         status: 'ready' },
-  { tab: 'policies',      label: 'Policies',           hint: 'Cancellation, late, no-show, deposit',       icon: FileText,     status: 'ready' },
-  { tab: 'account',       label: 'Account',            hint: 'Owner profile, password, sign-out everywhere', icon: UserCircle,   status: 'ready' },
-  { tab: 'integrations',  label: 'Integrations',       hint: 'Stripe, calendar, SMS, webhooks',            icon: Plug,         status: 'ready' },
-  { tab: 'danger',        label: 'Danger Zone',        hint: 'Disable booking, delete tenant, exports',    icon: AlertTriangle, status: 'soon', tone: 'danger' },
+  { tab: 'business',      label: 'Business Profile',   hint: 'Name, contact, address, socials',                icon: Building2,    status: 'ready' },
+  { tab: 'preferences',   label: 'Preferences',        hint: 'Time zone, week start, time format, site visibility', icon: Sparkles,     status: 'ready' },
+  { tab: 'booking',       label: 'Booking Settings',   hint: 'Booking window, notice, auto-confirm, rules',    icon: Calendar,     status: 'ready' },
+  { tab: 'payments',      label: 'Payment Settings',   hint: 'Customer payments, deposits, currency',          icon: CreditCard,   status: 'ready' },
+  { tab: 'notifications', label: 'Notifications',      hint: 'Toggle booking emails, reply-to, sender',        icon: Bell,         status: 'ready' },
+  { tab: 'policies',      label: 'Policies',           hint: 'Enforcement rules + client-facing copy',         icon: FileText,     status: 'ready' },
+  { tab: 'account',       label: 'Account',            hint: 'Owner profile, password, sign-out everywhere',   icon: UserCircle,   status: 'ready' },
+  { tab: 'integrations',  label: 'Integrations',       hint: 'Stripe, calendar, SMS, webhooks',                icon: Plug,         status: 'ready' },
+  { tab: 'danger',        label: 'Danger Zone',        hint: 'Disable booking, delete tenant, exports',        icon: AlertTriangle, status: 'soon', tone: 'danger' },
 ]
 
 function hrefFor(tab: SettingsTab): string {
@@ -92,6 +93,7 @@ export default function SettingsHub() {
     <div className="w-full p-3 sm:p-5 md:p-6 space-y-4">
       {tab === 'overview'      && <OverviewPanel />}
       {tab === 'business'      && <BusinessSettingsPanel />}
+      {tab === 'preferences'   && <PreferencesSettingsPanel />}
       {tab === 'payments'      && <PaymentSettingsPanel />}
       {tab === 'booking'       && <BookingSettingsPanel />}
       {tab === 'notifications' && <NotificationSettingsPanel />}
@@ -1788,9 +1790,9 @@ function BusinessSettingsPanel() {
       </Link>
 
       <header className="px-1">
-        <h1 className="text-base font-bold text-near-black">Business Settings</h1>
+        <h1 className="text-base font-bold text-near-black">Business Profile</h1>
         <p className="text-xs text-muted-text mt-0.5">
-          Your business name, public contact, and where clients can find you.
+          Who you are — name, public contact, and where clients can find you.
         </p>
       </header>
 
@@ -1936,6 +1938,10 @@ const POLICY_FIELDS: { key: keyof BusinessPolicy; label: string; placeholder: st
 function PoliciesSettingsPanel() {
   const [data,    setData]    = useState<BusinessPolicy | null>(null)
   const [draft,   setDraft]   = useState<BusinessPolicy | null>(null)
+  // Cross-section pull-throughs so the owner can see the whole policy stack
+  // in one place. We don't edit these here — just display + deep-link.
+  const [booking, setBooking] = useState<BookingSettings | null>(null)
+  const [payment, setPayment] = useState<PaymentSettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadErr, setLoadErr] = useState<string | null>(null)
   const [saveState, setSaveState] = useState<SaveState>('idle')
@@ -1943,21 +1949,16 @@ function PoliciesSettingsPanel() {
 
   useEffect(() => {
     let cancelled = false
-    getEditorPolicies()
-      .then(p => {
+    Promise.all([
+      getEditorPolicies(),
+      getEditorBookingSettings().catch(() => null),
+      getEditorPaymentSettings().catch(() => null),
+    ])
+      .then(([p, bs, ps]) => {
         if (cancelled) return
-        // Normalize nulls to empty strings so textareas stay controlled.
-        const normalized: BusinessPolicy = {
-          id: p.id,
-          cancellation_policy: p.cancellation_policy ?? '',
-          late_policy:         p.late_policy         ?? '',
-          no_show_policy:      p.no_show_policy      ?? '',
-          deposit_policy:      p.deposit_policy      ?? '',
-          reschedule_policy:   p.reschedule_policy   ?? '',
-          extra_notes:         p.extra_notes         ?? '',
-        }
-        setData(normalized)
-        setDraft(normalized)
+        const normalized = normalizePolicy(p)
+        setData(normalized); setDraft(normalized)
+        setBooking(bs); setPayment(ps)
       })
       .catch(e => { if (!cancelled) setLoadErr(e instanceof Error ? e.message : 'Failed to load') })
       .finally(() => { if (!cancelled) setLoading(false) })
@@ -1969,7 +1970,7 @@ function PoliciesSettingsPanel() {
     return JSON.stringify(data) !== JSON.stringify(draft)
   }, [data, draft])
 
-  const setCount = useMemo(() => {
+  const copyCount = useMemo(() => {
     if (!draft) return 0
     return POLICY_FIELDS.filter(({ key }) => {
       const v = draft[key]
@@ -1977,9 +1978,12 @@ function PoliciesSettingsPanel() {
     }).length
   }, [draft])
 
-  function patch(key: keyof BusinessPolicy, value: string) {
-    setDraft(d => d ? { ...d, [key]: value } : d)
+  function patch(p: Partial<BusinessPolicy>) {
+    setDraft(d => d ? { ...d, ...p } : d)
     setSaveState('idle'); setSaveErr(null)
+  }
+  function patchText(key: keyof BusinessPolicy, value: string) {
+    patch({ [key]: value } as Partial<BusinessPolicy>)
   }
 
   async function save() {
@@ -1992,18 +1996,13 @@ function PoliciesSettingsPanel() {
         const v = (draft[key] as string | null) ?? ''
         ;(payload as Record<string, string | null>)[key] = v.trim().length > 0 ? v : null
       }
+      payload.late_grace_period_minutes      = draft.late_grace_period_minutes ?? 0
+      payload.forfeit_deposit_on_late_cancel = !! draft.forfeit_deposit_on_late_cancel
+      payload.max_reschedules_per_booking    = draft.max_reschedules_per_booking ?? null
+      payload.require_policy_agreement       = !! draft.require_policy_agreement
       const next = await updateEditorPolicies(payload)
-      const normalized: BusinessPolicy = {
-        id: next.id,
-        cancellation_policy: next.cancellation_policy ?? '',
-        late_policy:         next.late_policy         ?? '',
-        no_show_policy:      next.no_show_policy      ?? '',
-        deposit_policy:      next.deposit_policy      ?? '',
-        reschedule_policy:   next.reschedule_policy   ?? '',
-        extra_notes:         next.extra_notes         ?? '',
-      }
-      setData(normalized)
-      setDraft(normalized)
+      const normalized = normalizePolicy(next)
+      setData(normalized); setDraft(normalized)
       setSaveState('saved')
     } catch (e) {
       setSaveState('error')
@@ -2026,6 +2025,9 @@ function PoliciesSettingsPanel() {
     )
   }
 
+  const currency = (payment?.currency ?? 'USD').toUpperCase()
+  const sym      = currency === 'USD' ? '$' : ''
+
   return (
     <div className="space-y-3">
       <Link
@@ -2035,25 +2037,107 @@ function PoliciesSettingsPanel() {
         ← Back to Settings
       </Link>
 
-      <header className="px-1 flex items-baseline justify-between gap-3">
-        <div>
-          <h1 className="text-base font-bold text-near-black">Policies</h1>
-          <p className="text-xs text-muted-text mt-0.5">
-            What you write here shows up on your public site and in client emails.
-          </p>
-        </div>
-        <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
-          {setCount}/{POLICY_FIELDS.length} set
-        </span>
+      <header className="px-1">
+        <h1 className="text-base font-bold text-near-black">Policies</h1>
+        <p className="text-xs text-muted-text mt-0.5">
+          Enforcement rules that actually do something, plus the copy your clients read on your site and emails.
+        </p>
       </header>
 
+      {/* ── Enforcement rules (live here) ── */}
       <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <SectionTitle icon={ShieldCheck} label="Enforcement rules" hint="Real rules — BookReady enforces these automatically." />
+
+        <Toggle
+          label="Require clients to agree to your policies"
+          hint="Adds a checkbox to the booking form. Bookings are rejected without it."
+          on={!! draft.require_policy_agreement}
+          onToggle={() => patch({ require_policy_agreement: !draft.require_policy_agreement })}
+        />
+
+        <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
+          <Toggle
+            label="Forfeit deposit on late cancellation"
+            hint="When a client cancels within the cancellation window, their deposit becomes non-refundable. You can still refund manually."
+            on={!! draft.forfeit_deposit_on_late_cancel}
+            onToggle={() => patch({ forfeit_deposit_on_late_cancel: !draft.forfeit_deposit_on_late_cancel })}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-[rgba(18,18,18,0.06)] pt-3">
+          <NumberField
+            label="Max reschedules per booking"
+            value={draft.max_reschedules_per_booking ?? 0}
+            onChange={v => patch({ max_reschedules_per_booking: v <= 0 ? null : v })}
+            min={0}
+            max={50}
+            suffix="0 = unlimited"
+            hint="Cap how many times a client can reschedule a single appointment via the manage link."
+          />
+          <NumberField
+            label="Late grace period"
+            value={draft.late_grace_period_minutes ?? 0}
+            onChange={v => patch({ late_grace_period_minutes: v })}
+            min={0}
+            max={240}
+            suffix="minutes"
+            hint="Auto-no-show enforcement cron coming soon. Setting saved either way."
+          />
+        </div>
+      </section>
+
+      {/* ── Rules configured elsewhere (read-only summary) ── */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-2.5">
+        <SectionTitle icon={ExternalLink} label="Set elsewhere" hint="These rules live in other tabs — shown here for context." />
+
+        <PolicyReadout
+          label="Cancellation window"
+          value={`${booking?.cancellation_window_hours ?? 24} hour${(booking?.cancellation_window_hours ?? 24) === 1 ? '' : 's'} notice required`}
+          href={hrefFor('booking')}
+        />
+        <PolicyReadout
+          label="Reschedule window"
+          value={`${booking?.reschedule_window_hours ?? 24} hour${(booking?.reschedule_window_hours ?? 24) === 1 ? '' : 's'} notice required`}
+          href={hrefFor('booking')}
+        />
+        <PolicyReadout
+          label="No-show fee"
+          value={payment?.no_show_fee_amount ? `${sym}${payment.no_show_fee_amount.toFixed(2)} charged to saved card` : 'Not configured'}
+          href={hrefFor('payments')}
+          muted={! payment?.no_show_fee_amount}
+        />
+        <PolicyReadout
+          label="Late-cancel fee"
+          value={payment?.late_cancel_fee_amount ? `${sym}${payment.late_cancel_fee_amount.toFixed(2)} charged to saved card` : 'Not configured'}
+          href={hrefFor('payments')}
+          muted={! payment?.late_cancel_fee_amount}
+        />
+        <PolicyReadout
+          label="Deposit"
+          value={payment?.deposits_enabled
+            ? (payment.deposit_type === 'percent'
+                ? `${payment.deposit_amount ?? 0}% deposit required`
+                : `${sym}${(payment.deposit_amount ?? 0).toFixed(2)} flat deposit required`)
+            : 'No deposit required'}
+          href={hrefFor('payments')}
+          muted={! payment?.deposits_enabled}
+        />
+      </section>
+
+      {/* ── Client-facing copy ── */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <div className="flex items-baseline justify-between gap-3">
+          <SectionTitle icon={FileText} label="Client-facing copy" hint="Text that appears on your booking site and in confirmation emails." />
+          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text whitespace-nowrap">
+            {copyCount}/{POLICY_FIELDS.length} set
+          </span>
+        </div>
         {POLICY_FIELDS.map(({ key, label, placeholder, hint }) => (
           <TextAreaField
             key={key}
             label={label}
             value={(draft[key] as string) ?? ''}
-            onChange={v => patch(key, v)}
+            onChange={v => patchText(key, v)}
             placeholder={placeholder}
             hint={hint}
             rows={3}
@@ -2069,6 +2153,316 @@ function PoliciesSettingsPanel() {
       />
     </div>
   )
+}
+
+function normalizePolicy(p: BusinessPolicy): BusinessPolicy {
+  return {
+    id: p.id,
+    cancellation_policy: p.cancellation_policy ?? '',
+    late_policy:         p.late_policy         ?? '',
+    no_show_policy:      p.no_show_policy      ?? '',
+    deposit_policy:      p.deposit_policy      ?? '',
+    reschedule_policy:   p.reschedule_policy   ?? '',
+    extra_notes:         p.extra_notes         ?? '',
+    late_grace_period_minutes:      p.late_grace_period_minutes      ?? 0,
+    forfeit_deposit_on_late_cancel: !! p.forfeit_deposit_on_late_cancel,
+    max_reschedules_per_booking:    p.max_reschedules_per_booking    ?? null,
+    require_policy_agreement:       !! p.require_policy_agreement,
+  }
+}
+
+function PolicyReadout({
+  label, value, href, muted,
+}: {
+  label: string
+  value: string
+  href:  string
+  muted?: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center justify-between gap-3 py-2 border-b border-[rgba(18,18,18,0.04)] last:border-b-0 group"
+    >
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold text-near-black">{label}</p>
+        <p className={cn('text-[11px] mt-0.5 truncate', muted ? 'text-muted-text/70' : 'text-muted-text')}>
+          {value}
+        </p>
+      </div>
+      <ChevronRight size={12} className="text-muted-text group-hover:text-near-black flex-shrink-0" />
+    </Link>
+  )
+}
+
+// ── Preferences Settings panel ──────────────────────────────────────────────
+
+// US-first list. Full IANA list is ~400 entries; expand later when we serve
+// outside the US. The select also accepts a typed value via "Other".
+const COMMON_TIMEZONES = [
+  { value: 'America/New_York',    label: 'Eastern (New York)' },
+  { value: 'America/Chicago',     label: 'Central (Chicago)' },
+  { value: 'America/Denver',      label: 'Mountain (Denver)' },
+  { value: 'America/Phoenix',     label: 'Mountain — no DST (Phoenix)' },
+  { value: 'America/Los_Angeles', label: 'Pacific (Los Angeles)' },
+  { value: 'America/Anchorage',   label: 'Alaska (Anchorage)' },
+  { value: 'Pacific/Honolulu',    label: 'Hawaii (Honolulu)' },
+  { value: 'America/Puerto_Rico', label: 'Atlantic (San Juan)' },
+] as const
+
+function PreferencesSettingsPanel() {
+  // Preferences live on the BusinessProfile model — same endpoint as Business
+  // Profile. We just expose a different subset of fields here.
+  const [data,    setData]    = useState<BusinessProfile | null>(null)
+  const [draft,   setDraft]   = useState<BusinessProfile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadErr, setLoadErr] = useState<string | null>(null)
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [saveErr,   setSaveErr]   = useState<string | null>(null)
+  // Plain password field — empty unless user types into it. We only send
+  // it on save when the visibility is 'private' AND a password was typed.
+  const [pwInput, setPwInput] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    getEditorBusiness()
+      .then(d => { if (!cancelled) { setData(d); setDraft(d) } })
+      .catch(e => { if (!cancelled) setLoadErr(e instanceof Error ? e.message : 'Failed to load') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const dirty = useMemo(() => {
+    if (!data || !draft) return false
+    if (pwInput !== '') return true
+    return JSON.stringify(stripPrefs(data)) !== JSON.stringify(stripPrefs(draft))
+  }, [data, draft, pwInput])
+
+  function patch(p: Partial<BusinessProfile>) {
+    setDraft(d => d ? { ...d, ...p } : d)
+    setSaveState('idle'); setSaveErr(null)
+  }
+
+  async function save() {
+    if (!draft) return
+    setSaveState('saving'); setSaveErr(null)
+    try {
+      const payload: Partial<BusinessProfile> = {
+        time_zone:        draft.time_zone || null,
+        week_start_day:   draft.week_start_day ?? 0,
+        time_format:      draft.time_format ?? '12h',
+        default_appointment_duration_minutes: draft.default_appointment_duration_minutes ?? 60,
+        post_booking_message: draft.post_booking_message?.trim() || null,
+        email_signature:      draft.email_signature?.trim() || null,
+        site_visibility:      draft.site_visibility ?? 'public',
+      }
+      // Only send a password if user actually typed one. Empty doesn't clear
+      // an existing one — there's a separate "Clear password" affordance.
+      if (pwInput !== '') payload.site_password = pwInput
+      const next = await updateEditorBusiness(payload)
+      setData(next); setDraft(next)
+      setPwInput('')
+      setSaveState('saved')
+    } catch (e) {
+      setSaveState('error')
+      setSaveErr(e instanceof Error ? e.message : 'Save failed')
+    }
+  }
+
+  async function clearPassword() {
+    if (! draft) return
+    if (! confirm('Clear the site password? Anyone with the link will be able to view your site again (once you switch visibility back to public).')) return
+    setSaveState('saving'); setSaveErr(null)
+    try {
+      const next = await updateEditorBusiness({ site_password: '' })
+      setData(next); setDraft(next)
+      setPwInput('')
+      setSaveState('saved')
+    } catch (e) {
+      setSaveState('error')
+      setSaveErr(e instanceof Error ? e.message : 'Save failed')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-text px-1 py-8">
+        <Loader2 size={14} className="animate-spin" /> Loading preferences…
+      </div>
+    )
+  }
+  if (loadErr || !draft) {
+    return (
+      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-[#b42828] flex items-center gap-2">
+        <AlertCircle size={14} /> {loadErr ?? 'Could not load preferences'}
+      </div>
+    )
+  }
+
+  const isPrivate = draft.site_visibility === 'private'
+  const tzKnown   = (COMMON_TIMEZONES as readonly { value: string }[]).some(t => t.value === draft.time_zone)
+  const tzSelect  = draft.time_zone === null || draft.time_zone === undefined || draft.time_zone === ''
+    ? '' : (tzKnown ? draft.time_zone! : 'Other')
+
+  return (
+    <div className="space-y-3">
+      <Link
+        href={hrefFor('overview')}
+        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
+      >
+        ← Back to Settings
+      </Link>
+
+      <header className="px-1">
+        <h1 className="text-base font-bold text-near-black">Preferences</h1>
+        <p className="text-xs text-muted-text mt-0.5">
+          How BookReady behaves for your business — time zone, formats, defaults, and site visibility.
+        </p>
+      </header>
+
+      {/* Time + format */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <SectionTitle icon={CalendarClock} label="Time & format" hint="Used across the app, emails, and your public site." />
+
+        <SelectField
+          label="Time zone"
+          value={tzSelect}
+          onChange={v => patch({ time_zone: v === 'Other' ? (draft.time_zone || '') : (v || null) })}
+          options={[
+            { value: '', label: 'Use BookReady default (US Eastern)' },
+            ...COMMON_TIMEZONES.map(t => ({ value: t.value, label: t.label })),
+            { value: 'Other', label: 'Other (type IANA name)' },
+          ]}
+          hint="Affects how all dates and times display. Reminder schedules will start respecting this in the next release."
+        />
+        {tzSelect === 'Other' && (
+          <TextField
+            label="Custom IANA time zone"
+            value={draft.time_zone ?? ''}
+            onChange={v => patch({ time_zone: v || null })}
+            placeholder="e.g. Europe/London"
+          />
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-[rgba(18,18,18,0.06)] pt-3">
+          <SelectField
+            label="Week starts on"
+            value={String(draft.week_start_day ?? 0)}
+            onChange={v => patch({ week_start_day: Number(v) })}
+            options={[
+              { value: '0', label: 'Sunday' },
+              { value: '1', label: 'Monday' },
+            ]}
+            hint="Calendar grid + week-view starting day."
+          />
+          <SelectField
+            label="Time format"
+            value={draft.time_format ?? '12h'}
+            onChange={v => patch({ time_format: v as '12h' | '24h' })}
+            options={[
+              { value: '12h', label: '12-hour (1:30 PM)' },
+              { value: '24h', label: '24-hour (13:30)' },
+            ]}
+          />
+        </div>
+      </section>
+
+      {/* Defaults */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <SectionTitle icon={Calendar} label="Defaults" hint="Speed up common owner workflows." />
+
+        <NumberField
+          label="Default appointment duration"
+          value={draft.default_appointment_duration_minutes ?? 60}
+          onChange={v => patch({ default_appointment_duration_minutes: v })}
+          min={5}
+          max={600}
+          suffix="minutes"
+          hint="Used when you create an appointment manually without picking a service."
+        />
+      </section>
+
+      {/* Communication */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <SectionTitle icon={Mail} label="Communication" hint="Show up consistently across emails and the booking site." />
+
+        <TextAreaField
+          label="Post-booking message"
+          value={draft.post_booking_message ?? ''}
+          onChange={v => patch({ post_booking_message: v })}
+          placeholder="Bring your reference photos, and arrive 5 minutes early!"
+          hint="Shown to clients on the booking success page and included in their confirmation email."
+          rows={3}
+        />
+        <TextAreaField
+          label="Email signature"
+          value={draft.email_signature ?? ''}
+          onChange={v => patch({ email_signature: v })}
+          placeholder="— Anna at Lush Studio"
+          hint="Appended to client-facing emails (confirmations, reminders, etc)."
+          rows={2}
+        />
+      </section>
+
+      {/* Site visibility */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <SectionTitle icon={Lock} label="Site visibility" hint="Who can see your booking site." />
+
+        <SelectField
+          label="Visibility"
+          value={draft.site_visibility ?? 'public'}
+          onChange={v => patch({ site_visibility: v as 'public' | 'private' | 'coming_soon' })}
+          options={[
+            { value: 'public',      label: 'Public (anyone with the link)' },
+            { value: 'private',     label: 'Private (password required)' },
+            { value: 'coming_soon', label: 'Coming soon (placeholder page)' },
+          ]}
+        />
+        {isPrivate && (
+          <div className="space-y-2">
+            <TextField
+              label="Site password"
+              type="text"
+              value={pwInput}
+              onChange={setPwInput}
+              placeholder={draft.site_password_set ? '(already set — leave blank to keep)' : 'Choose a password'}
+              hint={draft.site_password_set ? 'Type a new value to change it. Leave blank to keep the existing one.' : 'Anyone with the link will need this to view your site.'}
+            />
+            {draft.site_password_set && (
+              <button
+                type="button"
+                onClick={clearPassword}
+                className="text-[10px] font-bold tracking-[0.14em] uppercase text-[#b42828] hover:underline"
+              >
+                Clear password
+              </button>
+            )}
+          </div>
+        )}
+      </section>
+
+      <SaveBar
+        dirty={dirty}
+        saveState={saveState}
+        saveErr={saveErr}
+        onSave={save}
+      />
+    </div>
+  )
+}
+
+/** Pull off just the preference fields for dirty-checking. */
+function stripPrefs(b: BusinessProfile): Partial<BusinessProfile> {
+  return {
+    time_zone:        b.time_zone ?? null,
+    week_start_day:   b.week_start_day ?? 0,
+    time_format:      b.time_format ?? '12h',
+    default_appointment_duration_minutes: b.default_appointment_duration_minutes ?? 60,
+    post_booking_message: b.post_booking_message ?? null,
+    email_signature:      b.email_signature ?? null,
+    site_visibility:      b.site_visibility ?? 'public',
+    site_password_set:    !! b.site_password_set,
+  }
 }
 
 // ── Integrations Settings panel ─────────────────────────────────────────────

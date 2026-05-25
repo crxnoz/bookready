@@ -8,7 +8,13 @@ import Button from '@/components/ui/Button'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
-const FIELDS: { key: keyof Omit<BusinessPolicy, 'id'>; label: string; placeholder: string }[] = [
+// Only the text fields — enforcement flags (booleans/numbers) live in
+// /editor/settings?tab=policies and are configured via toggles, not textareas.
+type PolicyTextKey =
+  | 'cancellation_policy' | 'late_policy' | 'no_show_policy'
+  | 'deposit_policy' | 'reschedule_policy' | 'extra_notes'
+
+const FIELDS: { key: PolicyTextKey; label: string; placeholder: string }[] = [
   {
     key: 'cancellation_policy',
     label: 'Cancellation Policy',

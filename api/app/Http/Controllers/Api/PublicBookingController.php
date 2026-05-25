@@ -49,6 +49,9 @@ class PublicBookingController extends Controller
             // Optional client preference when both deposit AND full
             // payment are allowed. Ignored when only one is valid.
             'payment_choice'   => 'sometimes|in:deposit,full',
+            // Policy-agreement flag. Required only when the tenant has
+            // require_policy_agreement turned on (validated below).
+            'policy_agreed'    => 'sometimes|boolean',
         ]);
 
         $serviceId = (int)    $validated['service_id'];
@@ -60,6 +63,21 @@ class PublicBookingController extends Controller
         $ownerName  = $tenant->owner?->name ?? 'there';
 
         tenancy()->initialize($tenant);
+
+        // Policy enforcement: require_policy_agreement. Reject early if the
+        // tenant requires it and the client didn't tick the box.
+        if (\Illuminate\Support\Facades\Schema::hasTable('business_policies')
+            && \Illuminate\Support\Facades\Schema::hasColumn('business_policies', 'require_policy_agreement')
+        ) {
+            $requiresAgreement = (bool) DB::table('business_policies')->value('require_policy_agreement');
+            if ($requiresAgreement && empty($validated['policy_agreed'])) {
+                tenancy()->end();
+                return response()->json([
+                    'message' => 'You must agree to the booking policies to continue.',
+                    'errors'  => ['policy_agreed' => ['Please confirm you have read the booking policies.']],
+                ], 422);
+            }
+        }
 
         // ── Load data ────────────────────────────────────────────────────
         $service = DB::table('services')

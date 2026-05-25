@@ -380,6 +380,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 displayName={displayName}
                 availability={availability}
                 paymentSettings={site.payment_settings ?? null}
+                requirePolicyAgreement={!! site.policies?.require_policy_agreement}
               />
             )}
           </div>

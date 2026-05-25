@@ -194,6 +194,19 @@ export interface BusinessProfile {
   instagram_url: string | null
   booking_enabled: boolean
   site_status: string
+  // ── Preferences (migration #5 — owner-facing behavior settings) ──
+  time_zone?: string | null
+  /** 0=Sunday, 1=Monday */
+  week_start_day?: number
+  time_format?: '12h' | '24h'
+  default_appointment_duration_minutes?: number
+  post_booking_message?: string | null
+  email_signature?: string | null
+  site_visibility?: 'public' | 'private' | 'coming_soon'
+  /** Read-only signal. Set site_password on PATCH; backend hashes. */
+  site_password_set?: boolean
+  /** Write-only. Empty string clears. */
+  site_password?: string
 }
 
 /**
@@ -232,6 +245,13 @@ export interface BusinessPolicy {
   deposit_policy: string | null
   reschedule_policy: string | null
   extra_notes: string | null
+  // ── Enforcement rules (migration #5) ──
+  /** Minutes past start. 0 = disabled. Cron enforcement coming soon. */
+  late_grace_period_minutes?: number
+  forfeit_deposit_on_late_cancel?: boolean
+  /** null = unlimited, 0 = no reschedules allowed */
+  max_reschedules_per_booking?: number | null
+  require_policy_agreement?: boolean
 }
 
 // Staff (API-backed, editor + public)
@@ -715,6 +735,8 @@ export interface PublicBookingPayload {
   customer_phone?: string
   notes?: string
   payment_choice?: PaymentChoice
+  /** Required when the tenant has require_policy_agreement turned on. */
+  policy_agreed?: boolean
 }
 
 export interface PublicBookingResponse {

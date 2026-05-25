@@ -71,12 +71,14 @@ export default function TheFadeRoomBooking({
   displayName,
   availability,
   paymentSettings,
+  requirePolicyAgreement = false,
 }: {
   slug: string
   services: Service[]
   displayName: string
   availability: AvailabilityData | null
   paymentSettings: PublicPaymentSettings | null
+  requirePolicyAgreement?: boolean
 }) {
   const [step,         setStep]         = useState<Step>(1)
   const [serviceId,    setServiceId]    = useState<number | null>(null)
@@ -91,6 +93,7 @@ export default function TheFadeRoomBooking({
   const [success,      setSuccess]      = useState(false)
   const [submitError,  setSubmitError]  = useState<string | null>(null)
   const [paymentChoice, setPaymentChoice] = useState<PaymentChoice>('deposit')
+  const [policyAgreed, setPolicyAgreed] = useState(false)
   const fetchRef = useRef(0)
 
   const selectedService = services.find(s => s.id === serviceId) ?? null
@@ -214,6 +217,9 @@ export default function TheFadeRoomBooking({
       if (paymentRequired) {
         payload.payment_choice = effectiveChoice
       }
+      if (requirePolicyAgreement) {
+        payload.policy_agreed = true // backend rejects if false/missing
+      }
       const res = await createPublicAppointment(slug, payload)
       if (res.checkout_url) {
         // Hand control off to Stripe — webhook will finalize the booking
@@ -292,7 +298,9 @@ export default function TheFadeRoomBooking({
 
   const canStep2 = serviceId !== null
   const canStep3 = canStep2 && !!date && !!selectedSlot
-  const canStep4 = canStep3 && name.trim().length > 0
+  const canStep4 = canStep3
+                   && name.trim().length > 0
+                   && (! requirePolicyAgreement || policyAgreed)
 
   function stepClass(n: Step) {
     if (step === n) return 'tfr-booking-step is-active'
@@ -655,6 +663,28 @@ export default function TheFadeRoomBooking({
                   Your booking is reserved once the payment clears.
                 </p>
               </div>
+            )}
+
+            {requirePolicyAgreement && (
+              <label
+                style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 10,
+                  padding: '12px 14px', marginTop: 12,
+                  background: '#F8F6F2', border: '1px solid rgba(18,18,18,0.10)',
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={policyAgreed}
+                  onChange={e => setPolicyAgreed(e.target.checked)}
+                  style={{ marginTop: 3, accentColor: '#121212', flexShrink: 0 }}
+                />
+                <span style={{ fontSize: 12, lineHeight: 1.5, color: '#3A3A3A' }}>
+                  I&apos;ve read and agree to the booking policies (cancellation,
+                  late arrival, no-show, deposit, and reschedule rules).
+                </span>
+              </label>
             )}
 
             {submitError && (

@@ -19,9 +19,20 @@ class BusinessProfile extends Model
         'instagram_url',
         'booking_enabled',
         'site_status',
+        // Preferences (migration #5)
+        'time_zone',
+        'week_start_day',
+        'time_format',
+        'default_appointment_duration_minutes',
+        'post_booking_message',
+        'email_signature',
+        'site_visibility',
+        'site_password_hash',
     ];
 
     protected $casts = [
         'booking_enabled' => 'boolean',
+        'week_start_day'  => 'integer',
+        'default_appointment_duration_minutes' => 'integer',
     ];
 }

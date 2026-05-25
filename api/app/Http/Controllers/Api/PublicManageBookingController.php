@@ -208,6 +208,22 @@ class PublicManageBookingController extends Controller
             return response()->json(['message' => 'This booking can no longer be changed.'], 422);
         }
 
+        // Policy enforcement: max_reschedules_per_booking
+        // null = unlimited, 0 = none allowed, N = cap. Read defensively in
+        // case the policy table hasn't been migrated.
+        if (Schema::hasTable('business_policies') && Schema::hasColumn('business_policies', 'max_reschedules_per_booking')) {
+            $maxReschedule = DB::table('business_policies')->value('max_reschedules_per_booking');
+            if ($maxReschedule !== null) {
+                $current = property_exists($row, 'reschedule_count') ? (int) ($row->reschedule_count ?? 0) : 0;
+                if ($current >= (int) $maxReschedule) {
+                    tenancy()->end();
+                    return response()->json([
+                        'message' => 'This booking has been rescheduled the maximum number of times. Please contact us directly to change it.',
+                    ], 422);
+                }
+            }
+        }
+
         $bs         = $this->loadBookingSettings();
         $reschedWin = $bs && property_exists($bs, 'reschedule_window_hours') ? (int) $bs->reschedule_window_hours : 24;
 
@@ -301,12 +317,18 @@ class PublicManageBookingController extends Controller
             'end_time'         => substr($row->end_time,   0, 5),
         ];
 
-        DB::table('appointments')->where('id', $row->id)->update([
+        $update = [
             'appointment_date' => $newDate,
             'start_time'       => $newStart,
             'end_time'         => $endTime,
             'updated_at'       => now(),
-        ]);
+        ];
+        if (Schema::hasColumn('appointments', 'reschedule_count')) {
+            $update['reschedule_count'] = (property_exists($row, 'reschedule_count')
+                ? (int) ($row->reschedule_count ?? 0)
+                : 0) + 1;
+        }
+        DB::table('appointments')->where('id', $row->id)->update($update);
 
         $updated     = DB::table('appointments')->find($row->id);
         $publicView  = $this->formatPublic($updated, $bs);
