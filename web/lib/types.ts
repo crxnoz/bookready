@@ -308,6 +308,13 @@ export interface PaymentSettings {
   deposit_type:        DepositType | null
   deposit_amount:      number | null
   allow_full_payment:  boolean
+  // Add-ons
+  allow_split_pay?:           boolean
+  collect_tax?:               boolean
+  save_cards_for_reuse?:      boolean
+  no_show_fee_amount?:        number | null
+  late_cancel_fee_amount?:    number | null
+  late_cancel_window_hours?:  number
   currency:            string
   created_at?:         string
   updated_at?:         string
@@ -485,6 +492,10 @@ export interface PublicPaymentSettings {
   deposit_type:        DepositType | null
   deposit_amount:      number | null
   allow_full_payment:  boolean
+  allow_split_pay?:    boolean
+  collect_tax?:        boolean
+  late_cancel_fee_amount?:    number | null
+  late_cancel_window_hours?:  number
   currency:            string
 }
 
@@ -578,6 +589,16 @@ export interface Appointment {
   balance_checkout_session_id?: string | null
   balance_paid_amount?:         number | null
   balance_paid_at?:             string | null
+  // Tip snapshot — null when no tip received yet
+  tip_amount?:        number | null
+  tip_paid_at?:       string | null
+  // Saved card (presence = late fees available)
+  stripe_customer_id?:       string | null
+  saved_payment_method_id?:  string | null
+  // Late fee snapshot
+  late_fee_amount?:   number | null
+  late_fee_type?:     'no_show' | 'late_cancel' | null
+  late_fee_paid_at?:  string | null
   // Refund snapshot — null when nothing has been refunded yet.
   refunded_amount?:      number | null
   refunded_at?:          string | null
@@ -620,6 +641,22 @@ export interface ChargeBalanceResponse {
   message: string
   email_sent: boolean
   checkout_url: string
+  appointment: Appointment
+}
+
+export interface RequestTipResponse {
+  message: string
+  email_sent: boolean
+  tip_url: string
+}
+
+export interface ChargeLateFeePayload {
+  type: 'no_show' | 'late_cancel'
+  amount?: number | null
+}
+
+export interface ChargeLateFeeResponse {
+  message: string
   appointment: Appointment
 }
 

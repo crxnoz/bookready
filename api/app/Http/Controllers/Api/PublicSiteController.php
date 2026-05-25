@@ -209,12 +209,20 @@ class PublicSiteController extends Controller
         if (Schema::hasTable('payment_settings')) {
             $psRow = DB::table('payment_settings')->first();
             if ($psRow) {
+                // Read add-on columns defensively in case migration #4 hasn't
+                // run yet on this tenant.
+                $get = static fn(string $k, $default = null) =>
+                    property_exists($psRow, $k) ? $psRow->{$k} : $default;
                 $paymentSettings = [
                     'payments_enabled'   => (bool) $psRow->payments_enabled,
                     'deposits_enabled'   => (bool) $psRow->deposits_enabled,
                     'deposit_type'       =>        $psRow->deposit_type,
                     'deposit_amount'     => $psRow->deposit_amount !== null ? (float) $psRow->deposit_amount : null,
                     'allow_full_payment' => (bool) $psRow->allow_full_payment,
+                    'allow_split_pay'    => (bool) $get('allow_split_pay', false),
+                    'collect_tax'        => (bool) $get('collect_tax',     false),
+                    'late_cancel_fee_amount'   => $get('late_cancel_fee_amount') !== null ? (float) $get('late_cancel_fee_amount') : null,
+                    'late_cancel_window_hours' => (int)  $get('late_cancel_window_hours', 24),
                     'currency'           =>        $psRow->currency ?? 'USD',
                 ];
             }

@@ -10,21 +10,26 @@ import {
   Clock,
   CreditCard,
   DollarSign,
+  HandCoins,
   Plus,
   Scissors,
   Undo2,
   User,
   X,
   XCircle,
+  Zap,
 } from 'lucide-react'
 import {
   chargeEditorAppointmentBalance,
+  chargeEditorAppointmentLateFee,
   createEditorAppointment,
   deleteEditorAppointment,
   getEditorAppointments,
+  getEditorPaymentSettings,
   getEditorServices,
   markEditorAppointmentPaid,
   refundEditorAppointment,
+  requestEditorAppointmentTip,
   updateEditorAppointment,
 } from '@/lib/api'
 import type {
@@ -32,6 +37,7 @@ import type {
   AppointmentStatus,
   CreateAppointmentPayload,
   MarkPaidPayload,
+  PaymentSettings,
   RefundPayload,
   Service,
 } from '@/lib/types'
@@ -221,12 +227,18 @@ export default function AppointmentsEditor() {
   const [refundTarget, setRefundTarget]         = useState<Appointment | null>(null)
   const [markPaidTarget, setMarkPaidTarget]     = useState<Appointment | null>(null)
   const [chargeBalanceTarget, setChargeBalanceTarget] = useState<Appointment | null>(null)
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null)
 
   useEffect(() => {
-    Promise.all([getEditorAppointments({ limit: 200 }), getEditorServices()])
-      .then(([appts, svcs]) => {
+    Promise.all([
+      getEditorAppointments({ limit: 200 }),
+      getEditorServices(),
+      getEditorPaymentSettings().catch(() => null),
+    ])
+      .then(([appts, svcs, ps]) => {
         setAppointments(appts)
         setServices(svcs.filter(s => s.is_active))
+        setPaymentSettings(ps)
       })
       .catch(() => setError('Failed to load appointments.'))
       .finally(() => setLoading(false))
@@ -389,6 +401,43 @@ export default function AppointmentsEditor() {
     const res = await chargeEditorAppointmentBalance(id)
     setAppointments(prev => prev.map(a => a.id === id ? res.appointment : a))
     return { checkout_url: res.checkout_url, email_sent: res.email_sent, message: res.message }
+  }
+
+  async function handleRequestTip(id: number) {
+    const appt = appointments.find(a => a.id === id)
+    const who  = appt?.customer_email ?? 'the customer'
+    if (! confirm(`Send a tip request email to ${who}?`)) return
+    setActionLoading(id)
+    try {
+      const res = await requestEditorAppointmentTip(id)
+      alert(res.message)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Could not send tip request.')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  async function handleChargeLateFee(id: number, type: 'no_show' | 'late_cancel') {
+    const fee = type === 'no_show'
+      ? paymentSettings?.no_show_fee_amount
+      : paymentSettings?.late_cancel_fee_amount
+    const label = type === 'no_show' ? 'no-show fee' : 'late-cancellation fee'
+    if (! fee || fee <= 0) {
+      alert(`Set a ${label} amount in Payment Settings first.`)
+      return
+    }
+    const sym = (paymentSettings?.currency ?? 'USD') === 'USD' ? '$' : ''
+    if (! confirm(`Charge ${sym}${fee.toFixed(2)} ${label} to the saved card?`)) return
+    setActionLoading(id)
+    try {
+      const res = await chargeEditorAppointmentLateFee(id, { type })
+      setAppointments(prev => prev.map(a => a.id === id ? res.appointment : a))
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Could not charge the fee.')
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   const selectedService = services.find(s => s.id === Number(form.service_id))
@@ -650,6 +699,7 @@ export default function AppointmentsEditor() {
               <AppointmentCard
                 key={appt.id}
                 appt={appt}
+                paymentSettings={paymentSettings}
                 busy={actionLoading === appt.id}
                 onEdit={() => openEdit(appt)}
                 onStatus={status => handleStatusUpdate(appt.id, status)}
@@ -657,6 +707,8 @@ export default function AppointmentsEditor() {
                 onRefund={() => setRefundTarget(appt)}
                 onMarkPaid={() => setMarkPaidTarget(appt)}
                 onChargeBalance={() => setChargeBalanceTarget(appt)}
+                onRequestTip={() => handleRequestTip(appt.id)}
+                onChargeLateFee={type => handleChargeLateFee(appt.id, type)}
               />
             ))}
           </div>
@@ -958,6 +1010,7 @@ function MonthCalendarView({
 
 function AppointmentCard({
   appt,
+  paymentSettings,
   busy,
   onEdit,
   onStatus,
@@ -965,8 +1018,11 @@ function AppointmentCard({
   onRefund,
   onMarkPaid,
   onChargeBalance,
+  onRequestTip,
+  onChargeLateFee,
 }: {
   appt: Appointment
+  paymentSettings: PaymentSettings | null
   busy: boolean
   onEdit: () => void
   onStatus: (s: AppointmentStatus) => void
@@ -974,6 +1030,8 @@ function AppointmentCard({
   onRefund: () => void
   onMarkPaid: () => void
   onChargeBalance: () => void
+  onRequestTip: () => void
+  onChargeLateFee: (type: 'no_show' | 'late_cancel') => void
 }) {
   const today = todayStr()
   const isToday = appt.appointment_date === today
@@ -1020,6 +1078,22 @@ function AppointmentCard({
 
   const activeDispute = appt.dispute_status
     && ['warning_needs_response', 'warning_under_review', 'needs_response', 'under_review'].includes(appt.dispute_status)
+
+  // Tip request: completed appointments where customer email + manage_token
+  // exist and no tip has been recorded yet.
+  const showRequestTip = appt.status === 'completed'
+                         && !! appt.customer_email
+                         && !appt.tip_paid_at
+
+  // Late fees: terminal state (no_show or cancelled) + saved card on file
+  // + a fee amount configured in payment_settings + not already charged.
+  const hasSavedCard = !! appt.stripe_customer_id && !! appt.saved_payment_method_id
+  const showNoShowFee  = appt.status === 'no_show'
+                         && hasSavedCard && !appt.late_fee_paid_at
+                         && (paymentSettings?.no_show_fee_amount ?? 0) > 0
+  const showLateCancelFee = appt.status === 'cancelled'
+                            && hasSavedCard && !appt.late_fee_paid_at
+                            && (paymentSettings?.late_cancel_fee_amount ?? 0) > 0
 
   return (
     <div className={cn(
@@ -1100,7 +1174,7 @@ function AppointmentCard({
             </div>
           </div>
         )}
-        {(!terminal || isRefundable) && (
+        {(!terminal || isRefundable || showRequestTip || showNoShowFee || showLateCancelFee) && (
           <div className="flex flex-wrap gap-1.5 pt-1 border-t border-[rgba(18,18,18,0.06)]">
             {!terminal && appt.status === 'pending' && isFuture && (
               <ActionBtn onClick={() => onStatus('confirmed')} disabled={busy} icon={<CheckCircle size={11} />} label="Confirm" primary />
@@ -1121,6 +1195,15 @@ function AppointmentCard({
                 icon={<CreditCard size={11} />}
                 label={chargeLabel}
               />
+            )}
+            {showRequestTip && (
+              <ActionBtn onClick={onRequestTip} disabled={busy} icon={<HandCoins size={11} />} label="Request tip" />
+            )}
+            {showNoShowFee && (
+              <ActionBtn onClick={() => onChargeLateFee('no_show')} disabled={busy} icon={<Zap size={11} />} label="No-show fee" />
+            )}
+            {showLateCancelFee && (
+              <ActionBtn onClick={() => onChargeLateFee('late_cancel')} disabled={busy} icon={<Zap size={11} />} label="Late-cancel fee" />
             )}
             {isRefundable && (
               <ActionBtn onClick={onRefund} disabled={busy} icon={<Undo2 size={11} />} label="Refund" />

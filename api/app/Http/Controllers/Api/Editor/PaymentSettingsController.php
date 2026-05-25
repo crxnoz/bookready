@@ -26,6 +26,12 @@ class PaymentSettingsController extends Controller
             'deposit_type'        =>          $row->deposit_type,
             'deposit_amount'      => $row->deposit_amount !== null ? (float) $row->deposit_amount : null,
             'allow_full_payment'  => (bool)   $row->allow_full_payment,
+            'allow_split_pay'     => (bool)   $get('allow_split_pay', false),
+            'collect_tax'         => (bool)   $get('collect_tax', false),
+            'save_cards_for_reuse'=> (bool)   $get('save_cards_for_reuse', false),
+            'no_show_fee_amount'  => $get('no_show_fee_amount')     !== null ? (float) $get('no_show_fee_amount')     : null,
+            'late_cancel_fee_amount' => $get('late_cancel_fee_amount') !== null ? (float) $get('late_cancel_fee_amount') : null,
+            'late_cancel_window_hours' => (int) $get('late_cancel_window_hours', 24),
             'currency'            =>          $row->currency ?? 'USD',
             'created_at'          =>          $row->created_at,
             'updated_at'          =>          $row->updated_at,
@@ -80,12 +86,18 @@ class PaymentSettingsController extends Controller
     public function update(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'payments_enabled'   => 'sometimes|boolean',
-            'deposits_enabled'   => 'sometimes|boolean',
-            'deposit_type'       => 'sometimes|nullable|in:flat,percent',
-            'deposit_amount'     => 'sometimes|nullable|numeric|min:0|max:999999.99',
-            'allow_full_payment' => 'sometimes|boolean',
-            'currency'           => 'sometimes|string|size:3',
+            'payments_enabled'         => 'sometimes|boolean',
+            'deposits_enabled'         => 'sometimes|boolean',
+            'deposit_type'             => 'sometimes|nullable|in:flat,percent',
+            'deposit_amount'           => 'sometimes|nullable|numeric|min:0|max:999999.99',
+            'allow_full_payment'       => 'sometimes|boolean',
+            'allow_split_pay'          => 'sometimes|boolean',
+            'collect_tax'              => 'sometimes|boolean',
+            'save_cards_for_reuse'     => 'sometimes|boolean',
+            'no_show_fee_amount'       => 'sometimes|nullable|numeric|min:0|max:999999.99',
+            'late_cancel_fee_amount'   => 'sometimes|nullable|numeric|min:0|max:999999.99',
+            'late_cancel_window_hours' => 'sometimes|integer|min:0|max:336', // up to 2 weeks
+            'currency'                 => 'sometimes|string|size:3',
         ]);
 
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
@@ -95,10 +107,18 @@ class PaymentSettingsController extends Controller
 
         $data = ['updated_at' => now()];
 
-        foreach (['payments_enabled', 'deposits_enabled', 'allow_full_payment'] as $bool) {
+        foreach (['payments_enabled', 'deposits_enabled', 'allow_full_payment', 'allow_split_pay', 'collect_tax', 'save_cards_for_reuse'] as $bool) {
             if (array_key_exists($bool, $validated)) {
                 $data[$bool] = (bool) $validated[$bool];
             }
+        }
+        foreach (['no_show_fee_amount', 'late_cancel_fee_amount'] as $money) {
+            if (array_key_exists($money, $validated)) {
+                $data[$money] = $validated[$money] !== null ? (float) $validated[$money] : null;
+            }
+        }
+        if (array_key_exists('late_cancel_window_hours', $validated)) {
+            $data['late_cancel_window_hours'] = (int) $validated['late_cancel_window_hours'];
         }
         if (array_key_exists('deposit_type', $validated)) {
             $data['deposit_type'] = $validated['deposit_type'] !== null

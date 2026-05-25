@@ -135,6 +135,18 @@ class AppointmentPaymentWebhookController extends Controller
             );
         }
 
+        // Tip payments update tip_* columns only — no status flip, no emails
+        // (Stripe Checkout sends its own thanks; the owner sees the update
+        // in the editor).
+        if (($metadata['payment_type'] ?? null) === AppointmentPaymentService::TYPE_TIP) {
+            return $this->handleTipPaid(
+                tenant:        $tenant,
+                appointmentId: $appointmentId,
+                sessionId:     $sessionId,
+                amountTotal:   $amountTotal,
+            );
+        }
+
         $ownerEmail = $tenant->owner?->email;
 
         tenancy()->initialize($tenant);
@@ -199,6 +211,29 @@ class AppointmentPaymentWebhookController extends Controller
             }
             if ($autoConfirm && $row->status === 'pending') {
                 $update['status'] = 'confirmed';
+            }
+
+            // If save_cards_for_reuse was on for this session, Stripe ran
+            // through customer_creation='always' or attached to an existing
+            // customer. Stash the customer + payment_method ids on the row
+            // so future late-fee charges can use them off_session.
+            if (Schema::hasColumn('appointments', 'stripe_customer_id')) {
+                $stripeCustomerId = $session->customer ?? null;
+                if ($stripeCustomerId) {
+                    $update['stripe_customer_id'] = $stripeCustomerId;
+                    // PaymentMethod id lives on the PaymentIntent. Fetch it
+                    // best-effort; if it fails we just don't store the PM
+                    // and late-fee charging will be unavailable for this row.
+                    if ($paymentIntent) {
+                        try {
+                            \Stripe\Stripe::setApiKey(config('cashier.secret') ?: env('STRIPE_SECRET'));
+                            $pi = \Stripe\PaymentIntent::retrieve($paymentIntent);
+                            if (! empty($pi->payment_method)) {
+                                $update['saved_payment_method_id'] = $pi->payment_method;
+                            }
+                        } catch (\Throwable) { /* swallow — saving is best-effort */ }
+                    }
+                }
             }
 
             DB::table('appointments')->where('id', $appointmentId)->update($update);
@@ -500,6 +535,48 @@ class AppointmentPaymentWebhookController extends Controller
             }
         }
 
+        return response()->json(['received' => true]);
+    }
+
+    // ── Tip payments ─────────────────────────────────────────────────────
+
+    /**
+     * Customer paid a tip via the public tip page. Idempotent on tip_paid_at.
+     */
+    private function handleTipPaid(
+        Tenant   $tenant,
+        int      $appointmentId,
+        string   $sessionId,
+        ?float   $amountTotal,
+    ): JsonResponse {
+        try {
+            tenancy()->initialize($tenant);
+            if (! Schema::hasColumn('appointments', 'tip_paid_at')) {
+                tenancy()->end();
+                return response()->json(['received' => true]);
+            }
+            $row = DB::table('appointments')
+                ->where('id', $appointmentId)
+                ->where('tip_checkout_session_id', $sessionId)
+                ->first();
+            if (! $row || $row->tip_paid_at !== null) {
+                tenancy()->end();
+                return response()->json(['received' => true]);
+            }
+            DB::table('appointments')->where('id', $appointmentId)->update([
+                'tip_amount'  => $amountTotal,
+                'tip_paid_at' => now(),
+                'updated_at'  => now(),
+            ]);
+            tenancy()->end();
+        } catch (\Throwable $e) {
+            Log::error('Tip webhook processing error', [
+                'tenant_id'      => $tenant->id,
+                'appointment_id' => $appointmentId,
+                'error'          => $e->getMessage(),
+            ]);
+            try { tenancy()->end(); } catch (\Throwable) {}
+        }
         return response()->json(['received' => true]);
     }
 

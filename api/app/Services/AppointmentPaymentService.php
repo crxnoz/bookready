@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\StripeConnectNotReadyException;
 use Stripe\Checkout\Session;
+use Stripe\Customer as StripeCustomer;
 use Stripe\Stripe;
 
 /**
@@ -23,6 +24,8 @@ class AppointmentPaymentService
     public const TYPE_DEPOSIT = 'deposit';
     public const TYPE_FULL    = 'full';
     public const TYPE_BALANCE = 'balance';
+    public const TYPE_TIP     = 'tip';
+    public const TYPE_LATE_FEE = 'late_fee';
 
     /**
      * Compute the deposit amount in major units (e.g. dollars) given the
@@ -107,7 +110,7 @@ class AppointmentPaymentService
         }
 
         $paymentType = $context['payment_type'] ?? self::TYPE_DEPOSIT;
-        if (! in_array($paymentType, [self::TYPE_DEPOSIT, self::TYPE_FULL, self::TYPE_BALANCE], true)) {
+        if (! in_array($paymentType, [self::TYPE_DEPOSIT, self::TYPE_FULL, self::TYPE_BALANCE, self::TYPE_TIP], true)) {
             $paymentType = self::TYPE_DEPOSIT;
         }
 
@@ -120,11 +123,13 @@ class AppointmentPaymentService
         $itemName    = match ($paymentType) {
             self::TYPE_FULL    => 'Booking · ' . $serviceName,
             self::TYPE_BALANCE => 'Balance · ' . $serviceName,
+            self::TYPE_TIP     => 'Tip · ' . $serviceName,
             default            => 'Deposit · ' . $serviceName,
         };
         $itemDesc    = match ($paymentType) {
             self::TYPE_FULL    => 'Full booking payment',
             self::TYPE_BALANCE => 'Remaining balance for your booking',
+            self::TYPE_TIP     => 'Gratuity for your appointment',
             default            => 'Booking deposit',
         };
 
@@ -136,9 +141,19 @@ class AppointmentPaymentService
             'appointment_id' => (string) $context['appointment_id'],
         ];
 
+        // BNPL methods piggyback on the same Checkout session — Stripe shows
+        // them as additional choices alongside Card when amount/currency
+        // are eligible. For ineligible amounts Stripe silently hides them.
+        $paymentMethodTypes = ['card'];
+        if (! empty($context['allow_split_pay'])) {
+            // Klarna covers US/EU, Afterpay/Clearpay covers US/UK/AU,
+            // Affirm is US/CA only. Stripe filters by region automatically.
+            $paymentMethodTypes = ['card', 'klarna', 'afterpay_clearpay', 'affirm'];
+        }
+
         $sessionParams = [
             'mode'                 => 'payment',
-            'payment_method_types' => ['card'],
+            'payment_method_types' => $paymentMethodTypes,
             'success_url'          => $context['success_url'],
             'cancel_url'           => $context['cancel_url'],
             'line_items'           => [[
@@ -164,7 +179,34 @@ class AppointmentPaymentService
             ],
         ];
 
-        if (! empty($context['customer_email'])) {
+        // Stripe Tax — requires the connected account to have Stripe Tax
+        // enabled in their dashboard. If they haven't, Checkout returns a
+        // clear error from the API.
+        if (! empty($context['collect_tax'])) {
+            $sessionParams['automatic_tax'] = ['enabled' => true];
+        }
+
+        // Saved-cards flow: create/reuse a Stripe Customer and store the
+        // PaymentMethod for off_session charges later (no-show fees, etc).
+        // Setup-future-usage isn't compatible with BNPL methods, so when
+        // both are on we silently keep card-only for save_cards charges.
+        if (! empty($context['save_cards_for_reuse'])) {
+            $sessionParams['payment_intent_data']['setup_future_usage'] = 'off_session';
+            $sessionParams['payment_method_types'] = ['card']; // BNPL can't save off_session
+            // Try to reuse an existing Customer by email so repeat clients
+            // can see their saved card in Checkout.
+            $existingCustomerId = self::findCustomerIdByEmail(
+                (string) ($context['customer_email'] ?? ''),
+            );
+            if ($existingCustomerId) {
+                $sessionParams['customer'] = $existingCustomerId;
+            } else {
+                $sessionParams['customer_creation'] = 'always';
+                if (! empty($context['customer_email'])) {
+                    $sessionParams['customer_email'] = $context['customer_email'];
+                }
+            }
+        } elseif (! empty($context['customer_email'])) {
             $sessionParams['customer_email'] = $context['customer_email'];
         }
 
@@ -174,6 +216,22 @@ class AppointmentPaymentService
             'id'  => $session->id,
             'url' => $session->url,
         ];
+    }
+
+    /**
+     * Look up the most recent Stripe Customer matching an email. Returns
+     * null when nothing matches (or on error — Checkout falls back to
+     * creating a new customer in that case).
+     */
+    private static function findCustomerIdByEmail(string $email): ?string
+    {
+        if ($email === '') return null;
+        try {
+            $list = StripeCustomer::all(['email' => $email, 'limit' => 1]);
+            return $list->data[0]->id ?? null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

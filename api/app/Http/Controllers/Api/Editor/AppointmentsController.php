@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\Editor;
 
 use App\Http\Controllers\Controller;
 use App\Mail\BalanceDueClientMail;
+use App\Mail\LateFeeChargedClientMail;
+use App\Mail\TipRequestClientMail;
 use App\Models\Tenant;
 use App\Services\AppointmentMailer;
 use App\Services\AppointmentPaymentService;
@@ -65,6 +67,16 @@ class AppointmentsController extends Controller
             'balance_checkout_session_id' => $get('balance_checkout_session_id'),
             'balance_paid_amount'         => $get('balance_paid_amount') !== null ? (float) $get('balance_paid_amount') : null,
             'balance_paid_at'             => $get('balance_paid_at'),
+            // Tip snapshot
+            'tip_amount'                  => $get('tip_amount') !== null ? (float) $get('tip_amount') : null,
+            'tip_paid_at'                 => $get('tip_paid_at'),
+            // Saved card (presence = late fees available)
+            'stripe_customer_id'          => $get('stripe_customer_id'),
+            'saved_payment_method_id'     => $get('saved_payment_method_id'),
+            // Late fee snapshot
+            'late_fee_amount'             => $get('late_fee_amount') !== null ? (float) $get('late_fee_amount') : null,
+            'late_fee_type'               => $get('late_fee_type'),
+            'late_fee_paid_at'            => $get('late_fee_paid_at'),
             // Refund snapshot
             'refunded_amount'          => $get('refunded_amount') !== null ? (float) $get('refunded_amount') : null,
             'refunded_at'              => $get('refunded_at'),
@@ -754,6 +766,9 @@ class AppointmentsController extends Controller
             'customer_email'            => $row->customer_email,
             'stripe_connect_account_id' => $payment['stripe_connect_account_id'] ?? null,
             'stripe_connect_ready'      => true,
+            'allow_split_pay'           => (bool) ($payment['allow_split_pay']      ?? false),
+            'collect_tax'               => (bool) ($payment['collect_tax']          ?? false),
+            'save_cards_for_reuse'      => (bool) ($payment['save_cards_for_reuse'] ?? false),
             'success_url' => sprintf(
                 'https://%s.bkrdy.me/?booking=%s&appointment=%d&session_id={CHECKOUT_SESSION_ID}',
                 $tenant->id,
@@ -838,6 +853,223 @@ class AppointmentsController extends Controller
             'email_sent'     => $emailSent,
             'checkout_url'   => $session['url'],
             'appointment'    => $result,
+        ]);
+    }
+
+    // ── Request tip ──────────────────────────────────────────────────────
+
+    /**
+     * Owner-initiated tip request — fires TipRequestClientMail with a
+     * link to the public tip page. The customer picks the amount there.
+     * Only callable on appointments where a customer email + manage_token
+     * exist and a tip hasn't already been received.
+     */
+    public function requestTip(Request $request, int $appointment): JsonResponse
+    {
+        $tenant = Tenant::findOrFail($request->user()->tenant_id);
+        tenancy()->initialize($tenant);
+
+        if (! Schema::hasColumn('appointments', 'tip_paid_at')) {
+            tenancy()->end();
+            return response()->json(['message' => 'Tips not available for this workspace yet.'], 409);
+        }
+
+        $row = DB::table('appointments')->where('id', $appointment)->first();
+        if (! $row) {
+            tenancy()->end();
+            return response()->json(['message' => 'Appointment not found.'], 404);
+        }
+        if (empty($row->customer_email)) {
+            tenancy()->end();
+            return response()->json(['message' => 'No email on file for this customer.'], 422);
+        }
+        if (empty($row->manage_token)) {
+            tenancy()->end();
+            return response()->json(['message' => 'Tip flow needs a manage token on the appointment.'], 422);
+        }
+        if (! empty($row->tip_paid_at)) {
+            tenancy()->end();
+            return response()->json(['message' => 'A tip was already received for this appointment.'], 422);
+        }
+
+        $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
+        $tipUrl       = sprintf('https://%s.bkrdy.me/tip/%s', $tenant->id, $row->manage_token);
+        tenancy()->end();
+
+        $emailSent = false;
+        try {
+            Mail::to($row->customer_email)->send(new TipRequestClientMail(
+                customerName:    (string) $row->customer_name,
+                businessName:    $businessName,
+                serviceName:     (string) $row->service_name,
+                appointmentDate: (string) $row->appointment_date,
+                startTime:       substr((string) $row->start_time, 0, 5),
+                tipUrl:          $tipUrl,
+            ));
+            $emailSent = true;
+        } catch (\Throwable $e) {
+            Log::error('[BookReady] TipRequestClientMail failed', [
+                'tenant_id'      => $tenant->id,
+                'appointment_id' => $appointment,
+                'error'          => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'message'     => $emailSent
+                                ? 'Tip request sent to ' . $row->customer_email . '.'
+                                : 'Could not send the email. Try again, or share the link below.',
+            'email_sent'  => $emailSent,
+            'tip_url'     => $tipUrl,
+        ]);
+    }
+
+    // ── Charge late fee (no-show or late-cancel) ─────────────────────────
+
+    /**
+     * Charge the customer's saved card off_session for either a no-show
+     * or late-cancellation fee. Amount defaults to the per-tenant
+     * configured fee for that type but can be overridden per appointment.
+     *
+     * Body: { type: 'no_show'|'late_cancel', amount?: float }
+     */
+    public function chargeLateFee(Request $request, int $appointment): JsonResponse
+    {
+        $validated = $request->validate([
+            'type'   => 'required|in:no_show,late_cancel',
+            'amount' => 'sometimes|nullable|numeric|min:0.50|max:9999.99',
+        ]);
+
+        $tenant = Tenant::findOrFail($request->user()->tenant_id);
+        tenancy()->initialize($tenant);
+
+        if (! Schema::hasColumn('appointments', 'late_fee_amount')) {
+            tenancy()->end();
+            return response()->json(['message' => 'Late fees not available for this workspace yet.'], 409);
+        }
+
+        $row = DB::table('appointments')->where('id', $appointment)->first();
+        if (! $row) {
+            tenancy()->end();
+            return response()->json(['message' => 'Appointment not found.'], 404);
+        }
+        if (empty($row->stripe_customer_id) || empty($row->saved_payment_method_id)) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'No saved card on this booking — late fees require the customer to have paid with card at booking time.',
+            ], 422);
+        }
+        if (! empty($row->late_fee_paid_at)) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'A late fee has already been charged on this appointment.',
+            ], 422);
+        }
+
+        // Default amount comes from per-tenant config.
+        $payment = (array) (DB::table('payment_settings')->first() ?: []);
+        $configured = $validated['type'] === 'no_show'
+            ? ($payment['no_show_fee_amount'] ?? null)
+            : ($payment['late_cancel_fee_amount'] ?? null);
+        $amount = $validated['amount'] ?? ($configured !== null ? (float) $configured : null);
+
+        if ($amount === null || $amount <= 0) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'No fee amount configured for ' . $validated['type'] . '. Set one in Payment Settings or pass amount in this request.',
+            ], 422);
+        }
+
+        if (! StripeConnectService::isReady($payment)) {
+            tenancy()->end();
+            return response()->json(['message' => 'Stripe Connect is not active.'], 422);
+        }
+
+        // Snapshot what we need for the off_session charge + email.
+        $tenantId      = $tenant->id;
+        $stripeCustId  = $row->stripe_customer_id;
+        $stripePmId    = $row->saved_payment_method_id;
+        $destination   = $payment['stripe_connect_account_id'];
+        $currency      = strtolower((string) ($row->currency ?? 'usd'));
+        $customerEmail = $row->customer_email;
+        $customerName  = $row->customer_name;
+        $serviceName   = $row->service_name;
+        $apptDate      = $row->appointment_date;
+        $startTime     = substr((string) $row->start_time, 0, 5);
+        $feeType       = $validated['type'];
+        $businessName  = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
+        tenancy()->end();
+
+        try {
+            \Stripe\Stripe::setApiKey(config('cashier.secret') ?: env('STRIPE_SECRET'));
+            $pi = \Stripe\PaymentIntent::create([
+                'amount'         => (int) round($amount * 100),
+                'currency'       => $currency,
+                'customer'       => $stripeCustId,
+                'payment_method' => $stripePmId,
+                'off_session'    => true,
+                'confirm'        => true,
+                'description'    => ($feeType === 'no_show' ? 'No-show fee · ' : 'Late-cancel fee · ') . $serviceName,
+                'metadata' => [
+                    'purpose'        => AppointmentPaymentService::PURPOSE,
+                    'payment_type'   => AppointmentPaymentService::TYPE_LATE_FEE,
+                    'late_fee_type'  => $feeType,
+                    'tenant_id'      => (string) $tenantId,
+                    'appointment_id' => (string) $appointment,
+                ],
+                'transfer_data'  => ['destination' => $destination],
+            ]);
+        } catch (\Stripe\Exception\CardException $e) {
+            return response()->json([
+                'message' => 'Card was declined: ' . $e->getMessage(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Late fee charge failed', [
+                'tenant_id'      => $tenantId,
+                'appointment_id' => $appointment,
+                'error'          => $e->getMessage(),
+            ]);
+            return response()->json(['message' => 'Could not charge the late fee.'], 502);
+        }
+
+        // Optimistic local update.
+        tenancy()->initialize($tenant);
+        DB::table('appointments')->where('id', $appointment)->update([
+            'late_fee_amount'             => $amount,
+            'late_fee_type'               => $feeType,
+            'late_fee_paid_at'            => now(),
+            'late_fee_payment_intent_id'  => $pi->id ?? null,
+            'updated_at'                  => now(),
+        ]);
+        $fresh  = DB::table('appointments')->where('id', $appointment)->first();
+        $result = $this->format($fresh);
+        tenancy()->end();
+
+        // Best-effort customer receipt — never block the response on it.
+        try {
+            Mail::to($customerEmail)->send(new LateFeeChargedClientMail(
+                customerName:    (string) $customerName,
+                businessName:    $businessName,
+                serviceName:     (string) $serviceName,
+                appointmentDate: (string) $apptDate,
+                startTime:       $startTime,
+                amount:          $amount,
+                currency:        strtoupper($currency),
+                feeType:         $feeType,
+            ));
+        } catch (\Throwable $e) {
+            Log::error('[BookReady] LateFeeChargedClientMail failed', [
+                'tenant_id'      => $tenantId,
+                'appointment_id' => $appointment,
+                'error'          => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'message'     => $feeType === 'no_show'
+                                ? 'No-show fee charged.'
+                                : 'Late-cancel fee charged.',
+            'appointment' => $result,
         ]);
     }
 }

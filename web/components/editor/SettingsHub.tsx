@@ -257,8 +257,14 @@ function PaymentSettingsPanel() {
   const dirty = useMemo(() => {
     if (!data || !draft) return false
     return (
-         data.payments_enabled   !== draft.payments_enabled
-      || data.deposits_enabled   !== draft.deposits_enabled
+         data.payments_enabled       !== draft.payments_enabled
+      || data.deposits_enabled       !== draft.deposits_enabled
+      || (data.allow_split_pay        ?? false) !== (draft.allow_split_pay        ?? false)
+      || (data.collect_tax            ?? false) !== (draft.collect_tax            ?? false)
+      || (data.save_cards_for_reuse   ?? false) !== (draft.save_cards_for_reuse   ?? false)
+      || (data.no_show_fee_amount     ?? null)  !== (draft.no_show_fee_amount     ?? null)
+      || (data.late_cancel_fee_amount ?? null)  !== (draft.late_cancel_fee_amount ?? null)
+      || (data.late_cancel_window_hours ?? 24)  !== (draft.late_cancel_window_hours ?? 24)
       || data.deposit_type       !== draft.deposit_type
       || data.deposit_amount     !== draft.deposit_amount
       || data.allow_full_payment !== draft.allow_full_payment
@@ -278,11 +284,17 @@ function PaymentSettingsPanel() {
     setSaveErr(null)
     try {
       const payload: PaymentSettingsPayload = {
-        payments_enabled:   draft.payments_enabled,
-        deposits_enabled:   draft.deposits_enabled,
-        deposit_type:       draft.deposits_enabled ? (draft.deposit_type ?? 'percent') : null,
-        deposit_amount:     draft.deposits_enabled ? draft.deposit_amount : null,
-        allow_full_payment: draft.allow_full_payment,
+        payments_enabled:     draft.payments_enabled,
+        deposits_enabled:     draft.deposits_enabled,
+        deposit_type:         draft.deposits_enabled ? (draft.deposit_type ?? 'percent') : null,
+        deposit_amount:       draft.deposits_enabled ? draft.deposit_amount : null,
+        allow_full_payment:   draft.allow_full_payment,
+        allow_split_pay:      draft.allow_split_pay ?? false,
+        collect_tax:          draft.collect_tax ?? false,
+        save_cards_for_reuse: draft.save_cards_for_reuse ?? false,
+        no_show_fee_amount:     draft.no_show_fee_amount ?? null,
+        late_cancel_fee_amount: draft.late_cancel_fee_amount ?? null,
+        late_cancel_window_hours: draft.late_cancel_window_hours ?? 24,
         currency:           draft.currency,
       }
       const next = await updateEditorPaymentSettings(payload)
@@ -451,6 +463,77 @@ function PaymentSettingsPanel() {
           onToggle={() => patch({ allow_full_payment: !draft.allow_full_payment })}
           disabled={paymentsOff}
         />
+
+        <Toggle
+          label="Split-pay (Klarna, Afterpay, Affirm)"
+          hint="Show Buy-Now-Pay-Later options alongside card in Stripe Checkout. Stripe handles eligibility per region and amount."
+          icon={Check}
+          on={(draft.allow_split_pay ?? false) && !paymentsOff}
+          onToggle={() => patch({ allow_split_pay: !(draft.allow_split_pay ?? false) })}
+          disabled={paymentsOff}
+        />
+
+        <Toggle
+          label="Collect sales tax"
+          hint="Adds tax to every payment via Stripe Tax. You must also enable Stripe Tax inside your connected account's Stripe dashboard."
+          icon={Check}
+          on={(draft.collect_tax ?? false) && !paymentsOff}
+          onToggle={() => patch({ collect_tax: !(draft.collect_tax ?? false) })}
+          disabled={paymentsOff}
+        />
+
+        <Toggle
+          label="Save cards for repeat customers"
+          hint="Returning clients see their saved card in Checkout. Also unlocks no-show / late-cancel fees below. Card-only — disables split-pay for that session."
+          icon={Check}
+          on={(draft.save_cards_for_reuse ?? false) && !paymentsOff}
+          onToggle={() => patch({ save_cards_for_reuse: !(draft.save_cards_for_reuse ?? false) })}
+          disabled={paymentsOff}
+        />
+
+        {/* Late-fee config (only meaningful when save_cards_for_reuse is on) */}
+        <div className={cn(
+          'border-t border-[rgba(18,18,18,0.06)] pt-3 space-y-3',
+          (!draft.save_cards_for_reuse || paymentsOff) && 'opacity-60',
+        )}>
+          <div>
+            <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1">Late fees</p>
+            <p className="text-[11px] text-muted-text">
+              {draft.save_cards_for_reuse
+                ? 'Manually charge the saved card when a client no-shows or cancels too late.'
+                : 'Turn on “Save cards for repeat customers” to enable late fees.'}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <MoneyInput
+              label="No-show fee"
+              currency={draft.currency}
+              value={draft.no_show_fee_amount ?? null}
+              onChange={v => patch({ no_show_fee_amount: v })}
+              disabled={!draft.save_cards_for_reuse || paymentsOff}
+            />
+            <MoneyInput
+              label="Late-cancel fee"
+              currency={draft.currency}
+              value={draft.late_cancel_fee_amount ?? null}
+              onChange={v => patch({ late_cancel_fee_amount: v })}
+              disabled={!draft.save_cards_for_reuse || paymentsOff}
+            />
+          </div>
+          <div className="flex items-center gap-2 text-[11px] text-muted-text">
+            <span>Cancellation is &ldquo;late&rdquo; within</span>
+            <input
+              type="number"
+              min={0}
+              max={336}
+              value={draft.late_cancel_window_hours ?? 24}
+              onChange={e => patch({ late_cancel_window_hours: Math.max(0, Math.min(336, parseInt(e.target.value, 10) || 0)) })}
+              disabled={!draft.save_cards_for_reuse || paymentsOff}
+              className="w-16 bg-white border border-[rgba(18,18,18,0.15)] px-2 py-1 text-[11px] text-near-black focus:outline-none focus:border-near-black transition-colors disabled:opacity-50"
+            />
+            <span>hours of the appointment.</span>
+          </div>
+        </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-[rgba(18,18,18,0.06)] pt-3">
           <div>
@@ -1333,6 +1416,43 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
     <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
       {children}
     </span>
+  )
+}
+
+function MoneyInput({
+  label, currency, value, onChange, disabled,
+}: {
+  label: string
+  currency: string
+  value: number | null
+  onChange: (v: number | null) => void
+  disabled?: boolean
+}) {
+  const sym = currency === 'USD' ? '$' : ''
+  return (
+    <div>
+      <label className="block text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1">{label}</label>
+      <div className={cn(
+        'flex items-center border border-[rgba(18,18,18,0.15)] focus-within:border-near-black',
+        disabled && 'opacity-50',
+      )}>
+        <span className="px-2.5 text-xs text-muted-text">{sym}</span>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          value={value ?? ''}
+          onChange={e => {
+            const v = e.target.value.trim()
+            onChange(v === '' ? null : Math.max(0, parseFloat(v) || 0))
+          }}
+          disabled={disabled}
+          placeholder="0.00"
+          className="flex-1 py-2 px-2 text-sm text-near-black bg-white outline-none disabled:opacity-50"
+        />
+        <span className="px-2.5 text-[11px] text-muted-text">{currency}</span>
+      </div>
+    </div>
   )
 }
 

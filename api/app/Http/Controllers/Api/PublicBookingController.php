@@ -303,6 +303,9 @@ class PublicBookingController extends Controller
                     'customer_email'            => $appt['customer_email'],
                     'stripe_connect_account_id' => $payment['stripe_connect_account_id'] ?? null,
                     'stripe_connect_ready'      => StripeConnectService::isReady($payment),
+                    'allow_split_pay'           => (bool) ($payment['allow_split_pay']      ?? false),
+                    'collect_tax'               => (bool) ($payment['collect_tax']          ?? false),
+                    'save_cards_for_reuse'      => (bool) ($payment['save_cards_for_reuse'] ?? false),
                     'success_url'    => sprintf(
                         'https://%s.bkrdy.me/?booking=success&appointment=%d&session_id={CHECKOUT_SESSION_ID}',
                         $tenant->id, $appt['id'],

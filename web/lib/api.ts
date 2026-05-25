@@ -22,9 +22,12 @@ import {
   ManageBookingView,
   ManageBookingActionResponse,
   ChargeBalanceResponse,
+  ChargeLateFeePayload,
+  ChargeLateFeeResponse,
   ConnectDashboardLinkResponse,
   MarkPaidPayload,
   MarkPaidResponse,
+  RequestTipResponse,
   PublicSite,
   RefundPayload,
   RefundResponse,
@@ -570,6 +573,32 @@ export async function chargeEditorAppointmentBalance(
   return request<ChargeBalanceResponse>(`/editor/appointments/${id}/charge-balance`, {
     method: 'POST',
     body: JSON.stringify({}),
+  })
+}
+
+/**
+ * Send the customer an email asking them to tip via the public tip page.
+ */
+export async function requestEditorAppointmentTip(
+  id: number,
+): Promise<RequestTipResponse> {
+  return request<RequestTipResponse>(`/editor/appointments/${id}/request-tip`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+/**
+ * Charge the customer's saved card off_session for a no-show or
+ * late-cancellation fee. Amount defaults to the per-tenant configured fee.
+ */
+export async function chargeEditorAppointmentLateFee(
+  id: number,
+  payload: ChargeLateFeePayload,
+): Promise<ChargeLateFeeResponse> {
+  return request<ChargeLateFeeResponse>(`/editor/appointments/${id}/charge-late-fee`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
   })
 }
 

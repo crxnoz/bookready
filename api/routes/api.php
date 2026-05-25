@@ -53,6 +53,10 @@ Route::prefix('v1')->group(function () {
     Route::post('public/sites/{slug}/manage/{token}/cancel',      [PublicManageBookingController::class, 'cancel']);
     Route::post('public/sites/{slug}/manage/{token}/reschedule',  [PublicManageBookingController::class, 'reschedule']);
 
+    // ── Public tip flow (token-gated) ────────────────────────────────────
+    Route::get ('public/sites/{slug}/tip/{token}',                [\App\Http\Controllers\Api\PublicTipController::class, 'show']);
+    Route::post('public/sites/{slug}/tip/{token}',                [\App\Http\Controllers\Api\PublicTipController::class, 'create']);
+
     // ── Authentication (central) ───────────────────────────────────────────
     Route::prefix('auth')->group(function () {
         Route::post('register', [RegisterController::class, 'store']);
@@ -106,9 +110,11 @@ Route::prefix('v1')->group(function () {
         Route::get('appointments/{appointment}',     [AppointmentsController::class, 'show']);
         Route::patch('appointments/{appointment}',         [AppointmentsController::class, 'update']);
         Route::delete('appointments/{appointment}',        [AppointmentsController::class, 'destroy']);
-        Route::post('appointments/{appointment}/refund',          [AppointmentsController::class, 'refund']);
-        Route::post('appointments/{appointment}/mark-paid',       [AppointmentsController::class, 'markPaid']);
-        Route::post('appointments/{appointment}/charge-balance',  [AppointmentsController::class, 'chargeBalance']);
+        Route::post('appointments/{appointment}/refund',            [AppointmentsController::class, 'refund']);
+        Route::post('appointments/{appointment}/mark-paid',         [AppointmentsController::class, 'markPaid']);
+        Route::post('appointments/{appointment}/charge-balance',    [AppointmentsController::class, 'chargeBalance']);
+        Route::post('appointments/{appointment}/request-tip',       [AppointmentsController::class, 'requestTip']);
+        Route::post('appointments/{appointment}/charge-late-fee',   [AppointmentsController::class, 'chargeLateFee']);
 
         Route::get('customers',              [CustomersController::class, 'index']);
         Route::post('customers',             [CustomersController::class, 'store']);
