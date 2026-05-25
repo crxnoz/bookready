@@ -96,10 +96,10 @@
         <tr>
           <td style="padding:24px 4px 0;">
             <p style="margin:0;font-size:11px;line-height:1.6;color:#6B7280;">
-              Sent by <strong style="color:#121212;font-weight:700;letter-spacing:0.04em;">BookReady</strong> — booking-ready websites, appointments, and payments for beauty brands.
+              You&rsquo;re getting this because you have a BookReady account.
             </p>
             <p style="margin:6px 0 0;font-size:11px;color:#9AA0A6;">
-              Questions? Reply to this email and we&rsquo;ll help.
+              Reply to this email if you need anything &mdash; we read every reply.
             </p>
           </td>
         </tr>
