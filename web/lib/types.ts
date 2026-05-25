@@ -565,6 +565,11 @@ export interface Appointment {
   amount_due?:           number | null
   currency?:             string
   paid_at?:              string | null
+  // Manual payment metadata — null when paid via Stripe.
+  payment_method?:       'cash' | 'venmo' | 'zelle' | 'other' | null
+  payment_note?:         string | null
+  // Presence signals "refund button works" — Stripe payments only.
+  stripe_payment_intent_id?: string | null
   // Refund snapshot — null when nothing has been refunded yet.
   refunded_amount?:      number | null
   refunded_at?:          string | null
@@ -586,6 +591,21 @@ export interface RefundPayload {
 export interface RefundResponse {
   message: string
   appointment: Appointment
+}
+
+export interface MarkPaidPayload {
+  amount: number
+  method: 'cash' | 'venmo' | 'zelle' | 'other'
+  note?: string
+}
+
+export interface MarkPaidResponse {
+  message: string
+  appointment: Appointment
+}
+
+export interface ConnectDashboardLinkResponse {
+  url: string
 }
 
 export interface CreateAppointmentPayload {

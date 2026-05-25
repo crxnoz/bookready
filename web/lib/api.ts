@@ -21,6 +21,9 @@ import {
   PublicBookingResponse,
   ManageBookingView,
   ManageBookingActionResponse,
+  ConnectDashboardLinkResponse,
+  MarkPaidPayload,
+  MarkPaidResponse,
   PublicSite,
   RefundPayload,
   RefundResponse,
@@ -531,6 +534,28 @@ export async function refundEditorAppointment(
     method: 'POST',
     body: JSON.stringify(payload),
   })
+}
+
+/**
+ * Owner records a manual (cash / Venmo / Zelle / other) payment.
+ * Rejects if the appointment already has a Stripe payment.
+ */
+export async function markEditorAppointmentPaid(
+  id: number,
+  payload: MarkPaidPayload,
+): Promise<MarkPaidResponse> {
+  return request<MarkPaidResponse>(`/editor/appointments/${id}/mark-paid`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+/**
+ * Mints a one-shot Stripe Express dashboard URL. Open it in a new tab
+ * immediately — the URL is single-use and expires in seconds.
+ */
+export async function getConnectDashboardLink(): Promise<ConnectDashboardLinkResponse> {
+  return request<ConnectDashboardLinkResponse>('/editor/settings/payments/connect/dashboard-link')
 }
 
 export async function getEditorCustomers(params?: {

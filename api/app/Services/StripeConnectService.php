@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Stripe\Account;
 use Stripe\AccountLink;
+use Stripe\LoginLink;
 use Stripe\Stripe;
 
 /**
@@ -73,6 +74,16 @@ class StripeConnectService
     {
         self::initStripe();
         return Account::retrieve($accountId);
+    }
+
+    /**
+     * One-shot login URL for the Express dashboard. Each call mints a fresh
+     * single-use URL that expires in seconds — never cache it.
+     */
+    public static function createDashboardLoginLink(string $accountId): LoginLink
+    {
+        self::initStripe();
+        return Account::createLoginLink($accountId);
     }
 
     /**

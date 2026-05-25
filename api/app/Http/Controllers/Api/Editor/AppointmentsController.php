@@ -50,6 +50,11 @@ class AppointmentsController extends Controller
             'amount_due'               => $get('amount_due') !== null ? (float) $get('amount_due') : null,
             'currency'                 => $get('currency', 'USD'),
             'paid_at'                  => $get('paid_at'),
+            // Manual / cash payment metadata (null when paid via Stripe)
+            'payment_method'           => $get('payment_method'),
+            'payment_note'             => $get('payment_note'),
+            // Stripe payment intent (presence = Stripe-eligible for refund)
+            'stripe_payment_intent_id' => $get('stripe_payment_intent_id'),
             // Refund snapshot
             'refunded_amount'          => $get('refunded_amount') !== null ? (float) $get('refunded_amount') : null,
             'refunded_at'              => $get('refunded_at'),
@@ -526,6 +531,80 @@ class AppointmentsController extends Controller
 
         return response()->json([
             'message'     => $isFull ? 'Refund issued.' : 'Partial refund issued.',
+            'appointment' => $result,
+        ]);
+    }
+
+    // ── Manual (non-Stripe) payments ─────────────────────────────────────
+
+    /**
+     * Owner records a cash/Venmo/Zelle/etc. payment against an appointment.
+     * Updates payment_status to 'paid' (or 'deposit_paid' if the recorded
+     * amount is less than the service price). Does NOT touch Stripe — these
+     * appointments will never have a stripe_payment_intent_id, which is
+     * how the refund UI hides itself for non-refundable payments.
+     *
+     * Body: { amount: float, method: 'cash'|'venmo'|'zelle'|'other', note?: string }
+     */
+    public function markPaid(Request $request, int $appointment): JsonResponse
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'method' => 'required|string|in:cash,venmo,zelle,other',
+            'note'   => 'sometimes|nullable|string|max:500',
+        ]);
+
+        $tenant = Tenant::findOrFail($request->user()->tenant_id);
+        tenancy()->initialize($tenant);
+
+        if (! Schema::hasColumn('appointments', 'payment_method')) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'Manual payment recording is not available for this workspace yet.',
+            ], 409);
+        }
+
+        $row = DB::table('appointments')->where('id', $appointment)->first();
+        if (! $row) {
+            tenancy()->end();
+            return response()->json(['message' => 'Appointment not found.'], 404);
+        }
+
+        // Refuse if this appointment already has a Stripe payment — don't
+        // let owners mix tender types on a single row. They can refund the
+        // Stripe charge first, then mark as cash if needed.
+        if (! empty($row->stripe_payment_intent_id)) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'This appointment already has a Stripe payment. Refund it first to record a manual payment.',
+            ], 422);
+        }
+
+        $amount       = round((float) $validated['amount'], 2);
+        $servicePrice = $row->service_price !== null ? (float) $row->service_price : null;
+        $isPaidInFull = $servicePrice === null || $amount + 0.001 >= $servicePrice;
+
+        $update = [
+            'payment_status'      => $isPaidInFull ? 'paid' : 'deposit_paid',
+            'deposit_required'    => true,
+            'deposit_paid_amount' => $amount,
+            'amount_due'          => $isPaidInFull
+                                        ? 0
+                                        : (($servicePrice !== null) ? max(0, $servicePrice - $amount) : null),
+            'currency'            => $row->currency ?? 'USD',
+            'paid_at'             => now(),
+            'payment_method'      => $validated['method'],
+            'payment_note'        => $validated['note'] ?? null,
+            'updated_at'          => now(),
+        ];
+
+        DB::table('appointments')->where('id', $appointment)->update($update);
+        $fresh  = DB::table('appointments')->where('id', $appointment)->first();
+        $result = $this->format($fresh);
+        tenancy()->end();
+
+        return response()->json([
+            'message'     => $isPaidInFull ? 'Marked as paid.' : 'Deposit recorded.',
             'appointment' => $result,
         ]);
     }

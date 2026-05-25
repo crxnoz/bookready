@@ -106,7 +106,8 @@ Route::prefix('v1')->group(function () {
         Route::get('appointments/{appointment}',     [AppointmentsController::class, 'show']);
         Route::patch('appointments/{appointment}',         [AppointmentsController::class, 'update']);
         Route::delete('appointments/{appointment}',        [AppointmentsController::class, 'destroy']);
-        Route::post('appointments/{appointment}/refund',   [AppointmentsController::class, 'refund']);
+        Route::post('appointments/{appointment}/refund',     [AppointmentsController::class, 'refund']);
+        Route::post('appointments/{appointment}/mark-paid',  [AppointmentsController::class, 'markPaid']);
 
         Route::get('customers',              [CustomersController::class, 'index']);
         Route::post('customers',             [CustomersController::class, 'store']);
@@ -145,9 +146,10 @@ Route::prefix('v1')->group(function () {
         Route::patch('settings/payments',             [PaymentSettingsController::class, 'update']);
 
         // ── Stripe Connect (customer payments only — NOT the SaaS subscription) ──
-        Route::post('settings/payments/connect/start',   [StripeConnectController::class, 'start']);
-        Route::get('settings/payments/connect/status',   [StripeConnectController::class, 'status']);
-        Route::post('settings/payments/connect/refresh', [StripeConnectController::class, 'refresh']);
+        Route::post('settings/payments/connect/start',          [StripeConnectController::class, 'start']);
+        Route::get ('settings/payments/connect/status',          [StripeConnectController::class, 'status']);
+        Route::post('settings/payments/connect/refresh',         [StripeConnectController::class, 'refresh']);
+        Route::get ('settings/payments/connect/dashboard-link',  [StripeConnectController::class, 'dashboardLink']);
 
         Route::get('website/template',                [WebsiteTemplateController::class, 'show']);
         Route::patch('website/template',              [WebsiteTemplateController::class, 'update']);

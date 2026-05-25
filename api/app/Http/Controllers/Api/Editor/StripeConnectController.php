@@ -156,6 +156,56 @@ class StripeConnectController extends Controller
     }
 
     /**
+     * GET /editor/settings/payments/connect/dashboard-link
+     * Mints a one-shot URL into the Stripe Express dashboard for the
+     * connected account. Caller opens it in a new tab. Single-use,
+     * expires in seconds — never store or share the response.
+     */
+    public function dashboardLink(Request $request): JsonResponse
+    {
+        $tenant = Tenant::findOrFail($request->user()->tenant_id);
+        tenancy()->initialize($tenant);
+
+        if (! Schema::hasTable('payment_settings')) {
+            tenancy()->end();
+            return response()->json(['message' => 'No Stripe Connect account on file'], 422);
+        }
+
+        $row       = DB::table('payment_settings')->first();
+        $accountId = $row->stripe_connect_account_id ?? null;
+        $status    = $row->stripe_connect_status      ?? null;
+
+        if (! $accountId) {
+            tenancy()->end();
+            return response()->json(['message' => 'No Stripe Connect account on file'], 422);
+        }
+        // Login link only works once the account is past onboarding —
+        // Stripe rejects it for accounts that never finished details_submitted.
+        if (! in_array($status, [StripeConnectService::STATUS_ACTIVE, StripeConnectService::STATUS_PENDING, StripeConnectService::STATUS_RESTRICTED], true)) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'Finish Stripe onboarding before opening the dashboard.',
+            ], 422);
+        }
+
+        try {
+            $link = StripeConnectService::createDashboardLoginLink($accountId);
+        } catch (\Throwable $e) {
+            Log::error('Stripe Connect dashboard link failed', [
+                'tenant'  => $tenant->id,
+                'account' => $accountId,
+                'error'   => $e->getMessage(),
+            ]);
+            tenancy()->end();
+            return response()->json(['message' => 'Could not generate dashboard link right now.'], 502);
+        }
+
+        tenancy()->end();
+
+        return response()->json(['url' => $link->url]);
+    }
+
+    /**
      * POST /editor/settings/payments/connect/refresh
      * Returns a fresh onboarding link for the existing connected account.
      */

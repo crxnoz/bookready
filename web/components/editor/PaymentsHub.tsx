@@ -8,6 +8,7 @@ import {
   Loader2, AlertCircle, ChevronRight, ExternalLink, ArrowRight, Calendar,
 } from 'lucide-react'
 import {
+  getConnectDashboardLink,
   getEditorAppointments,
   getEditorPaymentSettings,
 } from '@/lib/api'
@@ -148,6 +149,9 @@ function PaymentsOverview() {
   const stripeNeedsAttention = settings?.payments_enabled
     && settings?.stripe_connect_status !== 'active'
 
+  const hasConnectedAccount = !! settings?.stripe_connect_account_id
+    && ['active', 'pending', 'restricted'].includes(settings?.stripe_connect_status ?? '')
+
   return (
     <>
       {stripeNeedsAttention && (
@@ -166,6 +170,10 @@ function PaymentsOverview() {
             Open Settings
           </Link>
         </div>
+      )}
+
+      {hasConnectedAccount && (
+        <StripeDashboardButton />
       )}
 
       {/* Headline numbers */}
@@ -508,6 +516,54 @@ function ErrorRow({ message }: { message: string }) {
   return (
     <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-[#b42828] flex items-center gap-2">
       <AlertCircle size={14} /> {message}
+    </div>
+  )
+}
+
+/**
+ * Mints a single-use Stripe Express dashboard URL on click and opens it
+ * in a new tab. We don't pre-fetch the URL because Stripe's login link
+ * expires in seconds — the only safe time to fetch it is at click time.
+ */
+function StripeDashboardButton() {
+  const [busy, setBusy] = useState(false)
+  const [err,  setErr]  = useState('')
+
+  async function handleClick() {
+    setErr(''); setBusy(true)
+    try {
+      const { url } = await getConnectDashboardLink()
+      // Pop a new tab BEFORE the await would have done it — actually we already
+      // awaited so just open it now. Browsers may block this when not in a
+      // direct click handler; the await preceding it is short so it usually works.
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not generate dashboard link.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 flex items-center gap-3">
+      <ExternalLink size={14} className="text-near-black flex-shrink-0" />
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] font-semibold text-near-black">Open your Stripe dashboard</p>
+        <p className="text-[11px] text-muted-text mt-0.5">
+          View payouts, transactions, and update your bank details directly in Stripe.
+        </p>
+        {err && (
+          <p className="text-[11px] text-[#b42828] mt-1">{err}</p>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={busy}
+        className="text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.20)] bg-white px-3 py-1.5 hover:border-near-black transition-colors flex-shrink-0 disabled:opacity-50"
+      >
+        {busy ? 'Opening…' : 'Open Stripe'}
+      </button>
     </div>
   )
 }

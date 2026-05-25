@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  DollarSign,
   Plus,
   Scissors,
   Undo2,
@@ -20,6 +21,7 @@ import {
   deleteEditorAppointment,
   getEditorAppointments,
   getEditorServices,
+  markEditorAppointmentPaid,
   refundEditorAppointment,
   updateEditorAppointment,
 } from '@/lib/api'
@@ -27,12 +29,14 @@ import type {
   Appointment,
   AppointmentStatus,
   CreateAppointmentPayload,
+  MarkPaidPayload,
   RefundPayload,
   Service,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
 import { PaymentPill, PaymentSummary } from '@/components/editor/AppointmentPaymentStatus'
 import RefundDialog from '@/components/editor/RefundDialog'
+import MarkPaidDialog from '@/components/editor/MarkPaidDialog'
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -211,7 +215,8 @@ export default function AppointmentsEditor() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
-  const [refundTarget, setRefundTarget] = useState<Appointment | null>(null)
+  const [refundTarget, setRefundTarget]     = useState<Appointment | null>(null)
+  const [markPaidTarget, setMarkPaidTarget] = useState<Appointment | null>(null)
 
   useEffect(() => {
     Promise.all([getEditorAppointments({ limit: 200 }), getEditorServices()])
@@ -368,6 +373,11 @@ export default function AppointmentsEditor() {
 
   async function handleRefund(id: number, payload: RefundPayload) {
     const res = await refundEditorAppointment(id, payload)
+    setAppointments(prev => prev.map(a => a.id === id ? res.appointment : a))
+  }
+
+  async function handleMarkPaid(id: number, payload: MarkPaidPayload) {
+    const res = await markEditorAppointmentPaid(id, payload)
     setAppointments(prev => prev.map(a => a.id === id ? res.appointment : a))
   }
 
@@ -635,6 +645,7 @@ export default function AppointmentsEditor() {
                 onStatus={status => handleStatusUpdate(appt.id, status)}
                 onCancel={() => handleCancel(appt.id)}
                 onRefund={() => setRefundTarget(appt)}
+                onMarkPaid={() => setMarkPaidTarget(appt)}
               />
             ))}
           </div>
@@ -647,6 +658,14 @@ export default function AppointmentsEditor() {
           appt={refundTarget}
           onClose={() => setRefundTarget(null)}
           onSubmit={payload => handleRefund(refundTarget.id, payload)}
+        />
+      )}
+
+      {markPaidTarget && (
+        <MarkPaidDialog
+          appt={markPaidTarget}
+          onClose={() => setMarkPaidTarget(null)}
+          onSubmit={payload => handleMarkPaid(markPaidTarget.id, payload)}
         />
       )}
     </div>
@@ -925,6 +944,7 @@ function AppointmentCard({
   onStatus,
   onCancel,
   onRefund,
+  onMarkPaid,
 }: {
   appt: Appointment
   busy: boolean
@@ -932,19 +952,30 @@ function AppointmentCard({
   onStatus: (s: AppointmentStatus) => void
   onCancel: () => void
   onRefund: () => void
+  onMarkPaid: () => void
 }) {
   const today = todayStr()
   const isToday = appt.appointment_date === today
   const isFuture = appt.appointment_date >= today
   const terminal = appt.status === 'completed' || appt.status === 'cancelled' || appt.status === 'no_show'
 
-  // Refundable iff there's any payment beyond what's already been refunded.
+  // Refundable iff there's a Stripe payment with balance beyond what's
+  // already been refunded. Manual cash/Venmo payments can't refund via Stripe.
   const paid          = appt.deposit_paid_amount ?? 0
   const refunded      = appt.refunded_amount     ?? 0
-  const isRefundable  = paid > refunded + 0.001
+  const isStripePaid  = !! appt.stripe_payment_intent_id
+  const isRefundable  = isStripePaid
+                        && paid > refunded + 0.001
                         && (appt.payment_status === 'deposit_paid'
                           || appt.payment_status === 'paid'
                           || appt.payment_status === 'partially_refunded')
+
+  // Mark-as-paid shows when no payment has been recorded yet AND there's
+  // no in-flight Stripe checkout pending. Hide on terminal appointments.
+  const noPaymentYet = !appt.payment_status
+                       || appt.payment_status === 'none'
+                       || appt.payment_status === 'failed'
+  const showMarkPaid = !terminal && noPaymentYet
 
   const activeDispute = appt.dispute_status
     && ['warning_needs_response', 'warning_under_review', 'needs_response', 'under_review'].includes(appt.dispute_status)
@@ -1038,6 +1069,9 @@ function AppointmentCard({
             )}
             {!terminal && appt.status === 'confirmed' && (
               <ActionBtn onClick={() => onStatus('no_show')} disabled={busy} icon={<User size={11} />} label="No-show" />
+            )}
+            {showMarkPaid && (
+              <ActionBtn onClick={onMarkPaid} disabled={busy} icon={<DollarSign size={11} />} label="Mark paid" />
             )}
             {isRefundable && (
               <ActionBtn onClick={onRefund} disabled={busy} icon={<Undo2 size={11} />} label="Refund" />

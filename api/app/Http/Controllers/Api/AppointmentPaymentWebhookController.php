@@ -199,6 +199,11 @@ class AppointmentPaymentWebhookController extends Controller
                 'status'           => $updated->status,
                 'notes'            => $updated->notes,
                 'manage_url'       => $manageUrl,
+                // Payment receipt fields — blades render a receipt block when these are present.
+                'payment_amount'   => $amountTotal,
+                'payment_type'     => $paymentType, // 'deposit' | 'full'
+                'amount_due'       => $updated->amount_due !== null ? (float) $updated->amount_due : null,
+                'currency'         => strtoupper((string) ($updated->currency ?? 'USD')),
             ];
 
             $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
