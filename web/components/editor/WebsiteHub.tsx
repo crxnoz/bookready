@@ -3162,8 +3162,9 @@ function normalizePoliciesShape(p: BusinessPolicy): BusinessPolicy {
   }
 }
 
-const WEBSITE_POLICY_MAX_GROUPS         = 10
-const WEBSITE_POLICY_MAX_ITEMS_PER_GROUP = 20
+// Same cap as gallery / before-after collections.
+const WEBSITE_POLICY_MAX_GROUPS         = 3
+const WEBSITE_POLICY_MAX_ITEMS_PER_GROUP = 6
 
 function WebsiteCustomPolicyGroupsEditor({
   groups, onChange,
@@ -3204,17 +3205,22 @@ function WebsiteCustomPolicyGroupsEditor({
         <div>
           <p className="text-[11px] font-bold tracking-[0.14em] uppercase text-near-black">Custom sections</p>
           <p className="text-[10px] text-muted-text mt-0.5">
-            Add your own sections — they appear on your public site below the named policies.
+            Up to {WEBSITE_POLICY_MAX_GROUPS} sections × {WEBSITE_POLICY_MAX_ITEMS_PER_GROUP} items — appears below the named policies on your public site.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={addGroup}
-          disabled={groups.length >= WEBSITE_POLICY_MAX_GROUPS}
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2.5 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
-        >
-          <Plus size={12} /> Add section
-        </button>
+        <div className="flex items-center gap-2 whitespace-nowrap">
+          <span className="text-[10px] font-bold tracking-[0.06em] uppercase text-muted-text">
+            {groups.length}/{WEBSITE_POLICY_MAX_GROUPS}
+          </span>
+          <button
+            type="button"
+            onClick={addGroup}
+            disabled={groups.length >= WEBSITE_POLICY_MAX_GROUPS}
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2.5 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Plus size={12} /> Add section
+          </button>
+        </div>
       </div>
 
       {groups.map((g, gi) => (
@@ -3272,14 +3278,19 @@ function WebsiteCustomPolicyGroupsEditor({
                 />
               </div>
             ))}
-            <button
-              type="button"
-              onClick={() => addItem(gi)}
-              disabled={g.items.length >= WEBSITE_POLICY_MAX_ITEMS_PER_GROUP}
-              className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Plus size={11} /> Add item
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold tracking-[0.06em] uppercase text-muted-text">
+                {g.items.length}/{WEBSITE_POLICY_MAX_ITEMS_PER_GROUP}
+              </span>
+              <button
+                type="button"
+                onClick={() => addItem(gi)}
+                disabled={g.items.length >= WEBSITE_POLICY_MAX_ITEMS_PER_GROUP}
+                className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Plus size={11} /> Add item
+              </button>
+            </div>
           </div>
         </div>
       ))}

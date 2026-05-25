@@ -33,6 +33,17 @@ import type { PublicSite, Service } from '@/lib/types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// Pick the first "meaningful" word of a business name for use as a single-
+// word signature ("The Fade Room" → "Fade"). Falls back to the full name
+// if every word is a stripped article (e.g. someone literally named "The").
+function signatureWord(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return name
+  const STOP = new Set(['the', 'a', 'an'])
+  const real = parts.find(p => ! STOP.has(p.toLowerCase()))
+  return real ?? parts[0]
+}
+
 function initials(name: string) {
   const parts = name.trim().split(/\s+/)
   return parts.length >= 2
@@ -520,7 +531,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
               )}
               <div className="tfr-thanks-sig">
                 <span className="tfr-thanks-line" />
-                <em>{displayName.split(' ')[0]}</em>
+                <em>{signatureWord(displayName)}</em>
                 <span className="tfr-thanks-line" />
               </div>
             </div>
@@ -866,10 +877,12 @@ function AboutPanel({
   displayName: string
   about?: PublicAboutSettings
 }) {
-  const businessWord = displayName.split(' ')[0].toUpperCase()
+  // Strip leading articles ("The Fade Room" → "Fade") so the headline
+  // signature word is meaningful, not just "The".
+  const businessWord = signatureWord(displayName).toUpperCase()
 
   // Saved values win; fall back to the previous default styling.
-  const heading      = about?.heading?.trim()    || `The ${displayName.split(' ')[0]} Experience`
+  const heading      = about?.heading?.trim()    || `The ${signatureWord(displayName)} Experience`
   // Eyebrow drives the large backdrop word behind the heading. Fall back
   // to the business word so brand-new tenants still see something.
   const backdropText = (about?.eyebrow?.trim() || businessWord).toUpperCase()
