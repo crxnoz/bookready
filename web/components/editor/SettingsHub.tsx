@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import {
-  Building2, Calendar, CreditCard, Bell, FileText, UserCircle,
+  Building2, Calendar, CalendarClock, CreditCard, Bell, FileText, UserCircle,
   Plug, AlertTriangle, ChevronRight, Loader2, Check, AlertCircle,
-  DollarSign, Percent, Lock, ExternalLink, RefreshCw, ShieldCheck,
+  DollarSign, Instagram, Mail, MapPin, MessageSquare, Phone,
+  Percent, Lock, ExternalLink, RefreshCw, ShieldCheck, Send, Webhook, Sparkles,
 } from 'lucide-react'
 import {
   getEditorPaymentSettings,
@@ -22,11 +23,17 @@ import {
   updateEditorAccount,
   changeEditorPassword,
   signOutEverywhere,
+  getEditorBusiness,
+  updateEditorBusiness,
+  getEditorPolicies,
+  updateEditorPolicies,
 } from '@/lib/api'
 import type {
   AccountProfile,
   BookingSettings,
   BookingSettingsPayload,
+  BusinessPolicy,
+  BusinessProfile,
   DepositType,
   NotificationSettings,
   NotificationSettingsPayload,
@@ -58,13 +65,13 @@ interface GroupDef {
 }
 
 const GROUPS: GroupDef[] = [
-  { tab: 'business',      label: 'Business Settings',  hint: 'Hours, time zone, contact basics',           icon: Building2,    status: 'soon' },
+  { tab: 'business',      label: 'Business Settings',  hint: 'Name, contact, address, socials',            icon: Building2,    status: 'ready' },
   { tab: 'booking',       label: 'Booking Settings',   hint: 'Booking window, notice, auto-confirm, rules', icon: Calendar,     status: 'ready' },
   { tab: 'payments',      label: 'Payment Settings',   hint: 'Customer payments, deposits, currency',      icon: CreditCard,   status: 'ready' },
   { tab: 'notifications', label: 'Notifications',      hint: 'Toggle booking emails, reply-to, sender',    icon: Bell,         status: 'ready' },
-  { tab: 'policies',      label: 'Policies',           hint: 'Cancellation, late, no-show, deposits',      icon: FileText,     status: 'soon' },
+  { tab: 'policies',      label: 'Policies',           hint: 'Cancellation, late, no-show, deposit',       icon: FileText,     status: 'ready' },
   { tab: 'account',       label: 'Account',            hint: 'Owner profile, password, sign-out everywhere', icon: UserCircle,   status: 'ready' },
-  { tab: 'integrations',  label: 'Integrations',       hint: 'Stripe, Google, Instagram, Resend, etc.',    icon: Plug,         status: 'soon' },
+  { tab: 'integrations',  label: 'Integrations',       hint: 'Stripe, calendar, SMS, webhooks',            icon: Plug,         status: 'ready' },
   { tab: 'danger',        label: 'Danger Zone',        hint: 'Disable booking, delete tenant, exports',    icon: AlertTriangle, status: 'soon', tone: 'danger' },
 ]
 
@@ -84,11 +91,14 @@ export default function SettingsHub() {
   return (
     <div className="w-full p-3 sm:p-5 md:p-6 space-y-4">
       {tab === 'overview'      && <OverviewPanel />}
+      {tab === 'business'      && <BusinessSettingsPanel />}
       {tab === 'payments'      && <PaymentSettingsPanel />}
       {tab === 'booking'       && <BookingSettingsPanel />}
       {tab === 'notifications' && <NotificationSettingsPanel />}
+      {tab === 'policies'      && <PoliciesSettingsPanel />}
       {tab === 'account'       && <AccountSettingsPanel />}
-      {tab !== 'overview' && tab !== 'payments' && tab !== 'booking' && tab !== 'notifications' && tab !== 'account' && <PlaceholderPanel tab={tab} />}
+      {tab === 'integrations'  && <IntegrationsSettingsPanel />}
+      {tab === 'danger'        && <PlaceholderPanel tab={tab} />}
     </div>
   )
 }
@@ -1675,4 +1685,669 @@ function statusLabel(status: StripeConnectStatus): string {
     case 'restricted':         return 'Restricted'
     default:                   return 'Not connected'
   }
+}
+
+// ── Business Settings panel ─────────────────────────────────────────────────
+
+// Common beauty business types. Free-text fallback via the "Other" option.
+const BUSINESS_TYPES = [
+  'Salon', 'Barbershop', 'Spa', 'Nail tech', 'Lash tech',
+  'Brow tech', 'Esthetician', 'Massage therapist', 'Makeup artist',
+  'Hair stylist (solo)', 'Other',
+] as const
+
+function BusinessSettingsPanel() {
+  const [data,    setData]    = useState<BusinessProfile | null>(null)
+  const [draft,   setDraft]   = useState<BusinessProfile | null>(null)
+  const [tenantSlug, setTenantSlug] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadErr, setLoadErr] = useState<string | null>(null)
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [saveErr,   setSaveErr]   = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getEditorBusiness()
+      .then(d => { if (!cancelled) { setData(d); setDraft(d) } })
+      .catch(e => { if (!cancelled) setLoadErr(e instanceof Error ? e.message : 'Failed to load') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    // Tenant slug for the public URL preview. Stored under br_tenant_id by setTenantId().
+    if (typeof window !== 'undefined') {
+      setTenantSlug(localStorage.getItem('br_tenant_id'))
+    }
+    return () => { cancelled = true }
+  }, [])
+
+  const dirty = useMemo(() => {
+    if (!data || !draft) return false
+    return JSON.stringify(data) !== JSON.stringify(draft)
+  }, [data, draft])
+
+  function patch(p: Partial<BusinessProfile>) {
+    setDraft(d => d ? { ...d, ...p } : d)
+    setSaveState('idle')
+    setSaveErr(null)
+  }
+
+  async function save() {
+    if (!draft) return
+    setSaveState('saving'); setSaveErr(null)
+    try {
+      // Send only the editable identity/contact/address fields. booking_enabled
+      // is owned by Booking Settings; site_status by the Danger Zone.
+      const payload: Partial<BusinessProfile> = {
+        business_name: draft.business_name?.trim() || null,
+        tagline:       draft.tagline?.trim()       || null,
+        business_type: draft.business_type?.trim() || null,
+        public_email:  draft.public_email?.trim()  || null,
+        public_phone:  draft.public_phone?.trim()  || null,
+        address_line:  draft.address_line?.trim()  || null,
+        city:          draft.city?.trim()          || null,
+        state:         draft.state?.trim()         || null,
+        zip:           draft.zip?.trim()           || null,
+        instagram_url: draft.instagram_url?.trim() || null,
+      }
+      const next = await updateEditorBusiness(payload)
+      setData(next)
+      setDraft(next)
+      setSaveState('saved')
+    } catch (e) {
+      setSaveState('error')
+      setSaveErr(e instanceof Error ? e.message : 'Save failed')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-text px-1 py-8">
+        <Loader2 size={14} className="animate-spin" /> Loading business settings…
+      </div>
+    )
+  }
+  if (loadErr || !draft) {
+    return (
+      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-[#b42828] flex items-center gap-2">
+        <AlertCircle size={14} /> {loadErr ?? 'Could not load business settings'}
+      </div>
+    )
+  }
+
+  // For the business_type select: if the saved value isn't in our list, treat
+  // it as "Other" and pop a custom text input.
+  const typeValue   = draft.business_type ?? ''
+  const isKnownType = (BUSINESS_TYPES as readonly string[]).includes(typeValue)
+  const showCustomType = !isKnownType && typeValue !== ''
+
+  return (
+    <div className="space-y-3">
+      <Link
+        href={hrefFor('overview')}
+        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
+      >
+        ← Back to Settings
+      </Link>
+
+      <header className="px-1">
+        <h1 className="text-base font-bold text-near-black">Business Settings</h1>
+        <p className="text-xs text-muted-text mt-0.5">
+          Your business name, public contact, and where clients can find you.
+        </p>
+      </header>
+
+      {/* Public site URL preview */}
+      {tenantSlug && (
+        <a
+          href={`https://${tenantSlug}.bkrdy.me`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block bg-white border border-[rgba(18,18,18,0.10)] p-3.5 hover:border-near-black transition-colors group"
+        >
+          <div className="flex items-start gap-3">
+            <ExternalLink size={14} className="text-near-black mt-0.5 flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Your public site</p>
+              <p className="text-[13px] font-semibold text-near-black mt-0.5 truncate">
+                {tenantSlug}.bkrdy.me
+              </p>
+            </div>
+            <span className="text-[11px] text-muted-text group-hover:text-near-black">View →</span>
+          </div>
+        </a>
+      )}
+
+      {/* Identity */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <SectionTitle icon={Building2} label="Identity" hint="How your business shows up across BookReady." />
+        <TextField
+          label="Business name"
+          value={draft.business_name ?? ''}
+          onChange={v => patch({ business_name: v })}
+          placeholder="Lush Studio"
+          hint="Appears on your public site, in client emails, and on the welcome screen."
+        />
+        <TextField
+          label="Tagline"
+          value={draft.tagline ?? ''}
+          onChange={v => patch({ tagline: v })}
+          placeholder="Effortless beauty, on your schedule"
+          hint="Optional one-line description shown on your booking site."
+        />
+        <SelectField
+          label="Business type"
+          value={isKnownType ? typeValue : 'Other'}
+          onChange={v => patch({ business_type: v === 'Other' ? (showCustomType ? typeValue : '') : v })}
+          options={BUSINESS_TYPES.map(t => ({ value: t, label: t }))}
+          hint="Helps us tailor templates and defaults later."
+        />
+        {(showCustomType || (typeValue === '' && draft.business_type === null) || (! isKnownType && typeValue === '')) && (
+          <TextField
+            label="Custom type"
+            value={showCustomType ? typeValue : ''}
+            onChange={v => patch({ business_type: v })}
+            placeholder="e.g. PMU artist"
+          />
+        )}
+      </section>
+
+      {/* Public contact */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <SectionTitle icon={Mail} label="Public contact" hint="Shown to clients on your booking site." />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <TextField
+            label="Public email"
+            type="email"
+            icon={Mail}
+            value={draft.public_email ?? ''}
+            onChange={v => patch({ public_email: v })}
+            placeholder="hello@yourbusiness.com"
+          />
+          <TextField
+            label="Public phone"
+            type="tel"
+            icon={Phone}
+            value={draft.public_phone ?? ''}
+            onChange={v => patch({ public_phone: v })}
+            placeholder="(555) 123-4567"
+          />
+        </div>
+        <TextField
+          label="Instagram"
+          icon={Instagram}
+          value={draft.instagram_url ?? ''}
+          onChange={v => patch({ instagram_url: v })}
+          placeholder="@yourhandle or https://instagram.com/yourhandle"
+          hint="Used on your site header. Other socials live in Website → Header."
+        />
+      </section>
+
+      {/* Address */}
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <SectionTitle icon={MapPin} label="Address" hint="Helps clients find you. Address shows on your public site." />
+        <TextField
+          label="Street address"
+          value={draft.address_line ?? ''}
+          onChange={v => patch({ address_line: v })}
+          placeholder="123 Beauty Lane, Suite 200"
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <TextField
+            label="City"
+            value={draft.city ?? ''}
+            onChange={v => patch({ city: v })}
+            placeholder="Brooklyn"
+          />
+          <TextField
+            label="State"
+            value={draft.state ?? ''}
+            onChange={v => patch({ state: v })}
+            placeholder="NY"
+          />
+          <TextField
+            label="ZIP"
+            value={draft.zip ?? ''}
+            onChange={v => patch({ zip: v })}
+            placeholder="11211"
+          />
+        </div>
+      </section>
+
+      <SaveBar
+        dirty={dirty}
+        saveState={saveState}
+        saveErr={saveErr}
+        onSave={save}
+      />
+    </div>
+  )
+}
+
+// ── Policies Settings panel ─────────────────────────────────────────────────
+
+const POLICY_FIELDS: { key: keyof BusinessPolicy; label: string; placeholder: string; hint?: string }[] = [
+  { key: 'cancellation_policy', label: 'Cancellation policy', placeholder: '24 hours notice required for cancellations…',
+    hint: 'How much notice clients need to give and any fees.' },
+  { key: 'late_policy',         label: 'Late arrival policy', placeholder: 'After 15 minutes, your appointment may be cancelled…' },
+  { key: 'no_show_policy',      label: 'No-show policy',      placeholder: 'No-shows are charged the full service price…' },
+  { key: 'deposit_policy',      label: 'Deposit policy',      placeholder: 'A 25% deposit is required at booking. Non-refundable.' },
+  { key: 'reschedule_policy',   label: 'Reschedule policy',   placeholder: 'Reschedule up to 24 hours before your appointment.' },
+  { key: 'extra_notes',         label: 'Additional notes',    placeholder: 'Anything else clients should know before they book.' },
+]
+
+function PoliciesSettingsPanel() {
+  const [data,    setData]    = useState<BusinessPolicy | null>(null)
+  const [draft,   setDraft]   = useState<BusinessPolicy | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadErr, setLoadErr] = useState<string | null>(null)
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [saveErr,   setSaveErr]   = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getEditorPolicies()
+      .then(p => {
+        if (cancelled) return
+        // Normalize nulls to empty strings so textareas stay controlled.
+        const normalized: BusinessPolicy = {
+          id: p.id,
+          cancellation_policy: p.cancellation_policy ?? '',
+          late_policy:         p.late_policy         ?? '',
+          no_show_policy:      p.no_show_policy      ?? '',
+          deposit_policy:      p.deposit_policy      ?? '',
+          reschedule_policy:   p.reschedule_policy   ?? '',
+          extra_notes:         p.extra_notes         ?? '',
+        }
+        setData(normalized)
+        setDraft(normalized)
+      })
+      .catch(e => { if (!cancelled) setLoadErr(e instanceof Error ? e.message : 'Failed to load') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const dirty = useMemo(() => {
+    if (!data || !draft) return false
+    return JSON.stringify(data) !== JSON.stringify(draft)
+  }, [data, draft])
+
+  const setCount = useMemo(() => {
+    if (!draft) return 0
+    return POLICY_FIELDS.filter(({ key }) => {
+      const v = draft[key]
+      return typeof v === 'string' && v.trim().length > 0
+    }).length
+  }, [draft])
+
+  function patch(key: keyof BusinessPolicy, value: string) {
+    setDraft(d => d ? { ...d, [key]: value } : d)
+    setSaveState('idle'); setSaveErr(null)
+  }
+
+  async function save() {
+    if (!draft) return
+    setSaveState('saving'); setSaveErr(null)
+    try {
+      // Empty strings → null so old policies clear properly.
+      const payload: Partial<BusinessPolicy> = {}
+      for (const { key } of POLICY_FIELDS) {
+        const v = (draft[key] as string | null) ?? ''
+        ;(payload as Record<string, string | null>)[key] = v.trim().length > 0 ? v : null
+      }
+      const next = await updateEditorPolicies(payload)
+      const normalized: BusinessPolicy = {
+        id: next.id,
+        cancellation_policy: next.cancellation_policy ?? '',
+        late_policy:         next.late_policy         ?? '',
+        no_show_policy:      next.no_show_policy      ?? '',
+        deposit_policy:      next.deposit_policy      ?? '',
+        reschedule_policy:   next.reschedule_policy   ?? '',
+        extra_notes:         next.extra_notes         ?? '',
+      }
+      setData(normalized)
+      setDraft(normalized)
+      setSaveState('saved')
+    } catch (e) {
+      setSaveState('error')
+      setSaveErr(e instanceof Error ? e.message : 'Save failed')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-text px-1 py-8">
+        <Loader2 size={14} className="animate-spin" /> Loading policies…
+      </div>
+    )
+  }
+  if (loadErr || !draft) {
+    return (
+      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-[#b42828] flex items-center gap-2">
+        <AlertCircle size={14} /> {loadErr ?? 'Could not load policies'}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <Link
+        href={hrefFor('overview')}
+        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
+      >
+        ← Back to Settings
+      </Link>
+
+      <header className="px-1 flex items-baseline justify-between gap-3">
+        <div>
+          <h1 className="text-base font-bold text-near-black">Policies</h1>
+          <p className="text-xs text-muted-text mt-0.5">
+            What you write here shows up on your public site and in client emails.
+          </p>
+        </div>
+        <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+          {setCount}/{POLICY_FIELDS.length} set
+        </span>
+      </header>
+
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        {POLICY_FIELDS.map(({ key, label, placeholder, hint }) => (
+          <TextAreaField
+            key={key}
+            label={label}
+            value={(draft[key] as string) ?? ''}
+            onChange={v => patch(key, v)}
+            placeholder={placeholder}
+            hint={hint}
+            rows={3}
+          />
+        ))}
+      </section>
+
+      <SaveBar
+        dirty={dirty}
+        saveState={saveState}
+        saveErr={saveErr}
+        onSave={save}
+      />
+    </div>
+  )
+}
+
+// ── Integrations Settings panel ─────────────────────────────────────────────
+
+interface IntegrationCard {
+  icon:       React.ElementType
+  name:       string
+  description:string
+  status:     'connected' | 'available' | 'coming_soon'
+  statusLabel?: string
+  action?:    { label: string; href: string; external?: boolean }
+}
+
+function IntegrationsSettingsPanel() {
+  const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    getStripeConnectStatus()
+      .then(r => { if (!cancelled) setStripeStatus(r.stripe_connect_status) })
+      .catch(() => { if (!cancelled) setStripeStatus('not_connected') })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const stripeConnected = stripeStatus === 'active'
+  const stripeOnboarding = stripeStatus && stripeStatus !== 'not_connected' && stripeStatus !== 'active'
+
+  const cards: IntegrationCard[] = [
+    {
+      icon: CreditCard,
+      name: 'Stripe',
+      description: 'Accept deposits, full payments, balance charges, tips, and late fees from clients.',
+      status: stripeConnected ? 'connected' : (stripeOnboarding ? 'available' : 'available'),
+      statusLabel: loading ? 'Checking…' : (stripeConnected ? 'Connected' : (stripeOnboarding ? 'In progress' : 'Not connected')),
+      action: {
+        label: stripeConnected ? 'Manage in Payment Settings' : 'Set up Stripe',
+        href:  '/editor/settings?tab=payments',
+      },
+    },
+    {
+      icon: CalendarClock,
+      name: 'Google Calendar',
+      description: 'Two-way sync your appointments to a Google Calendar so your bookings show up everywhere.',
+      status: 'coming_soon',
+    },
+    {
+      icon: MessageSquare,
+      name: 'SMS notifications',
+      description: 'Send appointment confirmations and reminders via text message (Twilio).',
+      status: 'coming_soon',
+    },
+    {
+      icon: Send,
+      name: 'Mailchimp',
+      description: 'Push your client list to Mailchimp for marketing campaigns and newsletters.',
+      status: 'coming_soon',
+    },
+    {
+      icon: Sparkles,
+      name: 'Instagram booking link',
+      description: 'Auto-update your IG bio link with your latest booking-now URL.',
+      status: 'coming_soon',
+    },
+    {
+      icon: Webhook,
+      name: 'Webhooks',
+      description: 'Get notified at a URL of your choice when bookings, cancellations, or payments happen.',
+      status: 'coming_soon',
+    },
+  ]
+
+  return (
+    <div className="space-y-3">
+      <Link
+        href={hrefFor('overview')}
+        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
+      >
+        ← Back to Settings
+      </Link>
+
+      <header className="px-1">
+        <h1 className="text-base font-bold text-near-black">Integrations</h1>
+        <p className="text-xs text-muted-text mt-0.5">
+          Connect BookReady to the tools you already use. More integrations rolling out soon.
+        </p>
+      </header>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {cards.map(c => (
+          <IntegrationCardView key={c.name} card={c} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function IntegrationCardView({ card }: { card: IntegrationCard }) {
+  const Icon = card.icon
+  const isConnected   = card.status === 'connected'
+  const isComingSoon  = card.status === 'coming_soon'
+
+  return (
+    <div className={cn(
+      'bg-white border p-3.5 flex flex-col gap-3',
+      isComingSoon
+        ? 'border-[rgba(18,18,18,0.06)]'
+        : 'border-[rgba(18,18,18,0.10)]',
+    )}>
+      <div className="flex items-start gap-3">
+        <span className={cn(
+          'w-9 h-9 flex items-center justify-center flex-shrink-0 border',
+          isConnected
+            ? 'bg-[rgba(20,140,80,0.08)] border-[rgba(20,140,80,0.35)] text-[#0f6f3d]'
+            : isComingSoon
+              ? 'bg-cream border-[rgba(18,18,18,0.08)] text-muted-text'
+              : 'bg-cream border-[rgba(18,18,18,0.08)] text-near-black',
+        )}>
+          <Icon size={15} strokeWidth={1.8} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className={cn('text-[13px] font-semibold', isComingSoon ? 'text-muted-text' : 'text-near-black')}>
+              {card.name}
+            </p>
+            {card.statusLabel && (
+              <span className={cn(
+                'text-[9px] font-bold tracking-[0.06em] uppercase px-2 py-0.5 border whitespace-nowrap',
+                isConnected
+                  ? 'bg-white border-[rgba(20,140,80,0.40)] text-[#0f6f3d]'
+                  : 'bg-white border-[rgba(180,120,0,0.35)] text-[#8a5a00]',
+              )}>
+                {card.statusLabel}
+              </span>
+            )}
+            {isComingSoon && (
+              <span className="text-[9px] font-bold tracking-[0.06em] uppercase px-2 py-0.5 bg-white border border-[rgba(18,18,18,0.15)] text-muted-text">
+                Soon
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-text mt-1 leading-snug">{card.description}</p>
+        </div>
+      </div>
+      {card.action && (
+        <Link
+          href={card.action.href}
+          className="self-start text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.20)] bg-white px-3 py-1.5 hover:border-near-black transition-colors"
+        >
+          {card.action.label} →
+        </Link>
+      )}
+    </div>
+  )
+}
+
+// ── Shared sub-components for the new panels ────────────────────────────────
+
+function SectionTitle({
+  icon: Icon, label, hint,
+}: {
+  icon: React.ElementType
+  label: string
+  hint?: string
+}) {
+  return (
+    <div className="flex items-start gap-2 border-b border-[rgba(18,18,18,0.06)] pb-2.5 mb-1">
+      <Icon size={14} className="text-near-black mt-0.5 flex-shrink-0" strokeWidth={1.8} />
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-near-black">{label}</p>
+        {hint && <p className="text-[11px] text-muted-text mt-0.5">{hint}</p>}
+      </div>
+    </div>
+  )
+}
+
+function TextField({
+  label, value, onChange, placeholder, hint, type = 'text', icon: Icon,
+}: {
+  label:    string
+  value:    string
+  onChange: (v: string) => void
+  placeholder?: string
+  hint?:    string
+  type?:    'text' | 'email' | 'tel' | 'url'
+  icon?:    React.ElementType
+}) {
+  return (
+    <label className="block">
+      <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">{label}</span>
+      <div className="mt-1.5 flex items-center border border-[rgba(18,18,18,0.15)] bg-white focus-within:border-near-black">
+        {Icon && (
+          <span className="pl-2.5 pr-1 text-muted-text flex-shrink-0">
+            <Icon size={13} strokeWidth={1.8} />
+          </span>
+        )}
+        <input
+          type={type}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 text-sm text-near-black bg-transparent placeholder:text-[#c4bcb6] focus:outline-none"
+        />
+      </div>
+      {hint && <p className="text-[10px] text-muted-text mt-1">{hint}</p>}
+    </label>
+  )
+}
+
+function TextAreaField({
+  label, value, onChange, placeholder, hint, rows = 3,
+}: {
+  label:    string
+  value:    string
+  onChange: (v: string) => void
+  placeholder?: string
+  hint?:    string
+  rows?:    number
+}) {
+  return (
+    <label className="block">
+      <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">{label}</span>
+      <textarea
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={rows}
+        className="w-full mt-1.5 px-3 py-2 text-sm text-near-black bg-white border border-[rgba(18,18,18,0.15)] placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black resize-y leading-relaxed"
+      />
+      {hint && <p className="text-[10px] text-muted-text mt-1">{hint}</p>}
+    </label>
+  )
+}
+
+/**
+ * Sticky save bar that mirrors the inline one used inside PaymentSettingsPanel
+ * so all panels feel the same. Extracted as its own component because the
+ * new panels (business/policies) each render it identically.
+ */
+function SaveBar({
+  dirty, saveState, saveErr, onSave,
+}: {
+  dirty:     boolean
+  saveState: SaveState
+  saveErr:   string | null
+  onSave:    () => void
+}) {
+  return (
+    <div className="sticky bottom-0 bg-cream/95 backdrop-blur border-t border-[rgba(18,18,18,0.08)] pt-3 pb-2 flex items-center justify-between gap-3">
+      <div className="text-[11px] text-muted-text">
+        {saveState === 'saved' && (
+          <span className="inline-flex items-center gap-1 text-near-black">
+            <Check size={12} /> Saved
+          </span>
+        )}
+        {saveState === 'error' && (
+          <span className="inline-flex items-center gap-1 text-[#b42828]">
+            <AlertCircle size={12} /> {saveErr ?? 'Could not save'}
+          </span>
+        )}
+        {saveState === 'idle' && dirty && <span>Unsaved changes</span>}
+      </div>
+      <button
+        type="button"
+        onClick={onSave}
+        disabled={!dirty || saveState === 'saving'}
+        className={cn(
+          'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase px-3 py-2',
+          dirty
+            ? 'bg-near-black text-white hover:bg-white hover:text-near-black border border-near-black'
+            : 'bg-cream text-muted-text border border-[rgba(18,18,18,0.10)] cursor-not-allowed',
+        )}
+      >
+        {saveState === 'saving'
+          ? <><Loader2 size={11} className="animate-spin" /> Saving</>
+          : <><Check size={12} /> Save changes</>
+        }
+      </button>
+    </div>
+  )
 }
