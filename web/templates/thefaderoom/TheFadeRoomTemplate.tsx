@@ -439,6 +439,60 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
 
         </section>
 
+        {/* ── FAQ ── */}
+        {(() => {
+          const faq = site.template?.settings.additionals?.faq
+          if (!faq?.enabled) return null
+          const items = (faq.items ?? []).filter(i => i.question?.trim() && i.answer?.trim())
+          if (items.length === 0) return null
+          return (
+            <section className="tfr-faq-section" aria-label="Frequently asked questions">
+              <div className="tfr-faq-inner">
+                <h2 className="tfr-faq-heading">{faq.heading || 'Frequently asked'}</h2>
+                <div className="tfr-faq-list">
+                  {items.map((it, i) => (
+                    <details key={i} className="tfr-faq-item">
+                      <summary>{it.question}</summary>
+                      <p>{it.answer}</p>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )
+        })()}
+
+        {/* ── Reviews ── */}
+        {(() => {
+          const r = site.template?.settings.additionals?.reviews
+          if (!r?.enabled) return null
+          const items = (r.items ?? []).filter(it => it.body?.trim() && it.author?.trim())
+          if (items.length === 0) return null
+          return (
+            <section className="tfr-reviews-section" aria-label="Reviews">
+              <div className="tfr-reviews-inner">
+                <h2 className="tfr-reviews-heading">{r.heading || 'What clients say'}</h2>
+                <div className="tfr-reviews-grid">
+                  {items.map((it, i) => (
+                    <div key={i} className="tfr-review-card">
+                      {typeof it.rating === 'number' && it.rating > 0 && (
+                        <div className="tfr-review-stars" aria-label={`${it.rating} of 5 stars`}>
+                          {'★'.repeat(Math.max(0, Math.min(5, Math.round(it.rating))))}
+                        </div>
+                      )}
+                      <p className="tfr-review-body">&ldquo;{it.body}&rdquo;</p>
+                      <p className="tfr-review-author">
+                        — {it.author}
+                        {it.location ? <span className="tfr-review-loc"> · {it.location}</span> : null}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )
+        })()}
+
         {/* ── Thanks outro ── */}
         {(site.template?.settings.additionals?.show_thank_you ?? true) && (
           <section className="tfr-thanks-section" aria-label="Thank you">
@@ -716,6 +770,7 @@ interface PublicAboutSettings {
   eyebrow?: string
   body?: string
   highlights?: { title: string; body: string }[]
+  images?: (string | null)[]
 }
 
 function AboutPanel({
@@ -729,26 +784,41 @@ function AboutPanel({
 
   // Saved values win; fall back to the previous default styling.
   const heading      = about?.heading?.trim()    || `The ${displayName.split(' ')[0]} Experience`
-  const eyebrow      = about?.eyebrow?.trim()    || `About ${displayName}`
+  // Eyebrow drives the large backdrop word behind the heading. Fall back
+  // to the business word so brand-new tenants still see something.
+  const backdropText = (about?.eyebrow?.trim() || businessWord).toUpperCase()
   const bodyOverride = about?.body?.trim()       || ''
   const highlights   = about?.highlights?.filter(h => h.title?.trim() || h.body?.trim()) ?? []
   const useHighlights = highlights.length > 0
+  // 3 image slots above the heading. Null entries render the gradient
+  // placeholder (the previous static look).
+  const images: (string | null)[] = [
+    about?.images?.[0] ?? null,
+    about?.images?.[1] ?? null,
+    about?.images?.[2] ?? null,
+  ]
 
   return (
     <section className="tfr-about-section">
       <div className="tfr-about-images">
-        <div className="tfr-about-img tfr-about-img--one"><div className="tfr-gallery-placeholder" /></div>
-        <div className="tfr-about-img tfr-about-img--two"><div className="tfr-gallery-placeholder" /></div>
-        <div className="tfr-about-img tfr-about-img--three"><div className="tfr-gallery-placeholder" /></div>
+        {images.map((url, i) => {
+          const slot = i === 0 ? 'one' : i === 1 ? 'two' : 'three'
+          return (
+            <div key={i} className={`tfr-about-img tfr-about-img--${slot}`}>
+              {url
+                ? <img src={url} alt="" />
+                : <div className="tfr-gallery-placeholder" />}
+            </div>
+          )
+        })}
       </div>
       <div>
         <div className="tfr-about-heading-wrap">
-          <div className="tfr-about-backdrop">{businessWord}</div>
+          <div className="tfr-about-backdrop">{backdropText}</div>
           <h2>{heading}</h2>
         </div>
         <div className="tfr-about-copy">
           <p>
-            <span>{eyebrow}</span>
             {bodyOverride
               ? bodyOverride
               : (p?.tagline
@@ -1540,6 +1610,7 @@ img.tfr-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filte
 .tfr-about-img--two   { left:124px; top:18px; border-color:rgba(255,61,190,0.35); box-shadow:0 6px 24px rgba(255,61,190,0.2); }
 .tfr-about-img--three { left:242px; top:0; }
 .tfr-about-img .tfr-gallery-placeholder { height:100%; }
+.tfr-about-img img { display:block; width:100%; height:100%; object-fit:cover; }
 .tfr-about-heading-wrap { position:relative; text-align:center; margin-bottom:32px; }
 .tfr-about-backdrop { color:rgba(255,255,255,0.18); font-size:80px; font-family:var(--tfr-serif); font-weight:400; line-height:1; letter-spacing:-0.04em; }
 .tfr-about-heading-wrap h2 { margin:-50px 0 0; color:var(--tfr-text); font-size:26px; font-family:var(--tfr-script); font-weight:400; line-height:1.1; text-shadow:var(--tfr-text-glow); }
@@ -1620,6 +1691,31 @@ img.tfr-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filte
 .tfr-contact-value { font-size:14px; color:var(--tfr-text); }
 
 /* ── Thanks ── */
+/* FAQ — collapsible Q&A list */
+.tfr-faq-section { position:relative; width:100%; background:var(--tfr-bg); padding:64px 22px 16px; }
+.tfr-faq-inner { max-width:720px; margin:0 auto; color:var(--tfr-text); }
+.tfr-faq-heading { font-family:var(--tfr-serif); font-size:clamp(32px,5vw,52px); font-weight:400; line-height:1.05; margin:0 0 24px; text-align:center; }
+.tfr-faq-list { display:flex; flex-direction:column; gap:10px; }
+.tfr-faq-item { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); padding:14px 18px; border-radius:6px; }
+.tfr-faq-item > summary { cursor:pointer; font-family:var(--tfr-sans); font-size:14px; font-weight:600; color:var(--tfr-text); list-style:none; outline:none; }
+.tfr-faq-item > summary::-webkit-details-marker { display:none; }
+.tfr-faq-item > summary::after { content:'+'; float:right; font-size:18px; line-height:1; color:var(--tfr-pink); transition:transform 0.15s; }
+.tfr-faq-item[open] > summary::after { content:'−'; }
+.tfr-faq-item > p { margin:10px 0 0; font-family:var(--tfr-sans); font-size:13px; line-height:1.6; color:rgba(255,255,255,0.78); }
+
+/* Reviews — testimonial grid */
+.tfr-reviews-section { position:relative; width:100%; background:var(--tfr-bg); padding:48px 22px 24px; }
+.tfr-reviews-inner { max-width:1080px; margin:0 auto; color:var(--tfr-text); }
+.tfr-reviews-heading { font-family:var(--tfr-serif); font-size:clamp(32px,5vw,52px); font-weight:400; line-height:1.05; margin:0 0 24px; text-align:center; }
+.tfr-reviews-grid { display:grid; grid-template-columns:1fr; gap:14px; }
+@media (min-width:720px) { .tfr-reviews-grid { grid-template-columns:repeat(2,1fr); } }
+@media (min-width:1080px) { .tfr-reviews-grid { grid-template-columns:repeat(3,1fr); } }
+.tfr-review-card { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); padding:18px; border-radius:6px; display:flex; flex-direction:column; gap:10px; }
+.tfr-review-stars { color:var(--tfr-pink); font-size:13px; letter-spacing:2px; text-shadow:0 0 8px rgba(255,61,190,0.45); }
+.tfr-review-body { margin:0; font-family:var(--tfr-serif); font-size:15px; line-height:1.55; color:var(--tfr-text); font-style:italic; }
+.tfr-review-author { margin:auto 0 0; font-family:var(--tfr-sans); font-size:12px; font-weight:600; color:rgba(255,255,255,0.7); }
+.tfr-review-loc { font-weight:400; color:rgba(255,255,255,0.5); }
+
 .tfr-thanks-section { position:relative; width:100%; background:var(--tfr-bg); padding:80px 22px 88px; border-top:1px solid rgba(255,255,255,0.05); }
 .tfr-thanks-inner { max-width:720px; margin:0 auto; text-align:center; color:var(--tfr-text); display:flex; flex-direction:column; align-items:center; gap:24px; }
 .tfr-thanks-eyebrow { display:inline-block; font-family:var(--tfr-sans); font-size:11px; font-weight:600; letter-spacing:0.24em; text-transform:uppercase; color:var(--tfr-pink); text-shadow:0 0 12px rgba(255,61,190,0.55); }

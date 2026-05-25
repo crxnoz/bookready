@@ -124,7 +124,7 @@ export async function getCurrentUser(): Promise<AuthUser> {
 
 // ── Image uploads ────────────────────────────────────────────────────────────
 
-export type UploadKind = 'gallery' | 'before_after' | 'header' | 'logo'
+export type UploadKind = 'gallery' | 'before_after' | 'header' | 'logo' | 'about'
 
 export interface UploadResponse {
   url: string

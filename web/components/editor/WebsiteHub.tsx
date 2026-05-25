@@ -1333,14 +1333,25 @@ function AboutEditorPanel({
   about: TemplateAboutSettings | undefined
   onSave: (next: TemplateAboutSettings) => Promise<void>
 }) {
+  // Always normalize images to length 3 — the TFR template renders 3 slots
+  // unconditionally and we don't want sparse arrays leaking into save payloads.
+  const seedImages = about?.images ?? []
   const initial: TemplateAboutSettings = {
     heading:    about?.heading    ?? 'About',
     eyebrow:    about?.eyebrow    ?? '',
     body:       about?.body       ?? '',
     highlights: about?.highlights ?? [],
+    images:     [seedImages[0] ?? null, seedImages[1] ?? null, seedImages[2] ?? null],
   }
   const form = useSettingsForm<TemplateAboutSettings>(initial, onSave)
   const { value, patch, dirty, saving, saved, error, doSave } = form
+
+  const images = value.images ?? [null, null, null]
+  function setImage(slot: 0 | 1 | 2, url: string | null) {
+    const next: (string | null)[] = [images[0] ?? null, images[1] ?? null, images[2] ?? null]
+    next[slot] = url
+    patch({ images: next })
+  }
 
   const highlights = value.highlights ?? []
   function setHighlights(next: { title: string; body: string }[]) {
@@ -1366,8 +1377,26 @@ function AboutEditorPanel({
       icon={Info}
       statusBadge={<StatusBadge tone={filled ? 'neutral' : 'muted'}>{filled ? 'Set' : 'Default'}</StatusBadge>}
     >
+      {/* Three image slots rendered above the heading on the public site.
+          Left + right sit slightly offset, the middle one is the hero. */}
+      <div>
+        <FieldLabel hint="Recommended portrait — about 600×1000px each.">Photos (3 slots)</FieldLabel>
+        <div className="grid grid-cols-3 gap-2 mt-1.5">
+          {[0, 1, 2].map(i => (
+            <ImageUploadField
+              key={i}
+              label={`Photo ${i + 1}`}
+              value={images[i] ?? null}
+              onChange={url => setImage(i as 0 | 1 | 2, url)}
+              kind="about"
+              aspectClass="aspect-[3/5]"
+            />
+          ))}
+        </div>
+      </div>
+
       <TextField
-        label="Eyebrow (small label above the heading)"
+        label="Eyebrow (renders as the large backdrop word behind the heading)"
         value={value.eyebrow ?? ''}
         onChange={v => patch({ eyebrow: v })}
         placeholder="The Studio"
@@ -1579,24 +1608,70 @@ function PoliciesEditorPanel() {
 
 // ── Additionals ──────────────────────────────────────────────────────────────
 
+const FAQ_MAX_ITEMS = 4
+
 function AdditionalsPanel({
   settings, onSave,
 }: {
   settings: TemplateSettings
   onSave: (p: Partial<TemplateSettings>) => Promise<void>
 }) {
+  // Normalize the whole shape on mount — guarantees faq/reviews are always
+  // present so the form's dirty-tracking compares apples to apples.
   const initial: TemplateAdditionalsSettings = {
     show_thank_you:  settings.additionals?.show_thank_you  ?? true,
     thank_you_title: settings.additionals?.thank_you_title ?? 'Thank you for choosing us',
     thank_you_body:  settings.additionals?.thank_you_body  ?? '',
+    faq: {
+      enabled: settings.additionals?.faq?.enabled ?? false,
+      heading: settings.additionals?.faq?.heading ?? 'Frequently asked',
+      items:   settings.additionals?.faq?.items   ?? [],
+    },
+    reviews: {
+      enabled: settings.additionals?.reviews?.enabled ?? false,
+      heading: settings.additionals?.reviews?.heading ?? 'What clients say',
+      items:   settings.additionals?.reviews?.items   ?? [],
+    },
   }
   const form = useSettingsForm<TemplateAdditionalsSettings>(
     initial,
     async (next) => { await onSave({ additionals: next }) },
   )
 
+  // ── FAQ helpers ──
+  const faq = form.value.faq ?? initial.faq!
+  function patchFaq(p: Partial<NonNullable<TemplateAdditionalsSettings['faq']>>) {
+    form.patch({ faq: { ...faq, ...p } })
+  }
+  function addFaqItem() {
+    if ((faq.items ?? []).length >= FAQ_MAX_ITEMS) return
+    patchFaq({ items: [...(faq.items ?? []), { question: '', answer: '' }] })
+  }
+  function updateFaqItem(i: number, p: Partial<{ question: string; answer: string }>) {
+    patchFaq({ items: (faq.items ?? []).map((it, idx) => idx === i ? { ...it, ...p } : it) })
+  }
+  function removeFaqItem(i: number) {
+    patchFaq({ items: (faq.items ?? []).filter((_, idx) => idx !== i) })
+  }
+
+  // ── Review helpers ──
+  const reviews = form.value.reviews ?? initial.reviews!
+  function patchReviews(p: Partial<NonNullable<TemplateAdditionalsSettings['reviews']>>) {
+    form.patch({ reviews: { ...reviews, ...p } })
+  }
+  function addReview() {
+    patchReviews({ items: [...(reviews.items ?? []), { author: '', body: '', location: '', rating: 5 }] })
+  }
+  function updateReview(i: number, p: Partial<{ author: string; body: string; location?: string | null; rating?: number | null }>) {
+    patchReviews({ items: (reviews.items ?? []).map((it, idx) => idx === i ? { ...it, ...p } : it) })
+  }
+  function removeReview(i: number) {
+    patchReviews({ items: (reviews.items ?? []).filter((_, idx) => idx !== i) })
+  }
+
   return (
     <div className="space-y-5">
+      {/* Thank-you (unchanged) */}
       <Panel
         title="Thank you section"
         subtitle="A short closing note shown near the bottom of your public site."
@@ -1622,31 +1697,175 @@ function AdditionalsPanel({
           rows={3}
           maxLength={400}
         />
-        <SaveBar
-          dirty={form.dirty} saving={form.saving} saved={form.saved}
-          error={form.error} onSave={form.doSave}
-        />
       </Panel>
 
+      {/* FAQ — up to 4 Q&A items */}
       <Panel
-        title="Add an extra section"
-        subtitle="Custom blocks like care guides, parking info, or new-client info."
+        title="FAQ"
+        subtitle="Up to 4 short answers to questions clients ask before they book."
       >
-        <div className="bg-cream border border-[rgba(18,18,18,0.08)] p-4 flex items-start gap-2">
-          <Info size={14} className="text-muted-text mt-0.5" />
-          <div className="text-xs text-muted-text leading-relaxed">
-            Custom section editor is coming next. The backend already supports
-            text blocks, instructions, and announcements — the inline UI lands
-            in the next iteration.
+        <ToggleRow
+          label="Show FAQ section"
+          icon={ListChecks}
+          on={faq.enabled ?? false}
+          onToggle={() => patchFaq({ enabled: !(faq.enabled ?? false) })}
+        />
+        <TextField
+          label="Section heading"
+          value={faq.heading ?? ''}
+          onChange={v => patchFaq({ heading: v })}
+          placeholder="Frequently asked"
+          maxLength={80}
+        />
+
+        <div className="space-y-2.5 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+              Questions ({(faq.items ?? []).length}/{FAQ_MAX_ITEMS})
+            </p>
+            <button
+              type="button"
+              onClick={addFaqItem}
+              disabled={(faq.items ?? []).length >= FAQ_MAX_ITEMS}
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-1.5 hover:border-near-black disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus size={12} /> Add question
+            </button>
           </div>
+          {(faq.items ?? []).length === 0 && (
+            <p className="text-xs text-muted-text">No questions yet — add up to {FAQ_MAX_ITEMS}.</p>
+          )}
+          {(faq.items ?? []).map((it, i) => (
+            <div key={i} className="bg-white border border-[rgba(18,18,18,0.10)] p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+                  Question {i + 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeFaqItem(i)}
+                  className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600"
+                  title="Delete"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+              <TextField
+                label="Question"
+                value={it.question}
+                onChange={v => updateFaqItem(i, { question: v })}
+                placeholder="Do you take walk-ins?"
+                maxLength={200}
+              />
+              <TextareaField
+                label="Answer"
+                value={it.answer}
+                onChange={v => updateFaqItem(i, { answer: v })}
+                placeholder="Walk-ins are welcome when there's an open slot — booking ahead is always safest."
+                rows={3}
+                maxLength={1000}
+              />
+            </div>
+          ))}
         </div>
-        <button
-          disabled
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.12)] bg-cream text-muted-text px-3 py-2 cursor-not-allowed"
-        >
-          <Plus size={12} /> Add Section — coming soon
-        </button>
       </Panel>
+
+      {/* Reviews / Testimonials — static list (no Stripe/Google integration). */}
+      <Panel
+        title="Reviews & testimonials"
+        subtitle="Static quotes from happy clients. Add the words you want shown."
+      >
+        <ToggleRow
+          label="Show Reviews section"
+          icon={MessageSquare}
+          on={reviews.enabled ?? false}
+          onToggle={() => patchReviews({ enabled: !(reviews.enabled ?? false) })}
+        />
+        <TextField
+          label="Section heading"
+          value={reviews.heading ?? ''}
+          onChange={v => patchReviews({ heading: v })}
+          placeholder="What clients say"
+          maxLength={80}
+        />
+
+        <div className="space-y-2.5 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+              Testimonials ({(reviews.items ?? []).length})
+            </p>
+            <button
+              type="button"
+              onClick={addReview}
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-1.5 hover:border-near-black"
+            >
+              <Plus size={12} /> Add review
+            </button>
+          </div>
+          {(reviews.items ?? []).length === 0 && (
+            <p className="text-xs text-muted-text">No reviews yet — add a few of your favorites.</p>
+          )}
+          {(reviews.items ?? []).map((r, i) => (
+            <div key={i} className="bg-white border border-[rgba(18,18,18,0.10)] p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+                  Review {i + 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeReview(i)}
+                  className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600"
+                  title="Delete"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+              <TextareaField
+                label="Quote"
+                value={r.body}
+                onChange={v => updateReview(i, { body: v })}
+                placeholder="“Best haircut I've ever had — Anna nailed exactly what I asked for.”"
+                rows={3}
+                maxLength={500}
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <TextField
+                  label="Name"
+                  value={r.author}
+                  onChange={v => updateReview(i, { author: v })}
+                  placeholder="Jess M."
+                  maxLength={80}
+                />
+                <TextField
+                  label="Location (optional)"
+                  value={r.location ?? ''}
+                  onChange={v => updateReview(i, { location: v || null })}
+                  placeholder="Brooklyn, NY"
+                  maxLength={80}
+                />
+                <div>
+                  <FieldLabel>Rating</FieldLabel>
+                  <select
+                    value={String(r.rating ?? 5)}
+                    onChange={e => updateReview(i, { rating: Number(e.target.value) })}
+                    className="w-full mt-1.5 bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+                  >
+                    {[5, 4, 3, 2, 1].map(n => (
+                      <option key={n} value={n}>{'★'.repeat(n) + '☆'.repeat(5 - n)}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Panel>
+
+      {/* Single save bar covers all three blocks above. */}
+      <SaveBar
+        dirty={form.dirty} saving={form.saving} saved={form.saved}
+        error={form.error} onSave={form.doSave}
+      />
     </div>
   )
 }

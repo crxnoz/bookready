@@ -79,6 +79,9 @@ class TemplateDefaults
                     ['title' => 'Detail-focused',  'body' => 'Every appointment is handled with care, from start to finish.'],
                     ['title' => 'Tailored to you', 'body' => 'Each service is shaped around what works best for your look.'],
                 ],
+                // Three image slots shown above the heading (left, center, right).
+                // null = render the gradient placeholder.
+                'images'     => [null, null, null],
             ],
             'steps' => [
                 'heading' => 'Advice',
@@ -102,6 +105,16 @@ class TemplateDefaults
                 'show_thank_you'   => true,
                 'thank_you_title'  => 'Thank you for choosing us',
                 'thank_you_body'   => null,
+                'faq' => [
+                    'enabled' => false,
+                    'heading' => 'Frequently asked',
+                    'items'   => [],
+                ],
+                'reviews' => [
+                    'enabled' => false,
+                    'heading' => 'What clients say',
+                    'items'   => [],
+                ],
             ],
             'footer' => [
                 'business_name_override' => null,

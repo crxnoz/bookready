@@ -856,6 +856,32 @@ export interface TemplateAboutSettings {
   eyebrow?:    string
   body?:       string
   highlights?: TemplateAboutHighlight[]
+  /** Three image URLs (or null) shown above the heading. Order: left, center, right. */
+  images?:     (string | null)[]
+}
+
+export interface TemplateFaqItem {
+  question: string
+  answer:   string
+}
+
+export interface TemplateFaqSettings {
+  enabled?: boolean
+  heading?: string
+  items?:   TemplateFaqItem[]
+}
+
+export interface TemplateReviewItem {
+  author:  string
+  body:    string
+  location?: string | null
+  rating?:   number | null  // 1..5
+}
+
+export interface TemplateReviewsSettings {
+  enabled?: boolean
+  heading?: string
+  items?:   TemplateReviewItem[]
 }
 
 export interface TemplateFooterSettings {
@@ -871,6 +897,8 @@ export interface TemplateAdditionalsSettings {
   show_thank_you?: boolean
   thank_you_title?: string | null
   thank_you_body?: string | null
+  faq?:     TemplateFaqSettings
+  reviews?: TemplateReviewsSettings
 }
 
 export interface TemplateSettings {
