@@ -31,13 +31,15 @@ function RegisterForm() {
     if (gerr) setError(gerr)
   }, [searchParams])
 
-  // Build the Google signup URL with business_name + template baked into
-  // the OAuth state. Backend reads these on callback to provision the tenant.
+  // Google signup is always allowed. If the user typed a business name we
+  // bake it (and the optional owner_name) into the OAuth state so the
+  // callback can provision a tenant immediately. If they didn't, we send
+  // an empty payload and the backend bounces to /register/complete where
+  // they pick a business name after returning from Google.
   const googleSignupHref = (() => {
     const bn = form.business_name.trim()
-    if (! bn) return null
     const payload = btoa(JSON.stringify({
-      business_name: bn,
+      business_name: bn || undefined,
       template:      templateSlug === 'thefaderoom' ? 'the-fade-room' : templateSlug,
       owner_name:    form.owner_name.trim() || undefined,
     }))
@@ -210,32 +212,15 @@ function RegisterForm() {
         <div className="flex-1 h-px bg-[rgba(18,18,18,0.10)]" />
       </div>
 
-      {/* Google sign-up — needs a business name first so the OAuth state
-          can carry it through Google's redirect. */}
-      {googleSignupHref ? (
-        <a
-          href={googleSignupHref}
-          className="w-full flex items-center justify-center gap-3 border border-[rgba(18,18,18,0.15)] bg-white py-3 text-sm font-medium text-near-black hover:border-near-black transition-colors"
-        >
-          <GoogleIcon />
-          Continue with Google
-        </a>
-      ) : (
-        <button
-          type="button"
-          disabled
-          className="w-full flex items-center justify-center gap-3 border border-[rgba(18,18,18,0.12)] bg-white py-3 text-sm font-medium text-muted-text cursor-not-allowed opacity-60"
-          title="Add a business name above to continue with Google"
-        >
-          <GoogleIcon />
-          Continue with Google
-        </button>
-      )}
-      {! googleSignupHref && (
-        <p className="text-[10px] text-muted-text mt-1.5 text-center">
-          Add a business name above to sign up with Google.
-        </p>
-      )}
+      {/* Google sign-up — always enabled. If the business-name field is
+          empty the backend will ask for it after Google returns. */}
+      <a
+        href={googleSignupHref}
+        className="w-full flex items-center justify-center gap-3 border border-[rgba(18,18,18,0.15)] bg-white py-3 text-sm font-medium text-near-black hover:border-near-black transition-colors"
+      >
+        <GoogleIcon />
+        Continue with Google
+      </a>
 
       {/* Footer */}
       <p className="text-xs text-muted-text mt-6 text-center">

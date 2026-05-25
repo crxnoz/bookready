@@ -86,6 +86,22 @@ export async function register(payload: RegisterPayload): Promise<AuthResponse> 
   })
 }
 
+/**
+ * Finalize a Google sign-up where the user clicked "Continue with Google"
+ * before picking a business name. The OAuth callback parked the verified
+ * Google identity in the server cache under `handoff`; we send back the
+ * chosen business name and get a Sanctum token in return.
+ */
+export async function completeGoogleSignup(payload: {
+  handoff: string
+  business_name: string
+}): Promise<AuthResponse> {
+  return request<AuthResponse>('/auth/google/complete-signup', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
   return request<AuthResponse>('/auth/login', {
     method: 'POST',

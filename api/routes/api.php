@@ -59,8 +59,9 @@ Route::prefix('v1')->group(function () {
         Route::post('login',    [AuthController::class, 'login']);
 
         // Google sign-in / sign-up.
-        Route::get('google/redirect', [GoogleAuthController::class, 'redirect']);
-        Route::get('google/callback', [GoogleAuthController::class, 'callback']);
+        Route::get ('google/redirect',         [GoogleAuthController::class, 'redirect']);
+        Route::get ('google/callback',         [GoogleAuthController::class, 'callback']);
+        Route::post('google/complete-signup',  [GoogleAuthController::class, 'completeSignup']);
 
         // Forgot / reset password.
         Route::post('password/forgot', [PasswordResetController::class, 'forgot']);

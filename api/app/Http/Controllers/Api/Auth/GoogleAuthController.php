@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\PlatformMailer;
 use App\Services\TenantProvisioningService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
@@ -124,14 +126,37 @@ class GoogleAuthController extends Controller
         $payload = $this->decodePayload($rawPayload);
         $businessName = trim((string) ($payload['business_name'] ?? ''));
         $template     = (string) ($payload['template'] ?? 'the-fade-room');
-
-        if ($businessName === '' || strlen($businessName) > 100) {
-            return $this->errorBack('signup',
-                'Pick a business name on the sign-up page before continuing with Google.'
-            );
-        }
         if (! in_array($template, ['the-fade-room'], true)) {
             $template = 'the-fade-room';
+        }
+
+        // No business_name in the payload means the user clicked "Continue
+        // with Google" from /register without typing one first. Stash the
+        // verified Google identity server-side and bounce them to a small
+        // form where they pick the business name and finish provisioning.
+        // The cache is the source of truth — the email/name in the URL are
+        // only for displaying "Hi Jane".
+        if ($businessName === '') {
+            $handoff = Str::random(40);
+            Cache::put("google_signup:{$handoff}", [
+                'email'    => $email,
+                'name'     => (string) ($google->getName() ?? ''),
+                'sub'      => (string) ($google->getId() ?? ''),
+                'template' => $template,
+            ], now()->addMinutes(15));
+
+            $qs = http_build_query([
+                'handoff' => $handoff,
+                'email'   => $email,
+                'name'    => (string) ($google->getName() ?? ''),
+            ]);
+            return redirect()->away(self::APP_BASE . '/register/complete?' . $qs);
+        }
+
+        if (strlen($businessName) > 100) {
+            return $this->errorBack('signup',
+                'Business name is too long (max 100 characters).'
+            );
         }
 
         // Owner name: prefer payload, fall back to Google profile, then email handle.
@@ -169,6 +194,98 @@ class GoogleAuthController extends Controller
         );
 
         return $this->finishWithUser($owner, 'google-oauth-signup');
+    }
+
+    // ── Deferred-name signup completion ──────────────────────────────────
+
+    /**
+     * Pair endpoint for the deferred-name Google signup flow. The user
+     * clicked "Continue with Google" without typing a business name; the
+     * OAuth callback already verified their Google identity and parked it
+     * in the cache under {handoff}. This endpoint takes the business name
+     * they finally picked, provisions the tenant, and returns the same
+     * auth payload as the regular register endpoint.
+     *
+     * POST /api/v1/auth/google/complete-signup
+     *   { handoff: string, business_name: string }
+     */
+    public function completeSignup(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'handoff'       => 'required|string|size:40',
+            'business_name' => 'required|string|min:1|max:100',
+        ]);
+
+        $cacheKey = "google_signup:{$validated['handoff']}";
+        $identity = Cache::get($cacheKey);
+        if (! is_array($identity) || empty($identity['email'])) {
+            return response()->json([
+                'message' => 'Your Google sign-up session expired. Start again.',
+            ], 410);
+        }
+
+        $email = strtolower((string) $identity['email']);
+
+        // Race-window check: someone could have registered with this email
+        // (or via a second Google tab) between the OAuth callback and now.
+        if (User::where('email', $email)->exists()) {
+            Cache::forget($cacheKey);
+            return response()->json([
+                'message' => 'An account already exists for this Google email. Sign in instead.',
+            ], 409);
+        }
+
+        $businessName = trim($validated['business_name']);
+        $template     = (string) ($identity['template'] ?? 'the-fade-room');
+        if (! in_array($template, ['the-fade-room'], true)) {
+            $template = 'the-fade-room';
+        }
+
+        $ownerName = trim((string) ($identity['name'] ?? ''))
+            ?: explode('@', $email, 2)[0];
+        $ownerName = mb_substr($ownerName, 0, 100);
+
+        try {
+            ['tenant' => $tenant, 'owner' => $owner] = $this->provisioner->provision([
+                'owner_name'    => $ownerName,
+                'email'         => $email,
+                'password'      => Str::random(32),
+                'business_name' => $businessName,
+                'template'      => $template,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Google deferred-name signup provisioning failed', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'message' => 'Could not finish creating your workspace. Try again.',
+            ], 500);
+        }
+
+        // One-shot: this handoff token must never be replayable.
+        Cache::forget($cacheKey);
+
+        PlatformMailer::sendWelcome(
+            ownerEmail:   $owner->email,
+            ownerName:    $owner->name,
+            businessName: $businessName,
+        );
+
+        $token = $owner->createToken('google-oauth-signup')->plainTextToken;
+
+        return response()->json([
+            'token'     => $token,
+            'tenant_id' => $owner->tenant_id,
+            'user'      => [
+                'id'        => $owner->id,
+                'name'      => $owner->name,
+                'email'     => $owner->email,
+                'tenant_id' => $owner->tenant_id,
+                'is_owner'  => (bool) ($owner->is_owner ?? false),
+                'is_admin'  => (bool) ($owner->is_admin ?? false),
+            ],
+        ]);
     }
 
     // ── Shared finalization ──────────────────────────────────────────────
