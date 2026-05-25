@@ -10,7 +10,7 @@ import {
   Plug, AlertTriangle, ChevronRight, Loader2, Check, AlertCircle,
   DollarSign, Download, Instagram, Mail, MapPin, MessageSquare, Phone,
   Percent, Lock, ExternalLink, RefreshCw, ShieldCheck, Send, Trash2, Webhook, Sparkles,
-  X,
+  X, Plus,
 } from 'lucide-react'
 import {
   getEditorPaymentSettings,
@@ -39,6 +39,7 @@ import type {
   BookingSettingsPayload,
   BusinessPolicy,
   BusinessProfile,
+  PolicyCustomGroup,
   DepositType,
   NotificationSettings,
   NotificationSettingsPayload,
@@ -2005,6 +2006,19 @@ function PoliciesSettingsPanel() {
       payload.forfeit_deposit_on_late_cancel = !! draft.forfeit_deposit_on_late_cancel
       payload.max_reschedules_per_booking    = draft.max_reschedules_per_booking ?? null
       payload.require_policy_agreement       = !! draft.require_policy_agreement
+      // Custom groups — strip empties so a half-typed row doesn't error on the API,
+      // and drop trailing-whitespace-only headings/titles.
+      payload.custom_groups = (draft.custom_groups ?? [])
+        .map(g => ({
+          heading: (g.heading ?? '').trim(),
+          items: (g.items ?? [])
+            .map(it => ({
+              title:   (it.title   ?? '').trim(),
+              content: (it.content ?? '').trim(),
+            }))
+            .filter(it => it.title.length > 0),
+        }))
+        .filter(g => g.heading.length > 0)
       const next = await updateEditorPolicies(payload)
       const normalized = normalizePolicy(next)
       setData(normalized); setDraft(normalized)
@@ -2150,6 +2164,12 @@ function PoliciesSettingsPanel() {
         ))}
       </section>
 
+      {/* ── Custom policy sections ── */}
+      <CustomPolicyGroupsEditor
+        groups={draft.custom_groups ?? []}
+        onChange={(next) => patch({ custom_groups: next })}
+      />
+
       <SaveBar
         dirty={dirty}
         saveState={saveState}
@@ -2161,6 +2181,7 @@ function PoliciesSettingsPanel() {
 }
 
 function normalizePolicy(p: BusinessPolicy): BusinessPolicy {
+  const rawGroups = Array.isArray(p.custom_groups) ? p.custom_groups : []
   return {
     id: p.id,
     cancellation_policy: p.cancellation_policy ?? '',
@@ -2173,6 +2194,13 @@ function normalizePolicy(p: BusinessPolicy): BusinessPolicy {
     forfeit_deposit_on_late_cancel: !! p.forfeit_deposit_on_late_cancel,
     max_reschedules_per_booking:    p.max_reschedules_per_booking    ?? null,
     require_policy_agreement:       !! p.require_policy_agreement,
+    custom_groups: rawGroups.map(g => ({
+      heading: g?.heading ?? '',
+      items: Array.isArray(g?.items) ? g.items.map(it => ({
+        title:   it?.title   ?? '',
+        content: it?.content ?? '',
+      })) : [],
+    })),
   }
 }
 
@@ -2197,6 +2225,135 @@ function PolicyReadout({
       </div>
       <ChevronRight size={12} className="text-muted-text group-hover:text-near-black flex-shrink-0" />
     </Link>
+  )
+}
+
+// ── Custom policy groups editor ─────────────────────────────────────────────
+
+const CUSTOM_POLICY_MAX_GROUPS         = 10
+const CUSTOM_POLICY_MAX_ITEMS_PER_GROUP = 20
+
+function CustomPolicyGroupsEditor({
+  groups, onChange,
+}: {
+  groups: PolicyCustomGroup[]
+  onChange: (next: PolicyCustomGroup[]) => void
+}) {
+  function addGroup() {
+    if (groups.length >= CUSTOM_POLICY_MAX_GROUPS) return
+    onChange([...groups, { heading: '', items: [{ title: '', content: '' }] }])
+  }
+  function patchGroup(gi: number, p: Partial<PolicyCustomGroup>) {
+    onChange(groups.map((g, idx) => idx === gi ? { ...g, ...p } : g))
+  }
+  function removeGroup(gi: number) {
+    onChange(groups.filter((_, idx) => idx !== gi))
+  }
+  function addItem(gi: number) {
+    const g = groups[gi]
+    if (!g) return
+    if (g.items.length >= CUSTOM_POLICY_MAX_ITEMS_PER_GROUP) return
+    patchGroup(gi, { items: [...g.items, { title: '', content: '' }] })
+  }
+  function patchItem(gi: number, ii: number, p: Partial<{ title: string; content: string }>) {
+    const g = groups[gi]
+    if (!g) return
+    patchGroup(gi, { items: g.items.map((it, idx) => idx === ii ? { ...it, ...p } : it) })
+  }
+  function removeItem(gi: number, ii: number) {
+    const g = groups[gi]
+    if (!g) return
+    patchGroup(gi, { items: g.items.filter((_, idx) => idx !== ii) })
+  }
+
+  return (
+    <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <SectionTitle
+          icon={Plus}
+          label="Custom policy sections"
+          hint="Add your own sections — they appear on your public site below the named policies."
+        />
+        <button
+          type="button"
+          onClick={addGroup}
+          disabled={groups.length >= CUSTOM_POLICY_MAX_GROUPS}
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2.5 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+        >
+          <Plus size={12} /> Add section
+        </button>
+      </div>
+
+      {groups.length === 0 && (
+        <p className="text-[11px] text-muted-text italic">
+          No custom sections yet. Use these for product care, aftercare instructions, parking notes, or anything else clients need to know.
+        </p>
+      )}
+
+      {groups.map((g, gi) => (
+        <div key={gi} className="bg-cream border border-[rgba(18,18,18,0.08)] p-3 space-y-2.5">
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <TextField
+                label={`Section ${gi + 1} heading`}
+                value={g.heading}
+                onChange={v => patchGroup(gi, { heading: v })}
+                placeholder="Aftercare, Parking, Add-Ons…"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => removeGroup(gi)}
+              className="w-9 h-9 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600"
+              title="Delete section"
+            >
+              <Trash2 size={12} />
+            </button>
+          </div>
+
+          <div className="space-y-2 pl-2 border-l-2 border-[rgba(18,18,18,0.08)]">
+            {g.items.map((it, ii) => (
+              <div key={ii} className="bg-white border border-[rgba(18,18,18,0.08)] p-2.5 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+                    Item {ii + 1}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(gi, ii)}
+                    className="w-6 h-6 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600"
+                    title="Delete item"
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+                <TextField
+                  label="Title"
+                  value={it.title}
+                  onChange={v => patchItem(gi, ii, { title: v })}
+                  placeholder="What clients see as the bullet heading"
+                />
+                <TextAreaField
+                  label="Content"
+                  value={it.content ?? ''}
+                  onChange={v => patchItem(gi, ii, { content: v })}
+                  placeholder="The body text shown under the title."
+                  rows={2}
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => addItem(gi)}
+              disabled={g.items.length >= CUSTOM_POLICY_MAX_ITEMS_PER_GROUP}
+              className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Plus size={11} /> Add item
+            </button>
+          </div>
+        </div>
+      ))}
+    </section>
   )
 }
 

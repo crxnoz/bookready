@@ -32,8 +32,12 @@ import {
   RefundPayload,
   RefundResponse,
   RegisterPayload,
+  BeforeAfterGroup,
+  BeforeAfterGroupPayload,
   BeforeAfterItem,
   BeforeAfterItemPayload,
+  GalleryGroup,
+  GalleryGroupPayload,
   GalleryItem,
   GalleryItemPayload,
   AccountProfile,
@@ -763,6 +767,30 @@ export async function deleteEditorGalleryItem(id: number): Promise<{ deleted?: b
   return request(`/editor/gallery/${id}`, { method: 'DELETE' })
 }
 
+// ── Gallery groups ───────────────────────────────────────────────────────────
+
+export async function getEditorGalleryGroups(): Promise<GalleryGroup[]> {
+  return request<GalleryGroup[]>('/editor/gallery/groups')
+}
+
+export async function createEditorGalleryGroup(payload: GalleryGroupPayload): Promise<GalleryGroup> {
+  return request<GalleryGroup>('/editor/gallery/groups', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateEditorGalleryGroup(id: number, payload: Partial<GalleryGroupPayload>): Promise<GalleryGroup> {
+  return request<GalleryGroup>(`/editor/gallery/groups/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteEditorGalleryGroup(id: number): Promise<{ deleted?: boolean }> {
+  return request(`/editor/gallery/groups/${id}`, { method: 'DELETE' })
+}
+
 // ── Before & After items ─────────────────────────────────────────────────────
 
 export async function getEditorBeforeAfter(params?: { active?: boolean; category?: string }): Promise<BeforeAfterItem[]> {
@@ -789,4 +817,28 @@ export async function updateEditorBeforeAfterItem(id: number, payload: Partial<B
 
 export async function deleteEditorBeforeAfterItem(id: number): Promise<{ deleted?: boolean }> {
   return request(`/editor/before-after/${id}`, { method: 'DELETE' })
+}
+
+// ── Before & After groups ────────────────────────────────────────────────────
+
+export async function getEditorBeforeAfterGroups(): Promise<BeforeAfterGroup[]> {
+  return request<BeforeAfterGroup[]>('/editor/before-after/groups')
+}
+
+export async function createEditorBeforeAfterGroup(payload: BeforeAfterGroupPayload): Promise<BeforeAfterGroup> {
+  return request<BeforeAfterGroup>('/editor/before-after/groups', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateEditorBeforeAfterGroup(id: number, payload: Partial<BeforeAfterGroupPayload>): Promise<BeforeAfterGroup> {
+  return request<BeforeAfterGroup>(`/editor/before-after/groups/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteEditorBeforeAfterGroup(id: number): Promise<{ deleted?: boolean }> {
+  return request(`/editor/before-after/groups/${id}`, { method: 'DELETE' })
 }

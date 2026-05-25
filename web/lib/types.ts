@@ -57,6 +57,8 @@ export interface GalleryItem {
   category: string | null
   is_active: boolean
   sort_order: number
+  /** Owner-organized group bucket. null = ungrouped. */
+  group_id?: number | null
   created_at?: string
   updated_at?: string
 }
@@ -69,6 +71,7 @@ export interface GalleryItemPayload {
   category?: string | null
   is_active?: boolean
   sort_order?: number
+  group_id?: number | null
 }
 
 // Public-facing subset
@@ -80,6 +83,21 @@ export interface PublicGalleryItem {
   image_url: string
   category: string | null
   sort_order: number
+  group_id?: number | null
+}
+
+// Gallery groups (max 3 per tenant)
+export interface GalleryGroup {
+  id: number
+  heading: string
+  sort_order: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface GalleryGroupPayload {
+  heading: string
+  sort_order?: number
 }
 
 // API-backed before/after pairs (editor + public)
@@ -94,6 +112,8 @@ export interface BeforeAfterItem {
   category: string | null
   is_active: boolean
   sort_order: number
+  /** Owner-organized group bucket. null = ungrouped. */
+  group_id?: number | null
   created_at?: string
   updated_at?: string
 }
@@ -108,6 +128,7 @@ export interface BeforeAfterItemPayload {
   category?: string | null
   is_active?: boolean
   sort_order?: number
+  group_id?: number | null
 }
 
 export interface PublicBeforeAfterItem {
@@ -120,6 +141,21 @@ export interface PublicBeforeAfterItem {
   after_alt_text: string | null
   category: string | null
   sort_order: number
+  group_id?: number | null
+}
+
+// Before/After groups (max 3 per tenant)
+export interface BeforeAfterGroup {
+  id: number
+  heading: string
+  sort_order: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface BeforeAfterGroupPayload {
+  heading: string
+  sort_order?: number
 }
 
 export interface HoursEntry {
@@ -237,6 +273,16 @@ export interface AvailabilityData {
   settings: AvailabilitySettings
 }
 
+export interface PolicyCustomItem {
+  title:   string
+  content: string
+}
+
+export interface PolicyCustomGroup {
+  heading: string
+  items:   PolicyCustomItem[]
+}
+
 export interface BusinessPolicy {
   id?: number
   cancellation_policy: string | null
@@ -252,6 +298,8 @@ export interface BusinessPolicy {
   /** null = unlimited, 0 = no reschedules allowed */
   max_reschedules_per_booking?: number | null
   require_policy_agreement?: boolean
+  /** Owner-defined extra policy sections — rendered after the 6 named ones. */
+  custom_groups?: PolicyCustomGroup[]
 }
 
 // Staff (API-backed, editor + public)
@@ -304,7 +352,9 @@ export interface PublicSite {
   policies?: BusinessPolicy | null
   staff?: PublicStaffMember[]
   gallery?: PublicGalleryItem[]
+  gallery_groups?: GalleryGroup[]
   before_after?: PublicBeforeAfterItem[]
+  before_after_groups?: BeforeAfterGroup[]
   template?: PublicTemplate | null
   payment_settings?: PublicPaymentSettings | null
   booking_settings?: PublicBookingSettings | null

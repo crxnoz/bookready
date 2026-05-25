@@ -388,14 +388,21 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
           {/* ── Gallery ── */}
           {enabledByTab.gallery && (
             <div className={`tfr-tab-panel${active === 'gallery' ? ' is-active' : ''}`}>
-              <GalleryPanel items={site.gallery ?? []} displayName={displayName} />
+              <GalleryPanel
+                items={site.gallery ?? []}
+                groups={site.gallery_groups ?? []}
+                displayName={displayName}
+              />
             </div>
           )}
 
           {/* ── Results ── */}
           {enabledByTab.results && (
             <div className={`tfr-tab-panel${active === 'results' ? ' is-active' : ''}`}>
-              <ResultsPanel items={site.before_after ?? []} />
+              <ResultsPanel
+                items={site.before_after ?? []}
+                groups={site.before_after_groups ?? []}
+              />
             </div>
           )}
 
@@ -598,17 +605,26 @@ interface PublicGalleryItem {
   image_url: string
   category: string | null
   sort_order: number
+  group_id?: number | null
+}
+
+interface PublicGroup {
+  id: number
+  heading: string
+  sort_order: number
 }
 
 function GalleryPanel({
   items,
+  groups,
   displayName,
 }: {
   items: PublicGalleryItem[]
+  groups: PublicGroup[]
   displayName: string
 }) {
-  // No items → keep polished placeholder groups
-  if (items.length === 0) {
+  // No items at all → polished placeholders (lifted from the original layout)
+  if (items.length === 0 && groups.length === 0) {
     return (
       <section className="tfr-gallery-section">
         {GALLERY_GROUPS.map(g => (
@@ -629,21 +645,48 @@ function GalleryPanel({
     )
   }
 
-  // Real items → group by category (preserves sort_order within each group)
-  const groups = new Map<string, PublicGalleryItem[]>()
-  for (const item of items) {
-    const key = item.category?.trim() || 'Gallery'
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key)!.push(item)
+  // Group items by group_id. Owner-defined groups own a heading; items
+  // without a group_id fall through to a final "More" bucket so legacy data
+  // (created before the groups feature shipped) still renders.
+  const byGroup = new Map<number, PublicGalleryItem[]>()
+  const ungrouped: PublicGalleryItem[] = []
+  for (const it of items) {
+    const gid = it.group_id ?? null
+    if (gid === null) { ungrouped.push(it); continue }
+    if (!byGroup.has(gid)) byGroup.set(gid, [])
+    byGroup.get(gid)!.push(it)
   }
+
+  const sortedGroups = [...groups].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
 
   return (
     <section className="tfr-gallery-section">
-      {Array.from(groups.entries()).map(([label, list]) => (
-        <div key={label} className="tfr-gallery-group">
-          <h2>{label}</h2>
+      {sortedGroups.map(g => {
+        const list = (byGroup.get(g.id) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
+        if (list.length === 0) return null
+        return (
+          <div key={g.id} className="tfr-gallery-group">
+            <h2>{g.heading}</h2>
+            <div className="tfr-gallery-grid">
+              {list.map(item => (
+                <div key={item.id} className="tfr-gallery-img tfr-gallery-img--square">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={item.image_url}
+                    alt={item.alt_text ?? item.title ?? displayName}
+                    loading="lazy"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+      {ungrouped.length > 0 && (
+        <div className="tfr-gallery-group">
+          <h2>{sortedGroups.length > 0 ? 'More' : 'Gallery'}</h2>
           <div className="tfr-gallery-grid">
-            {list.map(item => (
+            {ungrouped.slice().sort((a, b) => a.sort_order - b.sort_order || a.id - b.id).map(item => (
               <div key={item.id} className="tfr-gallery-img tfr-gallery-img--square">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -655,7 +698,7 @@ function GalleryPanel({
             ))}
           </div>
         </div>
-      ))}
+      )}
     </section>
   )
 }
@@ -678,9 +721,15 @@ interface PublicBeforeAfterItem {
   after_alt_text: string | null
   category: string | null
   sort_order: number
+  group_id?: number | null
 }
 
-function ResultsPanel({ items }: { items: PublicBeforeAfterItem[] }) {
+function ResultsPanel({
+  items, groups,
+}: {
+  items: PublicBeforeAfterItem[]
+  groups: PublicGroup[]
+}) {
   const [revealed, setRevealed] = useState<Set<number>>(new Set())
 
   function toggle(i: number) {
@@ -693,42 +742,79 @@ function ResultsPanel({ items }: { items: PublicBeforeAfterItem[] }) {
 
   // Real items take precedence over placeholders
   if (items.length > 0) {
+    // Bucket by group, mirroring GalleryPanel. Legacy items (no group_id)
+    // fall into a final unlabeled bucket so nothing disappears on upgrade.
+    const byGroup = new Map<number, PublicBeforeAfterItem[]>()
+    const ungrouped: PublicBeforeAfterItem[] = []
+    for (const it of items) {
+      const gid = it.group_id ?? null
+      if (gid === null) { ungrouped.push(it); continue }
+      if (!byGroup.has(gid)) byGroup.set(gid, [])
+      byGroup.get(gid)!.push(it)
+    }
+    const sortedGroups = [...groups].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
+    const buckets: { key: string; heading: string | null; list: PublicBeforeAfterItem[] }[] = []
+    for (const g of sortedGroups) {
+      const list = (byGroup.get(g.id) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
+      if (list.length > 0) buckets.push({ key: `g-${g.id}`, heading: g.heading, list })
+    }
+    if (ungrouped.length > 0) {
+      const sortedUngrouped = ungrouped.slice().sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
+      buckets.push({ key: 'g-none', heading: sortedGroups.length > 0 ? 'More' : null, list: sortedUngrouped })
+    }
+
+    // Single-bucket case keeps the original RESULTS / Amazing header.
+    // Multi-bucket uses the bucket's heading per section.
+    let runningIndex = 0
     return (
       <section className="tfr-before-after-section">
         <div className="tfr-results-heading">
           <div className="tfr-results-backdrop">RESULTS</div>
           <h2>Amazing</h2>
         </div>
-        <div className="tfr-ba-stack">
-          {items.map((item, i) => (
-            <div key={item.id} className="tfr-ba-pair">
-              <span className="tfr-ba-label tfr-ba-label--before">Before</span>
-              <span className="tfr-ba-label tfr-ba-label--after">After</span>
-              <div className="tfr-ba-card tfr-ba-card--before">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={item.before_image_url}
-                  alt={item.before_alt_text ?? `${item.title ?? 'Result'} — before`}
-                  loading="lazy"
-                />
+        {buckets.map(b => {
+          const block = (
+            <div key={b.key} className="tfr-ba-bucket">
+              {b.heading && buckets.length > 1 && (
+                <h3 className="tfr-ba-bucket-heading">{b.heading}</h3>
+              )}
+              <div className="tfr-ba-stack">
+                {b.list.map((item) => {
+                  const i = runningIndex++
+                  return (
+                    <div key={item.id} className="tfr-ba-pair">
+                      <span className="tfr-ba-label tfr-ba-label--before">Before</span>
+                      <span className="tfr-ba-label tfr-ba-label--after">After</span>
+                      <div className="tfr-ba-card tfr-ba-card--before">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.before_image_url}
+                          alt={item.before_alt_text ?? `${b.heading ?? 'Result'} — before`}
+                          loading="lazy"
+                        />
+                      </div>
+                      <button
+                        className={`tfr-ba-card tfr-ba-card--after${revealed.has(i) ? ' is-revealed' : ''}`}
+                        onClick={() => toggle(i)}
+                        aria-label={revealed.has(i) ? 'Hide result' : 'Tap to reveal result'}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.after_image_url}
+                          alt={item.after_alt_text ?? `${b.heading ?? 'Result'} — after`}
+                          loading="lazy"
+                          className="tfr-ba-after-img"
+                        />
+                        <span>Tap to Reveal</span>
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
-              <button
-                className={`tfr-ba-card tfr-ba-card--after${revealed.has(i) ? ' is-revealed' : ''}`}
-                onClick={() => toggle(i)}
-                aria-label={revealed.has(i) ? 'Hide result' : 'Tap to reveal result'}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={item.after_image_url}
-                  alt={item.after_alt_text ?? `${item.title ?? 'Result'} — after`}
-                  loading="lazy"
-                  className="tfr-ba-after-img"
-                />
-                <span>Tap to Reveal</span>
-              </button>
             </div>
-          ))}
-        </div>
+          )
+          return block
+        })}
       </section>
     )
   }
@@ -876,6 +962,17 @@ function PoliciesPanel({ policies }: { policies: PublicSite['policies'] }) {
     ? POLICY_KEYS.filter(([key]) => (policies as unknown as Record<string, string | null>)[key])
     : []
 
+  // Owner-defined extra sections — rendered after the 6 named ones, each as
+  // its own card per item so a single "Aftercare" group can list several
+  // bullet-style sub-policies without leaving Markdown in the body text.
+  const customGroups = (policies?.custom_groups ?? [])
+    .filter(g => (g.heading?.trim().length ?? 0) > 0)
+    .map(g => ({
+      heading: g.heading.trim(),
+      items: (g.items ?? []).filter(it => (it.title?.trim().length ?? 0) > 0),
+    }))
+    .filter(g => g.items.length > 0)
+
   return (
     <section className="tfr-policy-section">
       <div className="tfr-policy-heading">
@@ -902,6 +999,24 @@ function PoliciesPanel({ policies }: { policies: PublicSite['policies'] }) {
             ))
         }
       </div>
+
+      {customGroups.map((g, gi) => (
+        <div key={`cg-${gi}`} className="tfr-policy-custom-group">
+          <h3 className="tfr-policy-custom-heading">{g.heading}</h3>
+          <div className="tfr-policy-list">
+            {g.items.map((it, ii) => (
+              <div key={ii} className="tfr-policy-card">
+                <h3>{it.title.trim()}</h3>
+                {it.content?.trim() && (
+                  <div className="tfr-policy-copy">
+                    <p style={{ whiteSpace: 'pre-wrap' }}>{it.content.trim()}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </section>
   )
 }
@@ -1571,6 +1686,11 @@ const TFR_CSS = `
 .tfr-results-backdrop { color:rgba(255,255,255,0.2); font-size:76px; font-family:var(--tfr-serif); font-weight:400; line-height:1; letter-spacing:-0.04em; }
 .tfr-results-heading h2 { margin:-50px 0 0; color:var(--tfr-text); font-size:26px; font-family:var(--tfr-script); font-weight:400; line-height:1.1; text-shadow:var(--tfr-text-glow); }
 .tfr-ba-stack { display:grid; gap:24px; padding:8px 0 0; }
+.tfr-ba-bucket+.tfr-ba-bucket { margin-top:36px; }
+.tfr-ba-bucket-heading {
+  margin:18px 0 4px; font-family:var(--tfr-display); font-size:32px; font-weight:800;
+  letter-spacing:-0.02em; color:var(--tfr-fg); text-align:center; text-transform:uppercase;
+}
 .tfr-ba-pair { width:min(100%,350px); height:230px; margin:0 auto; position:relative; }
 .tfr-ba-label { position:absolute; z-index:5; color:var(--tfr-text); font-size:26px; font-family:var(--tfr-script); font-weight:400; line-height:1.1; text-shadow:var(--tfr-text-glow); pointer-events:none; }
 .tfr-ba-label--before { left:58px; top:0; }
@@ -1641,6 +1761,11 @@ img.tfr-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filte
 .tfr-policy-heading span { color:var(--tfr-text); font-size:26px; font-family:var(--tfr-script); font-weight:400; line-height:1.6; text-shadow:var(--tfr-text-glow); }
 .tfr-policy-heading h2 { margin:0; color:var(--tfr-text); font-size:clamp(58px,18vw,70px); font-family:var(--tfr-serif); font-weight:400; line-height:0.95; letter-spacing:-0.055em; }
 .tfr-policy-list { display:grid; gap:12px; }
+.tfr-policy-custom-group { margin-top:36px; }
+.tfr-policy-custom-heading {
+  margin:0 0 14px; font-family:var(--tfr-display); font-weight:800; font-size:30px;
+  letter-spacing:-0.02em; color:var(--tfr-fg); text-align:center; text-transform:uppercase;
+}
 .tfr-policy-card {
   position:relative; width:100%; min-height:160px; padding:22px 18px;
   background:linear-gradient(180deg,rgba(255,255,255,0.025) 0%,rgba(255,255,255,0.01) 100%);

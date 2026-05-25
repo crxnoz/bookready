@@ -19,7 +19,9 @@ use App\Http\Controllers\Api\Editor\BookingSettingsController;
 use App\Http\Controllers\Api\Editor\NotificationSettingsController;
 use App\Http\Controllers\Api\Editor\PaymentSettingsController;
 use App\Http\Controllers\Api\Editor\StripeConnectController;
+use App\Http\Controllers\Api\Editor\BeforeAfterGroupController;
 use App\Http\Controllers\Api\Editor\BeforeAfterItemsController;
+use App\Http\Controllers\Api\Editor\GalleryGroupController;
 use App\Http\Controllers\Api\Editor\GalleryItemsController;
 use App\Http\Controllers\Api\Editor\ServicesController;
 use App\Http\Controllers\Api\Editor\StaffController;
@@ -126,14 +128,24 @@ Route::prefix('v1')->group(function () {
         Route::patch('staff/{staff}',    [StaffController::class, 'update']);
         Route::delete('staff/{staff}',   [StaffController::class, 'destroy']);
 
-        Route::get('gallery',                         [GalleryItemsController::class, 'index']);
-        Route::post('gallery',                        [GalleryItemsController::class, 'store']);
-        Route::patch('gallery/{item}',                [GalleryItemsController::class, 'update']);
+        // Groups routes MUST come before /{item} so the static 'groups'
+        // segment isn't swallowed by the dynamic {item} matcher.
+        Route::get   ('gallery/groups',               [GalleryGroupController::class, 'index']);
+        Route::post  ('gallery/groups',               [GalleryGroupController::class, 'store']);
+        Route::patch ('gallery/groups/{group}',       [GalleryGroupController::class, 'update']);
+        Route::delete('gallery/groups/{group}',       [GalleryGroupController::class, 'destroy']);
+        Route::get   ('gallery',                      [GalleryItemsController::class, 'index']);
+        Route::post  ('gallery',                      [GalleryItemsController::class, 'store']);
+        Route::patch ('gallery/{item}',               [GalleryItemsController::class, 'update']);
         Route::delete('gallery/{item}',               [GalleryItemsController::class, 'destroy']);
 
-        Route::get('before-after',                    [BeforeAfterItemsController::class, 'index']);
-        Route::post('before-after',                   [BeforeAfterItemsController::class, 'store']);
-        Route::patch('before-after/{item}',           [BeforeAfterItemsController::class, 'update']);
+        Route::get   ('before-after/groups',          [BeforeAfterGroupController::class, 'index']);
+        Route::post  ('before-after/groups',          [BeforeAfterGroupController::class, 'store']);
+        Route::patch ('before-after/groups/{group}',  [BeforeAfterGroupController::class, 'update']);
+        Route::delete('before-after/groups/{group}',  [BeforeAfterGroupController::class, 'destroy']);
+        Route::get   ('before-after',                 [BeforeAfterItemsController::class, 'index']);
+        Route::post  ('before-after',                 [BeforeAfterItemsController::class, 'store']);
+        Route::patch ('before-after/{item}',          [BeforeAfterItemsController::class, 'update']);
         Route::delete('before-after/{item}',          [BeforeAfterItemsController::class, 'destroy']);
 
         Route::post('uploads',                        [UploadsController::class, 'store']);

@@ -18,6 +18,8 @@ class BusinessPolicy extends Model
         'forfeit_deposit_on_late_cancel',
         'max_reschedules_per_booking',
         'require_policy_agreement',
+        // Custom groups (migration #10) — JSON array
+        'custom_groups',
     ];
 
     protected $casts = [
@@ -25,5 +27,6 @@ class BusinessPolicy extends Model
         'require_policy_agreement'       => 'boolean',
         'late_grace_period_minutes'      => 'integer',
         'max_reschedules_per_booking'    => 'integer',
+        'custom_groups'                  => 'array',
     ];
 }

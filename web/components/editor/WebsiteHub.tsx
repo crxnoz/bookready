@@ -23,10 +23,18 @@ import {
   createEditorGalleryItem,
   updateEditorGalleryItem,
   deleteEditorGalleryItem,
+  getEditorGalleryGroups,
+  createEditorGalleryGroup,
+  updateEditorGalleryGroup,
+  deleteEditorGalleryGroup,
   getEditorBeforeAfter,
   createEditorBeforeAfterItem,
   updateEditorBeforeAfterItem,
   deleteEditorBeforeAfterItem,
+  getEditorBeforeAfterGroups,
+  createEditorBeforeAfterGroup,
+  updateEditorBeforeAfterGroup,
+  deleteEditorBeforeAfterGroup,
   getEditorPolicies,
   updateEditorPolicies,
 } from '@/lib/api'
@@ -39,9 +47,12 @@ import type {
   WebsiteSection,
   GalleryItem,
   GalleryItemPayload,
+  GalleryGroup,
   BeforeAfterItem,
   BeforeAfterItemPayload,
+  BeforeAfterGroup,
   BusinessPolicy,
+  PolicyCustomGroup,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
 
@@ -1503,15 +1514,7 @@ function PoliciesEditorPanel() {
     getEditorPolicies()
       .then(p => {
         if (cancelled) return
-        const normalized: BusinessPolicy = {
-          id: p.id,
-          cancellation_policy: p.cancellation_policy ?? '',
-          late_policy:         p.late_policy         ?? '',
-          no_show_policy:      p.no_show_policy      ?? '',
-          deposit_policy:      p.deposit_policy      ?? '',
-          reschedule_policy:   p.reschedule_policy   ?? '',
-          extra_notes:         p.extra_notes         ?? '',
-        }
+        const normalized = normalizePoliciesShape(p)
         setPolicies(normalized)
         setBaseline(normalized)
       })
@@ -1542,21 +1545,24 @@ function PoliciesEditorPanel() {
     if (!policies) return
     setSaving(true); setError(null); setSaved(false)
     try {
-      const payload: Record<string, string | null> = {}
+      const payload: Partial<BusinessPolicy> & Record<string, unknown> = {}
       for (const { key } of POLICY_FIELDS) {
         const v = policies[key] as string
-        payload[key] = v && v.trim().length > 0 ? v : null
+        ;(payload as Record<string, unknown>)[key] = v && v.trim().length > 0 ? v : null
       }
+      payload.custom_groups = (policies.custom_groups ?? [])
+        .map(g => ({
+          heading: (g.heading ?? '').trim(),
+          items: (g.items ?? [])
+            .map(it => ({
+              title:   (it.title   ?? '').trim(),
+              content: (it.content ?? '').trim(),
+            }))
+            .filter(it => it.title.length > 0),
+        }))
+        .filter(g => g.heading.length > 0)
       const res = await updateEditorPolicies(payload)
-      const normalized: BusinessPolicy = {
-        id: res.id,
-        cancellation_policy: res.cancellation_policy ?? '',
-        late_policy:         res.late_policy         ?? '',
-        no_show_policy:      res.no_show_policy      ?? '',
-        deposit_policy:      res.deposit_policy      ?? '',
-        reschedule_policy:   res.reschedule_policy   ?? '',
-        extra_notes:         res.extra_notes         ?? '',
-      }
+      const normalized = normalizePoliciesShape(res)
       setPolicies(normalized)
       setBaseline(normalized)
       setSaved(true)
@@ -1597,6 +1603,15 @@ function PoliciesEditorPanel() {
               maxLength={2000}
             />
           ))}
+
+          <WebsiteCustomPolicyGroupsEditor
+            groups={policies.custom_groups ?? []}
+            onChange={(next) => {
+              setPolicies(prev => prev ? { ...prev, custom_groups: next } : prev)
+              if (saved) setSaved(false)
+            }}
+          />
+
           <SaveBar
             dirty={dirty}
             saving={saving}
@@ -2054,27 +2069,46 @@ function PreviewPanel({ url, refreshKey }: { url: string; refreshKey: number }) 
 
 // ── Gallery manager (lives inside Content & Tabs) ────────────────────────────
 
+const GALLERY_MAX_GROUPS         = 3
+const GALLERY_MAX_ITEMS_PER_GROUP = 6
+
 function GalleryManagerPanel() {
   const [items, setItems]     = useState<GalleryItem[] | null>(null)
+  const [groups, setGroups]   = useState<GalleryGroup[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
   const [busyId, setBusyId]   = useState<number | null>(null)
   const [editing, setEditing] = useState<GalleryItem | null>(null)
-  const [adding, setAdding]   = useState(false)
+  // When the user clicks "Add image" inside a group we remember which group
+  // it was so the new item is created with the right group_id pre-filled.
+  const [addingForGroup, setAddingForGroup] = useState<number | null | 'none'>(null)
+  const [addingGroup, setAddingGroup]       = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    getEditorGallery()
-      .then(rows => { if (!cancelled) setItems(rows) })
+    Promise.all([getEditorGallery(), getEditorGalleryGroups()])
+      .then(([rows, gs]) => {
+        if (cancelled) return
+        setItems(rows)
+        setGroups(gs)
+      })
       .catch(e => { if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load gallery') })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
 
-  const sorted = useMemo(
+  const sortedItems  = useMemo(
     () => (items ?? []).slice().sort((a, b) => a.sort_order - b.sort_order || a.id - b.id),
     [items],
   )
+  const sortedGroups = useMemo(
+    () => (groups ?? []).slice().sort((a, b) => a.sort_order - b.sort_order || a.id - b.id),
+    [groups],
+  )
+
+  function itemsForGroup(gid: number | null): GalleryItem[] {
+    return sortedItems.filter(i => (i.group_id ?? null) === gid)
+  }
 
   async function toggle(item: GalleryItem) {
     setBusyId(item.id); setError(null)
@@ -2101,26 +2135,6 @@ function GalleryManagerPanel() {
     }
   }
 
-  async function move(item: GalleryItem, dir: 'up' | 'down') {
-    const i = sorted.findIndex(s => s.id === item.id)
-    if (i < 0) return
-    const j = dir === 'up' ? i - 1 : i + 1
-    if (j < 0 || j >= sorted.length) return
-    const a = sorted[i], b = sorted[j]
-    setBusyId(item.id); setError(null)
-    try {
-      const [updA, updB] = await Promise.all([
-        updateEditorGalleryItem(a.id, { sort_order: b.sort_order }),
-        updateEditorGalleryItem(b.id, { sort_order: a.sort_order }),
-      ])
-      setItems(prev => (prev ?? []).map(s => s.id === updA.id ? updA : s.id === updB.id ? updB : s))
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to reorder')
-    } finally {
-      setBusyId(null)
-    }
-  }
-
   async function handleSave(payload: GalleryItemPayload, existingId: number | null) {
     setError(null)
     if (existingId) {
@@ -2131,27 +2145,65 @@ function GalleryManagerPanel() {
       setItems(prev => [...(prev ?? []), created])
     }
     setEditing(null)
-    setAdding(false)
+    setAddingForGroup(null)
   }
+
+  async function createGroup(heading: string) {
+    setError(null)
+    const created = await createEditorGalleryGroup({ heading })
+    setGroups(prev => [...(prev ?? []), created])
+    setAddingGroup(false)
+  }
+
+  async function renameGroup(g: GalleryGroup, heading: string) {
+    setError(null)
+    const updated = await updateEditorGalleryGroup(g.id, { heading })
+    setGroups(prev => (prev ?? []).map(x => x.id === g.id ? updated : x))
+  }
+
+  async function removeGroup(g: GalleryGroup) {
+    const inGroup = itemsForGroup(g.id).length
+    const msg = inGroup === 0
+      ? `Delete the "${g.heading}" group?`
+      : `Delete the "${g.heading}" group? Its ${inGroup} image${inGroup === 1 ? '' : 's'} will be kept but moved to "Ungrouped".`
+    if (!confirm(msg)) return
+    setError(null)
+    try {
+      await deleteEditorGalleryGroup(g.id)
+      setGroups(prev => (prev ?? []).filter(x => x.id !== g.id))
+      // Orphan items locally to match what the backend did server-side.
+      setItems(prev => (prev ?? []).map(i =>
+        (i.group_id ?? null) === g.id ? { ...i, group_id: null } : i,
+      ))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete group')
+    }
+  }
+
+  const totalImages = sortedItems.length
+  const ungrouped   = itemsForGroup(null)
 
   return (
     <CollapsibleSection
       title="Gallery"
-      subtitle="Add image URLs to show your work on your public website."
+      subtitle="Organize your work into up to 3 collections — each can hold up to 6 photos."
       icon={ImageIcon}
       statusBadge={!loading && (
-        <StatusBadge>{sorted.length} image{sorted.length === 1 ? '' : 's'}</StatusBadge>
+        <StatusBadge>{totalImages} image{totalImages === 1 ? '' : 's'}</StatusBadge>
       )}
     >
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-xs text-muted-text">
-          {loading ? 'Loading…' : 'Cuts, lashes, nails, facials, studio shots, or before/after photos.'}
+          {loading
+            ? 'Loading…'
+            : `Up to ${GALLERY_MAX_GROUPS} collections × ${GALLERY_MAX_ITEMS_PER_GROUP} images each.`}
         </p>
         <button
-          onClick={() => setAdding(true)}
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2"
+          onClick={() => setAddingGroup(true)}
+          disabled={(groups?.length ?? 0) >= GALLERY_MAX_GROUPS}
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <Plus size={12} /> Add Image
+          <Plus size={12} /> Add Collection
         </button>
       </div>
 
@@ -2161,123 +2213,60 @@ function GalleryManagerPanel() {
         </div>
       )}
 
-      {!loading && sorted.length === 0 && (
+      {!loading && sortedGroups.length === 0 && ungrouped.length === 0 && (
         <div className="bg-cream border border-[rgba(18,18,18,0.08)] px-4 py-6 text-center">
           <ImageIcon size={20} className="mx-auto mb-2 text-muted-text" strokeWidth={1.5} />
-          <p className="text-sm text-near-black font-semibold">No gallery images yet</p>
-          <p className="text-xs text-muted-text mt-0.5">Add your first image to bring your public site to life.</p>
+          <p className="text-sm text-near-black font-semibold">No collections yet</p>
+          <p className="text-xs text-muted-text mt-0.5">Add your first collection to start showing your work.</p>
         </div>
       )}
 
-      {sorted.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {sorted.map((item, i) => {
-            const busy = busyId === item.id
-            return (
-              <div
-                key={item.id}
-                className={cn(
-                  'bg-white border flex gap-3 p-3',
-                  item.is_active ? 'border-[rgba(18,18,18,0.10)]' : 'border-[rgba(18,18,18,0.06)] opacity-70',
-                )}
-              >
-                {/* Preview */}
-                <div className="w-16 h-16 bg-cream border border-[rgba(18,18,18,0.08)] flex-shrink-0 overflow-hidden">
-                  {item.image_url
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    ? <img src={item.image_url} alt={item.alt_text ?? item.title ?? ''} className="w-full h-full object-cover" />
-                    : <div className="w-full h-full flex items-center justify-center text-muted-text"><ImageIcon size={16} /></div>
-                  }
-                </div>
+      {/* Groups */}
+      {sortedGroups.map(g => (
+        <GalleryGroupBlock
+          key={g.id}
+          group={g}
+          items={itemsForGroup(g.id)}
+          busyId={busyId}
+          onRename={(h) => renameGroup(g, h)}
+          onDelete={() => removeGroup(g)}
+          onAddImage={() => setAddingForGroup(g.id)}
+          onEdit={(it) => setEditing(it)}
+          onToggle={toggle}
+          onRemove={remove}
+        />
+      ))}
 
-                {/* Meta */}
-                <div className="flex-1 min-w-0 flex flex-col gap-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold text-near-black truncate">
-                      {item.title ?? 'Untitled'}
-                    </span>
-                    {!item.is_active && (
-                      <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-transparent bg-lavender text-[rgba(18,18,18,0.6)] px-1.5 py-0.5">
-                        Hidden
-                      </span>
-                    )}
-                  </div>
-                  {item.category && (
-                    <span className="text-[10px] text-muted-text uppercase tracking-[0.1em] font-semibold">
-                      {item.category}
-                    </span>
-                  )}
-                  {item.caption && (
-                    <p className="text-[11px] text-muted-text line-clamp-2">{item.caption}</p>
-                  )}
-                  {item.alt_text && (
-                    <p className="text-[10px] text-muted-text italic line-clamp-1">alt: {item.alt_text}</p>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 mt-1">
-                    <button
-                      type="button"
-                      onClick={() => setEditing(item)}
-                      disabled={busy}
-                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black disabled:opacity-30"
-                      title="Edit"
-                    >
-                      <Edit2 size={11} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => toggle(item)}
-                      disabled={busy}
-                      className={cn(
-                        'h-7 px-2 inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.06em] uppercase border',
-                        item.is_active
-                          ? 'border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black'
-                          : 'border-near-black bg-near-black text-white',
-                      )}
-                      title={item.is_active ? 'Hide' : 'Show'}
-                    >
-                      {item.is_active ? <><Eye size={10} /> Visible</> : <><EyeOff size={10} /> Hidden</>}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => move(item, 'up')}
-                      disabled={busy || i === 0}
-                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black disabled:opacity-30"
-                      title="Move up"
-                    >
-                      <ArrowUp size={11} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => move(item, 'down')}
-                      disabled={busy || i === sorted.length - 1}
-                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black disabled:opacity-30"
-                      title="Move down"
-                    >
-                      <ArrowDown size={11} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => remove(item)}
-                      disabled={busy}
-                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600 disabled:opacity-30"
-                      title="Delete"
-                    >
-                      <Trash2 size={11} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+      {/* Ungrouped — only shown when there are loose items (e.g. legacy data). */}
+      {ungrouped.length > 0 && (
+        <GalleryGroupBlock
+          key="__ungrouped"
+          group={null}
+          items={ungrouped}
+          busyId={busyId}
+          onRename={null}
+          onDelete={null}
+          onAddImage={() => setAddingForGroup('none')}
+          onEdit={(it) => setEditing(it)}
+          onToggle={toggle}
+          onRemove={remove}
+        />
       )}
 
-      {(adding || editing) && (
+      {addingGroup && (
+        <GalleryGroupDialog
+          group={null}
+          onClose={() => setAddingGroup(false)}
+          onSave={async (heading) => { await createGroup(heading) }}
+        />
+      )}
+
+      {(editing || addingForGroup !== null) && (
         <GalleryItemDialog
           item={editing}
-          onClose={() => { setAdding(false); setEditing(null) }}
+          groups={sortedGroups}
+          defaultGroupId={editing ? (editing.group_id ?? null) : (addingForGroup === 'none' ? null : (addingForGroup ?? null))}
+          onClose={() => { setEditing(null); setAddingForGroup(null) }}
           onSave={handleSave}
         />
       )}
@@ -2285,10 +2274,226 @@ function GalleryManagerPanel() {
   )
 }
 
+function GalleryGroupBlock({
+  group, items, busyId, onRename, onDelete, onAddImage, onEdit, onToggle, onRemove,
+}: {
+  group: GalleryGroup | null
+  items: GalleryItem[]
+  busyId: number | null
+  onRename: ((heading: string) => Promise<void>) | null
+  onDelete: (() => void) | null
+  onAddImage: () => void
+  onEdit:   (item: GalleryItem) => void
+  onToggle: (item: GalleryItem) => void
+  onRemove: (item: GalleryItem) => void
+}) {
+  const [renaming, setRenaming]   = useState(false)
+  const [heading, setHeading]     = useState(group?.heading ?? '')
+  const [savingRename, setSaving] = useState(false)
+  const isUngrouped = group === null
+  const atCap = items.length >= GALLERY_MAX_ITEMS_PER_GROUP
+
+  async function commitRename() {
+    if (!onRename || !group) return
+    const trimmed = heading.trim()
+    if (!trimmed) { setHeading(group.heading); setRenaming(false); return }
+    if (trimmed === group.heading) { setRenaming(false); return }
+    setSaving(true)
+    try {
+      await onRename(trimmed)
+      setRenaming(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-3 space-y-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0">
+          {isUngrouped ? (
+            <h4 className="text-sm font-bold text-near-black">Ungrouped</h4>
+          ) : renaming ? (
+            <input
+              autoFocus
+              value={heading}
+              onChange={e => setHeading(e.target.value)}
+              onBlur={commitRename}
+              onKeyDown={(e) => { if (e.key === 'Enter') commitRename() }}
+              disabled={savingRename}
+              maxLength={80}
+              className="text-sm font-bold bg-cream border border-[rgba(18,18,18,0.15)] px-2 py-1 text-near-black min-w-0"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => { setHeading(group!.heading); setRenaming(true) }}
+              className="text-sm font-bold text-near-black hover:underline truncate text-left"
+              title="Rename collection"
+            >
+              {group!.heading}
+            </button>
+          )}
+          <span className="text-[10px] font-bold tracking-[0.06em] uppercase text-muted-text">
+            {items.length}/{GALLERY_MAX_ITEMS_PER_GROUP}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onAddImage}
+            disabled={atCap}
+            className="inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Plus size={11} /> Add image
+          </button>
+          {onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600"
+              title="Delete collection"
+            >
+              <Trash2 size={12} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {items.length === 0 ? (
+        <p className="text-[11px] text-muted-text italic">No images in this collection yet.</p>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {items.map(item => {
+            const busy = busyId === item.id
+            return (
+              <div
+                key={item.id}
+                className={cn(
+                  'relative aspect-square bg-cream border overflow-hidden group',
+                  item.is_active ? 'border-[rgba(18,18,18,0.10)]' : 'border-[rgba(18,18,18,0.06)] opacity-70',
+                )}
+              >
+                {item.image_url
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  ? <img src={item.image_url} alt={item.alt_text ?? item.title ?? ''} className="w-full h-full object-cover" />
+                  : <div className="w-full h-full flex items-center justify-center text-muted-text"><ImageIcon size={18} /></div>
+                }
+                {!item.is_active && (
+                  <span className="absolute top-1 left-1 text-[9px] font-bold tracking-[0.06em] uppercase bg-black/55 text-white px-1.5 py-0.5">
+                    Hidden
+                  </span>
+                )}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-end justify-center gap-1 p-1.5 opacity-0 group-hover:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => onEdit(item)}
+                    disabled={busy}
+                    className="w-7 h-7 inline-flex items-center justify-center bg-white text-near-black hover:bg-cream disabled:opacity-30"
+                    title="Edit"
+                  >
+                    <Edit2 size={11} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onToggle(item)}
+                    disabled={busy}
+                    className="w-7 h-7 inline-flex items-center justify-center bg-white text-near-black hover:bg-cream disabled:opacity-30"
+                    title={item.is_active ? 'Hide' : 'Show'}
+                  >
+                    {item.is_active ? <Eye size={11} /> : <EyeOff size={11} />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onRemove(item)}
+                    disabled={busy}
+                    className="w-7 h-7 inline-flex items-center justify-center bg-white text-near-black hover:bg-red-600 hover:text-white disabled:opacity-30"
+                    title="Delete"
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function GalleryGroupDialog({
+  group, onClose, onSave,
+}: {
+  group: GalleryGroup | null
+  onClose: () => void
+  onSave: (heading: string) => Promise<void>
+}) {
+  const [heading, setHeading] = useState(group?.heading ?? '')
+  const [saving,  setSaving]  = useState(false)
+  const [error,   setError]   = useState<string | null>(null)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    const trimmed = heading.trim()
+    if (!trimmed) { setError('Heading is required.'); return }
+    setSaving(true); setError(null)
+    try {
+      await onSave(trimmed)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-sm border border-[rgba(18,18,18,0.15)]">
+        <div className="flex items-center justify-between border-b border-[rgba(18,18,18,0.10)] px-4 py-3">
+          <h3 className="text-sm font-bold text-near-black">{group ? 'Rename collection' : 'New collection'}</h3>
+          <button onClick={onClose} className="text-muted-text hover:text-near-black"><X size={16} /></button>
+        </div>
+        <form onSubmit={submit} className="p-4 space-y-3">
+          <TextField
+            label="Heading *"
+            value={heading}
+            onChange={setHeading}
+            placeholder="Fresh Cuts, Lashes, Bridal…"
+            maxLength={80}
+          />
+          {error && (
+            <p className="text-xs text-red-700 flex items-center gap-1.5">
+              <AlertCircle size={12} /> {error}
+            </p>
+          )}
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+            <button
+              type="button" onClick={onClose}
+              className="text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2"
+            >Cancel</button>
+            <button
+              type="submit" disabled={saving}
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 disabled:opacity-60"
+            >
+              {saving
+                ? <><Loader2 size={11} className="animate-spin" /> Saving</>
+                : <><Check size={12} /> {group ? 'Save' : 'Create'}</>
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function GalleryItemDialog({
-  item, onClose, onSave,
+  item, groups, defaultGroupId, onClose, onSave,
 }: {
   item: GalleryItem | null
+  groups: GalleryGroup[]
+  defaultGroupId: number | null
   onClose: () => void
   onSave: (payload: GalleryItemPayload, existingId: number | null) => void | Promise<void>
 }) {
@@ -2298,6 +2503,7 @@ function GalleryItemDialog({
   const [altText,   setAltText]   = useState(item?.alt_text  ?? '')
   const [category,  setCategory]  = useState(item?.category  ?? '')
   const [isActive,  setIsActive]  = useState(item?.is_active ?? true)
+  const [groupId,   setGroupId]   = useState<number | null>(item ? (item.group_id ?? null) : defaultGroupId)
   const [saving,    setSaving]    = useState(false)
   const [error,     setError]     = useState<string | null>(null)
 
@@ -2313,6 +2519,7 @@ function GalleryItemDialog({
         alt_text:  altText.trim()  || null,
         category:  category.trim() || null,
         is_active: isActive,
+        group_id:  groupId,
       }, item?.id ?? null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save')
@@ -2340,6 +2547,22 @@ function GalleryItemDialog({
             aspectClass="aspect-[4/3]"
           />
 
+          {groups.length > 0 && (
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Collection</span>
+              <select
+                value={groupId ?? ''}
+                onChange={e => setGroupId(e.target.value === '' ? null : Number(e.target.value))}
+                className="bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+              >
+                <option value="">Ungrouped</option>
+                {groups.map(g => (
+                  <option key={g.id} value={g.id}>{g.heading}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
           <TextField
             label="Title"
             value={title}
@@ -2351,9 +2574,9 @@ function GalleryItemDialog({
             label="Category"
             value={category}
             onChange={setCategory}
-            placeholder="Fresh Work, The Shop, Lashes…"
+            placeholder="Optional category tag"
             maxLength={255}
-            hint="Optional grouping"
+            hint="Optional"
           />
           <TextareaField
             label="Caption"
@@ -2407,27 +2630,44 @@ function GalleryItemDialog({
 
 // ── Before & After manager (lives inside Content & Tabs, after Gallery) ─────
 
+const BA_MAX_GROUPS         = 3
+const BA_MAX_ITEMS_PER_GROUP = 6
+
 function BeforeAfterManagerPanel() {
   const [items, setItems]     = useState<BeforeAfterItem[] | null>(null)
+  const [groups, setGroups]   = useState<BeforeAfterGroup[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
   const [busyId, setBusyId]   = useState<number | null>(null)
   const [editing, setEditing] = useState<BeforeAfterItem | null>(null)
-  const [adding, setAdding]   = useState(false)
+  const [addingForGroup, setAddingForGroup] = useState<number | null | 'none'>(null)
+  const [addingGroup, setAddingGroup]       = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    getEditorBeforeAfter()
-      .then(rows => { if (!cancelled) setItems(rows) })
+    Promise.all([getEditorBeforeAfter(), getEditorBeforeAfterGroups()])
+      .then(([rows, gs]) => {
+        if (cancelled) return
+        setItems(rows)
+        setGroups(gs)
+      })
       .catch(e => { if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load before/after items') })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
 
-  const sorted = useMemo(
+  const sortedItems = useMemo(
     () => (items ?? []).slice().sort((a, b) => a.sort_order - b.sort_order || a.id - b.id),
     [items],
   )
+  const sortedGroups = useMemo(
+    () => (groups ?? []).slice().sort((a, b) => a.sort_order - b.sort_order || a.id - b.id),
+    [groups],
+  )
+
+  function itemsForGroup(gid: number | null): BeforeAfterItem[] {
+    return sortedItems.filter(i => (i.group_id ?? null) === gid)
+  }
 
   async function toggle(item: BeforeAfterItem) {
     setBusyId(item.id); setError(null)
@@ -2442,33 +2682,13 @@ function BeforeAfterManagerPanel() {
   }
 
   async function remove(item: BeforeAfterItem) {
-    if (!confirm(`Delete "${item.title ?? 'this pair'}"? This can't be undone.`)) return
+    if (!confirm(`Delete this pair? This can't be undone.`)) return
     setBusyId(item.id); setError(null)
     try {
       await deleteEditorBeforeAfterItem(item.id)
       setItems(prev => (prev ?? []).filter(i => i.id !== item.id))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete')
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  async function move(item: BeforeAfterItem, dir: 'up' | 'down') {
-    const i = sorted.findIndex(s => s.id === item.id)
-    if (i < 0) return
-    const j = dir === 'up' ? i - 1 : i + 1
-    if (j < 0 || j >= sorted.length) return
-    const a = sorted[i], b = sorted[j]
-    setBusyId(item.id); setError(null)
-    try {
-      const [updA, updB] = await Promise.all([
-        updateEditorBeforeAfterItem(a.id, { sort_order: b.sort_order }),
-        updateEditorBeforeAfterItem(b.id, { sort_order: a.sort_order }),
-      ])
-      setItems(prev => (prev ?? []).map(s => s.id === updA.id ? updA : s.id === updB.id ? updB : s))
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to reorder')
     } finally {
       setBusyId(null)
     }
@@ -2484,24 +2704,64 @@ function BeforeAfterManagerPanel() {
       setItems(prev => [...(prev ?? []), created])
     }
     setEditing(null)
-    setAdding(false)
+    setAddingForGroup(null)
   }
+
+  async function createGroup(heading: string) {
+    setError(null)
+    const created = await createEditorBeforeAfterGroup({ heading })
+    setGroups(prev => [...(prev ?? []), created])
+    setAddingGroup(false)
+  }
+
+  async function renameGroup(g: BeforeAfterGroup, heading: string) {
+    setError(null)
+    const updated = await updateEditorBeforeAfterGroup(g.id, { heading })
+    setGroups(prev => (prev ?? []).map(x => x.id === g.id ? updated : x))
+  }
+
+  async function removeGroup(g: BeforeAfterGroup) {
+    const inGroup = itemsForGroup(g.id).length
+    const msg = inGroup === 0
+      ? `Delete the "${g.heading}" collection?`
+      : `Delete the "${g.heading}" collection? Its ${inGroup} pair${inGroup === 1 ? '' : 's'} will be kept but moved to "Ungrouped".`
+    if (!confirm(msg)) return
+    setError(null)
+    try {
+      await deleteEditorBeforeAfterGroup(g.id)
+      setGroups(prev => (prev ?? []).filter(x => x.id !== g.id))
+      setItems(prev => (prev ?? []).map(i =>
+        (i.group_id ?? null) === g.id ? { ...i, group_id: null } : i,
+      ))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete collection')
+    }
+  }
+
+  const totalPairs = sortedItems.length
+  const ungrouped  = itemsForGroup(null)
 
   return (
     <CollapsibleSection
       title="Before & After"
-      subtitle="Add transformation pairs to show results on your public website."
+      subtitle="Group your transformations into up to 3 collections — each holds up to 6 pairs."
       icon={Sparkles}
       statusBadge={!loading && (
-        <StatusBadge>{sorted.length} pair{sorted.length === 1 ? '' : 's'}</StatusBadge>
+        <StatusBadge>{totalPairs} pair{totalPairs === 1 ? '' : 's'}</StatusBadge>
       )}
     >
-      <div className="flex items-center justify-end gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-xs text-muted-text">
+          {loading
+            ? 'Loading…'
+            : `Up to ${BA_MAX_GROUPS} collections × ${BA_MAX_ITEMS_PER_GROUP} pairs each.`}
+        </p>
         <button
-          onClick={() => setAdding(true)}
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2"
+          onClick={() => setAddingGroup(true)}
+          disabled={(groups?.length ?? 0) >= BA_MAX_GROUPS}
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <Plus size={12} /> Add Pair
+          <Plus size={12} /> Add Collection
         </button>
       </div>
 
@@ -2511,116 +2771,58 @@ function BeforeAfterManagerPanel() {
         </div>
       )}
 
-      {!loading && sorted.length === 0 && (
+      {!loading && sortedGroups.length === 0 && ungrouped.length === 0 && (
         <div className="bg-cream border border-[rgba(18,18,18,0.08)] px-4 py-6 text-center">
-          <ImageIcon size={20} className="mx-auto mb-2 text-muted-text" strokeWidth={1.5} />
-          <p className="text-sm text-near-black font-semibold">No before/after pairs yet</p>
-          <p className="text-xs text-muted-text mt-0.5">Add your first transformation to show results on your public site.</p>
+          <Sparkles size={20} className="mx-auto mb-2 text-muted-text" strokeWidth={1.5} />
+          <p className="text-sm text-near-black font-semibold">No before/after collections yet</p>
+          <p className="text-xs text-muted-text mt-0.5">Add a collection and start uploading your transformations.</p>
         </div>
       )}
 
-      {sorted.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {sorted.map((item, i) => {
-            const busy = busyId === item.id
-            return (
-              <div
-                key={item.id}
-                className={cn(
-                  'bg-white border flex gap-3 p-3',
-                  item.is_active ? 'border-[rgba(18,18,18,0.10)]' : 'border-[rgba(18,18,18,0.06)] opacity-70',
-                )}
-              >
-                {/* Twin thumbnails */}
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <BAThumb url={item.before_image_url} alt={item.before_alt_text} label="B" />
-                  <BAThumb url={item.after_image_url}  alt={item.after_alt_text}  label="A" />
-                </div>
+      {sortedGroups.map(g => (
+        <BeforeAfterGroupBlock
+          key={g.id}
+          group={g}
+          items={itemsForGroup(g.id)}
+          busyId={busyId}
+          onRename={(h) => renameGroup(g, h)}
+          onDelete={() => removeGroup(g)}
+          onAddPair={() => setAddingForGroup(g.id)}
+          onEdit={(it) => setEditing(it)}
+          onToggle={toggle}
+          onRemove={remove}
+        />
+      ))}
 
-                {/* Meta */}
-                <div className="flex-1 min-w-0 flex flex-col gap-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold text-near-black truncate">
-                      {item.title ?? 'Untitled'}
-                    </span>
-                    {!item.is_active && (
-                      <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-transparent bg-lavender text-[rgba(18,18,18,0.6)] px-1.5 py-0.5">
-                        Hidden
-                      </span>
-                    )}
-                  </div>
-                  {item.category && (
-                    <span className="text-[10px] text-muted-text uppercase tracking-[0.1em] font-semibold">
-                      {item.category}
-                    </span>
-                  )}
-                  {item.caption && (
-                    <p className="text-[11px] text-muted-text line-clamp-2">{item.caption}</p>
-                  )}
-
-                  <div className="flex items-center gap-1 mt-1 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => setEditing(item)}
-                      disabled={busy}
-                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black disabled:opacity-30"
-                      title="Edit"
-                    >
-                      <Edit2 size={11} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => toggle(item)}
-                      disabled={busy}
-                      className={cn(
-                        'h-7 px-2 inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.06em] uppercase border',
-                        item.is_active
-                          ? 'border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black'
-                          : 'border-near-black bg-near-black text-white',
-                      )}
-                      title={item.is_active ? 'Hide' : 'Show'}
-                    >
-                      {item.is_active ? <><Eye size={10} /> Visible</> : <><EyeOff size={10} /> Hidden</>}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => move(item, 'up')}
-                      disabled={busy || i === 0}
-                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black disabled:opacity-30"
-                      title="Move up"
-                    >
-                      <ArrowUp size={11} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => move(item, 'down')}
-                      disabled={busy || i === sorted.length - 1}
-                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black disabled:opacity-30"
-                      title="Move down"
-                    >
-                      <ArrowDown size={11} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => remove(item)}
-                      disabled={busy}
-                      className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600 disabled:opacity-30"
-                      title="Delete"
-                    >
-                      <Trash2 size={11} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+      {ungrouped.length > 0 && (
+        <BeforeAfterGroupBlock
+          key="__ungrouped"
+          group={null}
+          items={ungrouped}
+          busyId={busyId}
+          onRename={null}
+          onDelete={null}
+          onAddPair={() => setAddingForGroup('none')}
+          onEdit={(it) => setEditing(it)}
+          onToggle={toggle}
+          onRemove={remove}
+        />
       )}
 
-      {(adding || editing) && (
+      {addingGroup && (
+        <GalleryGroupDialog
+          group={null}
+          onClose={() => setAddingGroup(false)}
+          onSave={async (heading) => { await createGroup(heading) }}
+        />
+      )}
+
+      {(editing || addingForGroup !== null) && (
         <BeforeAfterItemDialog
           item={editing}
-          onClose={() => { setAdding(false); setEditing(null) }}
+          groups={sortedGroups}
+          defaultGroupId={editing ? (editing.group_id ?? null) : (addingForGroup === 'none' ? null : (addingForGroup ?? null))}
+          onClose={() => { setEditing(null); setAddingForGroup(null) }}
           onSave={handleSave}
         />
       )}
@@ -2628,15 +2830,162 @@ function BeforeAfterManagerPanel() {
   )
 }
 
-function BAThumb({ url, alt, label }: { url: string; alt: string | null; label: string }) {
+function BeforeAfterGroupBlock({
+  group, items, busyId, onRename, onDelete, onAddPair, onEdit, onToggle, onRemove,
+}: {
+  group: BeforeAfterGroup | null
+  items: BeforeAfterItem[]
+  busyId: number | null
+  onRename: ((heading: string) => Promise<void>) | null
+  onDelete: (() => void) | null
+  onAddPair: () => void
+  onEdit:   (item: BeforeAfterItem) => void
+  onToggle: (item: BeforeAfterItem) => void
+  onRemove: (item: BeforeAfterItem) => void
+}) {
+  const [renaming, setRenaming]   = useState(false)
+  const [heading, setHeading]     = useState(group?.heading ?? '')
+  const [savingRename, setSaving] = useState(false)
+  const isUngrouped = group === null
+  const atCap = items.length >= BA_MAX_ITEMS_PER_GROUP
+
+  async function commitRename() {
+    if (!onRename || !group) return
+    const trimmed = heading.trim()
+    if (!trimmed) { setHeading(group.heading); setRenaming(false); return }
+    if (trimmed === group.heading) { setRenaming(false); return }
+    setSaving(true)
+    try {
+      await onRename(trimmed)
+      setRenaming(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
-    <div className="relative w-14 h-14 bg-cream border border-[rgba(18,18,18,0.08)] overflow-hidden flex-shrink-0">
+    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-3 space-y-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0">
+          {isUngrouped ? (
+            <h4 className="text-sm font-bold text-near-black">Ungrouped</h4>
+          ) : renaming ? (
+            <input
+              autoFocus
+              value={heading}
+              onChange={e => setHeading(e.target.value)}
+              onBlur={commitRename}
+              onKeyDown={(e) => { if (e.key === 'Enter') commitRename() }}
+              disabled={savingRename}
+              maxLength={80}
+              className="text-sm font-bold bg-cream border border-[rgba(18,18,18,0.15)] px-2 py-1 text-near-black min-w-0"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => { setHeading(group!.heading); setRenaming(true) }}
+              className="text-sm font-bold text-near-black hover:underline truncate text-left"
+              title="Rename collection"
+            >
+              {group!.heading}
+            </button>
+          )}
+          <span className="text-[10px] font-bold tracking-[0.06em] uppercase text-muted-text">
+            {items.length}/{BA_MAX_ITEMS_PER_GROUP}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onAddPair}
+            disabled={atCap}
+            className="inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Plus size={11} /> Add pair
+          </button>
+          {onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600"
+              title="Delete collection"
+            >
+              <Trash2 size={12} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {items.length === 0 ? (
+        <p className="text-[11px] text-muted-text italic">No pairs in this collection yet.</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {items.map(item => {
+            const busy = busyId === item.id
+            return (
+              <div
+                key={item.id}
+                className={cn(
+                  'relative bg-cream border overflow-hidden group',
+                  item.is_active ? 'border-[rgba(18,18,18,0.10)]' : 'border-[rgba(18,18,18,0.06)] opacity-70',
+                )}
+              >
+                <div className="grid grid-cols-2">
+                  <BAThumbLarge url={item.before_image_url} alt={item.before_alt_text} label="B" />
+                  <BAThumbLarge url={item.after_image_url}  alt={item.after_alt_text}  label="A" />
+                </div>
+                {!item.is_active && (
+                  <span className="absolute top-1 left-1 text-[9px] font-bold tracking-[0.06em] uppercase bg-black/55 text-white px-1.5 py-0.5">
+                    Hidden
+                  </span>
+                )}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-end justify-center gap-1 p-1.5 opacity-0 group-hover:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => onEdit(item)}
+                    disabled={busy}
+                    className="w-7 h-7 inline-flex items-center justify-center bg-white text-near-black hover:bg-cream disabled:opacity-30"
+                    title="Edit"
+                  >
+                    <Edit2 size={11} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onToggle(item)}
+                    disabled={busy}
+                    className="w-7 h-7 inline-flex items-center justify-center bg-white text-near-black hover:bg-cream disabled:opacity-30"
+                    title={item.is_active ? 'Hide' : 'Show'}
+                  >
+                    {item.is_active ? <Eye size={11} /> : <EyeOff size={11} />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onRemove(item)}
+                    disabled={busy}
+                    className="w-7 h-7 inline-flex items-center justify-center bg-white text-near-black hover:bg-red-600 hover:text-white disabled:opacity-30"
+                    title="Delete"
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function BAThumbLarge({ url, alt, label }: { url: string; alt: string | null; label: string }) {
+  return (
+    <div className="relative aspect-square bg-cream overflow-hidden">
       {url
         /* eslint-disable-next-line @next/next/no-img-element */
         ? <img src={url} alt={alt ?? ''} className="w-full h-full object-cover" />
-        : <div className="w-full h-full flex items-center justify-center text-muted-text"><ImageIcon size={14} /></div>
+        : <div className="w-full h-full flex items-center justify-center text-muted-text"><ImageIcon size={18} /></div>
       }
-      <span className="absolute bottom-0 left-0 right-0 text-[8px] font-bold tracking-[0.18em] uppercase text-white bg-black/55 text-center py-[1px]">
+      <span className="absolute bottom-0 left-0 right-0 text-[9px] font-bold tracking-[0.18em] uppercase text-white bg-black/55 text-center py-[1px]">
         {label}
       </span>
     </div>
@@ -2644,38 +2993,42 @@ function BAThumb({ url, alt, label }: { url: string; alt: string | null; label: 
 }
 
 function BeforeAfterItemDialog({
-  item, onClose, onSave,
+  item, groups, defaultGroupId, onClose, onSave,
 }: {
   item: BeforeAfterItem | null
+  groups: BeforeAfterGroup[]
+  defaultGroupId: number | null
   onClose: () => void
   onSave: (payload: BeforeAfterItemPayload, existingId: number | null) => void | Promise<void>
 }) {
   const [beforeUrl, setBeforeUrl] = useState(item?.before_image_url ?? '')
   const [afterUrl,  setAfterUrl]  = useState(item?.after_image_url  ?? '')
-  const [title,     setTitle]     = useState(item?.title            ?? '')
   const [caption,   setCaption]   = useState(item?.caption          ?? '')
   const [beforeAlt, setBeforeAlt] = useState(item?.before_alt_text  ?? '')
   const [afterAlt,  setAfterAlt]  = useState(item?.after_alt_text   ?? '')
-  const [category,  setCategory]  = useState(item?.category         ?? '')
   const [isActive,  setIsActive]  = useState(item?.is_active        ?? true)
+  const [groupId,   setGroupId]   = useState<number | null>(item ? (item.group_id ?? null) : defaultGroupId)
   const [saving,    setSaving]    = useState(false)
   const [error,     setError]     = useState<string | null>(null)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    if (!beforeUrl.trim()) { setError('Before image URL is required.'); return }
-    if (!afterUrl.trim())  { setError('After image URL is required.');  return }
+    if (!beforeUrl.trim()) { setError('Before image is required.'); return }
+    if (!afterUrl.trim())  { setError('After image is required.');  return }
     setSaving(true); setError(null)
     try {
       await onSave({
         before_image_url: beforeUrl.trim(),
         after_image_url:  afterUrl.trim(),
-        title:            title.trim()     || null,
+        // Per-pair title removed — the group heading is the title now.
+        title:            null,
         caption:          caption.trim()   || null,
         before_alt_text:  beforeAlt.trim() || null,
         after_alt_text:   afterAlt.trim()  || null,
-        category:         category.trim()  || null,
+        // Category retired from the editor — kept nullable on the API.
+        category:         null,
         is_active:        isActive,
+        group_id:         groupId,
       }, item?.id ?? null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save')
@@ -2712,23 +3065,24 @@ function BeforeAfterItemDialog({
             />
           </div>
 
-          <TextField
-            label="Title"
-            value={title}
-            onChange={setTitle}
-            placeholder="Fade Transformation"
-            maxLength={255}
-          />
-          <TextField
-            label="Category"
-            value={category}
-            onChange={setCategory}
-            placeholder="Fresh Work, Lashes, Nails…"
-            maxLength={255}
-            hint="Optional grouping"
-          />
+          {groups.length > 0 && (
+            <label className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Collection</span>
+              <select
+                value={groupId ?? ''}
+                onChange={e => setGroupId(e.target.value === '' ? null : Number(e.target.value))}
+                className="bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+              >
+                <option value="">Ungrouped</option>
+                {groups.map(g => (
+                  <option key={g.id} value={g.id}>{g.heading}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
           <TextareaField
-            label="Caption"
+            label="Caption (optional)"
             value={caption}
             onChange={setCaption}
             placeholder="A short description shown on the public site."
@@ -2782,6 +3136,153 @@ function BeforeAfterItemDialog({
           </div>
         </form>
       </div>
+    </div>
+  )
+}
+
+// ── Policies normalization + custom groups editor ──────────────────────────
+
+function normalizePoliciesShape(p: BusinessPolicy): BusinessPolicy {
+  const rawGroups = Array.isArray(p.custom_groups) ? p.custom_groups : []
+  return {
+    id: p.id,
+    cancellation_policy: p.cancellation_policy ?? '',
+    late_policy:         p.late_policy         ?? '',
+    no_show_policy:      p.no_show_policy      ?? '',
+    deposit_policy:      p.deposit_policy      ?? '',
+    reschedule_policy:   p.reschedule_policy   ?? '',
+    extra_notes:         p.extra_notes         ?? '',
+    custom_groups: rawGroups.map(g => ({
+      heading: g?.heading ?? '',
+      items: Array.isArray(g?.items) ? g.items.map(it => ({
+        title:   it?.title   ?? '',
+        content: it?.content ?? '',
+      })) : [],
+    })),
+  }
+}
+
+const WEBSITE_POLICY_MAX_GROUPS         = 10
+const WEBSITE_POLICY_MAX_ITEMS_PER_GROUP = 20
+
+function WebsiteCustomPolicyGroupsEditor({
+  groups, onChange,
+}: {
+  groups: PolicyCustomGroup[]
+  onChange: (next: PolicyCustomGroup[]) => void
+}) {
+  function addGroup() {
+    if (groups.length >= WEBSITE_POLICY_MAX_GROUPS) return
+    onChange([...groups, { heading: '', items: [{ title: '', content: '' }] }])
+  }
+  function patchGroup(gi: number, p: Partial<PolicyCustomGroup>) {
+    onChange(groups.map((g, idx) => idx === gi ? { ...g, ...p } : g))
+  }
+  function removeGroup(gi: number) {
+    onChange(groups.filter((_, idx) => idx !== gi))
+  }
+  function addItem(gi: number) {
+    const g = groups[gi]
+    if (!g) return
+    if (g.items.length >= WEBSITE_POLICY_MAX_ITEMS_PER_GROUP) return
+    patchGroup(gi, { items: [...g.items, { title: '', content: '' }] })
+  }
+  function patchItem(gi: number, ii: number, p: Partial<{ title: string; content: string }>) {
+    const g = groups[gi]
+    if (!g) return
+    patchGroup(gi, { items: g.items.map((it, idx) => idx === ii ? { ...it, ...p } : it) })
+  }
+  function removeItem(gi: number, ii: number) {
+    const g = groups[gi]
+    if (!g) return
+    patchGroup(gi, { items: g.items.filter((_, idx) => idx !== ii) })
+  }
+
+  return (
+    <div className="bg-cream border border-[rgba(18,18,18,0.08)] p-3 space-y-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-[11px] font-bold tracking-[0.14em] uppercase text-near-black">Custom sections</p>
+          <p className="text-[10px] text-muted-text mt-0.5">
+            Add your own sections — they appear on your public site below the named policies.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={addGroup}
+          disabled={groups.length >= WEBSITE_POLICY_MAX_GROUPS}
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2.5 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+        >
+          <Plus size={12} /> Add section
+        </button>
+      </div>
+
+      {groups.map((g, gi) => (
+        <div key={gi} className="bg-white border border-[rgba(18,18,18,0.08)] p-3 space-y-2.5">
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <TextField
+                label={`Section ${gi + 1} heading`}
+                value={g.heading}
+                onChange={v => patchGroup(gi, { heading: v })}
+                placeholder="Aftercare, Parking, Add-Ons…"
+                maxLength={120}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => removeGroup(gi)}
+              className="w-9 h-9 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600"
+              title="Delete section"
+            >
+              <Trash2 size={12} />
+            </button>
+          </div>
+
+          <div className="space-y-2 pl-2 border-l-2 border-[rgba(18,18,18,0.08)]">
+            {g.items.map((it, ii) => (
+              <div key={ii} className="bg-cream border border-[rgba(18,18,18,0.08)] p-2.5 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+                    Item {ii + 1}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(gi, ii)}
+                    className="w-6 h-6 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600"
+                    title="Delete item"
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+                <TextField
+                  label="Title"
+                  value={it.title}
+                  onChange={v => patchItem(gi, ii, { title: v })}
+                  placeholder="What clients see as the bullet heading"
+                  maxLength={120}
+                />
+                <TextareaField
+                  label="Content"
+                  value={it.content ?? ''}
+                  onChange={v => patchItem(gi, ii, { content: v })}
+                  placeholder="The body text shown under the title."
+                  rows={2}
+                  maxLength={2000}
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => addItem(gi)}
+              disabled={g.items.length >= WEBSITE_POLICY_MAX_ITEMS_PER_GROUP}
+              className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Plus size={11} /> Add item
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

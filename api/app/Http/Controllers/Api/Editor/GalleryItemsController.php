@@ -12,8 +12,11 @@ class GalleryItemsController extends Controller
 {
     private function format(object $row): array
     {
+        $get = static fn(string $k, $default = null) =>
+            property_exists($row, $k) ? $row->{$k} : $default;
         return [
             'id'         => (int)  $row->id,
+            'group_id'   => $get('group_id') !== null ? (int) $get('group_id') : null,
             'title'      =>         $row->title,
             'caption'    =>         $row->caption,
             'alt_text'   =>         $row->alt_text,
@@ -59,6 +62,7 @@ class GalleryItemsController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
+            'group_id'   => 'nullable|integer',
             'title'      => 'nullable|string|max:255',
             'caption'    => 'nullable|string|max:5000',
             'alt_text'   => 'nullable|string|max:255',
@@ -72,8 +76,7 @@ class GalleryItemsController extends Controller
         tenancy()->initialize($tenant);
 
         $nextOrder = (int) DB::table('gallery_items')->max('sort_order') + 1;
-
-        $id = DB::table('gallery_items')->insertGetId([
+        $payload = [
             'title'      => $validated['title']      ?? null,
             'caption'    => $validated['caption']    ?? null,
             'alt_text'   => $validated['alt_text']   ?? null,
@@ -83,7 +86,12 @@ class GalleryItemsController extends Controller
             'sort_order' => $validated['sort_order'] ?? $nextOrder,
             'created_at' => now(),
             'updated_at' => now(),
-        ]);
+        ];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('gallery_items', 'group_id')) {
+            $payload['group_id'] = $validated['group_id'] ?? null;
+        }
+
+        $id = DB::table('gallery_items')->insertGetId($payload);
 
         $row    = DB::table('gallery_items')->find($id);
         $result = $this->format($row);
@@ -97,6 +105,7 @@ class GalleryItemsController extends Controller
     public function update(Request $request, int $item): JsonResponse
     {
         $validated = $request->validate([
+            'group_id'   => 'sometimes|nullable|integer',
             'title'      => 'nullable|string|max:255',
             'caption'    => 'nullable|string|max:5000',
             'alt_text'   => 'nullable|string|max:255',
@@ -124,6 +133,10 @@ class GalleryItemsController extends Controller
         if (array_key_exists('image_url', $validated))  $data['image_url']  = $validated['image_url'];
         if (array_key_exists('is_active', $validated))  $data['is_active']  = $validated['is_active'];
         if (array_key_exists('sort_order', $validated)) $data['sort_order'] = $validated['sort_order'];
+        if (array_key_exists('group_id', $validated)
+            && \Illuminate\Support\Facades\Schema::hasColumn('gallery_items', 'group_id')) {
+            $data['group_id'] = $validated['group_id'];
+        }
 
         DB::table('gallery_items')->where('id', $item)->update($data);
         $updated = DB::table('gallery_items')->find($item);

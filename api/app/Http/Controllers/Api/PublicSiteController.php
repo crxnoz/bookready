@@ -116,6 +116,7 @@ class PublicSiteController extends Controller
         // ── Before & After items (active only, public) ──
         $beforeAfter = [];
         if (Schema::hasTable('before_after_items')) {
+            $hasBaGroupCol = Schema::hasColumn('before_after_items', 'group_id');
             $beforeAfter = DB::table('before_after_items')
                 ->where('is_active', true)
                 ->orderBy('sort_order', 'asc')
@@ -123,6 +124,7 @@ class PublicSiteController extends Controller
                 ->get()
                 ->map(fn ($r) => [
                     'id'                => (int) $r->id,
+                    'group_id'          => $hasBaGroupCol && $r->group_id !== null ? (int) $r->group_id : null,
                     'title'             =>        $r->title,
                     'caption'           =>        $r->caption,
                     'before_image_url'  =>        $r->before_image_url,
@@ -136,9 +138,26 @@ class PublicSiteController extends Controller
                 ->all();
         }
 
+        // ── Before & After groups ──
+        $beforeAfterGroups = [];
+        if (Schema::hasTable('before_after_groups')) {
+            $beforeAfterGroups = DB::table('before_after_groups')
+                ->orderBy('sort_order', 'asc')
+                ->orderBy('id', 'asc')
+                ->get()
+                ->map(fn ($r) => [
+                    'id'         => (int) $r->id,
+                    'heading'    =>       $r->heading,
+                    'sort_order' => (int) $r->sort_order,
+                ])
+                ->values()
+                ->all();
+        }
+
         // ── Gallery items (active only, public) ──
         $gallery = [];
         if (Schema::hasTable('gallery_items')) {
+            $hasGalleryGroupCol = Schema::hasColumn('gallery_items', 'group_id');
             $gallery = DB::table('gallery_items')
                 ->where('is_active', true)
                 ->orderBy('sort_order', 'asc')
@@ -146,12 +165,29 @@ class PublicSiteController extends Controller
                 ->get()
                 ->map(fn ($r) => [
                     'id'         => (int) $r->id,
+                    'group_id'   => $hasGalleryGroupCol && $r->group_id !== null ? (int) $r->group_id : null,
                     'title'      =>        $r->title,
                     'caption'    =>        $r->caption,
                     'alt_text'   =>        $r->alt_text,
                     'image_url'  =>        $r->image_url,
                     'category'   =>        $r->category,
                     'sort_order' => (int)  $r->sort_order,
+                ])
+                ->values()
+                ->all();
+        }
+
+        // ── Gallery groups ──
+        $galleryGroups = [];
+        if (Schema::hasTable('gallery_groups')) {
+            $galleryGroups = DB::table('gallery_groups')
+                ->orderBy('sort_order', 'asc')
+                ->orderBy('id', 'asc')
+                ->get()
+                ->map(fn ($r) => [
+                    'id'         => (int) $r->id,
+                    'heading'    =>       $r->heading,
+                    'sort_order' => (int) $r->sort_order,
                 ])
                 ->values()
                 ->all();
@@ -284,8 +320,10 @@ class PublicSiteController extends Controller
                 'hours'    => $hours,
                 'settings' => $settings,
             ],
-            'gallery'       => $gallery,
-            'before_after'  => $beforeAfter,
+            'gallery'              => $gallery,
+            'gallery_groups'       => $galleryGroups,
+            'before_after'         => $beforeAfter,
+            'before_after_groups'  => $beforeAfterGroups,
             'template'      => [
                 'slug'     => $templateSlug,
                 'settings' => $templateSettings,
