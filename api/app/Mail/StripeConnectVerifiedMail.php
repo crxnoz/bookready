@@ -26,7 +26,7 @@ class StripeConnectVerifiedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: '✅ Stripe is connected — start collecting payments',
+            subject: 'Stripe is connected — start collecting payments',
         );
     }
 

@@ -27,7 +27,7 @@ class FirstBookingOwnerMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: '🎉 Your first booking is in — ' . $this->businessName,
+            subject: 'Your first booking is in — ' . $this->businessName,
         );
     }
 
