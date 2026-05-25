@@ -3,21 +3,24 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Tenant;
+use App\Mail\DisputeClosedOwnerMail;
+use App\Mail\DisputeOpenedOwnerMail;
+use App\Mail\PaymentRefundedClientMail;
 use App\Mail\StripeConnectRestrictedMail;
 use App\Mail\StripeConnectVerifiedMail;
+use App\Models\Tenant;
 use App\Services\AppointmentMailer;
 use App\Services\AppointmentPaymentService;
 use App\Services\NotificationSettingsService;
 use App\Services\PlatformMailer;
 use App\Services\StripeConnectService;
-use Illuminate\Support\Facades\Mail;
-use Stripe\Account as StripeAccount;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
+use Stripe\Account as StripeAccount;
 use Stripe\Webhook;
 
 /**
@@ -30,7 +33,13 @@ use Stripe\Webhook;
  *
  * Stripe webhook endpoint (to configure in dashboard):
  *   POST https://api.bkrdy.me/api/v1/webhooks/stripe/appointments
- *   Events: checkout.session.completed
+ *   Events:
+ *     checkout.session.completed   — deposit/full payment landed
+ *     checkout.session.expired     — customer abandoned checkout, free the slot
+ *     charge.refunded              — refund issued (full or partial)
+ *     charge.dispute.created       — chargeback opened against a Connect charge
+ *     charge.dispute.closed        — dispute resolved (won/lost/warning)
+ *     account.updated              — Connect account capability/requirement change
  *   Secret: STRIPE_APPOINTMENT_WEBHOOK_SECRET in the .env on the server
  */
 class AppointmentPaymentWebhookController extends Controller
@@ -55,15 +64,23 @@ class AppointmentPaymentWebhookController extends Controller
             return response()->json(['message' => 'Invalid signature'], 400);
         }
 
-        // ── account.updated: auto-sync the local Connect status when Stripe
-        //    flags a requirements/capability change on a connected account ──
-        if ($event->type === 'account.updated') {
-            return $this->handleAccountUpdated($event);
-        }
-
-        if ($event->type !== 'checkout.session.completed') {
-            // Acknowledge so Stripe doesn't retry; we don't care about other events on this endpoint.
-            return response()->json(['received' => true]);
+        // Dispatch by event type. Anything we don't recognize gets a 200
+        // ack so Stripe doesn't retry uselessly.
+        switch ($event->type) {
+            case 'account.updated':
+                return $this->handleAccountUpdated($event);
+            case 'checkout.session.expired':
+                return $this->handleCheckoutExpired($event);
+            case 'charge.refunded':
+                return $this->handleChargeRefunded($event);
+            case 'charge.dispute.created':
+                return $this->handleDisputeOpened($event);
+            case 'charge.dispute.closed':
+                return $this->handleDisputeClosed($event);
+            case 'checkout.session.completed':
+                break; // fall through to the checkout-completed handling below
+            default:
+                return response()->json(['received' => true]);
         }
 
         $session  = $event->data->object;
@@ -351,6 +368,337 @@ class AppointmentPaymentWebhookController extends Controller
             try { tenancy()->end(); } catch (\Throwable) {}
             // 200 so Stripe doesn't retry; failure is logged.
             return response()->json(['received' => true, 'note' => 'logged']);
+        }
+
+        return response()->json(['received' => true]);
+    }
+
+    // ── Expired checkout sessions ────────────────────────────────────────
+
+    /**
+     * Customer hit our booking form, got the Stripe Checkout URL, then
+     * never paid (closed the tab, bailed). Stripe expires the session
+     * ~24 hours later. We tear down the speculative appointment so the
+     * slot is released. Quiet — no emails fire; the customer never finished.
+     */
+    private function handleCheckoutExpired($event): JsonResponse
+    {
+        $session   = $event->data->object;
+        $metadata  = $session->metadata?->toArray() ?? [];
+        $sessionId = $session->id ?? null;
+
+        if (($metadata['purpose'] ?? null) !== AppointmentPaymentService::PURPOSE) {
+            return response()->json(['received' => true]);
+        }
+
+        $tenantId      = $metadata['tenant_id']      ?? null;
+        $appointmentId = isset($metadata['appointment_id']) ? (int) $metadata['appointment_id'] : null;
+        if (! $tenantId || ! $appointmentId || ! $sessionId) {
+            return response()->json(['received' => true]);
+        }
+
+        $tenant = Tenant::find($tenantId);
+        if (! $tenant) return response()->json(['received' => true]);
+
+        try {
+            tenancy()->initialize($tenant);
+
+            if (! Schema::hasColumn('appointments', 'payment_status')) {
+                tenancy()->end();
+                return response()->json(['received' => true]);
+            }
+
+            $row = DB::table('appointments')
+                ->where('id', $appointmentId)
+                ->where('stripe_checkout_session_id', $sessionId)
+                ->first();
+
+            // Only cancel if still waiting on payment — the customer might
+            // have completed payment on a second try with a different session.
+            if ($row && $row->payment_status === 'pending_payment') {
+                $update = [
+                    'status'      => 'cancelled',
+                    'updated_at'  => now(),
+                ];
+                if (Schema::hasColumn('appointments', 'cancellation_reason')) {
+                    $update['cancellation_reason'] = 'Payment not completed';
+                }
+                DB::table('appointments')->where('id', $appointmentId)->update($update);
+            }
+
+            tenancy()->end();
+        } catch (\Throwable $e) {
+            Log::error('Checkout-expired processing error', [
+                'tenant_id'      => $tenantId,
+                'appointment_id' => $appointmentId,
+                'session_id'     => $sessionId,
+                'error'          => $e->getMessage(),
+            ]);
+            try { tenancy()->end(); } catch (\Throwable) {}
+        }
+
+        return response()->json(['received' => true]);
+    }
+
+    // ── Refunds ──────────────────────────────────────────────────────────
+
+    /**
+     * charge.refunded fires for every refund (full or partial). We mark
+     * the appointment refunded with the total-refunded amount and email
+     * the customer. Idempotent: same total-refunded amount on a second
+     * webhook just no-ops the email.
+     */
+    private function handleChargeRefunded($event): JsonResponse
+    {
+        $charge       = $event->data->object;
+        $metadata     = $charge->metadata?->toArray() ?? [];
+        $paymentIntent = $charge->payment_intent ?? null;
+
+        if (($metadata['purpose'] ?? null) !== AppointmentPaymentService::PURPOSE) {
+            return response()->json(['received' => true]);
+        }
+
+        $tenantId      = $metadata['tenant_id']      ?? null;
+        $appointmentId = isset($metadata['appointment_id']) ? (int) $metadata['appointment_id'] : null;
+        if (! $tenantId || ! $appointmentId || ! $paymentIntent) {
+            return response()->json(['received' => true]);
+        }
+
+        $tenant = Tenant::find($tenantId);
+        if (! $tenant) return response()->json(['received' => true]);
+
+        // Stripe reports the cumulative `amount_refunded` across all refunds
+        // on the charge, plus the latest refund's id on the refunds array.
+        $amountRefundedCents = (int) ($charge->amount_refunded ?? 0);
+        $amountChargedCents  = (int) ($charge->amount          ?? 0);
+        $amountRefunded      = $amountRefundedCents / 100;
+        $isFullRefund        = $amountChargedCents > 0 && $amountRefundedCents >= $amountChargedCents;
+        $latestRefund        = $charge->refunds?->data[0] ?? null;
+        $refundId            = $latestRefund?->id ?? null;
+
+        $shouldEmail   = false;
+        $emailContext  = [];
+        $businessName  = $tenant->id;
+
+        try {
+            tenancy()->initialize($tenant);
+            if (! Schema::hasColumn('appointments', 'refunded_amount')) {
+                tenancy()->end();
+                return response()->json(['received' => true]);
+            }
+
+            $row = DB::table('appointments')->where('id', $appointmentId)->first();
+            if (! $row) {
+                tenancy()->end();
+                return response()->json(['received' => true]);
+            }
+
+            $previouslyRefunded = (float) ($row->refunded_amount ?? 0);
+            $isNewerRefund      = $amountRefunded > $previouslyRefunded + 0.001;
+
+            $update = [
+                'payment_status'   => $isFullRefund ? 'refunded' : 'partially_refunded',
+                'refunded_amount'  => $amountRefunded,
+                'refunded_at'      => now(),
+                'updated_at'       => now(),
+            ];
+            if ($refundId) $update['stripe_refund_id'] = $refundId;
+
+            DB::table('appointments')->where('id', $appointmentId)->update($update);
+
+            // Only email when refunded_amount actually moved — guards
+            // against webhook retries firing duplicate customer emails.
+            if ($isNewerRefund && ! empty($row->customer_email)) {
+                $shouldEmail = true;
+                $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
+                $emailContext = [
+                    'customer_email'  => $row->customer_email,
+                    'customer_name'   => $row->customer_name,
+                    'service_name'    => $row->service_name,
+                    'appointment_date'=> $row->appointment_date,
+                    'start_time'      => substr((string) $row->start_time, 0, 5),
+                    'refund_amount'   => $amountRefunded - $previouslyRefunded,
+                    'is_full_refund'  => $isFullRefund,
+                    'currency'        => $row->currency ?? 'USD',
+                ];
+            }
+
+            tenancy()->end();
+        } catch (\Throwable $e) {
+            Log::error('charge.refunded processing error', [
+                'tenant_id'      => $tenantId,
+                'appointment_id' => $appointmentId,
+                'error'          => $e->getMessage(),
+            ]);
+            try { tenancy()->end(); } catch (\Throwable) {}
+            return response()->json(['received' => true, 'note' => 'logged']);
+        }
+
+        if ($shouldEmail) {
+            try {
+                Mail::to($emailContext['customer_email'])->send(new PaymentRefundedClientMail(
+                    customerName:    (string) $emailContext['customer_name'],
+                    businessName:    $businessName,
+                    serviceName:     (string) $emailContext['service_name'],
+                    appointmentDate: (string) $emailContext['appointment_date'],
+                    startTime:       (string) $emailContext['start_time'],
+                    refundAmount:    (float)  $emailContext['refund_amount'],
+                    isFullRefund:    (bool)   $emailContext['is_full_refund'],
+                    currency:        (string) $emailContext['currency'],
+                ));
+            } catch (\Throwable $e) {
+                Log::error('[BookReady] PaymentRefundedClientMail failed', [
+                    'tenant_id'      => $tenantId,
+                    'appointment_id' => $appointmentId,
+                    'error'          => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return response()->json(['received' => true]);
+    }
+
+    // ── Disputes / chargebacks ───────────────────────────────────────────
+
+    /**
+     * A dispute (chargeback) was opened against one of our Connect charges.
+     * Stamp the appointment with the dispute info and alert the owner —
+     * they typically have ~7 days to respond in Stripe.
+     */
+    private function handleDisputeOpened($event): JsonResponse
+    {
+        return $this->upsertDispute($event, isOpened: true);
+    }
+
+    /**
+     * Dispute was resolved. Update local status to whatever Stripe says
+     * (won/lost/warning_closed) and email the owner the outcome.
+     */
+    private function handleDisputeClosed($event): JsonResponse
+    {
+        return $this->upsertDispute($event, isOpened: false);
+    }
+
+    private function upsertDispute($event, bool $isOpened): JsonResponse
+    {
+        $dispute   = $event->data->object;
+        $charge    = $dispute->charge ?? null;
+        $disputeId = $dispute->id ?? null;
+        $reason    = (string) ($dispute->reason ?? '');
+        $status    = (string) ($dispute->status ?? 'open');
+        $amountCts = (int)    ($dispute->amount ?? 0);
+
+        // We need the charge's metadata to find the appointment. Dispute
+        // events don't include charge metadata directly — we fetch the
+        // charge from Stripe to get it.
+        if (! $charge || ! $disputeId) return response()->json(['received' => true]);
+
+        try {
+            \Stripe\Stripe::setApiKey(config('cashier.secret') ?: env('STRIPE_SECRET'));
+            $chargeObj = \Stripe\Charge::retrieve($charge);
+        } catch (\Throwable $e) {
+            Log::error('Dispute webhook: charge retrieve failed', [
+                'dispute_id' => $disputeId,
+                'charge_id'  => $charge,
+                'error'      => $e->getMessage(),
+            ]);
+            return response()->json(['received' => true, 'note' => 'logged']);
+        }
+
+        $metadata = $chargeObj->metadata?->toArray() ?? [];
+        if (($metadata['purpose'] ?? null) !== AppointmentPaymentService::PURPOSE) {
+            return response()->json(['received' => true]);
+        }
+
+        $tenantId      = $metadata['tenant_id']      ?? null;
+        $appointmentId = isset($metadata['appointment_id']) ? (int) $metadata['appointment_id'] : null;
+        if (! $tenantId || ! $appointmentId) {
+            return response()->json(['received' => true]);
+        }
+
+        $tenant = Tenant::find($tenantId);
+        if (! $tenant) return response()->json(['received' => true]);
+
+        $ownerEmail   = $tenant->owner?->email;
+        $ownerName    = $tenant->owner?->name ?? 'there';
+        $businessName = $tenant->id;
+
+        $shouldEmail = false;
+
+        try {
+            tenancy()->initialize($tenant);
+            if (! Schema::hasColumn('appointments', 'dispute_status')) {
+                tenancy()->end();
+                return response()->json(['received' => true]);
+            }
+
+            $row = DB::table('appointments')->where('id', $appointmentId)->first();
+            if (! $row) {
+                tenancy()->end();
+                return response()->json(['received' => true]);
+            }
+
+            $previousStatus = $row->dispute_status ?? null;
+
+            $update = [
+                'dispute_status'    => $status,
+                'stripe_dispute_id' => $disputeId,
+                'dispute_reason'    => $reason ?: null,
+                'dispute_amount'    => $amountCts / 100,
+                'updated_at'        => now(),
+            ];
+            if ($isOpened) {
+                $update['dispute_opened_at'] = now();
+                $shouldEmail = $previousStatus !== $status; // first time we see it
+            } else {
+                $update['dispute_closed_at'] = now();
+                $shouldEmail = $previousStatus !== $status;
+            }
+
+            DB::table('appointments')->where('id', $appointmentId)->update($update);
+            $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
+
+            tenancy()->end();
+        } catch (\Throwable $e) {
+            Log::error('Dispute webhook processing error', [
+                'tenant_id'      => $tenantId,
+                'appointment_id' => $appointmentId,
+                'dispute_id'     => $disputeId,
+                'error'          => $e->getMessage(),
+            ]);
+            try { tenancy()->end(); } catch (\Throwable) {}
+            return response()->json(['received' => true, 'note' => 'logged']);
+        }
+
+        if ($shouldEmail && $ownerEmail) {
+            try {
+                if ($isOpened) {
+                    Mail::to($ownerEmail)->send(new DisputeOpenedOwnerMail(
+                        ownerName:       $ownerName,
+                        businessName:    $businessName,
+                        disputeAmount:   $amountCts / 100,
+                        currency:        strtoupper((string) ($dispute->currency ?? 'usd')),
+                        reason:          $reason ?: 'unspecified',
+                        evidenceDueBy:   isset($dispute->evidence_details?->due_by)
+                                            ? (int) $dispute->evidence_details->due_by
+                                            : null,
+                    ));
+                } else {
+                    Mail::to($ownerEmail)->send(new DisputeClosedOwnerMail(
+                        ownerName:    $ownerName,
+                        businessName: $businessName,
+                        disputeAmount:$amountCts / 100,
+                        currency:     strtoupper((string) ($dispute->currency ?? 'usd')),
+                        outcome:      $status,
+                    ));
+                }
+            } catch (\Throwable $e) {
+                Log::error('[BookReady] Dispute owner email failed', [
+                    'tenant_id' => $tenantId,
+                    'isOpened'  => $isOpened,
+                    'error'     => $e->getMessage(),
+                ]);
+            }
         }
 
         return response()->json(['received' => true]);

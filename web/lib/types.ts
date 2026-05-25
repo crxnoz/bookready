@@ -528,7 +528,15 @@ export interface CustomerUpdatePayload {
 }
 
 export type PaymentStatus =
-  | 'none' | 'pending_payment' | 'deposit_paid' | 'paid' | 'failed' | 'refunded'
+  | 'none' | 'pending_payment' | 'deposit_paid' | 'paid' | 'failed'
+  | 'refunded' | 'partially_refunded'
+
+// Mirrors Stripe's dispute.status enum. null when no dispute exists.
+export type DisputeStatus =
+  | 'warning_needs_response' | 'warning_under_review' | 'warning_closed'
+  | 'needs_response' | 'under_review'
+  | 'won' | 'lost'
+  | 'charge_refunded'
 
 export interface Appointment {
   id: number
@@ -557,6 +565,27 @@ export interface Appointment {
   amount_due?:           number | null
   currency?:             string
   paid_at?:              string | null
+  // Refund snapshot — null when nothing has been refunded yet.
+  refunded_amount?:      number | null
+  refunded_at?:          string | null
+  // Dispute snapshot — null when no active or historical dispute.
+  dispute_status?:       DisputeStatus | null
+  dispute_reason?:       string | null
+  dispute_amount?:       number | null
+  dispute_opened_at?:    string | null
+  dispute_closed_at?:    string | null
+}
+
+export interface RefundPayload {
+  /** Omit or null for full refund of remaining balance. */
+  amount?: number | null
+  /** Maps to Stripe refund reason. Free-text is ignored by backend. */
+  reason?: 'duplicate' | 'fraudulent' | 'requested_by_customer' | null
+}
+
+export interface RefundResponse {
+  message: string
+  appointment: Appointment
 }
 
 export interface CreateAppointmentPayload {

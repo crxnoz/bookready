@@ -22,6 +22,8 @@ import {
   ManageBookingView,
   ManageBookingActionResponse,
   PublicSite,
+  RefundPayload,
+  RefundResponse,
   RegisterPayload,
   BeforeAfterItem,
   BeforeAfterItemPayload,
@@ -515,6 +517,20 @@ export async function updateEditorAppointment(id: number, data: UpdateAppointmen
 
 export async function deleteEditorAppointment(id: number): Promise<void> {
   await request(`/editor/appointments/${id}`, { method: 'DELETE' })
+}
+
+/**
+ * Issue a refund on a paid appointment. `amount` omitted = refund the
+ * full remaining refundable balance. Reason maps to Stripe's enum.
+ */
+export async function refundEditorAppointment(
+  id: number,
+  payload: RefundPayload = {},
+): Promise<RefundResponse> {
+  return request<RefundResponse>(`/editor/appointments/${id}/refund`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
 }
 
 export async function getEditorCustomers(params?: {

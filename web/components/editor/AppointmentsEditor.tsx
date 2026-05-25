@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import {
+  AlertTriangle,
   Calendar,
   CheckCircle,
   ChevronLeft,
@@ -9,6 +10,7 @@ import {
   Clock,
   Plus,
   Scissors,
+  Undo2,
   User,
   X,
   XCircle,
@@ -18,16 +20,19 @@ import {
   deleteEditorAppointment,
   getEditorAppointments,
   getEditorServices,
+  refundEditorAppointment,
   updateEditorAppointment,
 } from '@/lib/api'
 import type {
   Appointment,
   AppointmentStatus,
   CreateAppointmentPayload,
+  RefundPayload,
   Service,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
 import { PaymentPill, PaymentSummary } from '@/components/editor/AppointmentPaymentStatus'
+import RefundDialog from '@/components/editor/RefundDialog'
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
@@ -206,6 +211,7 @@ export default function AppointmentsEditor() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
+  const [refundTarget, setRefundTarget] = useState<Appointment | null>(null)
 
   useEffect(() => {
     Promise.all([getEditorAppointments({ limit: 200 }), getEditorServices()])
@@ -358,6 +364,11 @@ export default function AppointmentsEditor() {
     } finally {
       setActionLoading(null)
     }
+  }
+
+  async function handleRefund(id: number, payload: RefundPayload) {
+    const res = await refundEditorAppointment(id, payload)
+    setAppointments(prev => prev.map(a => a.id === id ? res.appointment : a))
   }
 
   const selectedService = services.find(s => s.id === Number(form.service_id))
@@ -623,12 +634,21 @@ export default function AppointmentsEditor() {
                 onEdit={() => openEdit(appt)}
                 onStatus={status => handleStatusUpdate(appt.id, status)}
                 onCancel={() => handleCancel(appt.id)}
+                onRefund={() => setRefundTarget(appt)}
               />
             ))}
           </div>
         )}
 
       </div>
+
+      {refundTarget && (
+        <RefundDialog
+          appt={refundTarget}
+          onClose={() => setRefundTarget(null)}
+          onSubmit={payload => handleRefund(refundTarget.id, payload)}
+        />
+      )}
     </div>
   )
 }
@@ -904,17 +924,30 @@ function AppointmentCard({
   onEdit,
   onStatus,
   onCancel,
+  onRefund,
 }: {
   appt: Appointment
   busy: boolean
   onEdit: () => void
   onStatus: (s: AppointmentStatus) => void
   onCancel: () => void
+  onRefund: () => void
 }) {
   const today = todayStr()
   const isToday = appt.appointment_date === today
   const isFuture = appt.appointment_date >= today
   const terminal = appt.status === 'completed' || appt.status === 'cancelled' || appt.status === 'no_show'
+
+  // Refundable iff there's any payment beyond what's already been refunded.
+  const paid          = appt.deposit_paid_amount ?? 0
+  const refunded      = appt.refunded_amount     ?? 0
+  const isRefundable  = paid > refunded + 0.001
+                        && (appt.payment_status === 'deposit_paid'
+                          || appt.payment_status === 'paid'
+                          || appt.payment_status === 'partially_refunded')
+
+  const activeDispute = appt.dispute_status
+    && ['warning_needs_response', 'warning_under_review', 'needs_response', 'under_review'].includes(appt.dispute_status)
 
   return (
     <div className={cn(
@@ -977,18 +1010,41 @@ function AppointmentCard({
             {appt.notes}
           </p>
         )}
-        {!terminal && (
+        {activeDispute && (
+          <div className="mb-3 px-3 py-2 bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] flex items-start gap-2">
+            <AlertTriangle size={13} className="text-[#b42828] flex-shrink-0 mt-0.5" />
+            <div className="text-[11px] text-[#7a1f1f] leading-snug">
+              <strong className="font-bold">Payment disputed.</strong>{' '}
+              Respond in your{' '}
+              <a href="https://dashboard.stripe.com/disputes" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:opacity-80">
+                Stripe dashboard
+              </a>
+              {appt.dispute_amount != null && (
+                <> · {(appt.currency ?? 'USD') === 'USD' ? '$' : ''}{appt.dispute_amount.toFixed(2)}</>
+              )}
+              {appt.dispute_reason && (
+                <> · {appt.dispute_reason.replace(/_/g, ' ')}</>
+              )}
+            </div>
+          </div>
+        )}
+        {(!terminal || isRefundable) && (
           <div className="flex flex-wrap gap-1.5 pt-1 border-t border-[rgba(18,18,18,0.06)]">
-            {appt.status === 'pending' && isFuture && (
+            {!terminal && appt.status === 'pending' && isFuture && (
               <ActionBtn onClick={() => onStatus('confirmed')} disabled={busy} icon={<CheckCircle size={11} />} label="Confirm" primary />
             )}
-            {(appt.status === 'pending' || appt.status === 'confirmed') && (
+            {!terminal && (appt.status === 'pending' || appt.status === 'confirmed') && (
               <ActionBtn onClick={() => onStatus('completed')} disabled={busy} icon={<CheckCircle size={11} />} label="Complete" />
             )}
-            {appt.status === 'confirmed' && (
+            {!terminal && appt.status === 'confirmed' && (
               <ActionBtn onClick={() => onStatus('no_show')} disabled={busy} icon={<User size={11} />} label="No-show" />
             )}
-            <ActionBtn onClick={onCancel} disabled={busy} icon={<XCircle size={11} />} label="Cancel" danger />
+            {isRefundable && (
+              <ActionBtn onClick={onRefund} disabled={busy} icon={<Undo2 size={11} />} label="Refund" />
+            )}
+            {!terminal && (
+              <ActionBtn onClick={onCancel} disabled={busy} icon={<XCircle size={11} />} label="Cancel" danger />
+            )}
           </div>
         )}
       </div>

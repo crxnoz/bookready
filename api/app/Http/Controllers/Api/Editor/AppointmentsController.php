@@ -50,6 +50,15 @@ class AppointmentsController extends Controller
             'amount_due'               => $get('amount_due') !== null ? (float) $get('amount_due') : null,
             'currency'                 => $get('currency', 'USD'),
             'paid_at'                  => $get('paid_at'),
+            // Refund snapshot
+            'refunded_amount'          => $get('refunded_amount') !== null ? (float) $get('refunded_amount') : null,
+            'refunded_at'              => $get('refunded_at'),
+            // Dispute snapshot (null when no active dispute)
+            'dispute_status'           => $get('dispute_status'),
+            'dispute_reason'           => $get('dispute_reason'),
+            'dispute_amount'           => $get('dispute_amount') !== null ? (float) $get('dispute_amount') : null,
+            'dispute_opened_at'        => $get('dispute_opened_at'),
+            'dispute_closed_at'        => $get('dispute_closed_at'),
         ];
     }
 
@@ -387,5 +396,137 @@ class AppointmentsController extends Controller
         }
 
         return response()->json(null, 204);
+    }
+
+    // ── Refunds ──────────────────────────────────────────────────────────
+
+    /**
+     * Owner-initiated refund for an appointment that was paid through
+     * BookReady (deposit or full). Calls Stripe synchronously so the
+     * owner gets immediate success/failure feedback. The local row is
+     * also updated optimistically here; the charge.refunded webhook will
+     * subsequently reconcile (idempotent — refunded_amount only moves
+     * forward).
+     *
+     * Body: { amount?: float, reason?: string }
+     *  - amount omitted or null → full refund of remaining refundable balance
+     *  - reason maps to one of Stripe's refund reasons
+     *    (duplicate|fraudulent|requested_by_customer); free-text is ignored
+     */
+    public function refund(Request $request, int $appointment): JsonResponse
+    {
+        $validated = $request->validate([
+            'amount' => 'sometimes|nullable|numeric|min:0.01',
+            'reason' => 'sometimes|nullable|string|max:80',
+        ]);
+
+        $tenant = Tenant::findOrFail($request->user()->tenant_id);
+        tenancy()->initialize($tenant);
+
+        if (! Schema::hasColumn('appointments', 'refunded_amount')) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'Refund support is not available for this workspace yet. Please contact support.',
+            ], 409);
+        }
+
+        $row = DB::table('appointments')->where('id', $appointment)->first();
+        if (! $row) {
+            tenancy()->end();
+            return response()->json(['message' => 'Appointment not found.'], 404);
+        }
+
+        $paymentIntent = $row->stripe_payment_intent_id ?? null;
+        if (! $paymentIntent) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'This appointment has no payment to refund.',
+            ], 422);
+        }
+
+        $paid           = (float) ($row->deposit_paid_amount ?? 0);
+        $alreadyRefunded= (float) ($row->refunded_amount ?? 0);
+        $remaining      = max(0.0, $paid - $alreadyRefunded);
+        if ($remaining <= 0.0) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'This payment has already been fully refunded.',
+            ], 422);
+        }
+
+        $requested = isset($validated['amount']) && $validated['amount'] !== null
+            ? round((float) $validated['amount'], 2)
+            : $remaining;
+
+        if ($requested > $remaining + 0.001) {
+            tenancy()->end();
+            return response()->json([
+                'message' => "Refund amount exceeds the refundable balance ({$remaining}).",
+            ], 422);
+        }
+
+        $cents       = (int) round($requested * 100);
+        $isFull      = abs($requested - $remaining) < 0.005 && $alreadyRefunded <= 0.001;
+        $stripeReason = in_array($validated['reason'] ?? null, ['duplicate', 'fraudulent', 'requested_by_customer'], true)
+            ? $validated['reason']
+            : null;
+
+        // Snapshot values we need for the optimistic update + response.
+        // We do the actual Stripe call OUTSIDE the tenancy scope so a slow
+        // network round-trip doesn't pin a tenant DB connection.
+        $tenantId = $tenant->id;
+        tenancy()->end();
+
+        try {
+            \Stripe\Stripe::setApiKey(config('cashier.secret') ?: env('STRIPE_SECRET'));
+            $params = [
+                'payment_intent'    => $paymentIntent,
+                'amount'            => $cents,
+                'reverse_transfer'  => true, // destination charge → also reverse the transfer
+                'metadata'          => [
+                    'purpose'         => 'appointment_deposit',
+                    'tenant_id'       => $tenantId,
+                    'appointment_id'  => (string) $appointment,
+                    'initiated_by'    => 'owner',
+                ],
+            ];
+            if ($stripeReason) $params['reason'] = $stripeReason;
+
+            $refund = \Stripe\Refund::create($params);
+        } catch (\Stripe\Exception\ApiErrorException $e) {
+            return response()->json([
+                'message' => 'Stripe refund failed: ' . $e->getMessage(),
+            ], 422);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Refund failed', [
+                'tenant_id'      => $tenantId,
+                'appointment_id' => $appointment,
+                'error'          => $e->getMessage(),
+            ]);
+            return response()->json(['message' => 'Could not issue refund.'], 500);
+        }
+
+        // Optimistic local update so the UI reflects state without waiting
+        // for the webhook round-trip. The webhook will reconcile in case
+        // someone partial-refunds twice.
+        $newRefunded = $alreadyRefunded + $requested;
+        $newStatus   = ($newRefunded + 0.001) >= $paid ? 'refunded' : 'partially_refunded';
+
+        tenancy()->initialize($tenant);
+        DB::table('appointments')->where('id', $appointment)->update([
+            'payment_status'    => $newStatus,
+            'refunded_amount'   => $newRefunded,
+            'refunded_at'       => now(),
+            'stripe_refund_id'  => $refund->id ?? null,
+            'updated_at'        => now(),
+        ]);
+        $fresh = DB::table('appointments')->where('id', $appointment)->first();
+        $result = $this->format($fresh);
+        tenancy()->end();
+
+        return response()->json([
+            'message'     => $isFull ? 'Refund issued.' : 'Partial refund issued.',
+            'appointment' => $result,
+        ]);
     }
 }
