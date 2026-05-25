@@ -148,9 +148,9 @@ function LoginInner() {
         </Link>
       </p>
       <div className="mt-3 flex justify-center gap-4 text-xs text-muted-text">
-        <a href="#" className="hover:text-near-black">Terms</a>
-        <a href="#" className="hover:text-near-black">Privacy</a>
-        <a href="#" className="hover:text-near-black">Help</a>
+        <Link href="/terms" className="hover:text-near-black">Terms</Link>
+        <Link href="/privacy" className="hover:text-near-black">Privacy</Link>
+        <a href="mailto:hello@bkrdy.me" className="hover:text-near-black">Help</a>
       </div>
     </AuthShell>
   )
