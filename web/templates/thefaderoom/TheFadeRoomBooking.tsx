@@ -167,7 +167,9 @@ export default function TheFadeRoomBooking({
   // - scope='all' → always shown
   // - scope='services' → only when service id is in its service_ids list
   const applicableQuestions: BookingQuestion[] = (bookingQuestions ?? [])
-    .filter(q => q.is_active)
+    // Public payload pre-filters to active-only and drops the field, so
+    // treat missing/undefined as truthy. Only reject explicit `false`.
+    .filter(q => q.is_active !== false)
     .filter(q => q.scope === 'all'
       || (serviceId !== null && q.service_ids?.includes(serviceId)))
     .sort((a, b) => (a.sort_order - b.sort_order) || (a.id - b.id))
