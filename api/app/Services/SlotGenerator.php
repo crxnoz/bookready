@@ -71,12 +71,14 @@ class SlotGenerator
             $end   = $range['end_date']   ?? $start;
             if (! $start) continue;
             if ($date >= $start && $date <= ($end ?? $start)) {
-                $reason = trim((string) ($range['reason'] ?? ''));
+                // Phase S5++ — generic message ONLY. The owner-entered
+                // `reason` column is sensitive (vacations, doctor visits,
+                // family emergencies) and is no longer threaded through
+                // public payloads. Keep the slot list empty so the public
+                // booking form shows "no times available" cleanly.
                 return [
                     'slots'   => [],
-                    'message' => $reason !== ''
-                        ? "Closed on this day — {$reason}."
-                        : 'Closed on this day.',
+                    'message' => 'Closed on this day.',
                 ];
             }
         }

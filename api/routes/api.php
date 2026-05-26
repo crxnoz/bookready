@@ -59,8 +59,15 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
 
     // ── Public tenant lookup, availability + booking (no auth) ──────────
-    Route::get('public/sites/{slug}',                     [PublicSiteController::class,       'show']);
-    Route::get('public/sites/{slug}/availability',        [PublicAvailabilityController::class, 'show']);
+    // Phase S5++ — throttle anonymous reads to slow automated scraping
+    // of tenant payloads + availability calendars. 60/min per IP is well
+    // above any legitimate browsing pattern (the editor preview uses the
+    // same endpoint but is rare). Bumps to 429 with Retry-After under
+    // attack rather than 200-ing every burst.
+    Route::get('public/sites/{slug}',                     [PublicSiteController::class,       'show'])
+        ->middleware('throttle:60,1');
+    Route::get('public/sites/{slug}/availability',        [PublicAvailabilityController::class, 'show'])
+        ->middleware('throttle:60,1');
     // Phase S5 — booking POST throttled to 10/min per IP. Tight enough
     // to deter scripted abuse, loose enough that a real client retrying
     // a flaky network does not lock themselves out.

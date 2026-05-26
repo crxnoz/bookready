@@ -131,6 +131,24 @@ class PublicBookingAnswerUploadController extends Controller
             return response()->json(['message' => 'Could not process image'], 422);
         }
 
+        // Phase S5++ — re-check the byte cap AFTER encoding, BEFORE writing
+        // to R2. The pre-flight check at the top of this method uses the
+        // raw upload size which can be ~50% larger than the webp output,
+        // but it doesn't catch the case where the cumulative tenant byte
+        // count + this encoded payload would exceed cap. This is a closer
+        // approximation of the strict cap without paying a row-level lock.
+        $projectedBytes = (int) (Cache::get($byteKey) ?? 0) + strlen($encoded);
+        if ($projectedBytes > self::DAILY_BYTE_CAP) {
+            Log::channel('security')->warning('upload.quota.exceeded.post_encode', [
+                'tenant'    => $tenant->getKey(),
+                'projected' => $projectedBytes,
+                'ip'        => $request->ip(),
+            ]);
+            return response()->json([
+                'message' => 'Daily upload limit reached. Try again tomorrow.',
+            ], 429);
+        }
+
         $key = sprintf(
             'tenants/%s/booking_answer/%s.webp',
             $tenant->getKey(),

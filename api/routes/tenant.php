@@ -25,9 +25,14 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
 
     // ── Public — no auth, any visitor ─────────────────────────────────────
-    Route::prefix('public')->group(function () {
-        Route::get('template', [PublicTemplateController::class, 'show']);
-    });
+    // Phase S5++ — the legacy /api/v1/public/template route was removed
+    // because (a) no frontend code calls it; (b) the controller queries a
+    // pre-Phase-1 schema (`businesses`, `policies`, `contact_buttons`,
+    // `gallery_sections`, `gallery_images`) that no longer exists; and
+    // (c) it bypassed SitePrivacyService, so private/coming-soon sites
+    // would still leak any data the surviving table queries returned.
+    // The real public payload now lives at /api/v1/public/sites/{slug}
+    // in routes/api.php (PublicSiteController).
 
     // ── Editor — requires Sanctum token ────────────────────────────────────
     Route::middleware('auth:sanctum')->prefix('editor')->group(function () {

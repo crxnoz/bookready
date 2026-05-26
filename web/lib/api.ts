@@ -492,7 +492,15 @@ export async function uploadBookingAnswerImage(
   fd.append('file', file)
 
   const url = `${API_BASE}/public/sites/${slug}/booking-answer-upload`
-  const res = await fetch(url, { method: 'POST', body: fd })
+  // Phase S5++ — forward the site-unlock token (from ?unlock= on the
+  // public site URL) so private/coming-soon sites can accept uploads
+  // from a visitor who already unlocked the site. The backend honors
+  // X-Site-Unlock alongside ?unlock= query param.
+  const unlock = currentUnlockToken()
+  const headers: Record<string, string> = {}
+  if (unlock) headers['X-Site-Unlock'] = unlock
+
+  const res = await fetch(url, { method: 'POST', body: fd, headers })
   if (! res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.message || `Upload failed (${res.status})`)

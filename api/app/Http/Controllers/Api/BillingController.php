@@ -42,7 +42,17 @@ class BillingController extends Controller
         }
 
         $user   = $request->user();
-        $tenant = Tenant::find($user->tenant_id);
+        // Phase S5++ — users.tenant_id is nullable and SET NULL on tenant
+        // deletion, so a still-authed user can reach this method after their
+        // tenant was wiped (e.g. via the danger-zone self-delete). Treat
+        // that as "no billing context" rather than fataling on a null
+        // dereference at $tenant->newSubscription(...).
+        $tenant = $user->tenant_id ? Tenant::find($user->tenant_id) : null;
+        if (! $tenant) {
+            return response()->json([
+                'message' => 'No active workspace for this account. Please contact support.',
+            ], 400);
+        }
 
         $frontendUrl = rtrim(env('FRONTEND_URL', 'http://app.daysbookings.site'), '/');
         $successUrl  = "{$frontendUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}";
@@ -106,7 +116,14 @@ class BillingController extends Controller
      */
     public function portal(Request $request): JsonResponse
     {
-        $tenant    = Tenant::find($request->user()->tenant_id);
+        // Phase S5++ — null-guard, same reasoning as checkout().
+        $userTenantId = $request->user()->tenant_id;
+        $tenant       = $userTenantId ? Tenant::find($userTenantId) : null;
+        if (! $tenant) {
+            return response()->json([
+                'message' => 'No active workspace for this account.',
+            ], 400);
+        }
         $portalUrl = $tenant->billingPortalUrl(config('app.url'));
 
         return response()->json(['url' => $portalUrl]);
@@ -114,7 +131,21 @@ class BillingController extends Controller
 
     public function subscription(Request $request): JsonResponse
     {
-        $tenant = Tenant::find($request->user()->tenant_id);
+        // Phase S5++ — null-guard, same reasoning as checkout(). Return a
+        // neutral "not subscribed" shape rather than 400 here because the
+        // frontend polls this on every page load and a 4xx would surface
+        // as an error banner; for a tenant-less account it's accurate to
+        // say there's nothing to subscribe to.
+        $userTenantId = $request->user()->tenant_id;
+        $tenant       = $userTenantId ? Tenant::find($userTenantId) : null;
+        if (! $tenant) {
+            return response()->json([
+                'subscribed'   => false,
+                'on_trial'     => false,
+                'trial_ends'   => null,
+                'subscription' => null,
+            ]);
+        }
 
         return response()->json([
             'subscribed'   => $tenant->subscribed('default'),

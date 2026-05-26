@@ -195,7 +195,12 @@ class PublicSiteController extends Controller
                     'id'         => (int) $r->id,
                     'start_date' => $r->start_date,
                     'end_date'   => $r->end_date,
-                    'reason'     => $r->reason,
+                    // Phase S5++ — `reason` deliberately omitted from the
+                    // public payload. Owners often enter sensitive copy
+                    // like "doctor appointment", "family emergency", etc.
+                    // and the visitor only needs to know the day is
+                    // closed. SlotGenerator now also returns a generic
+                    // closure message instead of echoing the reason.
                 ])
                 ->values()
                 ->all();
@@ -355,7 +360,8 @@ class PublicSiteController extends Controller
                         'staff_id'   => (int) $b->staff_id,
                         'start_date' => $b->start_date,
                         'end_date'   => $b->end_date,
-                        'reason'     => $b->reason,
+                        // Phase S5++ — `reason` deliberately omitted (see
+                        // blocked_dates section above for rationale).
                     ])
                     ->values()
                     ->all();

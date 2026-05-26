@@ -347,7 +347,12 @@ class PublicBookingController extends Controller
                     $image = null;
                 } elseif ($type === 'image') {
                     $value = null;
-                    $image = is_string($image) && trim($image) !== '' ? $image : null;
+                    // Phase S5++ — image_url must be a URL we minted from
+                    // the booking-answer-upload endpoint. A malicious client
+                    // submitting `javascript:alert(1)` or a phishing URL
+                    // would otherwise end up rendered inside the owner's
+                    // appointment view as a clickable link.
+                    $image = $this->sanitizeImageUrl(is_string($image) ? $image : null);
                 } else {
                     $value = is_scalar($value) ? trim((string) $value) : null;
                     if ($value === '') $value = null;
@@ -762,5 +767,47 @@ class PublicBookingController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * Phase S5++ — narrow validator for question_answers.image_url.
+     *
+     * The legitimate flow is:
+     *   1. Public booking form POSTs the file to /public/sites/{slug}/booking-answer-upload
+     *   2. That endpoint resizes + encodes + uploads to R2 and returns
+     *      a public URL like https://<R2_PUBLIC_BASE>/tenants/<id>/booking_answer/<ulid>.webp
+     *   3. The form re-submits the booking with image_url set to that URL.
+     *
+     * The booking POST itself is anonymous, so we cannot trust the client.
+     * Accept ONLY:
+     *   - an http(s) URL starting with the configured R2 public base, OR
+     *   - (when r2 url is not configured — dev fallback) any https URL.
+     *
+     * Anything else (javascript:, data:, vbscript:, bare strings, phishing
+     * URLs on attacker-controlled domains) is silently dropped — the
+     * appointment still saves, just without the image. The owner sees the
+     * question without a "View image" link, which is the correct fail-safe.
+     */
+    private function sanitizeImageUrl(?string $raw): ?string
+    {
+        if (! is_string($raw)) return null;
+        $url = trim($raw);
+        if ($url === '') return null;
+
+        // Hard reject anything that is not http or https. Stops
+        // javascript:/data:/vbscript:/file: at the validator boundary.
+        if (! preg_match('#^https?://#i', $url)) return null;
+
+        // Cap length defensively in case the validator was bypassed.
+        if (strlen($url) > 2000) return null;
+
+        $r2Base = rtrim((string) config('filesystems.disks.r2.url'), '/');
+        if ($r2Base === '') {
+            // Dev fallback when R2_PUBLIC_BASE isn't set — accept https only.
+            return preg_match('#^https://#i', $url) === 1 ? $url : null;
+        }
+
+        // Production — must originate from our R2 CDN.
+        return str_starts_with($url, $r2Base . '/') ? $url : null;
     }
 }

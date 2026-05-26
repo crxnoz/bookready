@@ -47,6 +47,7 @@ import type {
   ServiceAddon,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
+import { safeHref } from '@/lib/safeHref'
 import { PaymentPill, PaymentSummary } from '@/components/editor/AppointmentPaymentStatus'
 import RefundDialog from '@/components/editor/RefundDialog'
 import MarkPaidDialog from '@/components/editor/MarkPaidDialog'
@@ -1598,15 +1599,26 @@ function AppointmentCard({
             {appt.question_answers.map((qa, idx) => (
               <div key={idx} className="text-[11px] text-near-black leading-snug">
                 <span className="font-semibold">{qa.label_snapshot}:</span>{' '}
-                {qa.type_snapshot === 'image' && qa.image_url ? (
-                  <a href={qa.image_url} target="_blank" rel="noopener noreferrer" className="underline text-near-black hover:opacity-80">
-                    View image
-                  </a>
-                ) : qa.type_snapshot === 'checkbox' ? (
-                  <span>{qa.value === true ? 'Yes' : 'No'}</span>
-                ) : (
-                  <span className="text-muted-text">{typeof qa.value === 'string' && qa.value.length > 0 ? qa.value : '—'}</span>
-                )}
+                {(() => {
+                  // Phase S5++ — defense in depth. The server-side sanitizer
+                  // in PublicBookingController::sanitizeImageUrl already
+                  // drops non-R2 URLs at write time. safeHref here protects
+                  // any rows that pre-date that fix (or any future caller
+                  // that bypasses validation) from rendering javascript:/
+                  // data: schemes as a clickable link in the owner UI.
+                  const href = qa.type_snapshot === 'image' ? safeHref(qa.image_url) : undefined
+                  return href ? (
+                    <a href={href} target="_blank" rel="noopener noreferrer" className="underline text-near-black hover:opacity-80">
+                      View image
+                    </a>
+                  ) : qa.type_snapshot === 'image' ? (
+                    <span className="text-muted-text">—</span>
+                  ) : qa.type_snapshot === 'checkbox' ? (
+                    <span>{qa.value === true ? 'Yes' : 'No'}</span>
+                  ) : (
+                    <span className="text-muted-text">{typeof qa.value === 'string' && qa.value.length > 0 ? qa.value : '—'}</span>
+                  )
+                })()}
               </div>
             ))}
           </div>

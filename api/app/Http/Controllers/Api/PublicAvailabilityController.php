@@ -122,11 +122,14 @@ class PublicAvailabilityController extends Controller
                 ->where(function ($q) use ($date) {
                     $q->where('end_date', '>=', $date)->orWhereNull('end_date');
                 })
-                ->get(['start_date', 'end_date', 'reason'])
+                ->get(['start_date', 'end_date'])
                 ->map(fn ($r) => [
                     'start_date' => $r->start_date,
                     'end_date'   => $r->end_date,
-                    'reason'     => $r->reason ?: 'staff unavailable',
+                    // Phase S5++ — never echo owner-entered reasons back
+                    // to anonymous visitors. SlotGenerator falls back to a
+                    // generic "Closed on this day" message when reason is
+                    // absent.
                 ])
                 ->all();
         }
@@ -146,11 +149,11 @@ class PublicAvailabilityController extends Controller
                              ->orWhereNull('end_date');
                       });
                 })
-                ->get(['start_date', 'end_date', 'reason'])
+                ->get(['start_date', 'end_date'])
                 ->map(fn ($r) => [
                     'start_date' => $r->start_date,
                     'end_date'   => $r->end_date,
-                    'reason'     => $r->reason,
+                    // Phase S5++ — `reason` stripped; see SitePrivacy notes.
                 ])
                 ->all();
         }
