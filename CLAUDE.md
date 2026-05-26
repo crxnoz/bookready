@@ -43,12 +43,19 @@ git push origin main
 ssh root@198.211.116.44 'cd /var/www/bookready-api && \
   git pull origin main && \
   cd api && composer install --no-dev --optimize-autoloader && \
+  rm -f bootstrap/cache/packages.php bootstrap/cache/services.php && \
+  php artisan package:discover --ansi && \
   php artisan migrate --force && \
   php artisan tenants:migrate --force && \
   php artisan optimize:clear && \
+  chown -R www-data:www-data bootstrap/cache storage && \
   cd ../web && npm install && npm run build && \
   pm2 restart bookready-web'
 ```
+
+The `rm -f bootstrap/cache/packages.php services.php && package:discover` step is required: `package:discover` upserts into the existing file rather than clearing it, so stale entries from an earlier composer state (we've been bitten by `laravel/sail`, `laravel/sentinel`, `laravel/telescope` lingering from a long-gone `composer require`) survive every deploy and crash the app with `Class "...ServiceProvider" not found` on every request.
+
+The final `chown -R www-data:www-data bootstrap/cache storage` is also required: when `composer install`, `php artisan tinker`, or any artisan command runs over SSH as `root`, it recreates `storage/logs/laravel.log` and `bootstrap/cache/*` as root-owned. The next request then 500s because php-fpm runs as `www-data` and can't write to root-owned files.
 
 ## Architecture essentials
 
