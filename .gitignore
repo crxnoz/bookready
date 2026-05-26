@@ -10,10 +10,20 @@ vendor/
 web/.env.local
 web/.env*.local
 
-# Laravel
-/storage/*.key
-/storage/logs/*.log
-/bootstrap/cache/*.php
+# Laravel — generated/runtime files under api/
+# (The leading `api/` matters: previous patterns were anchored to repo
+# root, so they never matched and we ended up tracking compiled views,
+# the laravel.log, and bootstrap/cache/{packages,services}.php — the
+# last of which kept resetting to a STALE provider list on every
+# `git pull`, crashing prod with `Laravel\Sentinel\SentinelServiceProvider
+# not found`. Don't move these patterns back to root-anchored.)
+api/storage/*.key
+api/storage/logs/*.log
+api/storage/framework/cache/data/*
+api/storage/framework/sessions/*
+api/storage/framework/testing/*
+api/storage/framework/views/*.php
+api/bootstrap/cache/*.php
 
 # Next.js
 .next/
