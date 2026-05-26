@@ -92,9 +92,14 @@ async function request<T>(
   options: RequestInit & { token?: string } = {},
 ): Promise<T> {
   const { token, ...init } = options
+  // Phase S6 — session auth now travels via the httpOnly bookready_token
+  // cookie, sent automatically when credentials: 'include' is set. We
+  // still attach an Authorization header when a legacy localStorage
+  // token is present so pre-S6 sessions don't break on the deploy.
   const resolvedToken = token ?? getToken()
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
@@ -156,13 +161,17 @@ export interface UploadResponse {
 }
 
 export async function uploadEditorImage(file: File, kind: UploadKind): Promise<UploadResponse> {
+  // Phase S6 — credentials: 'include' for the cookie path; the
+  // Authorization header is still sent when a legacy localStorage
+  // token exists so transition sessions keep working.
   const token = getToken()
   const form  = new FormData()
   form.append('file', file)
   form.append('kind', kind)
   const res = await fetch(`${API_BASE}/editor/uploads`, {
-    method:  'POST',
-    body:    form,
+    method:      'POST',
+    body:        form,
+    credentials: 'include',
     headers: {
       Accept: 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -811,10 +820,17 @@ export async function getConnectDashboardLink(): Promise<ConnectDashboardLinkRes
 export async function downloadEditorExport(
   type: 'appointments' | 'customers',
 ): Promise<{ blob: Blob; filename: string }> {
+  // Phase S6 — cookie-based auth via credentials: 'include'. The legacy
+  // Authorization header is still sent when a localStorage token exists
+  // so transition sessions don't break. We no longer require a token to
+  // be present — a cookie session is sufficient.
   const token = getToken()
-  if (! token) throw new Error('Not authenticated.')
   const res = await fetch(`${API_BASE}/editor/danger/export/${type}`, {
-    headers: { Authorization: `Bearer ${token}`, Accept: 'text/csv' },
+    credentials: 'include',
+    headers: {
+      Accept: 'text/csv',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   })
   if (! res.ok) {
     const err = await res.json().catch(() => ({ message: 'Export failed' }))

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\PlatformMailer;
 use App\Services\TenantProvisioningService;
+use App\Support\AuthCookie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -300,18 +301,21 @@ class GoogleAuthController extends Controller
 
         $token = $owner->createToken('google-oauth-signup')->plainTextToken;
 
-        return response()->json([
-            'token'     => $token,
-            'tenant_id' => $owner->tenant_id,
-            'user'      => [
-                'id'        => $owner->id,
-                'name'      => $owner->name,
-                'email'     => $owner->email,
+        // Phase S6 — issue the session cookie alongside the body token.
+        return response()
+            ->json([
+                'token'     => $token,
                 'tenant_id' => $owner->tenant_id,
-                'is_owner'  => (bool) ($owner->is_owner ?? false),
-                'is_admin'  => (bool) ($owner->is_admin ?? false),
-            ],
-        ]);
+                'user'      => [
+                    'id'        => $owner->id,
+                    'name'      => $owner->name,
+                    'email'     => $owner->email,
+                    'tenant_id' => $owner->tenant_id,
+                    'is_owner'  => (bool) ($owner->is_owner ?? false),
+                    'is_admin'  => (bool) ($owner->is_admin ?? false),
+                ],
+            ])
+            ->withCookie(AuthCookie::make($token));
     }
 
     /**
@@ -337,7 +341,13 @@ class GoogleAuthController extends Controller
         // Single-use: burn immediately, before returning.
         Cache::forget($cacheKey);
 
-        return response()->json($payload);
+        // Phase S6 — the exchange endpoint is where the actual session
+        // starts (the OAuth callback only minted a single-use code). Set
+        // the httpOnly session cookie HERE so the frontend doesn't need
+        // to store the token from $payload anywhere JS-readable.
+        return response()
+            ->json($payload)
+            ->withCookie(AuthCookie::make((string) $payload['token']));
     }
 
     // ── Shared finalization ──────────────────────────────────────────────

@@ -10,7 +10,7 @@ import {
   getCurrentUser, getAdminTenants, deleteAdminTenant,
   getAdminAnnouncements, createAdminAnnouncement, updateAdminAnnouncement, deleteAdminAnnouncement,
 } from '@/lib/api'
-import { getToken, clearAuth } from '@/lib/auth'
+import { isLoggedIn, clearAuth } from '@/lib/auth'
 import type { AdminTenantRow, AuthUser, PlatformAnnouncement, PlatformAnnouncementPayload } from '@/lib/types'
 import { cn } from '@/lib/cn'
 
@@ -37,7 +37,9 @@ export default function AdminPage() {
   useEffect(() => {
     let cancelled = false
     async function boot() {
-      if (! getToken()) {
+      // Phase S6 — cookie-based auth. We check the in-memory flag and
+      // let /auth/me confirm the session is still valid.
+      if (! isLoggedIn()) {
         if (! cancelled) setLoadState('login_required')
         return
       }

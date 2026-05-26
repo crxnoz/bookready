@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getToken, getTenantId, clearAuth } from '@/lib/auth'
+import { isLoggedIn, getTenantId, clearAuth } from '@/lib/auth'
 import { getCurrentUser } from '@/lib/api'
 import AppShell from '@/components/app/AppShell'
 
@@ -11,8 +11,12 @@ export default function EditorGuard({ children }: { children: React.ReactNode })
   const [slug, setSlug] = useState<string | null>(null)
 
   useEffect(() => {
-    const token = getToken()
-    if (!token) {
+    // Phase S6 — session auth is now cookie-based. We can't read the
+    // httpOnly cookie from JS, so the guard checks the "br_authed"
+    // sentinel flag (set after a successful login/register/exchange)
+    // and verifies with /auth/me. If /auth/me 401s, the cookie is
+    // missing or expired → bounce to /login.
+    if (! isLoggedIn()) {
       router.replace('/login')
       return
     }

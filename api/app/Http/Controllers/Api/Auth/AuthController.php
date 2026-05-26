@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\AuthCookie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -32,22 +33,34 @@ class AuthController extends Controller
 
         $token = $user->createToken('api')->plainTextToken;
 
-        return response()->json([
-            'token' => $token,
-            'user'  => [
-                'id'        => $user->id,
-                'name'      => $user->name,
-                'email'     => $user->email,
-                'tenant_id' => $user->tenant_id,
-            ],
-        ]);
+        // Phase S6 — also set the token as an httpOnly cookie so the
+        // frontend doesn't need to stash it in localStorage. The token
+        // is still returned in the body for the transition window; the
+        // new frontend ignores the body value and relies on the cookie.
+        return response()
+            ->json([
+                'token' => $token,
+                'user'  => [
+                    'id'        => $user->id,
+                    'name'      => $user->name,
+                    'email'     => $user->email,
+                    'tenant_id' => $user->tenant_id,
+                ],
+            ])
+            ->withCookie(AuthCookie::make($token));
     }
 
     public function logout(Request $request): JsonResponse
     {
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json(['message' => 'Logged out.']);
+        // Phase S6 — clear the session cookie alongside revoking the token.
+        // Without this, the cookie would still be sent on subsequent
+        // requests until the browser-side TTL expires, hitting Sanctum
+        // with a no-longer-valid token and returning 401s.
+        return response()
+            ->json(['message' => 'Logged out.'])
+            ->withCookie(AuthCookie::forget());
     }
 
     public function me(Request $request): JsonResponse

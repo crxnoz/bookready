@@ -65,7 +65,18 @@ export default function AppSidebar({ slug, drawerOpen, onClose }: Props) {
     navigator.clipboard?.writeText(`https://${slug}.bkrdy.me`).catch(() => {})
   }
 
-  function handleSignOut() {
+  async function handleSignOut() {
+    // Phase S6 — POST to /auth/logout first so the backend revokes
+    // the Sanctum token AND sends a Max-Age=0 Set-Cookie to clear the
+    // httpOnly session cookie. Then drop the local "logged in" flag
+    // and any lingering legacy localStorage values.
+    try {
+      const { logout } = await import('@/lib/api')
+      await logout()
+    } catch {
+      // Network or already-expired session — fall through to clearAuth.
+      // Worst case the cookie lingers until its 14-day TTL.
+    }
     clearAuth()
     router.push('/login')
   }

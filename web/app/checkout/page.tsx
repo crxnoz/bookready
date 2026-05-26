@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createCheckoutSession } from '@/lib/api'
-import { getToken } from '@/lib/auth'
+import { isLoggedIn } from '@/lib/auth'
 import { BillingCycle } from '@/lib/types'
 
 const TEMPLATE_KEY = 'br_template'
@@ -38,7 +38,10 @@ function CheckoutForm() {
   const [cancelled, setCancelled] = useState(false)
 
   useEffect(() => {
-    if (!getToken()) { router.replace('/login'); return }
+    // Phase S6 — guard via the in-memory "logged in" flag instead of
+    // the legacy localStorage token. Cookie session is verified by the
+    // first /billing/* call.
+    if (!isLoggedIn()) { router.replace('/login'); return }
     const fromQuery = searchParams.get('template')
     const fromStorage = localStorage.getItem(TEMPLATE_KEY)
     const resolved = fromQuery ?? fromStorage ?? 'thefaderoom'

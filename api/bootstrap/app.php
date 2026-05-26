@@ -17,9 +17,18 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Pure token-based API — no cookie/session auth needed.
-        // statefulApi() would add Sanctum's CSRF middleware which blocks
-        // unauthenticated POSTs from non-SPA clients.
+        // Token-based API. statefulApi() would add Sanctum's CSRF
+        // middleware which blocks unauthenticated POSTs from non-SPA
+        // clients (the public booking endpoint, webhooks, etc.).
+        //
+        // Phase S6 — AuthFromCookie promotes the httpOnly bookready_token
+        // cookie into an Authorization header BEFORE the auth:sanctum
+        // guard runs. This is the cookie path; legacy Bearer-in-header
+        // requests still work unchanged because the middleware short-
+        // circuits when Authorization is already present.
+        $middleware->api(prepend: [
+            \App\Http\Middleware\AuthFromCookie::class,
+        ]);
 
         $middleware->alias([
             'tenancy' => \App\Http\Middleware\InitializeTenancyBySubdomain::class,

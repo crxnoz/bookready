@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Auth;
 use App\Http\Controllers\Controller;
 use App\Services\PlatformMailer;
 use App\Services\TenantProvisioningService;
+use App\Support\AuthCookie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -36,15 +37,19 @@ class RegisterController extends Controller
             businessName: $data['business_name'],
         );
 
-        return response()->json([
-            'token'     => $token,
-            'tenant_id' => $tenant->id,
-            'domain'    => $tenant->domains()->first()?->domain,
-            'user'      => [
-                'id'    => $owner->id,
-                'name'  => $owner->name,
-                'email' => $owner->email,
-            ],
-        ], 201);
+        // Phase S6 — same cookie-attach as login(). Body still carries the
+        // token for backward compatibility.
+        return response()
+            ->json([
+                'token'     => $token,
+                'tenant_id' => $tenant->id,
+                'domain'    => $tenant->domains()->first()?->domain,
+                'user'      => [
+                    'id'    => $owner->id,
+                    'name'  => $owner->name,
+                    'email' => $owner->email,
+                ],
+            ], 201)
+            ->withCookie(AuthCookie::make($token));
     }
 }
