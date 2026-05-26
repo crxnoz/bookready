@@ -144,10 +144,10 @@ export const EDITOR_SECTIONS: EditorSectionConfig[] = [
     innerNav: [
       { id: 'overview',      label: 'Overview' },
       { id: 'business',      label: 'Business' },
+      { id: 'preferences',   label: 'Preferences' },
       { id: 'booking',       label: 'Booking' },
       { id: 'payments',      label: 'Payments' },
       { id: 'notifications', label: 'Notifications' },
-      { id: 'policies',      label: 'Policies' },
       { id: 'account',       label: 'Account' },
       { id: 'integrations',  label: 'Integrations' },
       { id: 'danger',        label: 'Danger Zone' },
