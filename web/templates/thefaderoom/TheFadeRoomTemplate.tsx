@@ -88,6 +88,12 @@ function fmt12(t: string) {
 
 // User-entered URL overrides may be raw phone numbers or email addresses
 // without a scheme. Coerce them so the resulting <a href> actually works.
+//
+// Phase S5+ — the result is then ALWAYS funneled through safeHref(), which
+// enforces the http/https/mailto/tel/sms allowlist. A tenant who pastes
+// `javascript:alert(1)` into the call URL will hit the allowlist and the
+// href is dropped, even though ensureScheme would otherwise let it through
+// because it matches the generic SCHEME_RE.
 const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i
 function ensureScheme(raw: string | null | undefined, fallback: 'tel' | 'mailto' | 'sms'): string | null {
   if (!raw) return null
@@ -99,6 +105,13 @@ function ensureScheme(raw: string | null | undefined, fallback: 'tel' | 'mailto'
   if (fallback === 'tel') return `tel:${v.replace(/[^\d+]/g, '')}`
   if (fallback === 'sms') return `sms:${v.replace(/[^\d+]/g, '')}`
   return v
+}
+
+// Compose ensureScheme + safeHref so the editor's "type a bare phone /
+// email" convenience still works AND tenant-controlled URL fields can't
+// inject javascript:/data:/vbscript: schemes at click time.
+function safeContactHref(raw: string | null | undefined, fallback: 'tel' | 'mailto' | 'sms'): string | null {
+  return safeHref(ensureScheme(raw, fallback)) ?? null
 }
 
 // ── Profile shape ─────────────────────────────────────────────────────────────
@@ -319,7 +332,9 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 )
               })()}
               {header.show_call_button && (() => {
-                const override = ensureScheme(header.call_button_url, 'tel')
+                // Phase S5+ — safeContactHref strips javascript:/data:/etc.
+                // after ensureScheme normalizes bare phone numbers.
+                const override = safeContactHref(header.call_button_url, 'tel')
                 const href = override ?? (p?.public_phone ? `tel:${p.public_phone.replace(/[^\d+]/g, '')}` : null)
                 return (
                   <a className="tfr-header-btn tfr-header-btn-call tfr-header-btn-mobile-only" href={href ?? '#'} aria-disabled={!href || undefined}>
@@ -328,7 +343,8 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 )
               })()}
               {header.show_email_button && (() => {
-                const override = ensureScheme(header.email_button_url, 'mailto')
+                // Phase S5+ — safeContactHref enforces the scheme allowlist.
+                const override = safeContactHref(header.email_button_url, 'mailto')
                 const href = override ?? (p?.public_email ? `mailto:${p.public_email}` : null)
                 return (
                   <a className="tfr-header-btn tfr-header-btn-chat tfr-header-btn-mobile-only" href={href ?? '#'} aria-disabled={!href || undefined}>
@@ -337,7 +353,10 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 )
               })()}
               {header.show_message_button && (() => {
-                const href = ensureScheme(header.message_button_url, 'sms')
+                // Phase S5+ — safeContactHref strips disallowed schemes. The
+                // isWeb check below still works because http/https survive
+                // the allowlist, while javascript:/data: are dropped.
+                const href = safeContactHref(header.message_button_url, 'sms')
                 const isWeb = !!href && /^https?:/i.test(href)
                 return (
                   <a className={`tfr-header-btn tfr-header-btn-message${isWeb ? '' : ' tfr-header-btn-mobile-only'}`} href={href ?? '#'} target={isWeb ? '_blank' : undefined} rel={isWeb ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>

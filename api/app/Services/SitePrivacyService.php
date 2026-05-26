@@ -65,9 +65,20 @@ class SitePrivacyService
             ];
         }
 
-        // Unknown visibility value — fail open to public to avoid breaking
-        // tenants that somehow got into a bad state. Log? (TODO)
-        return null;
+        // Phase S5+ — unknown visibility values fail CLOSED. The previous
+        // behavior was to fall through to public ("don't break weird
+        // tenants"), but in a security gate the safe default is to refuse
+        // access and surface the misconfiguration. Log it so an admin can
+        // notice and reset the column.
+        Log::channel('security')->warning('site.visibility.unknown_value', [
+            'slug'       => $slug,
+            'visibility' => is_scalar($visibility) ? (string) $visibility : '(non-scalar)',
+        ]);
+        return [
+            'status'        => 'locked',
+            'business_name' => $businessName,
+            'has_password'  => false,
+        ];
     }
 
     /**

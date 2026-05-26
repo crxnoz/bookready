@@ -271,6 +271,14 @@ class PublicSiteController extends Controller
         $profileArr  = $profile  ? (array) $profile->toArray()  : null;
         $policiesArr = $policies ? (array) $policies->toArray() : null;
 
+        // Phase S5+ — belt-and-suspenders strip of the unlock-password hash.
+        // BusinessProfile::$hidden already removes it, but if the model file
+        // is ever edited to drop $hidden, this controller-level guard keeps
+        // the public payload safe.
+        if (is_array($profileArr)) {
+            unset($profileArr['site_password_hash']);
+        }
+
         // Normalize custom_groups to always be an array on the public payload.
         // The model casts null → null (not []), so older policy rows would
         // come through with custom_groups: null. The template renders cleaner

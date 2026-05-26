@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
+use App\Services\SitePrivacyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -58,10 +59,27 @@ class PublicBookingAnswerUploadController extends Controller
             return response()->json(['message' => 'Site not found'], 404);
         }
 
-        // Phase S3 — refuse uploads when the tenant hasn't configured an
-        // active image-type booking_question. A random tenant slug should
-        // never be a usable R2 dump target.
-        if (! $this->hasActiveImageQuestion($tenant)) {
+        // Phase S5+ — visibility gate. A coming-soon or private site (Phase
+        // S1) must not be a usable R2 dump target via this endpoint either.
+        // The unlock token is accepted via the X-Site-Unlock header so the
+        // anonymous form on the public site can pass it without putting the
+        // token in the request body schema.
+        //
+        // The privacy check + active-question check both need tenancy
+        // initialized, so fold them into a single init/end cycle.
+        $unlockToken = $request->header('X-Site-Unlock') ?: $request->query('unlock');
+        $privacy     = $this->checkVisibilityAndActiveQuestion($tenant, is_string($unlockToken) ? $unlockToken : null);
+
+        if ($privacy === 'locked') {
+            Log::channel('security')->info('upload.rejected.site_not_public', [
+                'tenant' => $tenant->getKey(),
+                'ip'     => $request->ip(),
+            ]);
+            return response()->json([
+                'message' => 'This site is not currently accepting uploads.',
+            ], 403);
+        }
+        if ($privacy === 'no_question') {
             Log::channel('security')->info('upload.rejected.no_image_question', [
                 'tenant' => $tenant->getKey(),
                 'ip'     => $request->ip(),
@@ -126,9 +144,17 @@ class PublicBookingAnswerUploadController extends Controller
 
         // Bump quotas AFTER the successful write so failed uploads don't
         // chip away at the daily cap.
+        //
+        // Phase S5+ — switch from Cache::get + Cache::put to Cache::add +
+        // Cache::increment so concurrent uploads don't lose count to a
+        // last-write-wins overwrite. Cache::add seeds the key with a TTL
+        // when it doesn't exist; increment is atomic on the
+        // database/redis/memcached drivers we support.
         $ttlSeconds = max(60, Carbon::now('UTC')->endOfDay()->diffInSeconds(Carbon::now('UTC')));
-        Cache::put($fileKey, $fileCount + 1, $ttlSeconds);
-        Cache::put($byteKey, $byteCount + strlen($encoded), $ttlSeconds);
+        Cache::add($fileKey, 0, $ttlSeconds);
+        Cache::add($byteKey, 0, $ttlSeconds);
+        Cache::increment($fileKey, 1);
+        Cache::increment($byteKey, strlen($encoded));
 
         $base = rtrim((string) config('filesystems.disks.r2.url'), '/');
         $url  = $base !== '' ? "{$base}/{$key}" : Storage::disk('r2')->url($key);
@@ -141,29 +167,40 @@ class PublicBookingAnswerUploadController extends Controller
     }
 
     /**
-     * True when the tenant currently has at least one active image-type
-     * booking_question. We initialize tenancy briefly, check, and exit so
-     * the rest of the upload pipeline runs in the central scope (R2 is
-     * tenant-agnostic).
+     * Combined privacy + active-question gate. Initializes tenancy ONCE so
+     * we don't pay two connection-pool churns per upload. Returns one of:
+     *   'ok'           → site is public (or unlocked) AND has an active image q
+     *   'locked'       → site is coming-soon / private and the unlock token
+     *                    isn't valid; do NOT accept the upload
+     *   'no_question'  → site is accessible but has no image-type question
+     *                    configured, so anonymous uploads have no purpose
      */
-    private function hasActiveImageQuestion(Tenant $tenant): bool
+    private function checkVisibilityAndActiveQuestion(Tenant $tenant, ?string $unlockToken): string
     {
         try {
             tenancy()->initialize($tenant);
+
+            // SitePrivacyService::check returns null when accessible.
+            $block = SitePrivacyService::check((string) $tenant->getKey(), $unlockToken);
+            if ($block !== null) {
+                tenancy()->end();
+                return 'locked';
+            }
+
             if (! Schema::hasTable('booking_questions')) {
                 tenancy()->end();
-                return false;
+                return 'no_question';
             }
             $exists = DB::table('booking_questions')
                 ->where('is_active', true)
                 ->where('type', 'image')
                 ->exists();
             tenancy()->end();
-            return $exists;
+            return $exists ? 'ok' : 'no_question';
         } catch (\Throwable $e) {
             try { tenancy()->end(); } catch (\Throwable) {}
             // Fail closed — don't accept uploads when we can't verify.
-            return false;
+            return 'locked';
         }
     }
 }

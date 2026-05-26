@@ -35,4 +35,15 @@ class BusinessProfile extends Model
         'week_start_day'  => 'integer',
         'default_appointment_duration_minutes' => 'integer',
     ];
+
+    /**
+     * Phase S5+ — never surface the site-unlock password hash through any
+     * serialization path (toArray, toJson, API responses). The public site
+     * lookup also strips it defensively in the controller, but hiding it
+     * on the model is the catch-all: any future caller that forgets to
+     * project columns still won't leak the hash.
+     */
+    protected $hidden = [
+        'site_password_hash',
+    ];
 }

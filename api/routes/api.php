@@ -77,13 +77,23 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:8,1');
 
     // ── Public manage-booking (token-gated) ──────────────────────────────
-    Route::get ('public/sites/{slug}/manage/{token}',             [PublicManageBookingController::class, 'show']);
-    Route::post('public/sites/{slug}/manage/{token}/cancel',      [PublicManageBookingController::class, 'cancel']);
-    Route::post('public/sites/{slug}/manage/{token}/reschedule',  [PublicManageBookingController::class, 'reschedule']);
+    // Phase S5+ — throttled even though the URL token already gates access.
+    // Without a throttle, a leaked token could be hammered indefinitely
+    // (e.g. inside a reschedule loop probing for available slots). 30/min
+    // is loose enough for legitimate retries on flaky networks.
+    Route::get ('public/sites/{slug}/manage/{token}',             [PublicManageBookingController::class, 'show'])
+        ->middleware('throttle:30,1');
+    Route::post('public/sites/{slug}/manage/{token}/cancel',      [PublicManageBookingController::class, 'cancel'])
+        ->middleware('throttle:10,1');
+    Route::post('public/sites/{slug}/manage/{token}/reschedule',  [PublicManageBookingController::class, 'reschedule'])
+        ->middleware('throttle:10,1');
 
     // ── Public tip flow (token-gated) ────────────────────────────────────
-    Route::get ('public/sites/{slug}/tip/{token}',                [\App\Http\Controllers\Api\PublicTipController::class, 'show']);
-    Route::post('public/sites/{slug}/tip/{token}',                [\App\Http\Controllers\Api\PublicTipController::class, 'create']);
+    // Phase S5+ — same reasoning as manage routes above.
+    Route::get ('public/sites/{slug}/tip/{token}',                [\App\Http\Controllers\Api\PublicTipController::class, 'show'])
+        ->middleware('throttle:30,1');
+    Route::post('public/sites/{slug}/tip/{token}',                [\App\Http\Controllers\Api\PublicTipController::class, 'create'])
+        ->middleware('throttle:10,1');
 
     // ── Authentication (central) ───────────────────────────────────────────
     Route::prefix('auth')->group(function () {
@@ -113,8 +123,11 @@ Route::prefix('v1')->group(function () {
     });
 
     // ── Billing / subscription management ─────────────────────────────────
+    // Note: `plans` was previously wired here but BillingController::plans
+    // was never implemented (every request 500'd with a method-not-found).
+    // No frontend code calls it, so the route is removed rather than left
+    // as a noisy honeypot. Re-add it when there's an actual implementation.
     Route::middleware('auth:sanctum')->prefix('billing')->group(function () {
-        Route::get('plans',                              [BillingController::class, 'plans']);
         Route::post('checkout',                          [BillingController::class, 'checkout']);
         Route::get('checkout-session/{sessionId}',       [BillingController::class, 'checkoutSession']);
         Route::get('portal',                             [BillingController::class, 'portal']);
