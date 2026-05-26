@@ -128,13 +128,12 @@ export default function TheFadeRoomBooking({
   const selectedService = services.find(s => s.id === serviceId) ?? null
 
   // ── Category derivations ────────────────────────────────────────────────
-  // We only show the picker for categories that:
-  //   (a) are flagged active by the owner, AND
-  //   (b) have at least one service that would appear in the booking flow.
-  // Categories with zero bookable services would be dead-end tiles, so
-  // they're filtered out — same idea as how empty groups never render
-  // on the Gallery tab.
-  const activeCategories = serviceCategories.filter(c => c.is_active)
+  // We only show the picker for categories that have at least one service
+  // assigned. The public payload already filters out inactive ones server-
+  // side (and drops `is_active` from the shape), so any category that
+  // reaches us here is fair game — we just need it to actually contain
+  // services so we don't render dead-end tiles.
+  const activeCategories = serviceCategories.filter(c => c.is_active !== false)
   const hasUncategorized = services.some(
     s => s.category_id == null || ! activeCategories.some(c => c.id === s.category_id),
   )
