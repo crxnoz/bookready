@@ -475,16 +475,15 @@ class CustomersController extends Controller
      *   (a) 2+ no_show among the last 5 attendable visits
      *   (b) ≥30% no_show ratio across ≥3 attendable visits
      *
-     * "Attendable" excludes cancelled and future appointments — the
-     * caller already passed in the non-cancelled set; we further trim
-     * to dates on/before today since a pending future booking isn't a
-     * signal yet.
+     * "Attendable" = completed or no_show. We DON'T filter by date here
+     * — `no_show` is an explicit owner-set status, so its presence
+     * already means the visit was missed regardless of stored date
+     * (otherwise an owner who set a future row to no_show during data
+     * cleanup or testing would never trip the flag).
      */
     private function computeNoShowRisk(Collection $appts): bool
     {
-        $today = now()->toDateString();
-        $past  = $appts
-            ->filter(fn ($a) => $a->appointment_date <= $today)
+        $past = $appts
             ->filter(fn ($a) => in_array($a->status, ['completed', 'no_show'], true))
             ->sortByDesc(fn ($a) => $a->appointment_date . ' ' . $a->start_time)
             ->values();
