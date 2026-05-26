@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -78,9 +79,25 @@ class SitePrivacyService
         $profile = self::loadProfile();
         $hash    = $profile['site_password_hash'] ?? null;
 
-        if (! $hash) return null;
-        if (! Hash::check($password, $hash)) return null;
+        if (! $hash) {
+            // Phase S5 — log password attempt against a site that has no
+            // password set, so admins can tell a probe apart from a legit
+            // visitor on a misconfigured site.
+            Log::channel('security')->info('site.unlock.no_password_set', [
+                'slug' => $slug,
+            ]);
+            return null;
+        }
+        if (! Hash::check($password, $hash)) {
+            Log::channel('security')->warning('site.unlock.bad_password', [
+                'slug' => $slug,
+            ]);
+            return null;
+        }
 
+        Log::channel('security')->info('site.unlock.success', [
+            'slug' => $slug,
+        ]);
         return self::mintToken($slug);
     }
 

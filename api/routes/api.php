@@ -61,7 +61,11 @@ Route::prefix('v1')->group(function () {
     // ── Public tenant lookup, availability + booking (no auth) ──────────
     Route::get('public/sites/{slug}',                     [PublicSiteController::class,       'show']);
     Route::get('public/sites/{slug}/availability',        [PublicAvailabilityController::class, 'show']);
-    Route::post('public/sites/{slug}/appointments',       [PublicBookingController::class,     'store']);
+    // Phase S5 — booking POST throttled to 10/min per IP. Tight enough
+    // to deter scripted abuse, loose enough that a real client retrying
+    // a flaky network does not lock themselves out.
+    Route::post('public/sites/{slug}/appointments',       [PublicBookingController::class,     'store'])
+        ->middleware('throttle:10,1');
     // Phase S3 — public upload throttled to 5/min per IP. Combined with
     // the active-question + daily-cap gates in the controller this kills
     // anonymous R2 storage abuse.
@@ -83,21 +87,24 @@ Route::prefix('v1')->group(function () {
 
     // ── Authentication (central) ───────────────────────────────────────────
     Route::prefix('auth')->group(function () {
-        Route::post('register', [RegisterController::class, 'store']);
-        Route::post('login',    [AuthController::class, 'login']);
+        // Phase S5 — credential endpoints throttled to slow brute-force
+        // attacks. Login is tighter than register since attackers loop
+        // login attempts against known emails.
+        Route::post('register', [RegisterController::class, 'store'])->middleware('throttle:5,1');
+        Route::post('login',    [AuthController::class, 'login'])->middleware('throttle:10,1');
 
         // Google sign-in / sign-up.
-        Route::get ('google/redirect',         [GoogleAuthController::class, 'redirect']);
-        Route::get ('google/callback',         [GoogleAuthController::class, 'callback']);
-        Route::post('google/complete-signup',  [GoogleAuthController::class, 'completeSignup']);
+        Route::get ('google/redirect',         [GoogleAuthController::class, 'redirect'])->middleware('throttle:20,1');
+        Route::get ('google/callback',         [GoogleAuthController::class, 'callback'])->middleware('throttle:20,1');
+        Route::post('google/complete-signup',  [GoogleAuthController::class, 'completeSignup'])->middleware('throttle:10,1');
         // Phase S4 — exchange the short-lived ?code= for the real Sanctum
         // token. Throttled so a leaked code can't be brute-forced.
         Route::post('google/exchange',         [GoogleAuthController::class, 'exchange'])
             ->middleware('throttle:30,1');
 
         // Forgot / reset password.
-        Route::post('password/forgot', [PasswordResetController::class, 'forgot']);
-        Route::post('password/reset',  [PasswordResetController::class, 'reset']);
+        Route::post('password/forgot', [PasswordResetController::class, 'forgot'])->middleware('throttle:5,1');
+        Route::post('password/reset',  [PasswordResetController::class, 'reset'])->middleware('throttle:10,1');
 
         Route::middleware('auth:sanctum')->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);

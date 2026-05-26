@@ -62,6 +62,10 @@ class PublicBookingAnswerUploadController extends Controller
         // active image-type booking_question. A random tenant slug should
         // never be a usable R2 dump target.
         if (! $this->hasActiveImageQuestion($tenant)) {
+            Log::channel('security')->info('upload.rejected.no_image_question', [
+                'tenant' => $tenant->getKey(),
+                'ip'     => $request->ip(),
+            ]);
             return response()->json([
                 'message' => 'This site is not accepting image uploads.',
             ], 403);
@@ -76,10 +80,11 @@ class PublicBookingAnswerUploadController extends Controller
         $fileCount = (int) (Cache::get($fileKey) ?? 0);
         $byteCount = (int) (Cache::get($byteKey) ?? 0);
         if ($fileCount >= self::DAILY_FILE_CAP || $byteCount >= self::DAILY_BYTE_CAP) {
-            Log::warning('[BookReady] booking-answer upload quota hit', [
+            Log::channel('security')->warning('upload.quota.exceeded', [
                 'tenant'  => $tenant->getKey(),
                 'files'   => $fileCount,
                 'bytes'   => $byteCount,
+                'ip'      => $request->ip(),
             ]);
             return response()->json([
                 'message' => 'Daily upload limit reached. Try again tomorrow.',

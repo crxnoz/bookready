@@ -98,6 +98,11 @@ class GoogleAuthController extends Controller
         // expired. Without this, any OAuth callback URL crafted by an
         // attacker could mint a token for the visitor's browser.
         if ($envelope === [] || empty($envelope['nonce'])) {
+            Log::channel('security')->warning('oauth.state.invalid', [
+                'ip'         => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'state_len'  => strlen($stateRaw),
+            ]);
             return $this->errorBack($intent, 'Sign-in didn’t complete. Please start again.');
         }
 

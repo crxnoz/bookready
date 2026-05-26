@@ -32,6 +32,17 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Phase S5 — security event channel. Keeps auth/upload/access-gate
+        // events in a dedicated daily file so they're easy to grep when
+        // something looks off, and the noisy app log doesn't drown them.
+        'security' => [
+            'driver' => 'daily',
+            'path'   => storage_path('logs/security.log'),
+            'level'  => env('LOG_SECURITY_LEVEL', 'info'),
+            'days'   => env('LOG_SECURITY_DAYS', 60),
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver'   => 'slack',
             'url'      => env('LOG_SLACK_WEBHOOK_URL'),
