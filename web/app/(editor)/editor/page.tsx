@@ -1,240 +1,646 @@
 'use client'
 
+/**
+ * Dashboard — owner's first screen after login.
+ *
+ * Fetches everything live (no mock data). Sections:
+ *   1. Greeting + public site link
+ *   2. Announcements   — platform-wide news from the BookReady team
+ *   3. Today's appointments
+ *   4. Setup checklist — computed from real state, not hardcoded
+ *   5. Money snapshot  — collected this week + month, outstanding balance
+ *   6. Recent activity — latest bookings by created_at
+ */
+
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
-  Globe,
-  Scissors,
-  Clock,
-  FileText,
-  Calendar,
-  CheckCircle,
-  AlertCircle,
-  ChevronRight,
-  ExternalLink,
+  Calendar, Clock, ExternalLink, Loader2, ChevronRight, CheckCircle2, Circle,
+  Megaphone, DollarSign, Activity, Sparkles, AlertCircle, ArrowUpRight,
 } from 'lucide-react'
 import EditorShell from '@/components/editor/EditorShell'
+import { cn } from '@/lib/cn'
+import { getTenantId } from '@/lib/auth'
+import {
+  getCurrentUser,
+  getEditorBusiness,
+  getEditorServices,
+  getEditorHours,
+  getEditorPolicies,
+  getStripeConnectStatus,
+  getEditorAppointments,
+} from '@/lib/api'
+import type {
+  AuthUser, BusinessProfile, Service, HoursEntry, BusinessPolicy,
+  StripeConnectStatus, Appointment,
+} from '@/lib/types'
+
+// ── Announcements (platform-wide news) ──────────────────────────────────────
+// Edit this array to push news to every tenant's dashboard. Keep the most
+// recent first; the dashboard renders the top 2.
+const ANNOUNCEMENTS: {
+  id: string
+  date: string                       // ISO yyyy-mm-dd
+  title: string
+  body: string
+  cta?: { label: string; href: string }
+}[] = [
+  {
+    id: 'p16-booking-form',
+    date: '2026-05-26',
+    title: 'Custom booking-form questions are live',
+    body: 'Ask clients anything before they book — text, checkbox, dropdown, or image upload. Scope a question to specific services or show it on every booking.',
+    cta: { label: 'Open the form builder', href: '/editor/booking-form' },
+  },
+  {
+    id: 'p15-payments',
+    date: '2026-05-24',
+    title: 'Payments tab gets Transactions + Payouts',
+    body: 'Search receipts by number, filter transactions by status, and watch payouts flow from Stripe — all under Payments.',
+    cta: { label: 'Open Payments', href: '/editor/payments' },
+  },
+]
+
+// ── Root ────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const actions = (
-    <>
-      <Link
-        href="/editor/website?tab=business"
-        className="flex items-center gap-2 border border-[rgba(18,18,18,0.12)] bg-white px-3 py-2 text-xs font-semibold text-near-black hover:bg-cream transition-colors"
-      >
-        <Globe size={13} /> Edit Website
-      </Link>
-      <Link
-        href="/editor/bookings"
-        className="flex items-center gap-2 bg-near-black text-white px-3 py-2 text-xs font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors"
-      >
-        <Calendar size={13} /> Bookings
-      </Link>
-    </>
-  )
-
   return (
-    <EditorShell actions={actions}>
-      {/* Page content */}
-      <div className="flex-1 p-5 md:p-6 md:overflow-y-auto space-y-6">
-
-        {/* Stat cards — 3 across on desktop, 1 on mobile */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 border border-[rgba(18,18,18,0.10)] divide-y sm:divide-y-0 sm:divide-x divide-[rgba(18,18,18,0.10)]">
-          <StatCard
-            label="Site Status"
-            title="Live"
-            badge={{ label: 'Active', style: 'lavender' }}
-            rows={[
-              { label: 'Template', value: 'The Fade Room' },
-              { label: 'Subscription', value: 'Active' },
-            ]}
-            action={{ label: 'Edit Website', href: '/editor/website?tab=business' }}
-          />
-          <div className="bg-white p-5">
-            <p className={eyebrow}>Setup Checklist</p>
-            <h3 className="text-base font-bold text-near-black tracking-tight mt-1.5 mb-3">Finish your launch</h3>
-            <ul className="space-y-2">
-              {[
-                { label: 'Business profile', done: true },
-                { label: 'Services added', done: true },
-                { label: 'Hours', done: false },
-                { label: 'Policies', done: false },
-                { label: 'Booking setup', soon: true },
-              ].map(item => (
-                <li key={item.label} className="flex items-center justify-between border border-[rgba(18,18,18,0.08)] px-3 py-2 text-xs">
-                  <span className="font-medium text-near-black">{item.label}</span>
-                  {item.soon ? (
-                    <span className="text-[9px] font-bold tracking-[0.06em] uppercase bg-lavender px-1.5 py-0.5">Coming soon</span>
-                  ) : item.done ? (
-                    <CheckCircle size={13} className="text-green-600 flex-shrink-0" />
-                  ) : (
-                    <AlertCircle size={13} className="text-[rgba(18,18,18,0.35)] flex-shrink-0" />
-                  )}
-                </li>
-              ))}
-            </ul>
-            <Link href="/editor/hours" className="mt-3 block bg-near-black text-white text-[10px] font-bold tracking-[0.12em] uppercase text-center py-2.5 hover:bg-[#2a2a2a] transition-colors">
-              Continue Setup
-            </Link>
-          </div>
-          <StatCard
-            label="Quick Actions"
-            title="Jump in"
-            quickLinks={[
-              { label: 'Edit Business Info', href: '/editor/website?tab=business' },
-              { label: 'Add Service', href: '/editor/services' },
-              { label: 'Set Hours', href: '/editor/hours' },
-              { label: 'Add Policies', href: '/editor/website?tab=content' },
-            ]}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 border border-[rgba(18,18,18,0.10)] divide-y sm:divide-y-0 sm:divide-x divide-[rgba(18,18,18,0.10)]">
-          <div className="bg-white p-5 sm:col-span-2 lg:col-span-2">
-            <p className={eyebrow}>Booking Overview</p>
-            <h3 className="text-base font-bold text-near-black tracking-tight mt-1.5 mb-2">No appointments yet</h3>
-            <p className="text-xs text-muted-text mb-4">Booking tools are coming soon. Set up your hours and policies in the meantime.</p>
-            <div className="flex flex-wrap gap-2">
-              <Link href="/editor/bookings" className="flex items-center gap-2 border border-[rgba(18,18,18,0.12)] bg-white px-3 py-2 text-xs font-semibold text-near-black hover:bg-cream transition-colors">
-                <Calendar size={12} /> View Bookings
-              </Link>
-              <Link href="/editor/hours" className="flex items-center gap-2 bg-near-black text-white px-3 py-2 text-xs font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors">
-                Set Up Availability
-              </Link>
-            </div>
-          </div>
-          <StatCard
-            label="Payments / Plan"
-            title="Monthly · Active"
-            rows={[
-              { label: 'Next billing', value: 'Dec 12, 2026' },
-              { label: 'Card', value: '•••• 4242' },
-            ]}
-            action={{ label: 'Manage Plan', href: '#' }}
-          />
-        </div>
-
-        {/* Website hub */}
-        <div>
-          <h2 className="text-lg font-bold text-near-black tracking-tight mb-1">Website</h2>
-          <p className="text-xs text-muted-text mb-3">Sections clients see on your booking site.</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 border border-[rgba(18,18,18,0.10)] divide-x divide-[rgba(18,18,18,0.10)]">
-            {[
-              { label: 'Business Info', icon: Globe, status: 'Complete', href: '/editor/website?tab=business' },
-              { label: 'Services', icon: Scissors, status: '4 active', href: '/editor/services' },
-              { label: 'Hours', icon: Clock, status: 'Needs setup', href: '/editor/hours', warn: true },
-              { label: 'Policies', icon: FileText, status: 'Needs setup', href: '/editor/website?tab=content', warn: true },
-            ].map(({ label, icon: Icon, status, href, warn }) => (
-              <div key={label} className="bg-white p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon size={14} className="text-muted-text flex-shrink-0" />
-                  <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">{label}</p>
-                </div>
-                <p className={`text-sm font-semibold mb-3 ${warn ? 'text-[rgba(18,18,18,0.4)]' : 'text-near-black'}`}>
-                  {status}
-                </p>
-                <Link
-                  href={href}
-                  className="flex items-center gap-1 text-[10px] font-bold tracking-[0.10em] uppercase text-near-black hover:opacity-70 transition-opacity"
-                >
-                  Edit <ChevronRight size={10} />
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="bg-white border border-[rgba(18,18,18,0.10)] p-5">
-          <p className={eyebrow}>Recent Activity</p>
-          <h3 className="text-base font-bold text-near-black tracking-tight mt-1.5 mb-3">Latest changes</h3>
-          <ul className="space-y-2">
-            {[
-              { label: 'Site created', time: '3d ago' },
-              { label: 'Checkout completed', time: '3d ago' },
-              { label: 'Business profile updated', time: '2d ago' },
-              { label: 'Service added', time: '1d ago' },
-            ].map(item => (
-              <li key={item.label} className="flex items-center justify-between border border-[rgba(18,18,18,0.08)] px-3 py-2 text-xs">
-                <span className="font-medium text-near-black">{item.label}</span>
-                <span className="text-muted-text">{item.time}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-      </div>
+    <EditorShell>
+      <DashboardBody />
     </EditorShell>
   )
 }
 
-// ── Shared atoms ──────────────────────────────────────────
+function DashboardBody() {
+  const [user,     setUser]     = useState<AuthUser | null>(null)
+  const [business, setBusiness] = useState<BusinessProfile | null>(null)
+  const [services, setServices] = useState<Service[]>([])
+  const [hours,    setHours]    = useState<HoursEntry[]>([])
+  const [policies, setPolicies] = useState<BusinessPolicy | null>(null)
+  const [stripe,   setStripe]   = useState<StripeConnectStatus | null>(null)
+  const [appts,    setAppts]    = useState<Appointment[]>([])
+  const [loading,  setLoading]  = useState(true)
+  const [loadErr,  setLoadErr]  = useState<string | null>(null)
 
-const eyebrow = 'text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text'
+  useEffect(() => {
+    let cancelled = false
+    Promise.all([
+      getCurrentUser().catch(() => null),
+      getEditorBusiness().catch(() => null),
+      getEditorServices().catch(() => []),
+      getEditorHours().catch(() => []),
+      getEditorPolicies().catch(() => null),
+      getStripeConnectStatus().then(r => r.stripe_connect_status).catch(() => null),
+      // Pull a generous window so we can compute today / week / month buckets
+      // without paginating.
+      getEditorAppointments({ limit: 200 }).catch(() => [] as Appointment[]),
+    ])
+      .then(([u, b, sv, hr, pol, st, ap]) => {
+        if (cancelled) return
+        setUser(u as AuthUser | null)
+        setBusiness(b as BusinessProfile | null)
+        setServices(sv as Service[])
+        setHours(hr as HoursEntry[])
+        setPolicies(pol as BusinessPolicy | null)
+        setStripe(st as StripeConnectStatus | null)
+        setAppts(Array.isArray(ap) ? (ap as Appointment[]) : [])
+      })
+      .catch(e => { if (! cancelled) setLoadErr(e instanceof Error ? e.message : 'Failed to load') })
+      .finally(() => { if (! cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
 
-interface BadgeProps { label: string; style: 'lavender' | 'blush' | 'dark' }
+  const slug = getTenantId() ?? user?.tenant_id ?? null
 
-function Badge({ label, style }: BadgeProps) {
-  const cls = {
-    lavender: 'bg-lavender text-near-black border-transparent',
-    blush: 'bg-blush text-near-black border-transparent',
-    dark: 'bg-near-black text-white border-near-black',
-  }[style]
+  // ── Derivations ──────────────────────────────────────────────────────────
+
+  const todayStr = useMemo(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  }, [])
+
+  const todaysAppointments = useMemo(() =>
+    appts
+      .filter(a => a.appointment_date === todayStr && a.status !== 'cancelled')
+      .sort((a, b) => a.start_time.localeCompare(b.start_time)),
+    [appts, todayStr],
+  )
+
+  const moneyBuckets = useMemo(() => computeMoney(appts), [appts])
+  const recentBookings = useMemo(() =>
+    [...appts]
+      .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+      .slice(0, 6),
+    [appts],
+  )
+
+  const setupItems = useMemo(() => computeSetup({
+    business, services, hours, policies, stripe,
+  }), [business, services, hours, policies, stripe])
+  const setupDoneCount = setupItems.filter(s => s.done).length
+  const setupPct = setupItems.length === 0 ? 0
+    : Math.round((setupDoneCount / setupItems.length) * 100)
+
+  const greeting = useMemo(() => greetingForHour(new Date().getHours()), [])
+  const ownerFirstName = (user?.name ?? '').split(' ')[0] || ''
+  const businessName = business?.business_name ?? 'your business'
+  const publicUrl = slug ? `https://${slug}.bkrdy.me` : null
+
+  // ── Render ───────────────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="w-full p-3 sm:p-5 md:p-6">
+        <div className="flex items-center gap-2 text-xs text-muted-text px-1 py-8">
+          <Loader2 size={14} className="animate-spin" /> Loading your dashboard…
+        </div>
+      </div>
+    )
+  }
+
+  if (loadErr) {
+    return (
+      <div className="w-full p-3 sm:p-5 md:p-6">
+        <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-[#b42828] flex items-center gap-2">
+          <AlertCircle size={14} /> {loadErr}
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <span className={`text-[9px] font-bold tracking-[0.06em] uppercase border px-1.5 py-0.5 ${cls}`}>
-      {label}
-    </span>
+    <div className="w-full p-3 sm:p-5 md:p-6 space-y-5">
+      {/* ── 1. Greeting / hero ── */}
+      <header className="px-1">
+        <h1 className="text-lg sm:text-xl font-bold text-near-black tracking-tight">
+          {greeting}{ownerFirstName ? `, ${ownerFirstName}` : ''}.
+        </h1>
+        <p className="text-xs sm:text-[13px] text-muted-text mt-1">
+          Here&apos;s what&apos;s happening at <span className="font-semibold text-near-black">{businessName}</span> today.
+          {publicUrl && (
+            <>
+              {' '}
+              <a
+                href={publicUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-near-black"
+              >
+                View site <ExternalLink size={11} />
+              </a>
+            </>
+          )}
+        </p>
+      </header>
+
+      {/* ── 2. Announcements ── */}
+      <AnnouncementsBlock />
+
+      {/* ── 3. Today's appointments ── */}
+      <section>
+        <SectionHeader
+          icon={Calendar}
+          label="Today's appointments"
+          subtitle={todaysAppointments.length === 0
+            ? 'Nothing on the books for today.'
+            : `${todaysAppointments.length} appointment${todaysAppointments.length === 1 ? '' : 's'} scheduled.`}
+          cta={{ label: 'See all', href: '/editor/appointments' }}
+        />
+        {todaysAppointments.length === 0 ? (
+          <EmptyTile
+            body="When someone books for today, they'll show up here."
+            actionLabel="View calendar"
+            actionHref="/editor/appointments"
+          />
+        ) : (
+          <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
+            {todaysAppointments.slice(0, 6).map(a => (
+              <TodayApptRow key={a.id} a={a} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ── 4. Setup checklist + 5. Money snapshot — side by side ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <SetupChecklist
+          items={setupItems}
+          doneCount={setupDoneCount}
+          pct={setupPct}
+        />
+        <MoneySnapshot buckets={moneyBuckets} />
+      </div>
+
+      {/* ── 6. Recent activity ── */}
+      <section>
+        <SectionHeader
+          icon={Activity}
+          label="Recent activity"
+          subtitle={recentBookings.length === 0 ? 'No bookings yet.' : 'Latest bookings across your inbox.'}
+          cta={{ label: 'Open bookings', href: '/editor/appointments' }}
+        />
+        {recentBookings.length === 0 ? (
+          <EmptyTile body="Once bookings start coming in, you'll see the latest ones here." />
+        ) : (
+          <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
+            {recentBookings.map(a => (
+              <ActivityRow key={a.id} a={a} />
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
   )
 }
 
-interface StatCardProps {
-  label: string
-  title: string
-  badge?: BadgeProps
-  rows?: { label: string; value: string }[]
-  action?: { label: string; href: string }
-  quickLinks?: { label: string; href: string }[]
-}
+// ── Sub-components ──────────────────────────────────────────────────────────
 
-function StatCard({ label, title, badge, rows, action, quickLinks }: StatCardProps) {
+function SectionHeader({
+  icon: Icon, label, subtitle, cta,
+}: {
+  icon: React.ElementType
+  label: string
+  subtitle?: string
+  cta?: { label: string; href: string }
+}) {
   return (
-    <div className="bg-white p-5">
-      <div className="flex items-center justify-between gap-2 mb-1.5">
-        <p className={eyebrow}>{label}</p>
-        {badge && <Badge {...badge} />}
+    <div className="flex items-end justify-between gap-3 mb-2.5 px-1">
+      <div className="min-w-0">
+        <p className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+          <Icon size={11} strokeWidth={1.8} /> {label}
+        </p>
+        {subtitle && <p className="text-[13px] text-near-black mt-0.5">{subtitle}</p>}
       </div>
-      <h3 className="text-base font-bold text-near-black tracking-tight mb-3">{title}</h3>
-      {rows && (
-        <ul className="space-y-1.5 mb-4">
-          {rows.map(r => (
-            <li key={r.label} className="flex items-center justify-between border border-[rgba(18,18,18,0.08)] px-3 py-2 text-xs">
-              <span className="text-muted-text">{r.label}</span>
-              <span className="font-semibold text-near-black">{r.value}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      {quickLinks && (
-        <ul className="space-y-1.5 mb-4">
-          {quickLinks.map(ql => (
-            <li key={ql.label}>
-              <Link
-                href={ql.href}
-                className="flex items-center justify-between border border-[rgba(18,18,18,0.08)] px-3 py-2 text-xs font-medium text-near-black hover:bg-cream transition-colors"
-              >
-                {ql.label} <ChevronRight size={11} className="text-muted-text" />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-      {action && (
+      {cta && (
         <Link
-          href={action.href}
-          className="flex items-center gap-1.5 bg-near-black text-white text-[10px] font-bold tracking-[0.12em] uppercase text-center py-2.5 px-4 hover:bg-[#2a2a2a] transition-colors justify-center"
+          href={cta.href}
+          className="text-[11px] font-semibold tracking-[0.04em] text-near-black hover:underline whitespace-nowrap flex items-center gap-1"
         >
-          {action.label} <ExternalLink size={10} />
+          {cta.label} <ChevronRight size={12} />
         </Link>
       )}
     </div>
   )
+}
+
+function EmptyTile({ body, actionLabel, actionHref }: { body: string; actionLabel?: string; actionHref?: string }) {
+  return (
+    <div className="bg-white border border-[rgba(18,18,18,0.10)] px-5 py-7 text-center">
+      <p className="text-[12px] text-muted-text">{body}</p>
+      {actionLabel && actionHref && (
+        <Link
+          href={actionHref}
+          className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-1.5 hover:border-near-black"
+        >
+          {actionLabel}
+        </Link>
+      )}
+    </div>
+  )
+}
+
+function TodayApptRow({ a }: { a: Appointment }) {
+  return (
+    <Link
+      href={`/editor/appointments?focus=${a.id}`}
+      className="flex items-center gap-3 px-3.5 py-2.5 hover:bg-cream/60 transition-colors"
+    >
+      <div className="w-12 text-right flex-shrink-0">
+        <p className="text-[13px] font-bold text-near-black tabular-nums">{fmt12(a.start_time)}</p>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] font-semibold text-near-black truncate">{a.customer_name}</p>
+        <p className="text-[11px] text-muted-text truncate">{a.service_name}</p>
+      </div>
+      <StatusPill status={a.status} />
+      <ChevronRight size={13} className="text-muted-text flex-shrink-0" />
+    </Link>
+  )
+}
+
+function ActivityRow({ a }: { a: Appointment }) {
+  const when = relativeTime(a.created_at)
+  return (
+    <Link
+      href={`/editor/appointments?focus=${a.id}`}
+      className="flex items-center gap-3 px-3.5 py-2.5 hover:bg-cream/60 transition-colors"
+    >
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] text-near-black truncate">
+          <span className="font-semibold">{a.customer_name}</span>
+          <span className="text-muted-text"> booked </span>
+          <span className="font-semibold">{a.service_name}</span>
+        </p>
+        <p className="text-[11px] text-muted-text">{fmtDate(a.appointment_date)} at {fmt12(a.start_time)} · {when}</p>
+      </div>
+      <StatusPill status={a.status} />
+      <ChevronRight size={13} className="text-muted-text flex-shrink-0" />
+    </Link>
+  )
+}
+
+function StatusPill({ status }: { status: string }) {
+  const cls = {
+    confirmed: 'bg-[rgba(20,140,80,0.08)] border-[rgba(20,140,80,0.35)] text-[#0f6f3d]',
+    pending:   'bg-cream border-[rgba(180,120,0,0.30)] text-[#8a5a00]',
+    completed: 'bg-near-black border-near-black text-white',
+    cancelled: 'bg-white border-[rgba(180,40,40,0.30)] text-[#b42828]',
+    no_show:   'bg-white border-[rgba(180,40,40,0.30)] text-[#b42828]',
+  }[status] ?? 'bg-cream border-[rgba(18,18,18,0.15)] text-muted-text'
+  return (
+    <span className={cn(
+      'text-[9px] font-bold tracking-[0.06em] uppercase border px-1.5 py-0.5 whitespace-nowrap flex-shrink-0',
+      cls,
+    )}>
+      {status.replace('_', ' ')}
+    </span>
+  )
+}
+
+function AnnouncementsBlock() {
+  const shown = ANNOUNCEMENTS.slice(0, 2)
+  if (shown.length === 0) return null
+  return (
+    <section>
+      <SectionHeader
+        icon={Megaphone}
+        label="Announcements"
+        subtitle="What's new from the BookReady team."
+      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {shown.map(a => (
+          <article
+            key={a.id}
+            className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 flex flex-col"
+          >
+            <div className="flex items-start gap-2 mb-1.5">
+              <Sparkles size={13} className="text-near-black mt-0.5 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-bold text-near-black leading-tight">{a.title}</p>
+                <p className="text-[10px] text-muted-text mt-0.5">{fmtDate(a.date)}</p>
+              </div>
+            </div>
+            <p className="text-[12px] text-near-black/80 leading-snug">{a.body}</p>
+            {a.cta && (
+              <Link
+                href={a.cta.href}
+                className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-near-black hover:underline self-start"
+              >
+                {a.cta.label} <ArrowUpRight size={11} />
+              </Link>
+            )}
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function SetupChecklist({
+  items, doneCount, pct,
+}: {
+  items: SetupItem[]
+  doneCount: number
+  pct: number
+}) {
+  return (
+    <section>
+      <SectionHeader
+        icon={CheckCircle2}
+        label="Setup checklist"
+        subtitle={pct === 100
+          ? 'All set — your site is fully configured.'
+          : `${doneCount} of ${items.length} complete (${pct}%).`}
+      />
+      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5">
+        {/* progress bar */}
+        <div className="h-1.5 bg-cream rounded-full overflow-hidden mb-3">
+          <div
+            className={cn('h-full transition-all duration-500',
+              pct === 100 ? 'bg-[#0f6f3d]' : 'bg-near-black')}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <ul className="divide-y divide-[rgba(18,18,18,0.06)]">
+          {items.map(it => (
+            <li key={it.label}>
+              <Link
+                href={it.href}
+                className="flex items-center gap-2.5 py-2 hover:bg-cream/60 -mx-1 px-1 transition-colors"
+              >
+                {it.done
+                  ? <CheckCircle2 size={14} className="text-[#0f6f3d] flex-shrink-0" />
+                  : <Circle size={14} className="text-[rgba(18,18,18,0.25)] flex-shrink-0" />}
+                <span className={cn('text-[12px] flex-1', it.done ? 'text-near-black' : 'font-semibold text-near-black')}>
+                  {it.label}
+                </span>
+                {it.detail && <span className="text-[11px] text-muted-text">{it.detail}</span>}
+                <ChevronRight size={12} className="text-muted-text flex-shrink-0" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  )
+}
+
+function MoneySnapshot({ buckets }: { buckets: MoneyBuckets }) {
+  return (
+    <section>
+      <SectionHeader
+        icon={DollarSign}
+        label="Money snapshot"
+        subtitle={`${money(buckets.weekCollected, buckets.currency)} collected this week.`}
+        cta={{ label: 'Open Payments', href: '/editor/payments' }}
+      />
+      <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
+        <MoneyRow label="This week"        value={money(buckets.weekCollected,    buckets.currency)} />
+        <MoneyRow label="This month"       value={money(buckets.monthCollected,   buckets.currency)} />
+        <MoneyRow label="Outstanding balance"
+                  value={money(buckets.outstanding,      buckets.currency)}
+                  muted={buckets.outstanding === 0}
+                  hint={buckets.outstanding > 0 ? 'Owed at appointments' : undefined} />
+        <MoneyRow label="Deposits pending" value={String(buckets.pendingDepositCount)} suffix="appts" muted={buckets.pendingDepositCount === 0} />
+      </div>
+    </section>
+  )
+}
+
+function MoneyRow({
+  label, value, suffix, hint, muted,
+}: {
+  label: string
+  value: string
+  suffix?: string
+  hint?: string
+  muted?: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
+      <div className="min-w-0">
+        <p className="text-[11px] text-muted-text">{label}</p>
+        {hint && <p className="text-[10px] text-muted-text/80 mt-0.5">{hint}</p>}
+      </div>
+      <p className={cn(
+        'text-[14px] font-bold tabular-nums whitespace-nowrap',
+        muted ? 'text-muted-text' : 'text-near-black',
+      )}>
+        {value}{suffix && <span className="text-[10px] text-muted-text font-normal ml-1">{suffix}</span>}
+      </p>
+    </div>
+  )
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+interface SetupItem { label: string; done: boolean; href: string; detail?: string }
+
+function computeSetup({
+  business, services, hours, policies, stripe,
+}: {
+  business: BusinessProfile | null
+  services: Service[]
+  hours:    HoursEntry[]
+  policies: BusinessPolicy | null
+  stripe:   StripeConnectStatus | null
+}): SetupItem[] {
+  const businessDone = !! (business?.business_name && business?.public_email)
+  const servicesDone = services.length > 0
+  // Any open day with an open + close time counts as configured.
+  const hoursDone    = hours.some(h => h.is_open && !! h.open_time && !! h.close_time)
+  const policiesDone = !! policies && (
+    !! policies.cancellation_policy
+    || !! policies.no_show_policy
+    || !! policies.deposit_policy
+  )
+  const stripeDone = stripe === 'active'
+
+  return [
+    {
+      label:  'Business profile',
+      done:   businessDone,
+      href:   '/editor/settings?tab=business',
+      detail: businessDone ? 'Set' : 'Name + email required',
+    },
+    {
+      label:  'Services added',
+      done:   servicesDone,
+      href:   '/editor/services',
+      detail: servicesDone ? `${services.length}` : 'Add at least one',
+    },
+    {
+      label:  'Business hours',
+      done:   hoursDone,
+      href:   '/editor/availability',
+      detail: hoursDone ? 'Set' : 'Choose your open days',
+    },
+    {
+      label:  'Booking policies',
+      done:   policiesDone,
+      href:   '/editor/website?tab=content',
+      detail: policiesDone ? 'Set' : 'Add cancellation + no-show',
+    },
+    {
+      label:  'Stripe payments',
+      done:   stripeDone,
+      href:   '/editor/settings?tab=payments',
+      detail: stripeDone ? 'Connected' : 'Connect to accept deposits',
+    },
+  ]
+}
+
+interface MoneyBuckets {
+  weekCollected:        number
+  monthCollected:       number
+  outstanding:          number
+  pendingDepositCount:  number
+  currency:             string
+}
+
+function computeMoney(appts: Appointment[]): MoneyBuckets {
+  const now = new Date()
+  // Start of week = Sunday
+  const dow = now.getDay()
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow)
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+
+  let weekCollected = 0
+  let monthCollected = 0
+  let outstanding = 0
+  let pendingDepositCount = 0
+  let currency = 'USD'
+
+  for (const a of appts) {
+    if (a.currency) currency = a.currency
+
+    // Collected: deposit_paid_amount + balance_paid_amount. Both nullable.
+    const collected = (a.deposit_paid_amount ?? 0) + (a.balance_paid_amount ?? 0)
+    if (collected > 0 && a.created_at) {
+      const ts = new Date(a.created_at)
+      if (ts >= monthStart) monthCollected += collected
+      if (ts >= weekStart)  weekCollected  += collected
+    }
+
+    if ((a.payment_status === 'deposit_paid' || a.payment_status === 'paid')
+        && a.status !== 'cancelled'
+        && typeof a.amount_due === 'number' && a.amount_due > 0) {
+      outstanding += a.amount_due
+    }
+
+    if (a.payment_status === 'pending_payment') pendingDepositCount++
+  }
+
+  return {
+    weekCollected:       round2(weekCollected),
+    monthCollected:      round2(monthCollected),
+    outstanding:         round2(outstanding),
+    pendingDepositCount,
+    currency,
+  }
+}
+
+function round2(n: number): number { return Math.round(n * 100) / 100 }
+
+function money(n: number, currency: string): string {
+  const sym = currency === 'USD' ? '$' : ''
+  return `${sym}${n.toFixed(2)}`
+}
+
+function pad(n: number): string { return n < 10 ? `0${n}` : String(n) }
+
+function fmt12(hhmm: string): string {
+  const [hStr, mStr] = hhmm.split(':')
+  const h = parseInt(hStr, 10)
+  const m = parseInt(mStr ?? '0', 10)
+  const period = h >= 12 ? 'PM' : 'AM'
+  const h12 = h % 12 === 0 ? 12 : h % 12
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`
+}
+
+function fmtDate(iso: string): string {
+  if (! iso) return ''
+  const [y, m, d] = iso.split('T')[0].split('-').map(s => parseInt(s, 10))
+  const date = new Date(y, m - 1, d)
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+function relativeTime(iso: string | undefined): string {
+  if (! iso) return ''
+  const then = new Date(iso).getTime()
+  const now  = Date.now()
+  const diff = Math.max(0, now - then)
+  const mins  = Math.floor(diff / 60_000)
+  const hours = Math.floor(diff / 3_600_000)
+  const days  = Math.floor(diff / 86_400_000)
+  if (days  > 0)  return `${days}d ago`
+  if (hours > 0)  return `${hours}h ago`
+  if (mins  > 0)  return `${mins}m ago`
+  return 'just now'
+}
+
+function greetingForHour(h: number): string {
+  if (h < 12) return 'Good morning'
+  if (h < 18) return 'Good afternoon'
+  return 'Good evening'
 }
