@@ -18,6 +18,15 @@ Each tenant gets their own subdomain, public booking site, and editor at `app.bk
 - Server: `root@198.211.116.44`, repo at `/var/www/bookready-api`
 - pm2 process for the frontend: `bookready-web`
 
+### Google OAuth (sign-in / sign-up)
+
+- Credentials live in `/var/www/bookready-api/api/.env` as `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`. `GOOGLE_REDIRECT_URI` defaults to the production callback in `config/services.php` and does not need to be set.
+- Authorized redirect URI registered in Google Cloud Console: `https://api.bkrdy.me/api/v1/auth/google/callback` (must match exactly).
+- Scopes requested: `openid profile email` (see `GoogleAuthController::redirect`).
+- After rotating creds: `php artisan optimize:clear` to flush cached config.
+- If `GOOGLE_CLIENT_ID` is empty, `GoogleAuthController::credentialsConfigured()` short-circuits both `redirect()` and `callback()` and bounces the user back to `/login?google_error=...` or `/register?google_error=...` with a clear message instead of stranding them on Google's `invalid_client` page.
+- `APP_BASE` is hardcoded to `https://app.bkrdy.me` in the controller. Local-dev OAuth is intentionally not wired — to test changes, deploy to prod or stub the controller.
+
 ## Common commands
 
 ### Frontend (`/web`)

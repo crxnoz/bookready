@@ -43,6 +43,10 @@ class GoogleAuthController extends Controller
         $intent  = $request->query('intent', 'signin');
         $payload = (string) $request->query('payload', '');
 
+        if (! $this->credentialsConfigured()) {
+            return $this->errorBack($intent, 'Google sign-in is not configured. Contact support.');
+        }
+
         $state = base64_encode(json_encode([
             'intent'  => $intent === 'signup' ? 'signup' : 'signin',
             'payload' => $payload,
@@ -67,6 +71,10 @@ class GoogleAuthController extends Controller
         $stateRaw = (string) $request->query('state', '');
         $envelope = $this->decodeState($stateRaw);
         $intent   = $envelope['intent'] ?? 'signin';
+
+        if (! $this->credentialsConfigured()) {
+            return $this->errorBack($intent, 'Google sign-in is not configured. Contact support.');
+        }
 
         // Surface Google's error param (e.g. user clicked "Cancel") cleanly.
         if ($request->query('error')) {
@@ -336,5 +344,17 @@ class GoogleAuthController extends Controller
     {
         $dest = $intent === 'signup' ? '/register' : '/login';
         return redirect()->away(self::APP_BASE . $dest . '?google_error=' . urlencode($message));
+    }
+
+    /**
+     * True only when both Google OAuth credentials are present in config.
+     * Without this guard, an empty client_id sends the user to Google's
+     * opaque "invalid_client" page; with it, they bounce back to /login or
+     * /register with a clear inline error.
+     */
+    private function credentialsConfigured(): bool
+    {
+        return ! empty(config('services.google.client_id'))
+            && ! empty(config('services.google.client_secret'));
     }
 }

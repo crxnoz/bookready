@@ -23,8 +23,9 @@ import {
 } from '@/lib/api'
 import {
   Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Tag, X, Edit2, Image as ImageIcon, AlertCircle,
-  Settings as SettingsIcon, ChevronRight, Users, Sparkles,
+  Settings as SettingsIcon, ChevronRight, Users, Sparkles, Package,
 } from 'lucide-react'
+import { ComingSoonCard } from '@/components/editor/ComingSoonPanel'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -604,6 +605,19 @@ export default function ServicesEditor() {
         onCreated={handleAddonCreated}
         onUpdated={handleAddonUpdated}
         onDeleted={handleAddonDeleted}
+      />
+
+      {/* Phase 18 — Packages teaser */}
+      <ComingSoonCard
+        icon={Package}
+        tone="accent"
+        title="Packages"
+        description="Bundle two or more services into a single bookable item with its own price + duration."
+        bullets={[
+          'Sell a "Spa Day" combo at a discount vs. individual services',
+          'Auto-block the right amount of time on the calendar',
+          'Track which packages sell best in Payments → Transactions',
+        ]}
       />
 
       {/* Service rows */}

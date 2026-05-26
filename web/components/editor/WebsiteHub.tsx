@@ -13,6 +13,14 @@ import {
 } from 'lucide-react'
 import ImageUploadField from '@/components/editor/ImageUploadField'
 import {
+  ComingSoonPanel as ComingSoonHero,
+  ComingSoonCard,
+} from '@/components/editor/ComingSoonPanel'
+import {
+  Calendar as CalendarIcon, Users, Layers, Bell as BellIcon, Mail as MailIcon, Megaphone as MegaphoneIcon,
+  PartyPopper, Snowflake, Heart as HeartIcon, Sun, Gift, Timer, UserCircle as UserIcon,
+} from 'lucide-react'
+import {
   getCurrentUser,
   getEditorTemplateSettings,
   updateEditorTemplateSettings,
@@ -58,16 +66,16 @@ import { cn } from '@/lib/cn'
 // ── Types & constants ────────────────────────────────────────────────────────
 
 type SubTab =
-  | 'overview' | 'header' | 'content'
+  | 'overview' | 'header' | 'introduction' | 'content'
   | 'gallery' | 'policies'
-  | 'additionals' | 'footer' | 'seo'
+  | 'additionals' | 'announcements' | 'footer' | 'seo'
 
 // 'before_after' kept as a redirect target so deep-links from old emails /
 // bookmarks land on the merged Gallery tab instead of 404ing.
 const VALID_TABS: SubTab[] = [
-  'overview', 'header', 'content',
+  'overview', 'header', 'introduction', 'content',
   'gallery', 'policies',
-  'additionals', 'footer', 'seo',
+  'additionals', 'announcements', 'footer', 'seo',
 ]
 
 function hrefFor(tab: SubTab): string {
@@ -280,6 +288,8 @@ export default function WebsiteHub() {
               )}
 
               {tab === 'seo' && <SeoComingSoonPanel />}
+              {tab === 'announcements' && <AnnouncementsComingSoonPanel />}
+              {tab === 'introduction'  && <IntroductionComingSoonPanel />}
             </div>
 
             {/* Preview — sticky on desktop, stacks below on mobile */}
@@ -770,6 +780,12 @@ function OverviewPanel({
               <AlertCircle size={12} /> {accentError}
             </p>
           )}
+        </div>
+
+        {/* Phase 18 — Seasonal themes teaser. Sits right under accent color
+            because both are "site-wide flavor" choices in the owner's head. */}
+        <div className="space-y-2 pt-3 border-t border-[rgba(18,18,18,0.08)]">
+          <SeasonalThemesTeaser />
         </div>
 
         <button
@@ -3419,4 +3435,156 @@ function WebsiteCustomPolicyGroupsEditor({
     </div>
   )
 }
+
+// ── Phase 18 — Coming-soon teasers ──────────────────────────────────────────
+
+function SeasonalThemesTeaser() {
+  // Compact horizontal preview row of seasonal theme presets. Pure display —
+  // clicking does nothing yet. Each pill swaps the floating accent decoration
+  // on the public site (hearts → snowflakes → confetti, etc).
+  const themes = [
+    { label: 'Default',    icon: HeartIcon,    color: '#FF3DBE', bg: '#FFE5F0' },
+    { label: 'Valentines', icon: HeartIcon,    color: '#E11D48', bg: '#FFE4E6' },
+    { label: 'Summer',     icon: Sun,          color: '#F59E0B', bg: '#FFF3C7' },
+    { label: 'Sale',       icon: Gift,         color: '#7C3AED', bg: '#EDE9FE' },
+    { label: 'Christmas',  icon: Gift,         color: '#16A34A', bg: '#DCFCE7' },
+    { label: 'Winter',     icon: Snowflake,    color: '#0EA5E9', bg: '#E0F2FE' },
+    { label: 'Confetti',   icon: PartyPopper,  color: '#EC4899', bg: '#FCE7F3' },
+  ]
+  return (
+    <>
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+          Seasonal themes
+          <span className="text-[8px] font-bold tracking-[0.14em] uppercase border border-[rgba(255,61,190,0.40)] bg-[rgba(255,61,190,0.10)] text-[#b8197f] px-1 py-px">
+            Soon
+          </span>
+        </p>
+        <p className="text-[10px] text-muted-text">Swaps floating hearts for snowflakes, confetti, and more</p>
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {themes.map(t => {
+          const Icon = t.icon
+          return (
+            <button
+              key={t.label}
+              type="button"
+              disabled
+              title={`${t.label} — coming soon`}
+              className="relative inline-flex items-center gap-1.5 border border-[rgba(18,18,18,0.12)] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-near-black opacity-60 cursor-not-allowed"
+            >
+              <span
+                className="w-4 h-4 inline-flex items-center justify-center"
+                style={{ background: t.bg, color: t.color }}
+              >
+                <Icon size={10} strokeWidth={2} />
+              </span>
+              {t.label}
+            </button>
+          )
+        })}
+      </div>
+      <p className="text-[10px] text-muted-text italic">
+        Activate a seasonal theme to instantly refresh the floating decorations on your public site for holidays + promos.
+      </p>
+    </>
+  )
+}
+
+function AnnouncementsComingSoonPanel() {
+  return (
+    <ComingSoonHero
+      eyebrow="Coming Soon"
+      title="Announcements"
+      intro="Reach clients without leaving BookReady. Announcement bars, pop-ups, and one-off email blasts — all branded to your site and managed from one tab."
+      features={[
+        {
+          icon:        MegaphoneIcon,
+          tone:        'accent',
+          title:       'Announcement bar',
+          description: 'A thin colored strip across the top of your public site for short alerts.',
+          bullets: [
+            'Run a flash promo: "20% off lash sets this week"',
+            'Holiday-hours notice that auto-hides after the date',
+            'Style it to your accent color, or use a seasonal theme',
+          ],
+        },
+        {
+          icon:        BellIcon,
+          title:       'Pop-ups',
+          description: 'A focused dialog that appears on first visit or after N seconds.',
+          bullets: [
+            'Capture emails for a waitlist or newsletter',
+            'Push a high-margin add-on or service',
+            'Show once per device — no annoyance',
+          ],
+        },
+        {
+          icon:        MailIcon,
+          title:       'Email notifications',
+          description: 'One-off email blasts to your whole client list — sent through your verified BookReady domain.',
+          bullets: [
+            'Schedule for the best time of day',
+            'Pick segments: VIPs, recent visitors, no-shows',
+            'Track opens + clicks per send',
+          ],
+        },
+      ]}
+    />
+  )
+}
+
+function IntroductionComingSoonPanel() {
+  return (
+    <ComingSoonHero
+      eyebrow="Coming Soon"
+      title="Introduction sections"
+      intro="Personality blocks for the gap between your hero and the booking form. Tell clients what's special about your studio — and what's right around the corner."
+      features={[
+        {
+          icon:        UserIcon,
+          tone:        'accent',
+          title:       'Tech introductions',
+          description: 'A short bio + photo block for each artist on your team.',
+          bullets: [
+            'Headshot, name, specialty, years of experience',
+            'Pull from the Staff list automatically',
+            'Clients can pick a favorite before booking',
+          ],
+        },
+        {
+          icon:        Timer,
+          title:       'Countdown',
+          description: 'Show clients when your next available appointment is, live.',
+          bullets: [
+            '"Next opening: Thursday at 2pm" updates in real time',
+            'Or count down to a launch / promo end date',
+            'Auto-hides when the slot fills',
+          ],
+        },
+        {
+          icon:        Sparkles,
+          title:       'Highlight reel',
+          description: 'A scrolling band of your favorite recent work + reviews.',
+          bullets: [
+            'Pulls images from your Gallery groups',
+            'Mixes in star reviews from the Reviews block',
+            'Looks great on mobile in one tap',
+          ],
+        },
+        {
+          icon:        Gift,
+          title:       'Welcome offer',
+          description: 'A first-time client banner with a single-use promo code.',
+          bullets: [
+            'Tracks redemptions per client',
+            'Hides automatically once a client has booked once',
+            'Optional countdown to expiry',
+          ],
+        },
+      ]}
+    />
+  )
+}
+
 

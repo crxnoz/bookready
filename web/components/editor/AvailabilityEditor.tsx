@@ -21,7 +21,11 @@ import {
   Trash2,
   AlertCircle,
   Loader2,
+  Users,
+  Moon,
+  Repeat,
 } from 'lucide-react'
+import { ComingSoonCard } from '@/components/editor/ComingSoonPanel'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -430,6 +434,48 @@ export default function AvailabilityEditor() {
       >
         <BlockedDatesPanel />
       </CollapsibleSection>
+
+      {/* Phase 18 — Coming-soon teasers. Three side-by-side cards under
+          the existing sections so owners can see what is next without
+          competing with live settings. */}
+      <div className="px-5 pt-5">
+        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-2">
+          Coming next for availability
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <ComingSoonCard
+            icon={Users}
+            tone="accent"
+            title="Group appointments"
+            description="One slot, multiple clients. Perfect for classes or workshops."
+            bullets={[
+              'Set a min + max headcount per slot',
+              'Auto-confirm once the minimum is hit',
+              'One shared calendar event for the studio',
+            ]}
+          />
+          <ComingSoonCard
+            icon={Moon}
+            title="After hours"
+            description="Open select dates outside your normal hours for VIPs or special events."
+            bullets={[
+              'Charge a premium for after-hours slots',
+              'Pick which staff can take them',
+              'Auto-revert to regular hours the next day',
+            ]}
+          />
+          <ComingSoonCard
+            icon={Repeat}
+            title="Recurring appointments"
+            description="Let regulars book the same time every week or month, automatically."
+            bullets={[
+              'Weekly, biweekly, or monthly cadences',
+              'Pause or skip individual occurrences',
+              'Owner-side bulk reschedule for studio holidays',
+            ]}
+          />
+        </div>
+      </div>
 
       {/* ─── Save bar ─── */}
       <div className="px-5">
