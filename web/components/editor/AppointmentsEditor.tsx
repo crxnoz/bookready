@@ -1465,6 +1465,19 @@ function AppointmentCard({
                   {appt.service_duration_minutes ? ` · ${appt.service_duration_minutes} min` : ''}
                 </p>
               )}
+              {/* Phase 8 — quick at-a-glance add-on list so techs know
+                  what's attached before opening the appointment. */}
+              {appt.addons && appt.addons.length > 0 && (
+                <p
+                  className="text-[11px] text-near-black mt-0.5 truncate"
+                  title={appt.addons.map(a => a.name).join(' · ')}
+                >
+                  <span className="font-semibold uppercase tracking-[0.06em] text-[10px] text-muted-text mr-1">
+                    Add-ons:
+                  </span>
+                  {appt.addons.map(a => a.name).join(' · ')}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
