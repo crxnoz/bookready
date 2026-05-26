@@ -60,7 +60,7 @@ function fmtDateDisplay(iso: string): string {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Step = 1 | 2 | 3 | 4
+type Step = 1 | 2 | 3 | 4 | 5
 
 type SlotState =
   | { status: 'idle' }
@@ -68,7 +68,16 @@ type SlotState =
   | { status: 'loaded'; slots: AvailableSlot[]; message: string | null }
   | { status: 'error'; message: string }
 
-const STEPS: [Step, string][] = [[1, 'Service'], [2, 'Date & Time'], [3, 'Details'], [4, 'Confirm']]
+// Phase 8 — Add-ons is its own step now. When the chosen service has no
+// linked add-ons the helpers below short-circuit it so the customer
+// jumps 1 → 3 without a dead-end click.
+const STEPS: [Step, string][] = [
+  [1, 'Service'],
+  [2, 'Add-ons'],
+  [3, 'Date & Time'],
+  [4, 'Details'],
+  [5, 'Confirm'],
+]
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -447,12 +456,25 @@ export default function TheFadeRoomBooking({
   }
 
   // ── Guards ─────────────────────────────────────────────────────────────────
-
-  const canStep2 = serviceId !== null
-  const canStep3 = canStep2 && !!date && !!selectedSlot
-  const canStep4 = canStep3
+  // Each gate says "may the customer reach THIS step?"; the step bar
+  // uses them to enable/disable jumping back. canStep2/canStep3 are
+  // identical (both unlock after a service is picked) — Add-ons is
+  // optional, so the only thing date-time really cares about is "is
+  // there a service". canSubmit (was canStep4) gates the final submit.
+  const canStep2  = serviceId !== null       // Add-ons (optional)
+  const canStep3  = serviceId !== null       // Date & Time
+  const canStep4  = canStep3 && !!date && !!selectedSlot  // Details
+  const canSubmit = canStep4
                    && name.trim().length > 0
                    && (! requirePolicyAgreement || policyAgreed)
+
+  // Add-ons step is only meaningful if the chosen service has at least
+  // one linked add-on. When it doesn't, Continue/Back skip past Step 2
+  // and the step pill still shows so the bar stays a consistent 5-pill
+  // visual across tenants.
+  const hasAddonsForService = (selectedService?.linked_addons ?? []).length > 0
+  const goAfterService = () => setStep(hasAddonsForService ? 2 : 3)
+  const goBackFromDateTime = () => setStep(hasAddonsForService ? 2 : 1)
 
   function stepClass(n: Step) {
     if (step === n) return 'tfr-booking-step is-active'
@@ -582,13 +604,17 @@ export default function TheFadeRoomBooking({
                       <button
                         className="tfr-booking-pick"
                         onClick={() => {
-                          // Phase 7 — don't auto-advance when the service
-                          // has add-ons; the customer needs to tick any
-                          // optional extras before continuing. If there
-                          // are no add-ons, jump straight to date/time
-                          // like the old flow did.
+                          // Phase 8 — auto-advance to whichever step is
+                          // next: Add-ons (step 2) if this service has
+                          // any linked add-ons, else straight to Date &
+                          // Time (step 3). The service-change useEffect
+                          // is what populates required add-ons + clears
+                          // stale staff picks; we just push state and
+                          // jump on the next tick.
                           setServiceId(s.id)
-                          if (!hasAddons) setStep(2)
+                          // Use `s.linked_addons` directly — selectedService
+                          // hasn't updated yet in this render pass.
+                          setStep((s.linked_addons ?? []).length > 0 ? 2 : 3)
                         }}
                       >
                         {isSelected ? 'Selected' : 'Select'} <ArrowRight size={12} />
@@ -598,80 +624,11 @@ export default function TheFadeRoomBooking({
                 })}
               </div>
 
-              {/* Phase 7 — Add-ons for the chosen service. Required links
-                  are pre-checked and disabled so the customer can't drop
-                  them; optional ones toggle freely. Running total shown
-                  underneath so the price/duration impact is obvious. */}
-              {selectedService && (selectedService.linked_addons ?? []).length > 0 && (
-                <div className="tfr-booking-block" style={{ marginTop: 24 }}>
-                  <span className="tfr-booking-block-label">Add-ons (optional)</span>
-                  <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
-                    {(selectedService.linked_addons ?? []).map(link => {
-                      const addon = serviceAddons.find(a => a.id === link.addon_id)
-                      if (!addon) return null
-                      const checked = addonIds.includes(addon.id)
-                      return (
-                        <label
-                          key={addon.id}
-                          style={{
-                            display: 'flex', alignItems: 'flex-start', gap: 10,
-                            padding: '10px 12px',
-                            border: '1px solid ' + (checked ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.15)'),
-                            background: checked ? 'rgba(255,255,255,0.06)' : 'transparent',
-                            cursor: link.is_required ? 'not-allowed' : 'pointer',
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            disabled={link.is_required}
-                            onChange={e => {
-                              setAddonIds(prev => e.target.checked
-                                ? [...prev, addon.id]
-                                : prev.filter(id => id !== addon.id))
-                            }}
-                            style={{ marginTop: 3, accentColor: '#fff', flexShrink: 0 }}
-                          />
-                          <span style={{ flex: 1, minWidth: 0 }}>
-                            <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: 13, fontWeight: 600 }}>{addon.name}</span>
-                              {link.is_required && (
-                                <span style={{
-                                  fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
-                                  textTransform: 'uppercase', padding: '2px 6px',
-                                  background: 'rgba(255,255,255,0.12)',
-                                }}>
-                                  Required
-                                </span>
-                              )}
-                            </span>
-                            {addon.description && (
-                              <span style={{ display: 'block', fontSize: 11, opacity: 0.75, marginTop: 2 }}>
-                                {addon.description}
-                              </span>
-                            )}
-                            <span style={{ display: 'block', fontSize: 11, opacity: 0.85, marginTop: 4 }}>
-                              +${addon.extra_price.toFixed(2)}
-                              {addon.extra_duration_minutes > 0 && ` · +${addon.extra_duration_minutes} min`}
-                            </span>
-                          </span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                  {addonExtraPrice > 0 && (
-                    <p style={{ marginTop: 10, fontSize: 12, opacity: 0.8 }}>
-                      Running total: <strong>${totalPrice.toFixed(2)}</strong> · {totalMinutes} min
-                    </p>
-                  )}
-                </div>
-              )}
-
               <div className="tfr-booking-nav" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
                 <button
                   className="tfr-booking-next"
                   disabled={!canStep2}
-                  onClick={() => setStep(2)}
+                  onClick={goAfterService}
                 >
                   Continue <ArrowRight size={12} />
                 </button>
@@ -680,8 +637,107 @@ export default function TheFadeRoomBooking({
           )}
         </div>
 
-        {/* ── Step 2: Date & Time ── */}
+        {/* ── Step 2: Add-ons ─────────────────────────────────────────────
+            Phase 8 — promoted from a sub-screen inside Step 1 to its own
+            step. We render the slide for everyone (so the step bar's
+            visual stays consistent), but the per-card Select button
+            auto-jumps 1 → 3 when the chosen service has zero add-ons,
+            so this slide is only actually seen when there's something
+            to pick. Required links are pre-checked + disabled so they
+            can't be dropped; optional ones toggle freely. */}
         <div className={`tfr-booking-slide${step === 2 ? ' is-active' : ''}`}>
+          {selectedService && hasAddonsForService ? (
+            <>
+              <div className="tfr-booking-block">
+                <span className="tfr-booking-block-label">Add-ons (optional)</span>
+                <p style={{ fontSize: 12, opacity: 0.75, margin: '6px 0 12px' }}>
+                  Customize your <strong>{selectedService.name}</strong> with any of these extras.
+                </p>
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {(selectedService.linked_addons ?? []).map(link => {
+                    const addon = serviceAddons.find(a => a.id === link.addon_id)
+                    if (!addon) return null
+                    const checked = addonIds.includes(addon.id)
+                    return (
+                      <label
+                        key={addon.id}
+                        style={{
+                          display: 'flex', alignItems: 'flex-start', gap: 10,
+                          padding: '10px 12px',
+                          border: '1px solid ' + (checked ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.15)'),
+                          background: checked ? 'rgba(255,255,255,0.06)' : 'transparent',
+                          cursor: link.is_required ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={link.is_required}
+                          onChange={e => {
+                            setAddonIds(prev => e.target.checked
+                              ? [...prev, addon.id]
+                              : prev.filter(id => id !== addon.id))
+                          }}
+                          style={{ marginTop: 3, accentColor: '#fff', flexShrink: 0 }}
+                        />
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 13, fontWeight: 600 }}>{addon.name}</span>
+                            {link.is_required && (
+                              <span style={{
+                                fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
+                                textTransform: 'uppercase', padding: '2px 6px',
+                                background: 'rgba(255,255,255,0.12)',
+                              }}>
+                                Required
+                              </span>
+                            )}
+                          </span>
+                          {addon.description && (
+                            <span style={{ display: 'block', fontSize: 11, opacity: 0.75, marginTop: 2 }}>
+                              {addon.description}
+                            </span>
+                          )}
+                          <span style={{ display: 'block', fontSize: 11, opacity: 0.85, marginTop: 4 }}>
+                            +${addon.extra_price.toFixed(2)}
+                            {addon.extra_duration_minutes > 0 && ` · +${addon.extra_duration_minutes} min`}
+                          </span>
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
+                {addonExtraPrice > 0 && (
+                  <p style={{ marginTop: 12, fontSize: 12, opacity: 0.85 }}>
+                    Running total: <strong>${totalPrice.toFixed(2)}</strong> · {totalMinutes} min
+                  </p>
+                )}
+              </div>
+            </>
+          ) : (
+            // Safety net: someone jumped here despite no add-ons being
+            // available (e.g. clicked the step pill manually). Give them
+            // a clear "nothing to do here" message + a way forward.
+            <p style={{ fontSize: 14, opacity: 0.8 }}>
+              No add-ons for this service — continue to choose a time.
+            </p>
+          )}
+          <div className="tfr-booking-nav" style={{ marginTop: 16 }}>
+            <button className="tfr-booking-back" onClick={() => setStep(1)}>
+              <ArrowLeft size={12} /> Back
+            </button>
+            <button
+              className="tfr-booking-next"
+              disabled={!canStep3}
+              onClick={() => setStep(3)}
+            >
+              Continue <ArrowRight size={12} />
+            </button>
+          </div>
+        </div>
+
+        {/* ── Step 3: Date & Time ── */}
+        <div className={`tfr-booking-slide${step === 3 ? ' is-active' : ''}`}>
           <div className="tfr-booking-datetime">
 
             {/* Phase 7 — Staff picker. Only shown when 2+ staff can do
@@ -852,13 +908,13 @@ export default function TheFadeRoomBooking({
             </div>
 
             <div className="tfr-booking-nav">
-              <button className="tfr-booking-back" onClick={() => setStep(1)}>
+              <button className="tfr-booking-back" onClick={goBackFromDateTime}>
                 <ArrowLeft size={12} /> Back
               </button>
               <button
                 className="tfr-booking-next"
-                disabled={!canStep3}
-                onClick={() => setStep(3)}
+                disabled={!canStep4}
+                onClick={() => setStep(4)}
               >
                 Continue <ArrowRight size={12} />
               </button>
@@ -866,8 +922,8 @@ export default function TheFadeRoomBooking({
           </div>
         </div>
 
-        {/* ── Step 3: Details ── */}
-        <div className={`tfr-booking-slide${step === 3 ? ' is-active' : ''}`}>
+        {/* ── Step 4: Details ── */}
+        <div className={`tfr-booking-slide${step === 4 ? ' is-active' : ''}`}>
           <div className="tfr-booking-fields">
             <label>
               <span>Full Name *</span>
@@ -911,21 +967,21 @@ export default function TheFadeRoomBooking({
             </label>
           </div>
           <div className="tfr-booking-nav" style={{ marginTop: 20 }}>
-            <button className="tfr-booking-back" onClick={() => setStep(2)}>
+            <button className="tfr-booking-back" onClick={() => setStep(3)}>
               <ArrowLeft size={12} /> Back
             </button>
             <button
               className="tfr-booking-next"
               disabled={!name.trim()}
-              onClick={() => setStep(4)}
+              onClick={() => setStep(5)}
             >
               Review <ArrowRight size={12} />
             </button>
           </div>
         </div>
 
-        {/* ── Step 4: Confirm ── */}
-        <div className={`tfr-booking-slide${step === 4 ? ' is-active' : ''}`}>
+        {/* ── Step 5: Confirm ── */}
+        <div className={`tfr-booking-slide${step === 5 ? ' is-active' : ''}`}>
           <div className="tfr-booking-confirm">
 
             <div className="tfr-booking-summary">
@@ -1074,12 +1130,12 @@ export default function TheFadeRoomBooking({
             )}
 
             <div className="tfr-booking-nav">
-              <button className="tfr-booking-back" onClick={() => setStep(3)}>
+              <button className="tfr-booking-back" onClick={() => setStep(4)}>
                 <ArrowLeft size={12} /> Back
               </button>
               <button
                 className="tfr-booking-confirm-btn"
-                disabled={submitting || !canStep4}
+                disabled={submitting || !canSubmit}
                 onClick={handleSubmit}
               >
                 {submitting
