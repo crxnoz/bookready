@@ -43,8 +43,46 @@ export interface Service {
   available_days?: number[] | null
   /** Phase 4: staff that can perform this service. Empty = any staff. */
   assigned_staff_ids?: number[]
+  /** Phase 5: add-ons linked to this service. Each link carries its own
+   *  required/optional flag so the same add-on can be required for one
+   *  service and optional for another. */
+  linked_addons?: ServiceAddonLink[]
   is_active: boolean
   sort_order: number
+}
+
+// Phase 5: per-service add-on. Each is a tenant-defined extra that
+// can be linked to one or more services with a per-link required flag.
+export interface ServiceAddon {
+  id: number
+  name: string
+  description: string | null
+  image_url: string | null
+  /** Stored as cents server-side; both fields are emitted for editor
+   *  convenience. Writes accept either via `extra_price` (dollars). */
+  extra_price: number
+  extra_price_cents: number
+  extra_duration_minutes: number
+  is_active: boolean
+  sort_order: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ServiceAddonPayload {
+  name: string
+  description?: string | null
+  image_url?: string | null
+  extra_price?: number | null              // dollars
+  extra_duration_minutes?: number
+  is_active?: boolean
+  sort_order?: number
+}
+
+/** Per-service link to an add-on, with the per-link required flag. */
+export interface ServiceAddonLink {
+  addon_id: number
+  is_required: boolean
 }
 
 // Phase 3: rich service category. Replaces the free-text `category`
@@ -424,6 +462,7 @@ export interface PublicSite {
   profile?: BusinessProfile | null
   services?: Service[]
   service_categories?: ServiceCategory[]
+  service_addons?: ServiceAddon[]
   hours?: HoursEntry[]
   policies?: BusinessPolicy | null
   staff?: PublicStaffMember[]

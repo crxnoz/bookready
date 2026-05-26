@@ -5,7 +5,7 @@ import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import Button from '@/components/ui/Button'
 import ImageUploadField from '@/components/editor/ImageUploadField'
-import { Service, ServiceCategory, ApiStaffMember } from '@/lib/types'
+import { Service, ServiceCategory, ServiceAddon, ServiceAddonLink, ApiStaffMember } from '@/lib/types'
 import {
   getEditorServices,
   createEditorService,
@@ -15,11 +15,15 @@ import {
   createEditorServiceCategory,
   updateEditorServiceCategory,
   deleteEditorServiceCategory,
+  getEditorServiceAddons,
+  createEditorServiceAddon,
+  updateEditorServiceAddon,
+  deleteEditorServiceAddon,
   getEditorStaff,
 } from '@/lib/api'
 import {
   Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Tag, X, Edit2, Image as ImageIcon, AlertCircle,
-  Settings as SettingsIcon, ChevronRight, Users,
+  Settings as SettingsIcon, ChevronRight, Users, Sparkles,
 } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -37,6 +41,8 @@ type Draft = {
   buffer_after_override_minutes:  string
   available_days: number[]                       // [] = inherit; otherwise dows
   assigned_staff_ids: number[]
+  // Phase 5 — selected add-on links + per-link required flag.
+  linked_addons: ServiceAddonLink[]
 }
 
 function toDraft(s: Service): Draft {
@@ -54,6 +60,9 @@ function toDraft(s: Service): Draft {
       s.buffer_after_override_minutes  == null ? '' : String(s.buffer_after_override_minutes),
     available_days:    Array.isArray(s.available_days) ? [...s.available_days] : [],
     assigned_staff_ids: Array.isArray(s.assigned_staff_ids) ? [...s.assigned_staff_ids] : [],
+    linked_addons:     Array.isArray(s.linked_addons)
+      ? s.linked_addons.map(l => ({ addon_id: l.addon_id, is_required: !!l.is_required }))
+      : [],
   }
 }
 
@@ -71,6 +80,7 @@ interface ServiceRowProps {
   service: Service
   categories: ServiceCategory[]
   staff: ApiStaffMember[]
+  addons: ServiceAddon[]
   index: number
   total: number
   isDragging: boolean
@@ -89,6 +99,7 @@ function ServiceRow({
   service,
   categories,
   staff,
+  addons,
   index,
   total,
   isDragging,
@@ -136,6 +147,7 @@ function ServiceRow({
         buffer_after_override_minutes:  parseOverrideMinutes(draft.buffer_after_override_minutes),
         available_days:    draft.available_days.length ? draft.available_days : null,
         assigned_staff_ids: draft.assigned_staff_ids,
+        linked_addons:     draft.linked_addons,
       })
       onSaved(updated)
       setOpen(false)
@@ -314,6 +326,7 @@ function ServiceRow({
           <AdvancedSection
             draft={draft}
             staff={staff}
+            addons={addons}
             onChange={(next) => setDraft(prev => ({ ...prev, ...next }))}
           />
 
@@ -352,6 +365,7 @@ const BLANK_DRAFT: Draft = {
   buffer_after_override_minutes:  '',
   available_days:    [],
   assigned_staff_ids: [],
+  linked_addons:     [],
 }
 
 function AddServiceForm({
@@ -360,12 +374,14 @@ function AddServiceForm({
   nextSortOrder,
   categories,
   staff,
+  addons,
 }: {
   onCreated: (service: Service) => void
   onCancel: () => void
   nextSortOrder: number
   categories: ServiceCategory[]
   staff: ApiStaffMember[]
+  addons: ServiceAddon[]
 }) {
   const [draft, setDraft]   = useState<Draft>(BLANK_DRAFT)
   const [saving, setSaving] = useState(false)
@@ -397,6 +413,7 @@ function AddServiceForm({
         buffer_after_override_minutes:  parseOverrideMinutes(draft.buffer_after_override_minutes),
         available_days:    draft.available_days.length ? draft.available_days : null,
         assigned_staff_ids: draft.assigned_staff_ids,
+        linked_addons:     draft.linked_addons,
       })
       onCreated(created)
     } catch (err: unknown) {
@@ -444,6 +461,7 @@ function AddServiceForm({
       <AdvancedSection
         draft={draft}
         staff={staff}
+        addons={addons}
         onChange={(next) => setDraft(prev => ({ ...prev, ...next }))}
       />
 
@@ -468,6 +486,7 @@ type PageStatus = 'loading' | 'idle' | 'error'
 export default function ServicesEditor() {
   const [services, setServices]       = useState<Service[]>([])
   const [categories, setCategories]   = useState<ServiceCategory[]>([])
+  const [addons, setAddons]           = useState<ServiceAddon[]>([])
   const [staff, setStaff]             = useState<ApiStaffMember[]>([])
   const [status, setStatus]           = useState<PageStatus>('loading')
   const [errorMsg, setErrorMsg]       = useState<string | null>(null)
@@ -475,19 +494,22 @@ export default function ServicesEditor() {
   const [dragIndex, setDragIndex]     = useState<number | null>(null)
   const [dragOver, setDragOver]       = useState<number | null>(null)
   const [catsOpen, setCatsOpen]       = useState(false)
+  const [addonsOpen, setAddonsOpen]   = useState(false)
 
   useEffect(() => {
     Promise.all([
       getEditorServices(),
       getEditorServiceCategories().catch(() => [] as ServiceCategory[]),
-      // Staff is optional in this view — if the endpoint errors we still
-      // render the editor without staff assignment options.
+      // Staff + add-ons are optional in this view — failures just mean
+      // the editor renders without the corresponding pickers.
       getEditorStaff({ active: true }).catch(() => [] as ApiStaffMember[]),
+      getEditorServiceAddons().catch(() => [] as ServiceAddon[]),
     ])
-      .then(([svcs, cats, st]) => {
+      .then(([svcs, cats, st, ads]) => {
         setServices([...svcs].sort((a, b) => a.sort_order - b.sort_order))
         setCategories([...cats].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id))
         setStaff([...st].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id))
+        setAddons([...ads].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id))
         setStatus('idle')
       })
       .catch(err => {
@@ -534,6 +556,17 @@ export default function ServicesEditor() {
     setServices(prev => prev.map(s => s.category_id === id ? { ...s, category_id: null, category: null } : s))
   }
 
+  function handleAddonCreated(a: ServiceAddon)  { setAddons(prev => [...prev, a]) }
+  function handleAddonUpdated(a: ServiceAddon)  { setAddons(prev => prev.map(x => x.id === a.id ? a : x)) }
+  function handleAddonDeleted(id: number)        {
+    setAddons(prev => prev.filter(a => a.id !== id))
+    // Drop any local service link that referenced the removed add-on.
+    setServices(prev => prev.map(s => ({
+      ...s,
+      linked_addons: (s.linked_addons ?? []).filter(l => l.addon_id !== id),
+    })))
+  }
+
   if (status === 'loading') {
     return <div className="p-6"><p className="text-xs text-muted-text">Loading…</p></div>
   }
@@ -563,6 +596,16 @@ export default function ServicesEditor() {
         onDeleted={handleCategoryDeleted}
       />
 
+      {/* Add-ons panel */}
+      <AddonsPanel
+        open={addonsOpen}
+        onToggle={() => setAddonsOpen(o => !o)}
+        addons={addons}
+        onCreated={handleAddonCreated}
+        onUpdated={handleAddonUpdated}
+        onDeleted={handleAddonDeleted}
+      />
+
       {/* Service rows */}
       <div className="space-y-2">
         {services.map((s, i) => (
@@ -571,6 +614,7 @@ export default function ServicesEditor() {
             service={s}
             categories={categories}
             staff={staff}
+            addons={addons}
             index={i}
             total={services.length}
             isDragging={dragIndex === i}
@@ -595,6 +639,7 @@ export default function ServicesEditor() {
           nextSortOrder={services.length}
           categories={categories}
           staff={staff}
+          addons={addons}
         />
       ) : (
         <Button variant="secondary" size="sm" onClick={() => setAdding(true)}>
@@ -851,10 +896,11 @@ function CategoryDialog({
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 function AdvancedSection({
-  draft, staff, onChange,
+  draft, staff, addons, onChange,
 }: {
   draft: Draft
   staff: ApiStaffMember[]
+  addons: ServiceAddon[]
   onChange: (patch: Partial<Draft>) => void
 }) {
   const [open, setOpen] = useState(false)
@@ -871,11 +917,28 @@ function AdvancedSection({
     onChange({ assigned_staff_ids: Array.from(next).sort((a, b) => a - b) })
   }
 
+  // Add-on link helpers — toggle membership, flip per-link required flag.
+  function toggleAddon(id: number) {
+    const exists = draft.linked_addons.find(l => l.addon_id === id)
+    const next = exists
+      ? draft.linked_addons.filter(l => l.addon_id !== id)
+      : [...draft.linked_addons, { addon_id: id, is_required: false }]
+    onChange({ linked_addons: next })
+  }
+  function toggleAddonRequired(id: number) {
+    onChange({
+      linked_addons: draft.linked_addons.map(l =>
+        l.addon_id === id ? { ...l, is_required: ! l.is_required } : l,
+      ),
+    })
+  }
+
   const overridesActive =
        draft.buffer_before_override_minutes !== ''
     || draft.buffer_after_override_minutes  !== ''
     || draft.available_days.length > 0
     || draft.assigned_staff_ids.length > 0
+    || draft.linked_addons.length > 0
 
   return (
     <div className="border border-[rgba(18,18,18,0.10)] bg-cream/40">
@@ -1007,8 +1070,318 @@ function AdvancedSection({
                 : 'Only the selected staff will be offered for this service.'}
             </p>
           </div>
+
+          {/* Linked add-ons — pick from the global catalog + per-link required flag. */}
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text inline-flex items-center gap-1.5">
+                <Sparkles size={11} /> Add-ons
+              </p>
+              <span className="text-[10px] text-muted-text">
+                {draft.linked_addons.length}/{addons.length}
+              </span>
+            </div>
+            {addons.length === 0 ? (
+              <p className="text-[11px] text-muted-text italic">
+                No add-ons in the catalog yet. Add some in the Add-ons panel above.
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                {addons.map(a => {
+                  const link   = draft.linked_addons.find(l => l.addon_id === a.id)
+                  const active = !! link
+                  const required = !! link?.is_required
+                  return (
+                    <div
+                      key={a.id}
+                      className={
+                        'flex items-center gap-2 border p-2 transition-colors '
+                        + (active
+                          ? 'bg-white border-near-black'
+                          : 'bg-white border-[rgba(18,18,18,0.10)] hover:border-near-black')
+                      }
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleAddon(a.id)}
+                        className="w-4 h-4 border border-near-black flex items-center justify-center flex-shrink-0"
+                        aria-pressed={active}
+                        aria-label={active ? `Remove ${a.name}` : `Add ${a.name}`}
+                      >
+                        {active && <span className="block w-2 h-2 bg-near-black" />}
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] font-semibold text-near-black truncate">{a.name}</p>
+                        <p className="text-[10px] text-muted-text">
+                          +${a.extra_price.toFixed(2)} · +{a.extra_duration_minutes} min
+                        </p>
+                      </div>
+                      {active && (
+                        <button
+                          type="button"
+                          onClick={() => toggleAddonRequired(a.id)}
+                          className={
+                            'text-[9px] font-bold tracking-[0.08em] uppercase border px-2 py-1 transition-colors flex-shrink-0 '
+                            + (required
+                              ? 'bg-near-black text-white border-near-black'
+                              : 'bg-white text-muted-text border-[rgba(18,18,18,0.15)] hover:text-near-black')
+                          }
+                          title={required ? 'Required for this service' : 'Optional for this service'}
+                        >
+                          {required ? 'Required' : 'Optional'}
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            <p className="text-[10px] text-muted-text mt-1.5">
+              Required add-ons are pre-checked on the booking form and can't be removed by the client.
+            </p>
+          </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Add-ons panel ────────────────────────────────────────────────────────────
+
+const ADDONS_MAX = 20
+
+function AddonsPanel({
+  open, onToggle, addons, onCreated, onUpdated, onDeleted,
+}: {
+  open: boolean
+  onToggle: () => void
+  addons: ServiceAddon[]
+  onCreated: (a: ServiceAddon) => void
+  onUpdated: (a: ServiceAddon) => void
+  onDeleted: (id: number) => void
+}) {
+  const [adding, setAdding]   = useState(false)
+  const [editing, setEditing] = useState<ServiceAddon | null>(null)
+
+  return (
+    <div className="bg-white border border-[rgba(18,18,18,0.10)]">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-cream transition-colors"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <Sparkles size={14} className="text-near-black flex-shrink-0" />
+          <p className="text-sm font-bold text-near-black">Add-ons</p>
+          <span className="text-[10px] font-bold tracking-[0.06em] uppercase text-muted-text">
+            {addons.length}/{ADDONS_MAX}
+          </span>
+        </div>
+        <span className="text-muted-text text-lg leading-none">{open ? '−' : '+'}</span>
+      </button>
+
+      {open && (
+        <div className="border-t border-[rgba(18,18,18,0.08)] p-4 space-y-3">
+          {addons.length === 0 && !adding && (
+            <p className="text-[11px] text-muted-text italic">
+              No add-ons yet. Add a few so services can offer extras at booking time.
+            </p>
+          )}
+
+          {addons.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {addons.map(a => (
+                <AddonRow
+                  key={a.id}
+                  addon={a}
+                  onEdit={() => setEditing(a)}
+                  onDeleted={onDeleted}
+                />
+              ))}
+            </div>
+          )}
+
+          {!adding && addons.length < ADDONS_MAX && (
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2.5 py-1.5 hover:border-near-black"
+            >
+              <Plus size={12} /> Add Add-on
+            </button>
+          )}
+
+          {adding && (
+            <AddonDialog
+              addon={null}
+              onClose={() => setAdding(false)}
+              onSaved={(a) => { onCreated(a); setAdding(false) }}
+            />
+          )}
+          {editing && (
+            <AddonDialog
+              addon={editing}
+              onClose={() => setEditing(null)}
+              onSaved={(a) => { onUpdated(a); setEditing(null) }}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AddonRow({
+  addon, onEdit, onDeleted,
+}: {
+  addon: ServiceAddon
+  onEdit: () => void
+  onDeleted: (id: number) => void
+}) {
+  const [busy, setBusy] = useState(false)
+  async function handleDelete() {
+    if (!confirm(`Delete "${addon.name}"? Services linked to this add-on will lose the link. Past appointments keep their snapshot.`)) return
+    setBusy(true)
+    try {
+      await deleteEditorServiceAddon(addon.id)
+      onDeleted(addon.id)
+    } catch {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="flex items-center gap-2 border border-[rgba(18,18,18,0.08)] bg-cream/50 p-2">
+      <div className="w-10 h-10 bg-white border border-[rgba(18,18,18,0.08)] flex-shrink-0 overflow-hidden">
+        {addon.image_url
+          /* eslint-disable-next-line @next/next/no-img-element */
+          ? <img src={addon.image_url} alt={addon.name} className="w-full h-full object-cover" />
+          : <div className="w-full h-full flex items-center justify-center text-muted-text"><Sparkles size={13} /></div>
+        }
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="text-[12px] font-semibold text-near-black truncate">{addon.name}</p>
+          {!addon.is_active && (
+            <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.12)] text-muted-text px-1 py-0.5">
+              Inactive
+            </span>
+          )}
+        </div>
+        <p className="text-[10px] text-muted-text">
+          +${addon.extra_price.toFixed(2)} · +{addon.extra_duration_minutes} min
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onEdit}
+        disabled={busy}
+        className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black flex-shrink-0"
+        title="Edit"
+      >
+        <Edit2 size={11} />
+      </button>
+      <button
+        type="button"
+        onClick={handleDelete}
+        disabled={busy}
+        className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600 flex-shrink-0"
+        title="Delete"
+      >
+        <Trash2 size={11} />
+      </button>
+    </div>
+  )
+}
+
+function AddonDialog({
+  addon, onClose, onSaved,
+}: {
+  addon: ServiceAddon | null
+  onClose: () => void
+  onSaved: (a: ServiceAddon) => void
+}) {
+  const [name,        setName]        = useState(addon?.name        ?? '')
+  const [description, setDescription] = useState(addon?.description ?? '')
+  const [imageUrl,    setImageUrl]    = useState(addon?.image_url   ?? '')
+  const [price,       setPrice]       = useState(addon ? String(addon.extra_price)            : '0')
+  const [duration,    setDuration]    = useState(addon ? String(addon.extra_duration_minutes) : '0')
+  const [isActive,    setIsActive]    = useState(addon?.is_active   ?? true)
+  const [saving,      setSaving]      = useState(false)
+  const [error,       setError]       = useState<string | null>(null)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    const n = name.trim()
+    if (!n) { setError('Name is required'); return }
+    setSaving(true); setError(null)
+    try {
+      const payload = {
+        name: n,
+        description: description.trim() || null,
+        image_url:   imageUrl.trim()    || null,
+        extra_price: parseFloat(price) || 0,
+        extra_duration_minutes: parseInt(duration, 10) || 0,
+        is_active:   isActive,
+      }
+      const result = addon
+        ? await updateEditorServiceAddon(addon.id, payload)
+        : await createEditorServiceAddon(payload)
+      onSaved(result)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-sm border border-[rgba(18,18,18,0.15)] max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-[rgba(18,18,18,0.10)] px-4 py-3">
+          <h3 className="text-sm font-bold text-near-black">{addon ? 'Edit add-on' : 'New add-on'}</h3>
+          <button onClick={onClose} className="text-muted-text hover:text-near-black"><X size={16} /></button>
+        </div>
+        <form onSubmit={submit} className="p-4 space-y-3">
+          <div className="w-32">
+            <ImageUploadField
+              label="Image"
+              value={imageUrl || null}
+              onChange={v => setImageUrl(v ?? '')}
+              kind="addon"
+              aspectClass="aspect-square"
+            />
+          </div>
+          <Input label="Name" value={name} onChange={e => setName(e.target.value)} placeholder="Add-on name" />
+          <Textarea label="Description (optional)" value={description} rows={2} onChange={e => setDescription(e.target.value)} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Extra price ($)" type="number" value={price}    onChange={e => setPrice(e.target.value)} />
+            <Input label="Extra time (min)" type="number" value={duration} onChange={e => setDuration(e.target.value)} />
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isActive}
+              onChange={e => setIsActive(e.target.checked)}
+              className="w-4 h-4 accent-near-black"
+            />
+            <span className="text-xs font-semibold text-near-black">Active</span>
+          </label>
+          {error && (
+            <p className="text-xs text-red-700 flex items-center gap-1.5">
+              <AlertCircle size={12} /> {error}
+            </p>
+          )}
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+            <button
+              type="button" onClick={onClose}
+              className="text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2"
+            >Cancel</button>
+            <Button size="sm" type="submit" disabled={saving}>
+              {saving ? 'Saving…' : addon ? 'Save' : 'Create'}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

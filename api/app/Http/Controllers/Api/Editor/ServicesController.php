@@ -13,10 +13,11 @@ class ServicesController extends Controller
 {
     /**
      * Flatten a service row. Phase 4: also emits override/inherit fields
-     * + the staff pivot. The pivot is loaded eagerly per call — fine for
-     * single rows; the index() method bulk-loads it to avoid N+1.
+     * + the staff pivot. Phase 5: also emits linked add-ons. Both pivots
+     * are loaded eagerly per call — fine for single rows; the index()
+     * method bulk-loads them to avoid N+1.
      */
-    private function format(object $row, array $assignedStaffIds = []): array
+    private function format(object $row, array $assignedStaffIds = [], array $linkedAddons = []): array
     {
         $availableDays = null;
         if (property_exists($row, 'available_days') && $row->available_days !== null) {
@@ -45,6 +46,14 @@ class ServicesController extends Controller
                 ? (int) $row->buffer_after_override_minutes : null,
             'available_days'                 => $availableDays,
             'assigned_staff_ids'             => array_values(array_map('intval', $assignedStaffIds)),
+            // Phase 5: per-service add-ons with their required/optional flag.
+            'linked_addons'                  => array_values(array_map(
+                fn ($l) => [
+                    'addon_id'    => (int) $l['addon_id'],
+                    'is_required' => (bool) ($l['is_required'] ?? false),
+                ],
+                $linkedAddons,
+            )),
             'is_active'        => (bool)   $row->is_active,
             'sort_order'       => (int)    $row->sort_order,
         ];
@@ -68,17 +77,44 @@ class ServicesController extends Controller
         return $map;
     }
 
+    /**
+     * Bulk-load service_addon_links. Returns a map
+     * {service_id => [['addon_id' => int, 'is_required' => bool], …]}.
+     */
+    private function addonLinksMap(array $serviceIds): array
+    {
+        if (empty($serviceIds) || ! Schema::hasTable('service_addon_links')) return [];
+        $rows = DB::table('service_addon_links')
+            ->whereIn('service_id', $serviceIds)
+            ->orderBy('id')
+            ->get(['service_id', 'addon_id', 'is_required']);
+        $map = [];
+        foreach ($rows as $r) {
+            $map[(int) $r->service_id] ??= [];
+            $map[(int) $r->service_id][] = [
+                'addon_id'    => (int) $r->addon_id,
+                'is_required' => (bool) $r->is_required,
+            ];
+        }
+        return $map;
+    }
+
     public function index(Request $request): JsonResponse
     {
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
-        $rows  = DB::table('services')->orderBy('sort_order')->orderBy('id')->get();
-        $ids   = $rows->pluck('id')->map(fn ($i) => (int) $i)->all();
-        $pivot = $this->pivotMap($ids);
+        $rows   = DB::table('services')->orderBy('sort_order')->orderBy('id')->get();
+        $ids    = $rows->pluck('id')->map(fn ($i) => (int) $i)->all();
+        $pivot  = $this->pivotMap($ids);
+        $addons = $this->addonLinksMap($ids);
 
         $services = $rows
-            ->map(fn ($r) => $this->format($r, $pivot[(int) $r->id] ?? []))
+            ->map(fn ($r) => $this->format(
+                $r,
+                $pivot[(int) $r->id]  ?? [],
+                $addons[(int) $r->id] ?? [],
+            ))
             ->values();
 
         tenancy()->end();
@@ -105,6 +141,10 @@ class ServicesController extends Controller
             'available_days.*'               => 'integer|min:0|max:6',
             'assigned_staff_ids'             => 'nullable|array',
             'assigned_staff_ids.*'           => 'integer',
+            // Phase 5: per-service add-on links + per-link required flag.
+            'linked_addons'                  => 'nullable|array',
+            'linked_addons.*.addon_id'       => 'required_with:linked_addons|integer',
+            'linked_addons.*.is_required'    => 'sometimes|boolean',
         ]);
 
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
@@ -171,11 +211,52 @@ class ServicesController extends Controller
             DB::table('service_staff')->insert($rows);
         }
 
+        // Same shape for the add-on link pivot. Each entry needs a valid
+        // tenant-scoped addon_id; per-link is_required defaults to false.
+        $linkedAddons = $this->normalizeLinkedAddons($validated['linked_addons'] ?? []);
+        if (! empty($linkedAddons) && Schema::hasTable('service_addon_links')) {
+            $rows = array_map(fn ($l) => [
+                'service_id'  => $id,
+                'addon_id'    => $l['addon_id'],
+                'is_required' => $l['is_required'],
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ], $linkedAddons);
+            DB::table('service_addon_links')->insert($rows);
+        }
+
         $row = DB::table('services')->find($id);
-        $result = $this->format($row, $validStaffIds);
+        $result = $this->format($row, $validStaffIds, $linkedAddons);
         tenancy()->end();
 
         return response()->json($result, 201);
+    }
+
+    /**
+     * Whitelist + dedupe a linked_addons payload against the tenant's
+     * service_addons table. Returns an array of
+     * [['addon_id' => int, 'is_required' => bool], …] safe to insert.
+     */
+    private function normalizeLinkedAddons(array $raw): array
+    {
+        if (empty($raw) || ! Schema::hasTable('service_addons')) return [];
+        $byId = [];
+        foreach ($raw as $item) {
+            if (! is_array($item) || ! isset($item['addon_id'])) continue;
+            $aid = (int) $item['addon_id'];
+            $byId[$aid] = (bool) ($item['is_required'] ?? false);
+        }
+        if (empty($byId)) return [];
+        $valid = DB::table('service_addons')
+            ->whereIn('id', array_keys($byId))
+            ->pluck('id')
+            ->map(fn ($i) => (int) $i)
+            ->all();
+        $out = [];
+        foreach ($valid as $aid) {
+            $out[] = ['addon_id' => $aid, 'is_required' => $byId[$aid]];
+        }
+        return $out;
     }
 
     public function update(Request $request, int $service): JsonResponse
@@ -197,6 +278,10 @@ class ServicesController extends Controller
             'available_days.*'               => 'integer|min:0|max:6',
             'assigned_staff_ids'             => 'sometimes|array',
             'assigned_staff_ids.*'           => 'integer',
+            // Phase 5: replace the addon link pivot when present.
+            'linked_addons'                  => 'sometimes|array',
+            'linked_addons.*.addon_id'       => 'required_with:linked_addons|integer',
+            'linked_addons.*.is_required'    => 'sometimes|boolean',
         ]);
 
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
@@ -262,6 +347,25 @@ class ServicesController extends Controller
             $pivot = $validStaffIds;
         }
 
+        // Replace addon link pivot atomically when the client included
+        // linked_addons. Same shape rules as assigned_staff_ids — absence
+        // leaves existing links alone, presence is a full replacement.
+        $linkedAddons = $this->addonLinksMap([$service])[$service] ?? [];
+        if (array_key_exists('linked_addons', $validated) && Schema::hasTable('service_addon_links')) {
+            $linkedAddons = $this->normalizeLinkedAddons($validated['linked_addons'] ?? []);
+            DB::table('service_addon_links')->where('service_id', $service)->delete();
+            if (! empty($linkedAddons)) {
+                $rows = array_map(fn ($l) => [
+                    'service_id'  => $service,
+                    'addon_id'    => $l['addon_id'],
+                    'is_required' => $l['is_required'],
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ], $linkedAddons);
+                DB::table('service_addon_links')->insert($rows);
+            }
+        }
+
         $row = DB::table('services')->find($service);
 
         tenancy()->end();
@@ -270,7 +374,7 @@ class ServicesController extends Controller
             return response()->json(['message' => 'Service not found'], 404);
         }
 
-        return response()->json($this->format($row, $pivot));
+        return response()->json($this->format($row, $pivot, $linkedAddons));
     }
 
     public function destroy(Request $request, int $service): JsonResponse
@@ -278,10 +382,14 @@ class ServicesController extends Controller
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
-        // Clean the pivot first — there's no ON DELETE CASCADE on the
-        // service_staff FK so orphaned rows would otherwise linger.
+        // Clean both pivots first — no ON DELETE CASCADE on either FK.
+        // appointment_addons rows are intentionally preserved because
+        // they hold a price+duration snapshot for historical bookings.
         if (Schema::hasTable('service_staff')) {
             DB::table('service_staff')->where('service_id', $service)->delete();
+        }
+        if (Schema::hasTable('service_addon_links')) {
+            DB::table('service_addon_links')->where('service_id', $service)->delete();
         }
         DB::table('services')->where('id', $service)->delete();
 

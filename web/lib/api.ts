@@ -54,6 +54,8 @@ import {
   StripeConnectStartResponse,
   StripeConnectStatusResponse,
   Service,
+  ServiceAddon,
+  ServiceAddonPayload,
   ServiceCategory,
   ServiceCategoryPayload,
   StaffMemberPayload,
@@ -133,7 +135,7 @@ export async function getCurrentUser(): Promise<AuthUser> {
 
 // ── Image uploads ────────────────────────────────────────────────────────────
 
-export type UploadKind = 'gallery' | 'before_after' | 'header' | 'logo' | 'about' | 'staff' | 'service' | 'category'
+export type UploadKind = 'gallery' | 'before_after' | 'header' | 'logo' | 'about' | 'staff' | 'service' | 'category' | 'addon'
 
 export interface UploadResponse {
   url: string
@@ -365,6 +367,35 @@ export async function updateEditorServiceCategory(
 
 export async function deleteEditorServiceCategory(id: number): Promise<{ deleted?: boolean }> {
   return request(`/editor/services/categories/${id}`, { method: 'DELETE' })
+}
+
+// ── Service add-ons (Phase 5) ────────────────────────────────────────────────
+
+export async function getEditorServiceAddons(): Promise<ServiceAddon[]> {
+  return request<ServiceAddon[]>('/editor/services/addons')
+}
+
+export async function createEditorServiceAddon(
+  payload: ServiceAddonPayload,
+): Promise<ServiceAddon> {
+  return request<ServiceAddon>('/editor/services/addons', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateEditorServiceAddon(
+  id: number,
+  payload: Partial<ServiceAddonPayload>,
+): Promise<ServiceAddon> {
+  return request<ServiceAddon>(`/editor/services/addons/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteEditorServiceAddon(id: number): Promise<{ deleted?: boolean }> {
+  return request(`/editor/services/addons/${id}`, { method: 'DELETE' })
 }
 
 export async function getEditorHours(): Promise<HoursEntry[]> {

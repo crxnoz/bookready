@@ -54,12 +54,28 @@ class PublicSiteController extends Controller
                 ->toArray();
         }
 
+        // Phase 5: bulk-load addon links per service so the booking form
+        // can render the right add-ons without an extra round trip.
+        $addonLinksByService = [];
+        if (Schema::hasTable('service_addon_links')) {
+            $addonLinksByService = DB::table('service_addon_links')
+                ->orderBy('service_id')
+                ->orderBy('id')
+                ->get(['service_id', 'addon_id', 'is_required'])
+                ->groupBy('service_id')
+                ->map(fn ($rows) => $rows->map(fn ($r) => [
+                    'addon_id'    => (int) $r->addon_id,
+                    'is_required' => (bool) $r->is_required,
+                ])->values()->all())
+                ->toArray();
+        }
+
         $services = DB::table('services')
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get()
-            ->map(function ($r) use ($hasCategoryId, $hasServiceImage, $hasBufferBefore, $hasBufferAfter, $hasAvailDays, $assignedByService) {
+            ->map(function ($r) use ($hasCategoryId, $hasServiceImage, $hasBufferBefore, $hasBufferAfter, $hasAvailDays, $assignedByService, $addonLinksByService) {
                 $availableDays = null;
                 if ($hasAvailDays && $r->available_days !== null) {
                     $decoded = is_string($r->available_days) ? json_decode($r->available_days, true) : $r->available_days;
@@ -87,11 +103,36 @@ class PublicSiteController extends Controller
                         ? (int) $r->buffer_after_override_minutes  : null,
                     'available_days'                 => $availableDays,
                     'assigned_staff_ids'             => $assignedByService[(int) $r->id] ?? [],
+                    'linked_addons'                  => $addonLinksByService[(int) $r->id] ?? [],
                     'is_active'        => (bool)  $r->is_active,
                     'sort_order'       => (int)   $r->sort_order,
                 ];
             })
             ->values();
+
+        // Service add-ons (Phase 5) — exposed alongside services so the
+        // public booking form can render the right options without a
+        // round trip. Active-only; tenant-scoped via the tenant DB.
+        $serviceAddons = [];
+        if (Schema::hasTable('service_addons')) {
+            $serviceAddons = DB::table('service_addons')
+                ->where('is_active', true)
+                ->orderBy('sort_order', 'asc')
+                ->orderBy('id', 'asc')
+                ->get()
+                ->map(fn ($r) => [
+                    'id'                     => (int) $r->id,
+                    'name'                   =>       $r->name,
+                    'description'            =>       $r->description ?? null,
+                    'image_url'              =>       $r->image_url   ?? null,
+                    'extra_price'            => (float) ($r->extra_price_cents / 100),
+                    'extra_price_cents'      => (int)  $r->extra_price_cents,
+                    'extra_duration_minutes' => (int)  $r->extra_duration_minutes,
+                    'sort_order'             => (int)  $r->sort_order,
+                ])
+                ->values()
+                ->all();
+        }
 
         // Service categories — exposed so the booking widget can group
         // services by category card on the public site.
@@ -458,6 +499,7 @@ class PublicSiteController extends Controller
             'profile'       => $profileArr,
             'services'           => $services,
             'service_categories' => $serviceCategories,
+            'service_addons'     => $serviceAddons,
             'hours'         => $hours,
             'policies'      => $policiesArr,
             'staff'         => $staff,

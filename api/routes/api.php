@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\Editor\GalleryGroupController;
 use App\Http\Controllers\Api\Editor\GalleryItemsController;
 use App\Http\Controllers\Api\Editor\ServicesController;
 use App\Http\Controllers\Api\Editor\ServiceCategoriesController;
+use App\Http\Controllers\Api\Editor\ServiceAddonsController;
 use App\Http\Controllers\Api\Editor\StaffController;
 use App\Http\Controllers\Api\Editor\StaffHoursController;
 use App\Http\Controllers\Api\Editor\StaffBlockedDatesController;
@@ -97,12 +98,16 @@ Route::prefix('v1')->group(function () {
         Route::get('business',  [BusinessProfileController::class, 'show']);
         Route::patch('business', [BusinessProfileController::class, 'update']);
 
-        // Categories MUST come before /services/{service} so the static
-        // 'categories' segment isn't swallowed by the dynamic {service} matcher.
+        // Categories + add-ons MUST come before /services/{service} so
+        // the static segments aren't swallowed by the dynamic matcher.
         Route::get   ('services/categories',          [ServiceCategoriesController::class, 'index']);
         Route::post  ('services/categories',          [ServiceCategoriesController::class, 'store']);
         Route::patch ('services/categories/{id}',     [ServiceCategoriesController::class, 'update']);
         Route::delete('services/categories/{id}',     [ServiceCategoriesController::class, 'destroy']);
+        Route::get   ('services/addons',              [ServiceAddonsController::class, 'index']);
+        Route::post  ('services/addons',              [ServiceAddonsController::class, 'store']);
+        Route::patch ('services/addons/{id}',         [ServiceAddonsController::class, 'update']);
+        Route::delete('services/addons/{id}',         [ServiceAddonsController::class, 'destroy']);
         Route::get('services',              [ServicesController::class, 'index']);
         Route::post('services',             [ServicesController::class, 'store']);
         Route::patch('services/{service}',  [ServicesController::class, 'update']);
