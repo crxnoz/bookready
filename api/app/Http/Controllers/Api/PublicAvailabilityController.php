@@ -86,6 +86,30 @@ class PublicAvailabilityController extends Controller
             ])
             ->all();
 
+        // Phase 6: tenant-wide blocked dates. SlotGenerator returns an
+        // empty list with a friendly message when the chosen date falls
+        // inside any range. Only ranges whose end >= today are queried
+        // (also includes single-day blocks via end_date IS NULL fallback).
+        $blockedRanges = [];
+        if (\Illuminate\Support\Facades\Schema::hasTable('blocked_dates')) {
+            $blockedRanges = DB::table('blocked_dates')
+                ->where(function ($q) use ($date) {
+                    // Range must overlap or contain the requested date.
+                    $q->where('start_date', '<=', $date)
+                      ->where(function ($q2) use ($date) {
+                          $q2->where('end_date', '>=', $date)
+                             ->orWhereNull('end_date');
+                      });
+                })
+                ->get(['start_date', 'end_date', 'reason'])
+                ->map(fn ($r) => [
+                    'start_date' => $r->start_date,
+                    'end_date'   => $r->end_date,
+                    'reason'     => $r->reason,
+                ])
+                ->all();
+        }
+
         // Snapshot service data before ending tenancy
         $serviceData = [
             'id'               => (int)   $service->id,
@@ -98,12 +122,13 @@ class PublicAvailabilityController extends Controller
 
         // Pure slot generation — no DB calls here
         $result = SlotGenerator::generate(
-            date:         $date,
-            service:      $service,
-            hoursRow:     $hoursRow,
-            settings:     $settings,
-            appointments: $appointments,
-            appTimezone:  config('app.timezone'),
+            date:          $date,
+            service:       $service,
+            hoursRow:      $hoursRow,
+            settings:      $settings,
+            appointments:  $appointments,
+            appTimezone:   config('app.timezone'),
+            blockedRanges: $blockedRanges,
         );
 
         return response()->json([

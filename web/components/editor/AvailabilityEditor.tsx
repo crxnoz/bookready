@@ -1,17 +1,26 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { HoursEntry, AvailabilitySettings, AvailabilityData } from '@/lib/types'
-import { getEditorAvailability, updateEditorAvailability } from '@/lib/api'
+import { HoursEntry, AvailabilitySettings, AvailabilityData, BlockedDate } from '@/lib/types'
+import {
+  getEditorAvailability,
+  updateEditorAvailability,
+  getEditorBlockedDates,
+  createEditorBlockedDate,
+  deleteEditorBlockedDate,
+} from '@/lib/api'
 import Button from '@/components/ui/Button'
 import {
   Clock,
   Calendar,
   Settings2,
-  Lock,
   ChevronDown,
   ChevronUp,
   CheckCircle2,
+  Plus,
+  Trash2,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -226,7 +235,7 @@ export default function AvailabilityEditor() {
   const [error, setError]         = useState<string | null>(null)
 
   // Section collapse state
-  const [openSection, setOpenSection] = useState<'hours' | 'limits' | null>('hours')
+  const [openSection, setOpenSection] = useState<'hours' | 'limits' | 'blocked' | null>('hours')
 
   useEffect(() => {
     getEditorAvailability()
@@ -411,34 +420,16 @@ export default function AvailabilityEditor() {
         </div>
       </CollapsibleSection>
 
-      {/* ─── Section 4: Blocked Dates (coming soon) ─── */}
-      <div className="mx-5 mb-5">
-        <div className="border border-[rgba(18,18,18,0.10)] bg-white p-5">
-          <div className="flex items-start gap-3 mb-3">
-            <div className="w-8 h-8 bg-lavender border border-[rgba(18,18,18,0.08)] flex items-center justify-center flex-shrink-0">
-              <Lock size={14} className="text-[rgba(18,18,18,0.45)]" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-sm font-bold text-near-black">Blocked Dates</h3>
-                <span className="text-[9px] font-bold tracking-[0.10em] uppercase bg-lavender text-[rgba(18,18,18,0.5)] px-1.5 py-0.5">
-                  Coming soon
-                </span>
-              </div>
-              <p className="text-xs text-muted-text">
-                Block vacations, holidays, or personal days so clients can&apos;t book during those times.
-              </p>
-            </div>
-          </div>
-          <button
-            disabled
-            className="text-[10px] font-bold tracking-[0.12em] uppercase border border-[rgba(18,18,18,0.10)] px-3 py-2 text-muted-text cursor-not-allowed opacity-50"
-          >
-            <Calendar size={11} className="inline mr-1.5 mb-0.5" />
-            Add blocked date
-          </button>
-        </div>
-      </div>
+      {/* ─── Section 4: Blocked Dates ─── */}
+      <CollapsibleSection
+        icon={Calendar}
+        title="Blocked Dates"
+        subtitle="Holidays, vacations, and full studio closures."
+        open={openSection === 'blocked'}
+        onToggle={() => setOpenSection(s => s === 'blocked' ? null : 'blocked')}
+      >
+        <BlockedDatesPanel />
+      </CollapsibleSection>
 
       {/* ─── Save bar ─── */}
       <div className="px-5">
@@ -500,6 +491,163 @@ function CollapsibleSection({
       {open && (
         <div className="px-5 pb-5 pt-1">
           {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Blocked dates panel ──────────────────────────────────────────────────────
+
+/**
+ * Tenant-wide blocked dates. Per-staff vacations live on each staff
+ * card under /editor/staff (Phase 2); this panel covers full-shop
+ * closures: holidays, family emergencies, special-event closures, etc.
+ * SlotGenerator short-circuits when a requested date falls inside any
+ * row here, so bookings can't sneak through.
+ */
+function BlockedDatesPanel() {
+  const [rows,    setRows]    = useState<BlockedDate[] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadErr, setLoadErr] = useState<string | null>(null)
+
+  const [start,   setStart]   = useState('')
+  const [end,     setEnd]     = useState('')
+  const [reason,  setReason]  = useState('')
+  const [adding,  setAdding]  = useState(false)
+  const [addErr,  setAddErr]  = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true); setLoadErr(null)
+    getEditorBlockedDates()
+      .then(r => { if (! cancelled) setRows(r) })
+      .catch(e => { if (! cancelled) setLoadErr(e instanceof Error ? e.message : 'Failed to load blocked dates') })
+      .finally(() => { if (! cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault()
+    if (! start) return
+    setAdding(true); setAddErr(null)
+    try {
+      const created = await createEditorBlockedDate({
+        start_date: start,
+        end_date:   end || null,
+        reason:     reason.trim() || null,
+      })
+      setRows(prev => [...(prev ?? []), created].sort((a, b) => a.start_date.localeCompare(b.start_date)))
+      setStart(''); setEnd(''); setReason('')
+    } catch (e) {
+      setAddErr(e instanceof Error ? e.message : 'Failed to add blocked date')
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  async function handleDelete(id: number) {
+    if (! confirm('Remove this blocked date?')) return
+    try {
+      await deleteEditorBlockedDate(id)
+      setRows(prev => (prev ?? []).filter(r => r.id !== id))
+    } catch (e) {
+      setLoadErr(e instanceof Error ? e.message : 'Failed to remove')
+    }
+  }
+
+  function rangeLabel(r: BlockedDate): string {
+    return r.end_date && r.end_date !== r.start_date
+      ? `${r.start_date} → ${r.end_date}`
+      : r.start_date
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-text">
+        Block vacations, holidays, or full studio closures. Bookings on these days are rejected with a friendly message.
+        Need to mark <em>just one staff member</em> unavailable? Open that staff member&apos;s Schedule panel under{' '}
+        <span className="font-semibold text-near-black">Editor → Staff</span>.
+      </p>
+
+      {/* Add row */}
+      <form onSubmit={handleAdd} className="flex items-end gap-2 flex-wrap bg-cream border border-[rgba(18,18,18,0.08)] p-3">
+        <div>
+          <label className="block text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text mb-0.5">From</label>
+          <input
+            type="date" required
+            value={start}
+            onChange={e => setStart(e.target.value)}
+            className="border border-[rgba(18,18,18,0.15)] bg-white px-2 py-1.5 text-[11px] text-near-black focus:outline-none focus:border-near-black"
+          />
+        </div>
+        <div>
+          <label className="block text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text mb-0.5">To (optional)</label>
+          <input
+            type="date"
+            value={end}
+            min={start || undefined}
+            onChange={e => setEnd(e.target.value)}
+            className="border border-[rgba(18,18,18,0.15)] bg-white px-2 py-1.5 text-[11px] text-near-black focus:outline-none focus:border-near-black"
+          />
+        </div>
+        <div className="flex-1 min-w-[160px]">
+          <label className="block text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text mb-0.5">Reason</label>
+          <input
+            type="text"
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            maxLength={200}
+            placeholder="Holiday, vacation, private event…"
+            className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-2 py-1.5 text-[11px] text-near-black focus:outline-none focus:border-near-black"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={! start || adding}
+          className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.08em] uppercase bg-near-black text-white px-2.5 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {adding ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} Block
+        </button>
+      </form>
+
+      {addErr && (
+        <p className="text-[11px] text-red-700 flex items-center gap-1.5">
+          <AlertCircle size={11} /> {addErr}
+        </p>
+      )}
+      {loadErr && (
+        <p className="text-[11px] text-red-700 flex items-center gap-1.5">
+          <AlertCircle size={11} /> {loadErr}
+        </p>
+      )}
+
+      {loading && <p className="text-[11px] text-muted-text">Loading…</p>}
+
+      {rows && rows.length === 0 && ! loading && (
+        <p className="text-[11px] text-muted-text italic">No blocked dates yet.</p>
+      )}
+
+      {rows && rows.length > 0 && (
+        <div className="bg-white border border-[rgba(18,18,18,0.08)] divide-y divide-[rgba(18,18,18,0.06)]">
+          {rows.map(r => (
+            <div key={r.id} className="flex items-center justify-between gap-2 px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold text-near-black">{rangeLabel(r)}</p>
+                {r.reason && (
+                  <p className="text-[10px] text-muted-text truncate">{r.reason}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDelete(r.id)}
+                className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600 flex-shrink-0"
+                title="Remove"
+              >
+                <Trash2 size={11} />
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>

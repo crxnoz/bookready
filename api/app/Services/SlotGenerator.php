@@ -15,12 +15,14 @@ class SlotGenerator
     /**
      * Generate available time slots.
      *
-     * @param  string       $date          YYYY-MM-DD
-     * @param  object       $service       services row  (needs ->duration, ->name, ->price, ->id)
-     * @param  object|null  $hoursRow      hours row for this day (is_closed, open_time, close_time, break_start, break_end)
-     * @param  object|null  $settings      booking_settings row
-     * @param  array        $appointments  plain array of ['start_time' => 'HH:MM', 'end_time' => 'HH:MM']
-     * @param  string       $appTimezone   app timezone (e.g. 'America/New_York')
+     * @param  string       $date           YYYY-MM-DD
+     * @param  object       $service        services row  (needs ->duration, ->name, ->price, ->id)
+     * @param  object|null  $hoursRow       hours row for this day (is_closed, open_time, close_time, break_start, break_end)
+     * @param  object|null  $settings       booking_settings row
+     * @param  array        $appointments   plain array of ['start_time' => 'HH:MM', 'end_time' => 'HH:MM']
+     * @param  string       $appTimezone    app timezone (e.g. 'America/New_York')
+     * @param  array        $blockedRanges  optional list of ['start_date' => 'Y-m-d', 'end_date' => 'Y-m-d'|null].
+     *                                      When $date falls in any range we short-circuit with a closed message.
      * @return array{slots: list<array{start_time:string,end_time:string,label:string}>, message: string|null}
      */
     public static function generate(
@@ -30,6 +32,7 @@ class SlotGenerator
         ?object $settings,
         array   $appointments,
         string  $appTimezone = 'UTC',
+        array   $blockedRanges = [],
     ): array {
         $today    = Carbon::now($appTimezone)->format('Y-m-d');
         $now      = Carbon::now($appTimezone);
@@ -56,6 +59,24 @@ class SlotGenerator
                     'message' => 'This date has not been released for booking yet.',
                     // TODO: implement true scheduled release calendar based on slot_release_frequency,
                     // slot_release_day_of_week, slot_release_day_of_month, and slot_release_time.
+                ];
+            }
+        }
+
+        // ── Phase 6: tenant-wide blocked-date short-circuit ───────────────
+        // Owner-defined closures override everything below — return an
+        // empty slot list with the friendly reason if one is supplied.
+        foreach ($blockedRanges as $range) {
+            $start = $range['start_date'] ?? null;
+            $end   = $range['end_date']   ?? $start;
+            if (! $start) continue;
+            if ($date >= $start && $date <= ($end ?? $start)) {
+                $reason = trim((string) ($range['reason'] ?? ''));
+                return [
+                    'slots'   => [],
+                    'message' => $reason !== ''
+                        ? "Closed on this day — {$reason}."
+                        : 'Closed on this day.',
                 ];
             }
         }

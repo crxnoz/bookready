@@ -134,6 +134,32 @@ class PublicSiteController extends Controller
                 ->all();
         }
 
+        // Phase 6: tenant-wide blocked dates. Exposed so the public
+        // booking form can disable those days in the date picker before
+        // a request even hits the slot endpoint.
+        $blockedDates = [];
+        if (Schema::hasTable('blocked_dates')) {
+            $blockedDates = DB::table('blocked_dates')
+                ->where(function ($q) {
+                    // Only future / current ranges — past closures don't
+                    // need to ship over the wire.
+                    $today = now()->format('Y-m-d');
+                    $q->where('start_date', '>=', $today)
+                      ->orWhere('end_date',  '>=', $today);
+                })
+                ->orderBy('start_date', 'asc')
+                ->orderBy('id', 'asc')
+                ->get()
+                ->map(fn ($r) => [
+                    'id'         => (int) $r->id,
+                    'start_date' => $r->start_date,
+                    'end_date'   => $r->end_date,
+                    'reason'     => $r->reason,
+                ])
+                ->values()
+                ->all();
+        }
+
         // Service categories — exposed so the booking widget can group
         // services by category card on the public site.
         $serviceCategories = [];
@@ -500,6 +526,7 @@ class PublicSiteController extends Controller
             'services'           => $services,
             'service_categories' => $serviceCategories,
             'service_addons'     => $serviceAddons,
+            'blocked_dates'      => $blockedDates,
             'hours'         => $hours,
             'policies'      => $policiesArr,
             'staff'         => $staff,

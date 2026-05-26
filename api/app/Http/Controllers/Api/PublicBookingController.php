@@ -134,14 +134,33 @@ class PublicBookingController extends Controller
             }
         }
 
+        // Phase 6: load tenant-wide blocked-date ranges that touch this date
+        // so the server-side slot re-verify also rejects newly-blocked days.
+        $blockedRanges = [];
+        if (\Illuminate\Support\Facades\Schema::hasTable('blocked_dates')) {
+            $blockedRanges = DB::table('blocked_dates')
+                ->where('start_date', '<=', $date)
+                ->where(function ($q) use ($date) {
+                    $q->where('end_date', '>=', $date)->orWhereNull('end_date');
+                })
+                ->get(['start_date', 'end_date', 'reason'])
+                ->map(fn ($r) => [
+                    'start_date' => $r->start_date,
+                    'end_date'   => $r->end_date,
+                    'reason'     => $r->reason,
+                ])
+                ->all();
+        }
+
         // ── Re-verify slot is still available (anti-double-booking) ──────
         $result = SlotGenerator::generate(
-            date:         $date,
-            service:      $service,
-            hoursRow:     $hoursRow,
-            settings:     $settings,
-            appointments: $appointments,
-            appTimezone:  config('app.timezone'),
+            date:          $date,
+            service:       $service,
+            hoursRow:      $hoursRow,
+            settings:      $settings,
+            appointments:  $appointments,
+            appTimezone:   config('app.timezone'),
+            blockedRanges: $blockedRanges,
         );
 
         if (! SlotGenerator::containsSlot($result['slots'], $startTime)) {

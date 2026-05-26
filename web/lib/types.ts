@@ -420,6 +420,23 @@ export interface StaffHoursEntry {
   break_end: string | null
 }
 
+// Phase 6: a tenant-wide blocked-date range (holiday, full closure).
+// Per-staff blocks live in StaffBlockedDate.
+export interface BlockedDate {
+  id: number
+  start_date: string
+  end_date: string | null
+  reason: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface BlockedDatePayload {
+  start_date: string
+  end_date?: string | null
+  reason?: string | null
+}
+
 // Phase 2: a single staff blocked-date range. end_date null = single day.
 export interface StaffBlockedDate {
   id: number
@@ -463,6 +480,7 @@ export interface PublicSite {
   services?: Service[]
   service_categories?: ServiceCategory[]
   service_addons?: ServiceAddon[]
+  blocked_dates?: BlockedDate[]
   hours?: HoursEntry[]
   policies?: BusinessPolicy | null
   staff?: PublicStaffMember[]

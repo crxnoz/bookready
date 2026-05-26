@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Editor\AccountController;
 use App\Http\Controllers\Api\Editor\DangerController;
 use App\Http\Controllers\Api\Editor\AppointmentsController;
 use App\Http\Controllers\Api\Editor\AvailabilityController;
+use App\Http\Controllers\Api\Editor\BlockedDatesController;
 use App\Http\Controllers\Api\Editor\BusinessPolicyController;
 use App\Http\Controllers\Api\Editor\BusinessProfileController;
 use App\Http\Controllers\Api\Editor\CustomersController;
@@ -118,6 +119,12 @@ Route::prefix('v1')->group(function () {
 
         Route::get('availability',  [AvailabilityController::class, 'show']);
         Route::patch('availability', [AvailabilityController::class, 'update']);
+
+        // Phase 6: tenant-wide blocked dates. Per-staff blocks live under
+        // /editor/staff/{staff}/blocked-dates (Phase 2).
+        Route::get   ('blocked-dates',          [BlockedDatesController::class, 'index']);
+        Route::post  ('blocked-dates',          [BlockedDatesController::class, 'store']);
+        Route::delete('blocked-dates/{id}',     [BlockedDatesController::class, 'destroy']);
 
         Route::get('policies',  [BusinessPolicyController::class, 'show']);
         Route::patch('policies', [BusinessPolicyController::class, 'update']);

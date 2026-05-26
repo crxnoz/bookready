@@ -6,6 +6,8 @@ import {
   AvailabilityData,
   AvailableSlot,
   BillingCycle,
+  BlockedDate,
+  BlockedDatePayload,
   BusinessPolicy,
   BusinessProfile,
   CheckoutResponse,
@@ -418,6 +420,23 @@ export async function updateEditorAvailability(data: AvailabilityData): Promise<
     method: 'PATCH',
     body: JSON.stringify(data),
   })
+}
+
+// ── Blocked dates (Phase 6) ──────────────────────────────────────────────────
+
+export async function getEditorBlockedDates(): Promise<BlockedDate[]> {
+  return request<BlockedDate[]>('/editor/blocked-dates')
+}
+
+export async function createEditorBlockedDate(payload: BlockedDatePayload): Promise<BlockedDate> {
+  return request<BlockedDate>('/editor/blocked-dates', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteEditorBlockedDate(id: number): Promise<{ deleted?: boolean }> {
+  return request(`/editor/blocked-dates/${id}`, { method: 'DELETE' })
 }
 
 export async function getEditorPolicies(): Promise<BusinessPolicy> {
