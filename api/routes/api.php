@@ -25,6 +25,8 @@ use App\Http\Controllers\Api\Editor\GalleryGroupController;
 use App\Http\Controllers\Api\Editor\GalleryItemsController;
 use App\Http\Controllers\Api\Editor\ServicesController;
 use App\Http\Controllers\Api\Editor\StaffController;
+use App\Http\Controllers\Api\Editor\StaffHoursController;
+use App\Http\Controllers\Api\Editor\StaffBlockedDatesController;
 use App\Http\Controllers\Api\Editor\UploadsController;
 use App\Http\Controllers\Api\Editor\WebsiteSectionsController;
 use App\Http\Controllers\Api\Editor\WebsiteTemplateController;
@@ -127,6 +129,14 @@ Route::prefix('v1')->group(function () {
         Route::post('staff',             [StaffController::class, 'store']);
         Route::patch('staff/{staff}',    [StaffController::class, 'update']);
         Route::delete('staff/{staff}',   [StaffController::class, 'destroy']);
+        // Per-staff hours + blocked dates. Same /{staff}/* shape Laravel
+        // would generate via apiResource, but kept flat for consistency
+        // with the rest of the editor namespace.
+        Route::get  ('staff/{staff}/hours',                    [StaffHoursController::class,        'index']);
+        Route::patch('staff/{staff}/hours',                    [StaffHoursController::class,        'update']);
+        Route::get   ('staff/{staff}/blocked-dates',           [StaffBlockedDatesController::class, 'index']);
+        Route::post  ('staff/{staff}/blocked-dates',           [StaffBlockedDatesController::class, 'store']);
+        Route::delete('staff/{staff}/blocked-dates/{id}',      [StaffBlockedDatesController::class, 'destroy']);
 
         // Groups routes MUST come before /{item} so the static 'groups'
         // segment isn't swallowed by the dynamic {item} matcher.

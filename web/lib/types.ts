@@ -308,6 +308,8 @@ export interface ApiStaffMember {
   name: string
   role: string | null
   bio: string | null
+  /** Required as of Phase 2 — legacy rows pre-backfill may still surface a
+   *  placeholder `staff-{id}@placeholder.local` value here. */
   email: string | null
   phone: string | null
   photo_url: string | null
@@ -321,11 +323,44 @@ export interface StaffMemberPayload {
   name: string
   role?: string | null
   bio?: string | null
-  email?: string | null
+  /** Required on create — kept optional on the payload type so the same
+   *  shape works for partial PATCH updates. The API rejects empty values. */
+  email?: string
   phone?: string | null
   photo_url?: string | null
   is_active?: boolean
   sort_order?: number
+}
+
+// Phase 2: per-staff working hours. Same shape as HoursEntry minus the
+// global `is_closed`/`is_open` naming inversion — staff_hours uses the
+// positive form directly.
+export interface StaffHoursEntry {
+  id: number
+  day_of_week: number
+  day_name: string
+  is_open: boolean
+  open_time: string | null
+  close_time: string | null
+  break_start: string | null
+  break_end: string | null
+}
+
+// Phase 2: a single staff blocked-date range. end_date null = single day.
+export interface StaffBlockedDate {
+  id: number
+  staff_id: number
+  start_date: string
+  end_date: string | null
+  reason: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface StaffBlockedDatePayload {
+  start_date: string
+  end_date?: string | null
+  reason?: string | null
 }
 
 export interface PublicStaffMember {
@@ -335,6 +370,10 @@ export interface PublicStaffMember {
   bio: string | null
   photo_url: string | null
   sort_order: number
+  /** Phase 2: per-staff hours + blocked dates. Always present (may be
+   *  empty arrays) on tenants that have run the Phase 2 migrations. */
+  hours?:         StaffHoursEntry[]
+  blocked_dates?: StaffBlockedDate[]
 }
 
 // Public tenant lookup

@@ -51,11 +51,16 @@ class StaffController extends Controller
     // POST /editor/staff
     public function store(Request $request): JsonResponse
     {
+        // Phase 2: email is now required on create (column is NOT NULL).
+        // Existing legacy rows that were backfilled with a placeholder are
+        // updated through the PATCH path, which keeps the email rule loose
+        // enough to accept a real email replacement without forcing a
+        // simultaneous edit of every other field.
         $validated = $request->validate([
             'name'       => 'required|string|max:255',
             'role'       => 'nullable|string|max:255',
             'bio'        => 'nullable|string|max:5000',
-            'email'      => 'nullable|email|max:255',
+            'email'      => 'required|email|max:255',
             'phone'      => 'nullable|string|max:50',
             'photo_url'  => 'nullable|string|max:1000',
             'is_active'  => 'nullable|boolean',
@@ -91,11 +96,13 @@ class StaffController extends Controller
     // PATCH /editor/staff/{staff}
     public function update(Request $request, int $staff): JsonResponse
     {
+        // Same shape as store(), but email can be omitted to leave the
+        // current value untouched. When present it still has to be valid.
         $validated = $request->validate([
             'name'       => 'sometimes|required|string|max:255',
             'role'       => 'nullable|string|max:255',
             'bio'        => 'nullable|string|max:5000',
-            'email'      => 'nullable|email|max:255',
+            'email'      => 'sometimes|required|email|max:255',
             'phone'      => 'nullable|string|max:50',
             'photo_url'  => 'nullable|string|max:1000',
             'is_active'  => 'sometimes|boolean',

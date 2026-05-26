@@ -126,19 +126,68 @@ class PublicSiteController extends Controller
             ));
         }
 
+        // Phase 2: pre-fetch per-staff hours + blocked dates so each staff
+        // member surfaces them inline. Tables are defensively wrapped — old
+        // tenants that haven't run the Phase 2 migrations still load.
+        $hasStaffHours   = Schema::hasTable('staff_hours');
+        $hasStaffBlocked = Schema::hasTable('staff_blocked_dates');
+        $dayNames        = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        $hoursByStaff    = $hasStaffHours
+            ? DB::table('staff_hours')
+                ->orderBy('staff_id')
+                ->orderBy('day_of_week')
+                ->get()
+                ->groupBy('staff_id')
+            : collect();
+        $blockedByStaff  = $hasStaffBlocked
+            ? DB::table('staff_blocked_dates')
+                ->orderBy('staff_id')
+                ->orderBy('start_date')
+                ->get()
+                ->groupBy('staff_id')
+            : collect();
+
         $staff = DB::table('staff')
             ->where('is_active', true)
             ->orderBy('sort_order', 'asc')
             ->orderBy('id', 'asc')
             ->get()
-            ->map(fn ($r) => [
-                'id'         => (int) $r->id,
-                'name'       =>        $r->name,
-                'role'       =>        $r->role,
-                'bio'        =>        $r->bio,
-                'photo_url'  =>        $r->avatar_url ?? null,
-                'sort_order' => (int)  $r->sort_order,
-            ])
+            ->map(function ($r) use ($hoursByStaff, $blockedByStaff, $dayNames) {
+                $staffId = (int) $r->id;
+                $hours   = collect($hoursByStaff->get($staffId, []))
+                    ->map(fn ($h) => [
+                        'id'          => (int) $h->id,
+                        'day_of_week' => (int) $h->day_of_week,
+                        'day_name'    => $dayNames[(int) $h->day_of_week] ?? '',
+                        'is_open'     => (bool) $h->is_open,
+                        'open_time'   => $h->open_time   ? substr($h->open_time,   0, 5) : null,
+                        'close_time'  => $h->close_time  ? substr($h->close_time,  0, 5) : null,
+                        'break_start' => $h->break_start ? substr($h->break_start, 0, 5) : null,
+                        'break_end'   => $h->break_end   ? substr($h->break_end,   0, 5) : null,
+                    ])
+                    ->values()
+                    ->all();
+                $blocked = collect($blockedByStaff->get($staffId, []))
+                    ->map(fn ($b) => [
+                        'id'         => (int) $b->id,
+                        'staff_id'   => (int) $b->staff_id,
+                        'start_date' => $b->start_date,
+                        'end_date'   => $b->end_date,
+                        'reason'     => $b->reason,
+                    ])
+                    ->values()
+                    ->all();
+                return [
+                    'id'            => $staffId,
+                    'name'          =>        $r->name,
+                    'role'          =>        $r->role,
+                    'bio'           =>        $r->bio,
+                    'photo_url'     =>        $r->avatar_url ?? null,
+                    'sort_order'    => (int)  $r->sort_order,
+                    'hours'         => $hours,
+                    'blocked_dates' => $blocked,
+                ];
+            })
             ->values()
             ->all();
 

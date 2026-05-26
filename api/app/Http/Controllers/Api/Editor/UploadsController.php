@@ -13,7 +13,7 @@ use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 
 class UploadsController extends Controller
 {
-    private const ALLOWED_KINDS = ['gallery', 'before_after', 'header', 'logo', 'about'];
+    private const ALLOWED_KINDS = ['gallery', 'before_after', 'header', 'logo', 'about', 'staff'];
     private const MAX_BYTES     = 10 * 1024 * 1024;   // 10 MB
     private const MAX_EDGE_PX   = 2000;
     private const WEBP_QUALITY  = 82;

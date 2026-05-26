@@ -55,6 +55,9 @@ import {
   StripeConnectStatusResponse,
   Service,
   StaffMemberPayload,
+  StaffHoursEntry,
+  StaffBlockedDate,
+  StaffBlockedDatePayload,
   TemplateSettings,
   TemplateSettingsResponse,
   TenantData,
@@ -128,7 +131,7 @@ export async function getCurrentUser(): Promise<AuthUser> {
 
 // ── Image uploads ────────────────────────────────────────────────────────────
 
-export type UploadKind = 'gallery' | 'before_after' | 'header' | 'logo' | 'about'
+export type UploadKind = 'gallery' | 'before_after' | 'header' | 'logo' | 'about' | 'staff'
 
 export interface UploadResponse {
   url: string
@@ -695,6 +698,45 @@ export async function updateEditorStaff(id: number, data: Partial<StaffMemberPay
 
 export async function archiveEditorStaff(id: number): Promise<ApiStaffMember> {
   return request<ApiStaffMember>(`/editor/staff/${id}`, { method: 'DELETE' })
+}
+
+// ── Staff hours (Phase 2) ────────────────────────────────────────────────────
+
+export async function getEditorStaffHours(staffId: number): Promise<StaffHoursEntry[]> {
+  return request<StaffHoursEntry[]>(`/editor/staff/${staffId}/hours`)
+}
+
+export async function updateEditorStaffHours(
+  staffId: number,
+  hours: StaffHoursEntry[],
+): Promise<StaffHoursEntry[]> {
+  return request<StaffHoursEntry[]>(`/editor/staff/${staffId}/hours`, {
+    method: 'PATCH',
+    body: JSON.stringify({ hours }),
+  })
+}
+
+// ── Staff blocked dates (Phase 2) ────────────────────────────────────────────
+
+export async function getEditorStaffBlockedDates(staffId: number): Promise<StaffBlockedDate[]> {
+  return request<StaffBlockedDate[]>(`/editor/staff/${staffId}/blocked-dates`)
+}
+
+export async function createEditorStaffBlockedDate(
+  staffId: number,
+  payload: StaffBlockedDatePayload,
+): Promise<StaffBlockedDate> {
+  return request<StaffBlockedDate>(`/editor/staff/${staffId}/blocked-dates`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteEditorStaffBlockedDate(
+  staffId: number,
+  id: number,
+): Promise<{ deleted?: boolean }> {
+  return request(`/editor/staff/${staffId}/blocked-dates/${id}`, { method: 'DELETE' })
 }
 
 // ── Website / Template ────────────────────────────────────────────────────────
