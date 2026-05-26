@@ -32,3 +32,5 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 web/tsconfig.tsbuildinfo
+# Local Claude Code state — worktrees + settings
+.claude/
