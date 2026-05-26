@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\Editor;
+namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
@@ -8,22 +8,43 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
+use Intervention\Image\ImageManager;
 
-class UploadsController extends Controller
+/**
+ * Phase 16 — public-facing booking-answer image upload.
+ *
+ * The booking form is anonymous, so we can't reuse the editor uploads
+ * endpoint (Sanctum-gated). This standalone endpoint accepts an image,
+ * resolves the tenant from the slug, processes the same way the editor
+ * does (resize + webp), and returns a public URL.
+ *
+ * Hard-locked to:
+ *   - kind=booking_answer (the path prefix)
+ *   - 10 MB cap
+ *   - image MIME types only
+ *
+ * If somebody starts abusing this, throttle middleware lives in api.php.
+ */
+class PublicBookingAnswerUploadController extends Controller
 {
-    private const ALLOWED_KINDS = ['gallery', 'before_after', 'header', 'logo', 'about', 'staff', 'service', 'category', 'addon', 'booking_answer'];
-    private const MAX_BYTES     = 10 * 1024 * 1024;   // 10 MB
-    private const MAX_EDGE_PX   = 2000;
-    private const WEBP_QUALITY  = 82;
+    private const MAX_BYTES    = 10 * 1024 * 1024;
+    private const MAX_EDGE_PX  = 2000;
+    private const WEBP_QUALITY = 82;
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, string $slug): JsonResponse
     {
-        $validated = $request->validate([
-            'file' => "required|file|max:10240|mimetypes:image/jpeg,image/png,image/webp,image/heic,image/heif",
-            'kind' => 'required|string|in:' . implode(',', self::ALLOWED_KINDS),
+        $request->validate([
+            'file' => 'required|file|max:10240|mimetypes:image/jpeg,image/png,image/webp,image/heic,image/heif',
         ]);
+
+        // Slug → tenant via the domains table. We do NOT initialize tenancy
+        // here because the file goes straight to R2; we only need the
+        // tenant id for the storage path.
+        $tenant = Tenant::whereHas('domains', fn ($q) => $q->where('domain', 'like', $slug . '.%'))->first();
+        if (! $tenant) {
+            return response()->json(['message' => 'Site not found'], 404);
+        }
 
         $file = $request->file('file');
         if (! $file || ! $file->isValid()) {
@@ -33,13 +54,10 @@ class UploadsController extends Controller
             return response()->json(['message' => 'File too large (10 MB max)'], 422);
         }
 
-        $tenant = Tenant::findOrFail($request->user()->tenant_id);
-
         try {
             $manager = new ImageManager(new GdDriver());
             $image   = $manager->read($file->getRealPath());
 
-            // Resize so the longest edge is MAX_EDGE_PX; preserve aspect ratio.
             if ($image->width() > self::MAX_EDGE_PX || $image->height() > self::MAX_EDGE_PX) {
                 $image->scaleDown(width: self::MAX_EDGE_PX, height: self::MAX_EDGE_PX);
             }
@@ -51,9 +69,8 @@ class UploadsController extends Controller
         }
 
         $key = sprintf(
-            'tenants/%s/%s/%s.webp',
+            'tenants/%s/booking_answer/%s.webp',
             $tenant->getKey(),
-            $validated['kind'],
             (string) Str::ulid(),
         );
 

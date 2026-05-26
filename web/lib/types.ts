@@ -85,6 +85,54 @@ export interface ServiceAddonLink {
   is_required: boolean
 }
 
+// ── Phase 16: Booking Questions (form builder) ──────────────────────────────
+
+export type BookingQuestionType = 'text' | 'textarea' | 'checkbox' | 'dropdown' | 'image'
+export type BookingQuestionScope = 'all' | 'services'
+
+export interface BookingQuestion {
+  id: number
+  label: string
+  type: BookingQuestionType
+  options: string[]               // for dropdown
+  help_text: string | null
+  required: boolean
+  scope: BookingQuestionScope
+  service_ids: number[]           // when scope='services'
+  is_active: boolean
+  sort_order: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface BookingQuestionPayload {
+  label?: string
+  type?: BookingQuestionType
+  options?: string[] | null
+  help_text?: string | null
+  required?: boolean
+  scope?: BookingQuestionScope
+  service_ids?: number[] | null
+  is_active?: boolean
+  sort_order?: number
+}
+
+/** Wire shape for an answer sent with the public booking POST. */
+export interface BookingQuestionAnswerInput {
+  question_id: number
+  value?: string | boolean | null
+  image_url?: string | null
+}
+
+/** Snapshot shape stored on appointments.question_answers + returned to owner. */
+export interface BookingQuestionAnswerSnapshot {
+  question_id: number
+  label_snapshot: string
+  type_snapshot: BookingQuestionType
+  value: string | boolean | null
+  image_url: string | null
+}
+
 // Phase 3: rich service category. Replaces the free-text `category`
 // column with an editable resource (image, description, active flag).
 export interface ServiceCategory {
@@ -480,6 +528,7 @@ export interface PublicSite {
   services?: Service[]
   service_categories?: ServiceCategory[]
   service_addons?: ServiceAddon[]
+  booking_questions?: BookingQuestion[]
   blocked_dates?: BlockedDate[]
   hours?: HoursEntry[]
   policies?: BusinessPolicy | null
@@ -860,6 +909,8 @@ export interface Appointment {
   staff_name?: string | null
   addons?: AppointmentAddon[]
   addons_subtotal?: number
+  /** Phase 16 — custom booking-question answers (JSON snapshot). */
+  question_answers?: BookingQuestionAnswerSnapshot[]
   customer_name: string
   customer_email: string | null
   customer_phone: string | null
@@ -1041,6 +1092,9 @@ export interface PublicBookingPayload {
    *  ones the client missed. Empty/missing staff_id = "any staff". */
   staff_id?: number | null
   addon_ids?: number[]
+  /** Phase 16: custom booking-question answers. Backend snapshots into
+   *  appointments.question_answers; required ones are enforced server-side. */
+  question_answers?: BookingQuestionAnswerInput[]
 }
 
 export interface PublicBookingResponse {

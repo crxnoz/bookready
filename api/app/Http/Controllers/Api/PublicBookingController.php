@@ -56,6 +56,12 @@ class PublicBookingController extends Controller
             'addon_ids'        => 'sometimes|array',
             'addon_ids.*'      => 'integer',
             'staff_id'         => 'sometimes|nullable|integer',
+            // Phase 16: custom booking-question answers.
+            // Shape: [{ question_id, value? (string|bool), image_url? }]
+            'question_answers'                 => 'sometimes|array|max:100',
+            'question_answers.*.question_id'   => 'required_with:question_answers|integer',
+            'question_answers.*.value'         => 'sometimes|nullable',
+            'question_answers.*.image_url'     => 'sometimes|nullable|string|max:2000',
         ]);
 
         $serviceId = (int)    $validated['service_id'];
@@ -285,6 +291,82 @@ class PublicBookingController extends Controller
             ? Str::random(40)
             : null;
 
+        // ── Phase 16: booking-question answers ──────────────────────────────
+        // Build a snapshot from the active questions table. Required ones
+        // are enforced server-side regardless of client validation.
+        $questionAnswersJson = null;
+        if (Schema::hasTable('booking_questions') && Schema::hasColumn('appointments', 'question_answers')) {
+            $rawAnswers = is_array($validated['question_answers'] ?? null)
+                ? $validated['question_answers']
+                : [];
+            $answerByQ = [];
+            foreach ($rawAnswers as $a) {
+                $qid = (int) ($a['question_id'] ?? 0);
+                if ($qid > 0) $answerByQ[$qid] = $a;
+            }
+
+            $activeQuestions = DB::table('booking_questions')
+                ->where('is_active', true)
+                ->orderBy('sort_order', 'asc')
+                ->orderBy('id', 'asc')
+                ->get();
+
+            $snapshot = [];
+            foreach ($activeQuestions as $q) {
+                // Scope filter — skip questions that don't apply to this service.
+                $scope = $q->scope ?? 'all';
+                if ($scope === 'services') {
+                    $sids = is_string($q->service_ids) ? json_decode($q->service_ids, true) : [];
+                    $sids = is_array($sids) ? array_map('intval', $sids) : [];
+                    if (! in_array((int) $service->id, $sids, true)) continue;
+                }
+
+                $given = $answerByQ[(int) $q->id] ?? null;
+                $value = $given['value']     ?? null;
+                $image = $given['image_url'] ?? null;
+
+                // Normalize per type.
+                $type = $q->type;
+                if ($type === 'checkbox') {
+                    $value = filter_var($value, FILTER_VALIDATE_BOOLEAN);
+                    $image = null;
+                } elseif ($type === 'image') {
+                    $value = null;
+                    $image = is_string($image) && trim($image) !== '' ? $image : null;
+                } else {
+                    $value = is_scalar($value) ? trim((string) $value) : null;
+                    if ($value === '') $value = null;
+                    $image = null;
+                }
+
+                // Required enforcement.
+                if ((bool) $q->required) {
+                    $missing = ($type === 'image')    ? ($image === null)
+                            : (($type === 'checkbox') ? ($value !== true)
+                                                      : ($value === null));
+                    if ($missing) {
+                        tenancy()->end();
+                        return response()->json([
+                            'message' => 'Please answer all required questions.',
+                            'errors'  => ['question_answers' => ["'{$q->label}' is required."]],
+                        ], 422);
+                    }
+                }
+
+                $snapshot[] = [
+                    'question_id'    => (int) $q->id,
+                    'label_snapshot' => $q->label,
+                    'type_snapshot'  => $type,
+                    'value'          => $value,
+                    'image_url'      => $image,
+                ];
+            }
+
+            if (! empty($snapshot)) {
+                $questionAnswersJson = json_encode($snapshot);
+            }
+        }
+
         $insertData = [
             'client_id'                => $clientId,
             'service_id'               => (int) $service->id,
@@ -312,6 +394,9 @@ class PublicBookingController extends Controller
         }
         if (Schema::hasColumn('appointments', 'addons_subtotal_cents')) {
             $insertData['addons_subtotal_cents'] = $addonsSubtotalCents;
+        }
+        if ($questionAnswersJson !== null && Schema::hasColumn('appointments', 'question_answers')) {
+            $insertData['question_answers'] = $questionAnswersJson;
         }
 
         if ($appointmentsHasPaymentCols) {

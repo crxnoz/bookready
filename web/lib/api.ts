@@ -63,6 +63,8 @@ import {
   Service,
   ServiceAddon,
   ServiceAddonPayload,
+  BookingQuestion,
+  BookingQuestionPayload,
   ServiceCategory,
   ServiceCategoryPayload,
   StaffMemberPayload,
@@ -142,7 +144,7 @@ export async function getCurrentUser(): Promise<AuthUser> {
 
 // ── Image uploads ────────────────────────────────────────────────────────────
 
-export type UploadKind = 'gallery' | 'before_after' | 'header' | 'logo' | 'about' | 'staff' | 'service' | 'category' | 'addon'
+export type UploadKind = 'gallery' | 'before_after' | 'header' | 'logo' | 'about' | 'staff' | 'service' | 'category' | 'addon' | 'booking_answer'
 
 export interface UploadResponse {
   url: string
@@ -408,6 +410,55 @@ export async function updateEditorServiceAddon(
 
 export async function deleteEditorServiceAddon(id: number): Promise<{ deleted?: boolean }> {
   return request(`/editor/services/addons/${id}`, { method: 'DELETE' })
+}
+
+// ── Booking Questions (Phase 16) ─────────────────────────────────────────────
+
+export async function getEditorBookingQuestions(): Promise<BookingQuestion[]> {
+  return request<BookingQuestion[]>('/editor/booking-questions')
+}
+
+export async function createEditorBookingQuestion(
+  payload: BookingQuestionPayload,
+): Promise<BookingQuestion> {
+  return request<BookingQuestion>('/editor/booking-questions', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateEditorBookingQuestion(
+  id: number,
+  payload: BookingQuestionPayload,
+): Promise<BookingQuestion> {
+  return request<BookingQuestion>(`/editor/booking-questions/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteEditorBookingQuestion(id: number): Promise<{ deleted?: boolean }> {
+  return request(`/editor/booking-questions/${id}`, { method: 'DELETE' })
+}
+
+/**
+ * Public-facing image upload for booking-answer questions. Doesn't require
+ * Sanctum auth — the endpoint resolves the tenant from the slug.
+ */
+export async function uploadBookingAnswerImage(
+  slug: string,
+  file: File,
+): Promise<{ url: string; key: string; bytes: number }> {
+  const fd = new FormData()
+  fd.append('file', file)
+
+  const url = `${API_BASE}/public/sites/${slug}/booking-answer-upload`
+  const res = await fetch(url, { method: 'POST', body: fd })
+  if (! res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.message || `Upload failed (${res.status})`)
+  }
+  return res.json()
 }
 
 export async function getEditorHours(): Promise<HoursEntry[]> {

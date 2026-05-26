@@ -41,6 +41,8 @@ class AppointmentsController extends Controller
             'addons_subtotal'          => $get('addons_subtotal_cents') !== null
                 ? round(((int) $get('addons_subtotal_cents')) / 100, 2)
                 : 0,
+            // Phase 16 — custom booking-question answers (JSON snapshot).
+            'question_answers'         => $this->decodeQuestionAnswers($get('question_answers')),
             'customer_name'            => $row->customer_name,
             'customer_email'           => $row->customer_email,
             'customer_phone'           => $row->customer_phone,
@@ -95,6 +97,14 @@ class AppointmentsController extends Controller
             'dispute_opened_at'        => $get('dispute_opened_at'),
             'dispute_closed_at'        => $get('dispute_closed_at'),
         ];
+    }
+
+    private function decodeQuestionAnswers($raw): array
+    {
+        if (is_array($raw)) return array_values($raw);
+        if (! is_string($raw) || $raw === '') return [];
+        $d = json_decode($raw, true);
+        return is_array($d) ? array_values($d) : [];
     }
 
     /**

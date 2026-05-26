@@ -30,6 +30,8 @@ use App\Http\Controllers\Api\Editor\GalleryItemsController;
 use App\Http\Controllers\Api\Editor\ServicesController;
 use App\Http\Controllers\Api\Editor\ServiceCategoriesController;
 use App\Http\Controllers\Api\Editor\ServiceAddonsController;
+use App\Http\Controllers\Api\Editor\BookingQuestionsController;
+use App\Http\Controllers\Api\PublicBookingAnswerUploadController;
 use App\Http\Controllers\Api\Editor\StaffController;
 use App\Http\Controllers\Api\Editor\StaffHoursController;
 use App\Http\Controllers\Api\Editor\StaffBlockedDatesController;
@@ -58,6 +60,7 @@ Route::prefix('v1')->group(function () {
     Route::get('public/sites/{slug}',                     [PublicSiteController::class,       'show']);
     Route::get('public/sites/{slug}/availability',        [PublicAvailabilityController::class, 'show']);
     Route::post('public/sites/{slug}/appointments',       [PublicBookingController::class,     'store']);
+    Route::post('public/sites/{slug}/booking-answer-upload', [PublicBookingAnswerUploadController::class, 'store']);
 
     // ── Public manage-booking (token-gated) ──────────────────────────────
     Route::get ('public/sites/{slug}/manage/{token}',             [PublicManageBookingController::class, 'show']);
@@ -112,6 +115,12 @@ Route::prefix('v1')->group(function () {
         Route::post  ('services/addons',              [ServiceAddonsController::class, 'store']);
         Route::patch ('services/addons/{id}',         [ServiceAddonsController::class, 'update']);
         Route::delete('services/addons/{id}',         [ServiceAddonsController::class, 'destroy']);
+
+        // Phase 16 — booking questions (form builder).
+        Route::get   ('booking-questions',            [BookingQuestionsController::class, 'index']);
+        Route::post  ('booking-questions',            [BookingQuestionsController::class, 'store']);
+        Route::patch ('booking-questions/{id}',       [BookingQuestionsController::class, 'update']);
+        Route::delete('booking-questions/{id}',       [BookingQuestionsController::class, 'destroy']);
         Route::get('services',              [ServicesController::class, 'index']);
         Route::post('services',             [ServicesController::class, 'store']);
         Route::patch('services/{service}',  [ServicesController::class, 'update']);

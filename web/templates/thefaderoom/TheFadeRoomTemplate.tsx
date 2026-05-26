@@ -442,6 +442,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 serviceAddons={site.service_addons ?? []}
                 staffMembers={site.staff ?? []}
                 serviceCategories={site.service_categories ?? []}
+                bookingQuestions={site.booking_questions ?? []}
               />
             )}
           </div>
@@ -1793,6 +1794,57 @@ const TFR_CSS = `
 .tfr-booking-fields input:focus,
 .tfr-booking-textarea:focus { outline:0; border-color:var(--tfr-pink); box-shadow:0 0 0 3px rgba(var(--tfr-pink-rgb),0.18); }
 .tfr-booking-textarea { resize:vertical; }
+
+/* Phase 16 — custom questions on the Details step */
+.tfr-booking-questions {
+  display:grid; gap:14px;
+  padding-top:14px; margin-top:6px;
+  border-top:1px solid rgba(255,255,255,0.08);
+}
+.tfr-booking-question { display:flex; flex-direction:column; gap:4px; }
+.tfr-booking-question > label { display:flex; flex-direction:column; gap:6px; }
+.tfr-booking-question select {
+  width:100%; padding:12px 14px;
+  background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.10);
+  color:var(--tfr-text); font-family:var(--tfr-sans); font-size:14px;
+  border-radius:6px;
+}
+.tfr-booking-question select:focus { outline:0; border-color:var(--tfr-pink); box-shadow:0 0 0 3px rgba(var(--tfr-pink-rgb),0.18); }
+.tfr-booking-question-hint { font-size:11px; color:var(--tfr-muted); margin:0; }
+.tfr-booking-checkbox-row {
+  display:flex; align-items:center; gap:10px;
+  font-size:13px !important; color:var(--tfr-text) !important;
+  letter-spacing:normal !important; text-transform:none !important; font-weight:400 !important;
+}
+.tfr-booking-checkbox-row input[type="checkbox"] { width:18px; height:18px; accent-color:var(--tfr-pink); }
+
+.tfr-booking-image-upload { display:flex; flex-direction:column; gap:8px; }
+.tfr-booking-image-pick {
+  display:inline-flex; align-items:center; gap:8px;
+  align-self:flex-start; padding:10px 16px; border-radius:6px;
+  background:rgba(255,255,255,0.04); border:1px dashed rgba(255,255,255,0.20);
+  color:var(--tfr-text); font-size:12px; cursor:pointer;
+  transition:border-color .2s ease;
+  letter-spacing:normal !important; text-transform:none !important; font-weight:500 !important;
+}
+.tfr-booking-image-pick:hover { border-color:var(--tfr-pink); }
+.tfr-booking-image-preview {
+  position:relative; display:inline-block; max-width:220px;
+}
+.tfr-booking-image-preview img {
+  width:100%; height:auto; max-height:180px; object-fit:cover;
+  border-radius:6px; border:1px solid rgba(255,255,255,0.10);
+}
+.tfr-booking-image-remove {
+  position:absolute; top:6px; right:6px;
+  width:24px; height:24px; border-radius:50%;
+  background:rgba(0,0,0,0.65); border:1px solid rgba(255,255,255,0.20);
+  color:#fff; display:inline-flex; align-items:center; justify-content:center;
+  cursor:pointer;
+}
+.tfr-booking-image-err { font-size:11px; color:#ff8888; }
+.tfr-spin { animation: tfr-spin 1s linear infinite; }
+@keyframes tfr-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 /* Nav buttons */
 .tfr-booking-nav { display:flex; justify-content:space-between; gap:10px; padding-top:4px; flex-wrap:wrap; }

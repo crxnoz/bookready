@@ -134,6 +134,35 @@ class PublicSiteController extends Controller
                 ->all();
         }
 
+        // Phase 16: booking questions (form builder). Active-only; the
+        // public booking form filters per-service client-side using `scope`
+        // + `service_ids`.
+        $bookingQuestions = [];
+        if (Schema::hasTable('booking_questions')) {
+            $bookingQuestions = DB::table('booking_questions')
+                ->where('is_active', true)
+                ->orderBy('sort_order', 'asc')
+                ->orderBy('id', 'asc')
+                ->get()
+                ->map(function ($r) {
+                    $opts = is_string($r->options) ? json_decode($r->options, true) : ($r->options ?? []);
+                    $sids = is_string($r->service_ids) ? json_decode($r->service_ids, true) : ($r->service_ids ?? []);
+                    return [
+                        'id'          => (int)  $r->id,
+                        'label'       =>        $r->label,
+                        'type'        =>        $r->type,
+                        'options'     => is_array($opts) ? array_values($opts) : [],
+                        'help_text'   =>        $r->help_text ?? null,
+                        'required'    => (bool) $r->required,
+                        'scope'       =>        $r->scope ?? 'all',
+                        'service_ids' => is_array($sids) ? array_values(array_map('intval', $sids)) : [],
+                        'sort_order'  => (int)  $r->sort_order,
+                    ];
+                })
+                ->values()
+                ->all();
+        }
+
         // Phase 6: tenant-wide blocked dates. Exposed so the public
         // booking form can disable those days in the date picker before
         // a request even hits the slot endpoint.
@@ -526,6 +555,7 @@ class PublicSiteController extends Controller
             'services'           => $services,
             'service_categories' => $serviceCategories,
             'service_addons'     => $serviceAddons,
+            'booking_questions'  => $bookingQuestions,
             'blocked_dates'      => $blockedDates,
             'hours'         => $hours,
             'policies'      => $policiesArr,

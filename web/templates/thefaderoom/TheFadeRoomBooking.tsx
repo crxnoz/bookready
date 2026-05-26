@@ -3,13 +3,14 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight,
-  Clock, Heart, CalendarCheck,
+  Clock, Heart, CalendarCheck, Image as ImageIcon, Loader2, X,
 } from 'lucide-react'
-import { getPublicAvailability, createPublicAppointment } from '@/lib/api'
+import { getPublicAvailability, createPublicAppointment, uploadBookingAnswerImage } from '@/lib/api'
 import type {
   AvailableSlot, PaymentChoice, PublicBookingPayload, Service,
   AvailabilityData, PublicPaymentSettings,
   ServiceAddon, PublicStaffMember, ServiceCategory,
+  BookingQuestion, BookingQuestionAnswerInput,
 } from '@/lib/types'
 
 // Sentinel used as the "category id" for the auto-generated bucket that
@@ -91,6 +92,7 @@ export default function TheFadeRoomBooking({
   serviceAddons = [],
   staffMembers = [],
   serviceCategories = [],
+  bookingQuestions = [],
 }: {
   slug: string
   services: Service[]
@@ -108,6 +110,10 @@ export default function TheFadeRoomBooking({
    *  it falls through to the flat service grid so single-category shops
    *  don't get a dead-end click. */
   serviceCategories?: ServiceCategory[]
+  /** Phase 16: custom owner-defined questions, scoped per-service or
+   *  to-all. Rendered inline at the bottom of the Details step so the
+   *  flow stays 5 steps. */
+  bookingQuestions?: BookingQuestion[]
 }) {
   const [step,         setStep]         = useState<Step>(1)
   const [serviceId,    setServiceId]    = useState<number | null>(null)
@@ -128,6 +134,12 @@ export default function TheFadeRoomBooking({
   // links; required ones are auto-included even if missing here.
   const [staffId,  setStaffId]  = useState<number | null>(null)
   const [addonIds, setAddonIds] = useState<number[]>([])
+  // Phase 16 — custom question answers, keyed by question id. Cleared
+  // when service changes so a service-scoped question doesn't leak its
+  // answer into a different service's submit.
+  const [questionAnswers, setQuestionAnswers] = useState<Record<number, { value?: string | boolean; image_url?: string }>>({})
+  const [uploadingFor,    setUploadingFor]    = useState<number | null>(null)
+  const [uploadErrFor,    setUploadErrFor]    = useState<number | null>(null)
   // Phase 8 — pre-Service category pick. null means "not picked yet" (which
   // shows the category tiles); UNCATEGORIZED is the "Other" bucket for
   // services that have no category_id assigned.
@@ -150,6 +162,50 @@ export default function TheFadeRoomBooking({
   }, [step])
 
   const selectedService = services.find(s => s.id === serviceId) ?? null
+
+  // Phase 16: which questions apply to the chosen service?
+  // - scope='all' → always shown
+  // - scope='services' → only when service id is in its service_ids list
+  const applicableQuestions: BookingQuestion[] = (bookingQuestions ?? [])
+    .filter(q => q.is_active)
+    .filter(q => q.scope === 'all'
+      || (serviceId !== null && q.service_ids?.includes(serviceId)))
+    .sort((a, b) => (a.sort_order - b.sort_order) || (a.id - b.id))
+
+  function patchAnswer(qid: number, patch: { value?: string | boolean; image_url?: string | null }) {
+    setQuestionAnswers(prev => {
+      const cur = prev[qid] ?? {}
+      const next: { value?: string | boolean; image_url?: string } = { ...cur }
+      if ('value' in patch && patch.value !== undefined) next.value = patch.value
+      if ('image_url' in patch) {
+        if (patch.image_url) next.image_url = patch.image_url
+        else delete next.image_url
+      }
+      return { ...prev, [qid]: next }
+    })
+  }
+
+  function isAnswered(q: BookingQuestion): boolean {
+    const a = questionAnswers[q.id]
+    if (q.type === 'image')    return !! a?.image_url
+    if (q.type === 'checkbox') return a?.value === true
+    const v = a?.value
+    return typeof v === 'string' && v.trim().length > 0
+  }
+
+  const questionsValid = applicableQuestions.every(q => ! q.required || isAnswered(q))
+
+  async function handleQuestionImageUpload(qid: number, file: File) {
+    setUploadingFor(qid); setUploadErrFor(null)
+    try {
+      const res = await uploadBookingAnswerImage(slug, file)
+      patchAnswer(qid, { image_url: res.url })
+    } catch {
+      setUploadErrFor(qid)
+    } finally {
+      setUploadingFor(null)
+    }
+  }
 
   // ── Category derivations ────────────────────────────────────────────────
   // We only show the picker for categories that have at least one service
@@ -396,6 +452,21 @@ export default function TheFadeRoomBooking({
       if (effectiveStaffId != null) {
         payload.staff_id = effectiveStaffId
       }
+      // Phase 16: serialize answers for the applicable questions only.
+      if (applicableQuestions.length > 0) {
+        const answers: BookingQuestionAnswerInput[] = applicableQuestions.map(q => {
+          const a = questionAnswers[q.id] ?? {}
+          if (q.type === 'image') {
+            return { question_id: q.id, image_url: a.image_url ?? null }
+          }
+          if (q.type === 'checkbox') {
+            return { question_id: q.id, value: a.value === true }
+          }
+          const v = typeof a.value === 'string' ? a.value.trim() : ''
+          return { question_id: q.id, value: v === '' ? null : v }
+        })
+        payload.question_answers = answers
+      }
       const res = await createPublicAppointment(slug, payload)
       if (res.checkout_url) {
         // Hand control off to Stripe — webhook will finalize the booking
@@ -482,6 +553,7 @@ export default function TheFadeRoomBooking({
   const canSubmit = canStep4
                    && name.trim().length > 0
                    && (! requirePolicyAgreement || policyAgreed)
+                   && questionsValid
 
   // Add-ons step is only meaningful if the chosen service has at least
   // one linked add-on. When it doesn't, Continue/Back skip past Step 2
@@ -984,6 +1056,106 @@ export default function TheFadeRoomBooking({
                 className="tfr-booking-textarea"
               />
             </label>
+
+            {/* Phase 16 — custom owner-defined questions */}
+            {applicableQuestions.length > 0 && (
+              <div className="tfr-booking-questions">
+                {applicableQuestions.map(q => {
+                  const a = questionAnswers[q.id] ?? {}
+                  return (
+                    <div key={q.id} className="tfr-booking-question">
+                      <label>
+                        <span>
+                          {q.label}
+                          {q.required && <span style={{ color: '#b42828', marginLeft: 4 }}>*</span>}
+                        </span>
+
+                        {q.type === 'text' && (
+                          <input
+                            type="text"
+                            value={(a.value as string) ?? ''}
+                            onChange={e => patchAnswer(q.id, { value: e.target.value })}
+                          />
+                        )}
+
+                        {q.type === 'textarea' && (
+                          <textarea
+                            rows={3}
+                            className="tfr-booking-textarea"
+                            value={(a.value as string) ?? ''}
+                            onChange={e => patchAnswer(q.id, { value: e.target.value })}
+                          />
+                        )}
+
+                        {q.type === 'checkbox' && (
+                          <span className="tfr-booking-checkbox-row">
+                            <input
+                              type="checkbox"
+                              checked={a.value === true}
+                              onChange={e => patchAnswer(q.id, { value: e.target.checked })}
+                            />
+                            <span>{q.help_text ?? 'Yes'}</span>
+                          </span>
+                        )}
+
+                        {q.type === 'dropdown' && (
+                          <select
+                            value={(a.value as string) ?? ''}
+                            onChange={e => patchAnswer(q.id, { value: e.target.value })}
+                          >
+                            <option value="">Pick one…</option>
+                            {(q.options ?? []).map(opt => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        )}
+
+                        {q.type === 'image' && (
+                          <span className="tfr-booking-image-upload">
+                            {a.image_url ? (
+                              <span className="tfr-booking-image-preview">
+                                <img src={a.image_url} alt={q.label} />
+                                <button
+                                  type="button"
+                                  className="tfr-booking-image-remove"
+                                  onClick={() => patchAnswer(q.id, { image_url: null })}
+                                  aria-label="Remove image"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </span>
+                            ) : (
+                              <label className="tfr-booking-image-pick">
+                                {uploadingFor === q.id
+                                  ? <><Loader2 size={14} className="tfr-spin" /> Uploading…</>
+                                  : <><ImageIcon size={14} /> Choose image</>}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  style={{ display: 'none' }}
+                                  disabled={uploadingFor === q.id}
+                                  onChange={async e => {
+                                    const f = e.target.files?.[0]
+                                    if (f) await handleQuestionImageUpload(q.id, f)
+                                    e.target.value = ''
+                                  }}
+                                />
+                              </label>
+                            )}
+                            {uploadErrFor === q.id && (
+                              <span className="tfr-booking-image-err">Upload failed. Try a smaller file.</span>
+                            )}
+                          </span>
+                        )}
+                      </label>
+                      {q.help_text && q.type !== 'checkbox' && (
+                        <p className="tfr-booking-question-hint">{q.help_text}</p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
           <div className="tfr-booking-nav" style={{ marginTop: 20 }}>
             <button className="tfr-booking-back" onClick={() => setStep(3)}>
@@ -991,7 +1163,7 @@ export default function TheFadeRoomBooking({
             </button>
             <button
               className="tfr-booking-next"
-              disabled={!name.trim()}
+              disabled={!name.trim() || !questionsValid}
               onClick={() => setStep(5)}
             >
               Review <ArrowRight size={12} />

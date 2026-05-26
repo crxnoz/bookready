@@ -1592,6 +1592,25 @@ function AppointmentCard({
             {appt.notes}
           </p>
         )}
+        {appt.question_answers && appt.question_answers.length > 0 && (
+          <div className="mb-3 bg-cream/60 border border-[rgba(18,18,18,0.08)] p-2.5 space-y-1.5">
+            <p className="text-[9px] font-bold tracking-[0.14em] uppercase text-muted-text">Form answers</p>
+            {appt.question_answers.map((qa, idx) => (
+              <div key={idx} className="text-[11px] text-near-black leading-snug">
+                <span className="font-semibold">{qa.label_snapshot}:</span>{' '}
+                {qa.type_snapshot === 'image' && qa.image_url ? (
+                  <a href={qa.image_url} target="_blank" rel="noopener noreferrer" className="underline text-near-black hover:opacity-80">
+                    View image
+                  </a>
+                ) : qa.type_snapshot === 'checkbox' ? (
+                  <span>{qa.value === true ? 'Yes' : 'No'}</span>
+                ) : (
+                  <span className="text-muted-text">{typeof qa.value === 'string' && qa.value.length > 0 ? qa.value : '—'}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
         {activeDispute && (
           <div className="mb-3 px-3 py-2 bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] flex items-start gap-2">
             <AlertTriangle size={13} className="text-[#b42828] flex-shrink-0 mt-0.5" />
