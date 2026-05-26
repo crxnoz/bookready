@@ -1503,29 +1503,142 @@ const TFR_CSS = `
   font-family:var(--tfr-script); font-size:clamp(36px,6vw,56px);
   font-weight:400; line-height:1; margin:0 0 22px; text-shadow:var(--tfr-text-glow);
 }
+/* Phase 8 — compact dot-timeline. Old design used inline pills with
+   text labels alongside each circle, which started wrapping at 5 steps.
+   Now: small numbered circles connected by thin lines, with a single
+   caption underneath ("Step 3 of 5 · Date & Time"). Fits any width
+   without wrapping and reads more like an editorial timeline. */
 .tfr-booking-progress {
-  display:flex; justify-content:center; align-items:center;
-  gap:0; flex-wrap:wrap; margin-bottom:4px;
+  display:flex; flex-direction:column; align-items:center;
+  gap:12px; margin-bottom:6px;
+}
+.tfr-booking-progress-track {
+  display:flex; align-items:center; justify-content:center;
+  gap:0; width:min(100%,360px);
 }
 .tfr-booking-step {
-  background:transparent; border:0; padding:10px 12px;
-  display:inline-flex; align-items:center; gap:8px;
-  color:rgba(255,255,255,0.4); font-family:var(--tfr-sans);
-  cursor:pointer; transition:color .2s ease;
-}
-.tfr-booking-step+.tfr-booking-step::before {
-  content:""; display:inline-block; width:22px; height:1px;
-  background:rgba(255,255,255,0.15); margin-right:8px;
+  background:transparent; border:0; padding:0;
+  display:inline-flex; align-items:center; justify-content:center;
+  flex:0 0 auto;
+  cursor:pointer; transition:transform .2s ease;
 }
 .tfr-booking-step-num {
-  font-size:11px; letter-spacing:0.14em; padding:4px 8px;
-  border:1px solid rgba(255,255,255,0.15); border-radius:999px; min-width:26px; text-align:center;
+  width:28px; height:28px;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:600; letter-spacing:0.02em;
+  border:1px solid rgba(255,255,255,0.18); border-radius:999px;
+  color:rgba(255,255,255,0.45); background:transparent;
+  transition:all .25s ease;
 }
-.tfr-booking-step-label { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; font-weight:600; }
-.tfr-booking-step.is-active { color:#fff; }
-.tfr-booking-step.is-active .tfr-booking-step-num { background:var(--tfr-pink); border-color:var(--tfr-pink); color:var(--tfr-on-pink); box-shadow:0 0 14px rgba(var(--tfr-pink-rgb),0.55); }
-.tfr-booking-step.is-done { color:rgba(255,255,255,0.7); }
-.tfr-booking-step.is-done .tfr-booking-step-num { border-color:rgba(var(--tfr-pink-rgb),0.55); color:var(--tfr-pink); }
+.tfr-booking-step + .tfr-booking-step::before {
+  content:""; flex:1 1 auto; height:1px; min-width:14px;
+  background:rgba(255,255,255,0.15); margin:0 4px;
+  transition:background .25s ease;
+}
+/* Lines after a done step get the pink-tinted treatment, so progress
+   visually "fills up" toward the active circle. */
+.tfr-booking-step.is-done + .tfr-booking-step::before {
+  background:rgba(var(--tfr-pink-rgb),0.45);
+}
+.tfr-booking-step.is-active { transform:scale(1.05); }
+.tfr-booking-step.is-active .tfr-booking-step-num {
+  background:var(--tfr-pink); border-color:var(--tfr-pink);
+  color:var(--tfr-on-pink);
+  box-shadow:0 0 12px rgba(var(--tfr-pink-rgb),0.65);
+}
+.tfr-booking-step.is-done .tfr-booking-step-num {
+  border-color:rgba(var(--tfr-pink-rgb),0.65);
+  color:var(--tfr-pink);
+  background:rgba(var(--tfr-pink-rgb),0.06);
+}
+.tfr-booking-step:hover:not(.is-active) .tfr-booking-step-num {
+  border-color:rgba(var(--tfr-pink-rgb),0.45);
+}
+/* Old inline label — kept in markup for screen-reader fallback via
+   aria-label on the button, but visually hidden everywhere now since
+   the caption below carries the label. */
+.tfr-booking-step-label {
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+}
+.tfr-booking-progress-caption {
+  margin:0; font-family:var(--tfr-sans);
+  font-size:10px; letter-spacing:0.18em; text-transform:uppercase;
+  color:var(--tfr-muted); font-weight:600;
+}
+.tfr-booking-progress-caption strong {
+  color:var(--tfr-pink); font-weight:600;
+  text-shadow:0 0 8px rgba(var(--tfr-pink-rgb),0.4);
+  margin-left:4px;
+}
+/* Phase 8 — add-on cards. Replaces the inline-styled native checkbox
+   with a tactile pink-glow card: hidden native input drives state,
+   the visible indicator fills pink + glows when checked. Required
+   links keep the indicator filled but ditch the hover affordance,
+   and a pink-outlined "Required" chip surfaces the constraint. */
+.tfr-addon-card {
+  display:flex; align-items:flex-start; gap:12px;
+  padding:14px 16px;
+  background:rgba(255,255,255,0.02);
+  border:1px solid rgba(255,255,255,0.12);
+  cursor:pointer;
+  transition:border-color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+.tfr-addon-card:hover:not(.is-locked) {
+  border-color:rgba(var(--tfr-pink-rgb),0.4);
+  background:rgba(var(--tfr-pink-rgb),0.04);
+}
+.tfr-addon-card.is-checked {
+  border-color:rgba(var(--tfr-pink-rgb),0.6);
+  background:linear-gradient(180deg,rgba(var(--tfr-pink-rgb),0.08),rgba(255,255,255,0.02));
+  box-shadow:0 0 16px rgba(var(--tfr-pink-rgb),0.18),inset 0 0 0 1px rgba(var(--tfr-pink-rgb),0.1);
+}
+.tfr-addon-card.is-locked { cursor:not-allowed; }
+.tfr-addon-input { position:absolute; opacity:0; pointer-events:none; }
+.tfr-addon-indicator {
+  flex-shrink:0; width:22px; height:22px;
+  display:inline-flex; align-items:center; justify-content:center;
+  border:1.5px solid rgba(255,255,255,0.28);
+  background:transparent;
+  color:var(--tfr-on-pink);
+  margin-top:1px;
+  transition:all .2s ease;
+}
+.tfr-addon-card.is-checked .tfr-addon-indicator {
+  border-color:var(--tfr-pink);
+  background:var(--tfr-pink);
+  box-shadow:0 0 10px rgba(var(--tfr-pink-rgb),0.7);
+}
+.tfr-addon-body { flex:1; min-width:0; }
+.tfr-addon-head {
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  margin-bottom:2px;
+}
+.tfr-addon-name {
+  font-family:var(--tfr-sans); font-size:13px; font-weight:600;
+  color:var(--tfr-text); letter-spacing:0.01em;
+}
+.tfr-addon-required {
+  font-size:9px; font-weight:700; letter-spacing:0.12em;
+  text-transform:uppercase;
+  padding:2px 8px;
+  color:var(--tfr-pink);
+  border:1px solid rgba(var(--tfr-pink-rgb),0.45);
+  background:rgba(var(--tfr-pink-rgb),0.08);
+}
+.tfr-addon-desc {
+  font-size:11px; line-height:1.45;
+  color:rgba(255,255,255,0.7);
+  margin:2px 0 6px;
+}
+.tfr-addon-meta {
+  display:inline-flex; gap:8px; align-items:center;
+  font-family:var(--tfr-sans); font-size:11px; font-weight:600;
+  letter-spacing:0.06em;
+  color:var(--tfr-pink-soft);
+}
+.tfr-addon-meta-dot { opacity:0.45; }
+
 .tfr-booking-slides { display:block; }
 .tfr-booking-slide { display:none; animation:tfrBookingFade .35s ease both; }
 .tfr-booking-slide.is-active { display:block; }
@@ -2056,6 +2169,6 @@ img.tfr-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filte
   .tfr-about-img--one   { left:0; top:8px; }
   .tfr-about-img--two   { left:33%; top:14px; }
   .tfr-about-img--three { left:66%; top:0; }
-  .tfr-booking-step-label { display:none; }
+  /* progress pills already use a sr-only label; no mobile override needed */
 }
 `

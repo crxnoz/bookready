@@ -499,21 +499,31 @@ export default function TheFadeRoomBooking({
       <div className="tfr-booking-head">
         <span className="tfr-booking-eyebrow">Book Online</span>
         <h2>Reserve Your Appointment</h2>
+        {/* Phase 8 — compact dot timeline. Labels are sr-only on the
+            individual buttons; the caption below the track shows the
+            currently-active step's name so we don't lose context. */}
         <div className="tfr-booking-progress" role="tablist">
-          {STEPS.map(([n, label]) => (
-            <button
-              key={n}
-              role="tab"
-              aria-selected={step === n}
-              className={stepClass(n)}
-              onClick={() => { if (n < step) setStep(n) }}
-            >
-              <span className="tfr-booking-step-num">
-                {step > n ? <Check size={12} strokeWidth={3} /> : n}
-              </span>
-              <span className="tfr-booking-step-label">{label}</span>
-            </button>
-          ))}
+          <div className="tfr-booking-progress-track">
+            {STEPS.map(([n, label]) => (
+              <button
+                key={n}
+                role="tab"
+                aria-selected={step === n}
+                aria-label={`Step ${n}: ${label}`}
+                className={stepClass(n)}
+                onClick={() => { if (n < step) setStep(n) }}
+              >
+                <span className="tfr-booking-step-num">
+                  {step > n ? <Check size={12} strokeWidth={3} /> : n}
+                </span>
+                <span className="tfr-booking-step-label">{label}</span>
+              </button>
+            ))}
+          </div>
+          <p className="tfr-booking-progress-caption">
+            Step {step} of {STEPS.length}
+            <strong>{STEPS.find(([n]) => n === step)?.[1]}</strong>
+          </p>
         </div>
       </div>
 
@@ -653,24 +663,19 @@ export default function TheFadeRoomBooking({
                 <p style={{ fontSize: 12, opacity: 0.75, margin: '6px 0 12px' }}>
                   Customize your <strong>{selectedService.name}</strong> with any of these extras.
                 </p>
-                <div style={{ display: 'grid', gap: 8 }}>
+                <div style={{ display: 'grid', gap: 10 }}>
                   {(selectedService.linked_addons ?? []).map(link => {
                     const addon = serviceAddons.find(a => a.id === link.addon_id)
                     if (!addon) return null
                     const checked = addonIds.includes(addon.id)
+                    const cls = 'tfr-addon-card'
+                      + (checked ? ' is-checked' : '')
+                      + (link.is_required ? ' is-locked' : '')
                     return (
-                      <label
-                        key={addon.id}
-                        style={{
-                          display: 'flex', alignItems: 'flex-start', gap: 10,
-                          padding: '10px 12px',
-                          border: '1px solid ' + (checked ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.15)'),
-                          background: checked ? 'rgba(255,255,255,0.06)' : 'transparent',
-                          cursor: link.is_required ? 'not-allowed' : 'pointer',
-                        }}
-                      >
+                      <label key={addon.id} className={cls}>
                         <input
                           type="checkbox"
+                          className="tfr-addon-input"
                           checked={checked}
                           disabled={link.is_required}
                           onChange={e => {
@@ -678,29 +683,28 @@ export default function TheFadeRoomBooking({
                               ? [...prev, addon.id]
                               : prev.filter(id => id !== addon.id))
                           }}
-                          style={{ marginTop: 3, accentColor: '#fff', flexShrink: 0 }}
                         />
-                        <span style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 13, fontWeight: 600 }}>{addon.name}</span>
+                        <span className="tfr-addon-indicator" aria-hidden="true">
+                          {checked && <Check size={13} strokeWidth={3} />}
+                        </span>
+                        <span className="tfr-addon-body">
+                          <span className="tfr-addon-head">
+                            <span className="tfr-addon-name">{addon.name}</span>
                             {link.is_required && (
-                              <span style={{
-                                fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
-                                textTransform: 'uppercase', padding: '2px 6px',
-                                background: 'rgba(255,255,255,0.12)',
-                              }}>
-                                Required
-                              </span>
+                              <span className="tfr-addon-required">Required</span>
                             )}
                           </span>
                           {addon.description && (
-                            <span style={{ display: 'block', fontSize: 11, opacity: 0.75, marginTop: 2 }}>
-                              {addon.description}
-                            </span>
+                            <span className="tfr-addon-desc">{addon.description}</span>
                           )}
-                          <span style={{ display: 'block', fontSize: 11, opacity: 0.85, marginTop: 4 }}>
+                          <span className="tfr-addon-meta">
                             +${addon.extra_price.toFixed(2)}
-                            {addon.extra_duration_minutes > 0 && ` · +${addon.extra_duration_minutes} min`}
+                            {addon.extra_duration_minutes > 0 && (
+                              <>
+                                <span className="tfr-addon-meta-dot">·</span>
+                                +{addon.extra_duration_minutes} min
+                              </>
+                            )}
                           </span>
                         </span>
                       </label>
