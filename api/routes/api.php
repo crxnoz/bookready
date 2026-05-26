@@ -16,6 +16,8 @@ use App\Http\Controllers\Api\Editor\BusinessPolicyController;
 use App\Http\Controllers\Api\Editor\BusinessProfileController;
 use App\Http\Controllers\Api\Editor\CustomerTagsController;
 use App\Http\Controllers\Api\Editor\CustomersController;
+use App\Http\Controllers\Api\Editor\PaymentsPayoutsController;
+use App\Http\Controllers\Api\Editor\PaymentsTransactionsController;
 use App\Http\Controllers\Api\Editor\HoursController;
 use App\Http\Controllers\Api\Editor\BookingSettingsController;
 use App\Http\Controllers\Api\Editor\NotificationSettingsController;
@@ -151,6 +153,10 @@ Route::prefix('v1')->group(function () {
         Route::post('customer-tags',                [CustomerTagsController::class, 'store']);
         Route::patch('customer-tags/{tag}',         [CustomerTagsController::class, 'update']);
         Route::delete('customer-tags/{tag}',        [CustomerTagsController::class, 'destroy']);
+
+        // Phase 15 — Payments ledger + Stripe payouts feed.
+        Route::get('payments/transactions',         [PaymentsTransactionsController::class, 'index']);
+        Route::get('payments/payouts',              [PaymentsPayoutsController::class, 'index']);
 
         Route::get('staff',              [StaffController::class, 'index']);
         Route::post('staff',             [StaffController::class, 'store']);

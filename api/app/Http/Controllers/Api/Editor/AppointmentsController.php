@@ -57,6 +57,7 @@ class AppointmentsController extends Controller
             'updated_at'               => $row->updated_at,
 
             // ── Payment snapshot (nullable for old rows / un-migrated tenants) ──
+            'receipt_number'           => $get('receipt_number'),
             'payment_status'           => $get('payment_status', 'none'),
             'deposit_required'         => (bool) $get('deposit_required', false),
             'deposit_amount'           => $get('deposit_amount') !== null ? (float) $get('deposit_amount') : null,
@@ -869,6 +870,11 @@ class AppointmentsController extends Controller
         ];
 
         DB::table('appointments')->where('id', $appointment)->update($update);
+
+        // Phase 15 — manual mark-as-paid is a "real" payment, so stamp
+        // a receipt # if there isn't one already.
+        \App\Services\ReceiptNumberService::issue($appointment);
+
         $fresh  = DB::table('appointments')->where('id', $appointment)->first();
         $result = $this->formatWithExtras($fresh);
         tenancy()->end();

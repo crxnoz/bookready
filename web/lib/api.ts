@@ -19,6 +19,8 @@ import {
   CustomerTag,
   CustomerTagPayload,
   CustomerUpdatePayload,
+  PaymentTransactionsResponse,
+  StripePayoutsResponse,
   HoursEntry,
   LoginPayload,
   PublicAvailabilityResponse,
@@ -786,6 +788,28 @@ export async function toggleEditorCustomerVip(
     method: 'POST',
     body: JSON.stringify(isVip === undefined ? {} : { is_vip: isVip }),
   })
+}
+
+// Phase 15 — Payments ledger + Stripe payouts.
+export async function getEditorPaymentsTransactions(params?: {
+  search?: string
+  filter?: 'all' | 'deposits' | 'paid' | 'refunded' | 'disputed' | 'failed'
+  limit?:  number
+}): Promise<PaymentTransactionsResponse> {
+  const qs = params
+    ? '?' + new URLSearchParams(
+        Object.fromEntries(
+          Object.entries(params)
+            .filter(([, v]) => v !== undefined && v !== '')
+            .map(([k, v]) => [k, String(v)])
+        )
+      ).toString()
+    : ''
+  return request<PaymentTransactionsResponse>(`/editor/payments/transactions${qs}`)
+}
+
+export async function getEditorPaymentsPayouts(limit = 25): Promise<StripePayoutsResponse> {
+  return request<StripePayoutsResponse>(`/editor/payments/payouts?limit=${limit}`)
 }
 
 // Phase 14 — customer tag CRUD. Assignment lives on the customers

@@ -238,6 +238,11 @@ class AppointmentPaymentWebhookController extends Controller
 
             DB::table('appointments')->where('id', $appointmentId)->update($update);
 
+            // Phase 15 — stamp a receipt number on the first payment
+            // (deposit or full). Idempotent; ReceiptNumberService skips
+            // the bump if one was already issued (e.g. webhook retry).
+            \App\Services\ReceiptNumberService::issue($appointmentId);
+
             $updated = DB::table('appointments')->find($appointmentId);
 
             $manageToken = property_exists($updated, 'manage_token') ? $updated->manage_token : null;
@@ -510,6 +515,11 @@ class AppointmentPaymentWebhookController extends Controller
                 'balance_paid_at'            => now(),
                 'updated_at'                 => now(),
             ]);
+
+            // Phase 15 — balance-only payments (deposit was manual /
+            // unrecorded) deserve a receipt # too. The service is
+            // idempotent so a deposit-already-stamped row won't bump.
+            \App\Services\ReceiptNumberService::issue($appointmentId);
 
             if (! empty($row->customer_email)) {
                 $shouldEmail  = true;

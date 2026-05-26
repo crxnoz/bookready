@@ -876,6 +876,9 @@ export interface Appointment {
   updated_at: string
   // Payment snapshot — nullable / 'none' for old appointments created
   // before the payment columns existed.
+  /** Phase 15 — human-friendly receipt # (R-000001). Set on the first
+   *  successful payment; null until then. */
+  receipt_number?:       string | null
   payment_status?:       PaymentStatus
   deposit_required?:     boolean
   deposit_amount?:       number | null
@@ -1283,4 +1286,59 @@ export interface PublicTemplate {
   slug: string
   settings: TemplateSettings
   sections: WebsiteSection[]
+}
+
+// ── Phase 15: Payments ledger + Stripe payouts ──────────────────────────────
+
+/** One row in the Transactions tab. Backed by an appointment that has
+ *  had payment activity; not a separate table. */
+export interface PaymentTransaction {
+  appointment_id:   number
+  receipt_number:   string | null
+  customer_name:    string
+  customer_email:   string | null
+  customer_id:      number | null
+  service_name:     string
+  appointment_date: string
+  start_time:       string
+  payment_status:   string
+  paid_amount:      number
+  tip_amount:       number | null
+  refunded_amount:  number | null
+  amount_due:       number | null
+  currency:         string
+  paid_at:          string | null
+  payment_method:   'cash' | 'venmo' | 'zelle' | 'other' | null
+  dispute_status:   string | null
+  is_stripe:        boolean
+}
+
+export interface PaymentTransactionsResponse {
+  transactions: PaymentTransaction[]
+  count:        number
+}
+
+/** Stripe payout row (proxied from the Connect account; not persisted). */
+export interface StripePayout {
+  id:               string
+  amount:           number
+  currency:         string
+  /** paid | pending | in_transit | canceled | failed */
+  status:           string
+  /** standard | instant */
+  method:           string | null
+  /** Unix timestamps from Stripe. Renderable with new Date(n * 1000). */
+  created_at:       number
+  arrival_date:     number
+  description:      string | null
+  failure_code:     string | null
+  failure_message:  string | null
+}
+
+export interface StripePayoutsResponse {
+  payouts:        StripePayout[]
+  /** not_connected | onboarding_started | pending | active | restricted | error */
+  connect_status: string
+  count:          number
+  message?:       string
 }
