@@ -128,8 +128,8 @@ export const EDITOR_SECTIONS: EditorSectionConfig[] = [
     innerNav: [
       { id: 'overview',     label: 'Overview' },
       { id: 'deposits',     label: 'Deposits' },
-      { id: 'transactions', label: 'Transactions', soon: true },
-      { id: 'payouts',      label: 'Payouts',      soon: true },
+      { id: 'transactions', label: 'Transactions' },
+      { id: 'payouts',      label: 'Payouts'      },
       { id: 'settings',     label: 'Settings',     href: '/editor/settings?tab=payments' },
     ],
     defaultTitle:    'Payments',

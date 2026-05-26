@@ -40,34 +40,6 @@ export default function PaymentsHub() {
 
   return (
     <div className="w-full p-3 sm:p-5 md:p-6 space-y-4">
-      {/* Phase 15 — tab nav. Always visible so the owner can hop between
-          Overview / Deposits / Transactions / Payouts without using the
-          URL bar. Sticky-feeling row, same chip style as Bookings. */}
-      <div className="flex flex-row overflow-x-auto gap-1.5 -mx-1 px-1 pb-1">
-        {([
-          { key: 'overview',     label: 'Overview',     icon: SettingsIcon },
-          { key: 'deposits',     label: 'Deposits',     icon: DollarSign },
-          { key: 'transactions', label: 'Transactions', icon: Receipt },
-          { key: 'payouts',      label: 'Payouts',      icon: Banknote },
-        ] as const).map(({ key, label, icon: Icon }) => {
-          const active = tab === key
-          return (
-            <Link
-              key={key}
-              href={hrefFor(key)}
-              className={cn(
-                'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.04em] px-3 py-1.5 border whitespace-nowrap flex-shrink-0 transition-colors',
-                active
-                  ? 'bg-near-black border-near-black text-white'
-                  : 'bg-white border-[rgba(18,18,18,0.15)] text-near-black hover:border-near-black',
-              )}
-            >
-              <Icon size={11} /> {label}
-            </Link>
-          )
-        })}
-      </div>
-
       {tab === 'overview'     && <PaymentsOverview />}
       {tab === 'deposits'     && <DepositsList />}
       {tab === 'transactions' && <TransactionsList />}
