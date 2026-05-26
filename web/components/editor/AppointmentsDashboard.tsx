@@ -111,20 +111,28 @@ export default function AppointmentsDashboard() {
     <div className="flex flex-col min-h-full bg-cream">
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
 
-        {/* Stats strip */}
+        {/* Stats strip — each cell is a deep-link into the Appointments
+            page with the matching filter pre-applied. */}
         <div className="grid grid-cols-3 border border-[rgba(18,18,18,0.10)] divide-x divide-[rgba(18,18,18,0.10)] overflow-hidden">
           {([
-            { label: 'Pending',   value: pending.length,   icon: Clock },
-            { label: 'Today',     value: todayAp.length,   icon: Calendar },
-            { label: 'This Week', value: thisWeek.length,  icon: Calendar },
-          ] as const).map(({ label, value, icon: Icon }) => (
-            <div key={label} className="bg-white p-3 min-w-0 overflow-hidden">
+            { label: 'Pending',   value: pending.length,   icon: Clock,    filter: 'pending' },
+            { label: 'Today',     value: todayAp.length,   icon: Calendar, filter: 'today'   },
+            { label: 'This Week', value: thisWeek.length,  icon: Calendar, filter: 'week'    },
+          ] as const).map(({ label, value, icon: Icon, filter }) => (
+            <Link
+              key={label}
+              href={`/editor/appointments?filter=${filter}`}
+              className="bg-white p-3 min-w-0 overflow-hidden hover:bg-cream transition-colors group"
+            >
               <div className="flex items-center gap-1 mb-1.5">
                 <Icon size={10} className="text-muted-text flex-shrink-0" />
                 <p className="text-[8px] font-bold tracking-[0.10em] uppercase text-muted-text truncate">{label}</p>
               </div>
               <p className="text-2xl font-bold text-near-black tabular-nums">{loading ? '—' : value}</p>
-            </div>
+              <p className="text-[9px] font-semibold text-muted-text group-hover:text-near-black mt-0.5 inline-flex items-center gap-0.5">
+                View <ChevronRight size={10} />
+              </p>
+            </Link>
           ))}
         </div>
 

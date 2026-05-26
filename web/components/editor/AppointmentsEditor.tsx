@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   AlertTriangle,
   Calendar,
@@ -53,6 +54,32 @@ const DAY_ABBR = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10)
+}
+
+/** YYYY-MM-DD for "today + offset days" (negative offsets go backward). */
+function dateWithOffset(offset: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  return d.toISOString().slice(0, 10)
+}
+
+/** Compute the integer day-offset between an arbitrary date and today. */
+function offsetFromDate(date: string): number {
+  const a = new Date(date + 'T00:00:00')
+  const b = new Date(todayStr() + 'T00:00:00')
+  return Math.round((a.getTime() - b.getTime()) / 86_400_000)
+}
+
+/** Long human label for the day toolbar, e.g. "Today · Mon, Nov 3". */
+function dayNavLabel(date: string): string {
+  const t = todayStr()
+  const long = new Date(date + 'T00:00:00').toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric',
+  })
+  if (date === t)                        return `Today · ${long}`
+  if (date === dateWithOffset(-1))       return `Yesterday · ${long}`
+  if (date === dateWithOffset(1))        return `Tomorrow · ${long}`
+  return long
 }
 
 function fmt12(time: string): string {
@@ -210,14 +237,28 @@ function appointmentToForm(a: Appointment): FormState {
 
 type Filter = 'today' | 'week' | 'month' | 'pending' | 'upcoming' | 'all'
 
+const VALID_FILTERS: Filter[] = ['today', 'week', 'month', 'pending', 'upcoming', 'all']
+
 export default function AppointmentsEditor() {
+  // Allow deep-linking from the Bookings Overview cards (and anywhere
+  // else that wants to land owners on a specific filter view).
+  const searchParams = useSearchParams()
+  const initialFilter: Filter = (() => {
+    const q = searchParams?.get('filter')
+    return q && (VALID_FILTERS as string[]).includes(q) ? (q as Filter) : 'upcoming'
+  })()
+
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [filter, setFilter] = useState<Filter>('upcoming')
+  const [filter, setFilter] = useState<Filter>(initialFilter)
   const [weekOffset, setWeekOffset] = useState(0)
   const [monthOffset, setMonthOffset] = useState(0)
+  // Day offset relative to today, used only when filter === 'today'.
+  // Zero = today; negative = past days; positive = future days. The label
+  // gets a friendly "Yesterday / Today / Tomorrow" prefix when applicable.
+  const [dayOffset, setDayOffset] = useState(0)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm())
@@ -245,6 +286,9 @@ export default function AppointmentsEditor() {
   }, [])
 
   const today = todayStr()
+  // The date currently displayed by the Today view. Defaults to actual today;
+  // diverges as the owner steps prev/next through the day toolbar.
+  const selectedDay = dateWithOffset(dayOffset)
 
   // Derived range data
   const weekDays    = getWeekDays(weekOffset)
@@ -262,7 +306,7 @@ export default function AppointmentsEditor() {
 
   const filtered = appointments
     .filter(a => {
-      if (filter === 'today')    return a.appointment_date === today
+      if (filter === 'today')    return a.appointment_date === selectedDay
       if (filter === 'week')     return weekDays.includes(a.appointment_date) && a.status !== 'cancelled'
       if (filter === 'month')    return a.appointment_date >= monthStart && a.appointment_date <= monthEnd && a.status !== 'cancelled'
       if (filter === 'pending')  return a.status === 'pending'
@@ -274,14 +318,17 @@ export default function AppointmentsEditor() {
   // ── Navigation ──────────────────────────────────────────────────────────────
 
   function navPrev() {
+    if (filter === 'today') setDayOffset(o => o - 1)
     if (filter === 'week')  setWeekOffset(o => o - 1)
     if (filter === 'month') setMonthOffset(o => o - 1)
   }
   function navNext() {
+    if (filter === 'today') setDayOffset(o => o + 1)
     if (filter === 'week')  setWeekOffset(o => o + 1)
     if (filter === 'month') setMonthOffset(o => o + 1)
   }
   function navToday() {
+    setDayOffset(0)
     setWeekOffset(0)
     setMonthOffset(0)
   }
@@ -290,6 +337,8 @@ export default function AppointmentsEditor() {
     ? weekLabel(weekDays)
     : filter === 'month'
     ? monthLabel(monthOffset)
+    : filter === 'today'
+    ? dayNavLabel(selectedDay)
     : ''
 
   // ── Form helpers ──────────────────────────────────────────────────────────
@@ -458,22 +507,38 @@ export default function AppointmentsEditor() {
           </button>
         </div>
 
-        {/* Stats strip */}
+        {/* Stats strip — each cell switches the filter below to that view.
+            Today resets the day offset so we always land on actual today. */}
         <div className="grid grid-cols-2 sm:grid-cols-4 border border-[rgba(18,18,18,0.10)] divide-y sm:divide-y-0 sm:divide-x divide-[rgba(18,18,18,0.10)] overflow-hidden">
           {([
-            { label: 'Today',     value: stats.today,     icon: Calendar },
-            { label: 'Pending',   value: stats.pending,   icon: Clock },
-            { label: 'This Week', value: stats.thisWeek,  icon: Calendar },
-            { label: 'Completed', value: stats.completed, icon: CheckCircle },
-          ] as const).map(({ label, value, icon: Icon }) => (
-            <div key={label} className="bg-white p-3 min-w-0 overflow-hidden">
-              <div className="flex items-center gap-1 mb-1.5 min-w-0">
-                <Icon size={10} className="text-muted-text flex-shrink-0" />
-                <p className="text-[8px] font-bold tracking-[0.10em] uppercase text-muted-text truncate">{label}</p>
-              </div>
-              <p className="text-2xl font-bold text-near-black tabular-nums">{loading ? '—' : value}</p>
-            </div>
-          ))}
+            { label: 'Today',     value: stats.today,     icon: Calendar,    filter: 'today'    as Filter },
+            { label: 'Pending',   value: stats.pending,   icon: Clock,       filter: 'pending'  as Filter },
+            { label: 'This Week', value: stats.thisWeek,  icon: Calendar,    filter: 'week'     as Filter },
+            { label: 'Completed', value: stats.completed, icon: CheckCircle, filter: 'all'      as Filter },
+          ] as const).map(({ label, value, icon: Icon, filter: targetFilter }) => {
+            const isActive = filter === targetFilter
+            return (
+              <button
+                type="button"
+                key={label}
+                onClick={() => {
+                  if (targetFilter === 'today') setDayOffset(0)
+                  if (targetFilter === 'week')  setWeekOffset(0)
+                  setFilter(targetFilter)
+                }}
+                className={cn(
+                  'bg-white p-3 min-w-0 overflow-hidden text-left transition-colors group',
+                  isActive ? 'bg-cream' : 'hover:bg-cream',
+                )}
+              >
+                <div className="flex items-center gap-1 mb-1.5 min-w-0">
+                  <Icon size={10} className="text-muted-text flex-shrink-0" />
+                  <p className="text-[8px] font-bold tracking-[0.10em] uppercase text-muted-text truncate">{label}</p>
+                </div>
+                <p className="text-2xl font-bold text-near-black tabular-nums">{loading ? '—' : value}</p>
+              </button>
+            )
+          })}
         </div>
 
         {/* Pending callout */}
@@ -633,8 +698,9 @@ export default function AppointmentsEditor() {
           ))}
         </div>
 
-        {/* Week / Month navigation */}
-        {(filter === 'week' || filter === 'month') && (
+        {/* Today / Week / Month navigation. The Today view adds a date picker
+            so owners can jump to an arbitrary date without scrolling chips. */}
+        {(filter === 'today' || filter === 'week' || filter === 'month') && (
           <div className="flex items-center gap-2">
             <button
               onClick={navPrev}
@@ -646,9 +712,26 @@ export default function AppointmentsEditor() {
             <p className="flex-1 text-center text-sm font-semibold text-near-black truncate">
               {navLabel}
             </p>
+            {filter === 'today' && (
+              <input
+                type="date"
+                value={selectedDay}
+                onChange={e => {
+                  if (!e.target.value) return
+                  setDayOffset(offsetFromDate(e.target.value))
+                }}
+                className="border border-[rgba(18,18,18,0.12)] bg-white px-2 py-2 text-[11px] font-semibold text-near-black focus:outline-none focus:border-near-black flex-shrink-0"
+                aria-label="Pick a date"
+              />
+            )}
             <button
               onClick={navToday}
-              className="border border-[rgba(18,18,18,0.12)] bg-white px-3 py-2 text-[10px] font-bold text-near-black hover:bg-cream transition-colors flex-shrink-0"
+              disabled={
+                (filter === 'today' && dayOffset === 0) ||
+                (filter === 'week'  && weekOffset === 0) ||
+                (filter === 'month' && monthOffset === 0)
+              }
+              className="border border-[rgba(18,18,18,0.12)] bg-white px-3 py-2 text-[10px] font-bold text-near-black hover:bg-cream transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Today
             </button>
@@ -682,6 +765,8 @@ export default function AppointmentsEditor() {
             <p className="text-xs text-muted-text">
               {filter === 'upcoming'
                 ? 'No upcoming appointments. Create one to get started.'
+                : filter === 'today'
+                ? `Nothing scheduled for ${dayNavLabel(selectedDay).split(' · ').pop()}.`
                 : `No ${filter} appointments found.`}
             </p>
             {filter === 'upcoming' && (
@@ -1095,11 +1180,23 @@ function AppointmentCard({
                             && hasSavedCard && !appt.late_fee_paid_at
                             && (paymentSettings?.late_cancel_fee_amount ?? 0) > 0
 
+  // Card-level click opens the edit dialog. Action buttons inside still
+  // take precedence — we bail out of the handler if the click landed on
+  // a button/link/input so the inner controls keep their own behaviour.
+  function handleCardClick(e: React.MouseEvent<HTMLDivElement>) {
+    const target = e.target as HTMLElement
+    if (target.closest('button, a, input, select, textarea, label')) return
+    onEdit()
+  }
+
   return (
-    <div className={cn(
-      'bg-white border transition-colors',
-      isToday ? 'border-near-black' : 'border-[rgba(18,18,18,0.10)]',
-    )}>
+    <div
+      onClick={handleCardClick}
+      className={cn(
+        'bg-white border transition-colors cursor-pointer hover:border-near-black',
+        isToday ? 'border-near-black' : 'border-[rgba(18,18,18,0.10)]',
+      )}
+    >
       {isToday && (
         <div className="bg-near-black text-white text-[9px] font-bold tracking-[0.12em] uppercase px-4 py-1">
           Today
