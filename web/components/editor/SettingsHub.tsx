@@ -3,6 +3,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+
+// Window-scroll reset on tab change. Without this the viewport stays
+// wherever the previous panel left it, which is jarring on shorter panels.
+function useScrollResetOnTab(tab: string) {
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [tab])
+}
 import { useRouter } from 'next/navigation'
 import { clearAuth } from '@/lib/auth'
 import {
@@ -94,6 +103,8 @@ export default function SettingsHub() {
   const tab: SettingsTab = VALID_TABS.includes(raw as SettingsTab)
     ? (raw as SettingsTab)
     : 'overview'
+
+  useScrollResetOnTab(tab)
 
   return (
     <div className="w-full p-3 sm:p-5 md:p-6 space-y-4">
@@ -2230,10 +2241,10 @@ function PolicyReadout({
 
 // ── Custom policy groups editor ─────────────────────────────────────────────
 
-// Same cap as gallery / before-after collections for consistency. Keeps
-// the policies tab from sprawling into walls of text.
-const CUSTOM_POLICY_MAX_GROUPS         = 3
-const CUSTOM_POLICY_MAX_ITEMS_PER_GROUP = 6
+// Keep the policies tab from sprawling into walls of text — owners can
+// add at most 2 custom sections × 3 items each.
+const CUSTOM_POLICY_MAX_GROUPS         = 2
+const CUSTOM_POLICY_MAX_ITEMS_PER_GROUP = 3
 
 function CustomPolicyGroupsEditor({
   groups, onChange,

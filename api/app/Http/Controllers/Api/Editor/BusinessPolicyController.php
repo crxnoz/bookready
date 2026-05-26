@@ -83,11 +83,11 @@ class BusinessPolicyController extends Controller
             'max_reschedules_per_booking'    => 'sometimes|nullable|integer|min:0|max:50',
             'require_policy_agreement'       => 'sometimes|boolean',
             // Custom groups — free-form, JSON-shaped. Each group has a
-            // heading + a list of {title, content} items. Cap matches the
-            // gallery / before-after collection cap for UI consistency.
-            'custom_groups'                       => 'sometimes|array|max:3',
+            // heading + a list of {title, content} items. Capped at 2x3
+            // to keep the policies tab readable.
+            'custom_groups'                       => 'sometimes|array|max:2',
             'custom_groups.*.heading'             => 'required_with:custom_groups|string|max:120',
-            'custom_groups.*.items'               => 'sometimes|array|max:6',
+            'custom_groups.*.items'               => 'sometimes|array|max:3',
             'custom_groups.*.items.*.title'       => 'required_with:custom_groups.*.items|string|max:120',
             'custom_groups.*.items.*.content'     => 'sometimes|nullable|string|max:5000',
         ]);

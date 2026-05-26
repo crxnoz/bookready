@@ -11,7 +11,6 @@ import {
   Edit2, Trash2, X, Link as LinkIcon, ArrowUp, ArrowDown, ChevronDown,
   Clock, Building2,
 } from 'lucide-react'
-import BusinessForm from '@/components/editor/BusinessForm'
 import ImageUploadField from '@/components/editor/ImageUploadField'
 import {
   getCurrentUser,
@@ -59,14 +58,14 @@ import { cn } from '@/lib/cn'
 // ── Types & constants ────────────────────────────────────────────────────────
 
 type SubTab =
-  | 'overview' | 'business' | 'header' | 'content'
+  | 'overview' | 'header' | 'content'
   | 'gallery' | 'policies'
   | 'additionals' | 'footer' | 'seo'
 
 // 'before_after' kept as a redirect target so deep-links from old emails /
 // bookmarks land on the merged Gallery tab instead of 404ing.
 const VALID_TABS: SubTab[] = [
-  'overview', 'business', 'header', 'content',
+  'overview', 'header', 'content',
   'gallery', 'policies',
   'additionals', 'footer', 'seo',
 ]
@@ -92,7 +91,9 @@ const SECTION_LABEL_FOR_KEY: Record<string, string> = {
 // right editor instead of hunting through tabs.
 const SECTION_KEY_TO_TAB: Record<string, SubTab> = {
   header:             'header',
-  book:               'business',  // Booking section is configured via Business + Bookings hub
+  // 'book' is intentionally omitted — the booking section is configured
+  // entirely outside the Website hub (Settings → Booking + Services). The
+  // section is locked-on, so we don't surface an edit jump-link for it.
   gallery:            'gallery',
   policy:             'policies',
   about:              'content',
@@ -134,6 +135,14 @@ export default function WebsiteHub() {
   const [loading, setLoading]         = useState(true)
   const [loadError, setLoadError]     = useState<string | null>(null)
   const [previewKey, setPreviewKey]   = useState(0)
+
+  // Reset the page scroll to the top whenever the active tab changes.
+  // Without this, jumping from a long panel (Content) to a shorter one
+  // (Gallery) leaves the viewport mid-page where the previous panel was.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [tab])
 
   useEffect(() => {
     let cancelled = false
@@ -225,12 +234,6 @@ export default function WebsiteHub() {
                   publicUrl={publicUrl}
                   onToggleSection={toggleSection}
                 />
-              )}
-
-              {tab === 'business' && (
-                <div className="bg-white border border-[rgba(18,18,18,0.10)]">
-                  <BusinessForm onAfterSave={() => setPreviewKey(k => k + 1)} />
-                </div>
               )}
 
               {tab === 'header' && (
@@ -645,7 +648,6 @@ function OverviewPanel({
   const enabledCount = sections.filter(s => s.is_enabled).length
 
   const QUICK_LINKS: { tab: SubTab; label: string; icon: React.ElementType; hint: string }[] = [
-    { tab: 'business',    label: 'Business Info',  icon: Building2,  hint: 'Name, tagline, contact, address' },
     { tab: 'header',      label: 'Header / Hero',  icon: Sparkles,   hint: 'Announcement, tagline, buttons' },
     { tab: 'content',     label: 'Content / Tabs', icon: ListChecks, hint: 'Tab labels, gallery, policies' },
     { tab: 'additionals', label: 'Additionals',    icon: Plus,       hint: 'Thank-you, extra sections' },
@@ -759,7 +761,7 @@ function OverviewPanel({
                       aria-label={`Edit ${label}`}
                       className="p-1.5 border border-[rgba(18,18,18,0.10)] bg-white text-muted-text hover:text-near-black hover:border-near-black transition-colors"
                     >
-                      <LinkIcon size={11} />
+                      <Edit2 size={11} />
                     </Link>
                   )}
                   {s.is_locked ? (
@@ -886,7 +888,7 @@ function HeaderPanel({
           <Info size={13} className="text-muted-text flex-shrink-0 mt-0.5" />
           <p className="text-[11px] text-muted-text leading-relaxed">
             Business name and tagline come from your{' '}
-            <Link href="/editor/website?tab=business" scroll={false} className="text-near-black font-semibold underline">Business Info</Link>.
+            <Link href="/editor/settings?tab=business" className="text-near-black font-semibold underline">Business Profile</Link>.
           </p>
         </div>
       </div>
@@ -898,7 +900,7 @@ function HeaderPanel({
             Header buttons
           </p>
           <p className="text-[11px] text-muted-text mt-0.5">
-            Toggle visibility and (optionally) override the link each button opens. Leave a URL blank to use the default from Business Info.
+            Toggle visibility and (optionally) override the link each button opens. Leave a URL blank to use the default from your Business Profile.
           </p>
         </div>
         <HeaderButtonRow
@@ -953,7 +955,7 @@ function HeaderPanel({
           onToggle={() => form.patch({ show_instagram_button: !form.value.show_instagram_button })}
           url={form.value.instagram_button_url ?? ''}
           onUrlChange={v => form.patch({ instagram_button_url: v || null })}
-          placeholder="https://instagram.com/… (defaults to Business Info)"
+          placeholder="https://instagram.com/… (defaults to Business Profile)"
         />
         <HeaderButtonRow
           label="TikTok"
@@ -1064,35 +1066,39 @@ function ContentTabsPanel({
         defaultOpen
         statusBadge={hiddenCount > 0 && <StatusBadge tone="muted">{hiddenCount} hidden</StatusBadge>}
       >
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {TAB_LABEL_FIELDS.map(({ key, sectionKey, label }) => {
             const section = sectionByKey[sectionKey]
             const locked  = !!section?.is_locked || sectionKey === 'book'
             const visible = section ? section.is_enabled : true
             const busy    = section && busyId === section.id
             return (
-              <div key={String(key)} className="border border-[rgba(18,18,18,0.08)] p-3 space-y-2.5 bg-white">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+              <div key={String(key)} className="border border-[rgba(18,18,18,0.08)] p-2 bg-white">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <span className="text-[9px] font-bold tracking-[0.12em] uppercase text-muted-text truncate">
                     {label}
                   </span>
                   {locked ? (
-                    <span className="inline-flex items-center gap-1 text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.15)] bg-cream text-[rgba(18,18,18,0.7)] px-1.5 py-0.5">
-                      <Lock size={9} /> Always on
+                    <span
+                      className="inline-flex items-center text-[9px] text-muted-text/80 flex-shrink-0"
+                      title="Always visible"
+                    >
+                      <Lock size={9} />
                     </span>
                   ) : (
                     <button
                       type="button"
                       onClick={() => toggle(section)}
                       disabled={!section || busy}
+                      title={visible ? 'Hide tab' : 'Show tab'}
                       className={cn(
-                        'inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.06em] uppercase border px-2 py-1',
+                        'inline-flex items-center justify-center w-6 h-6 border flex-shrink-0',
                         visible
                           ? 'bg-white border-[rgba(18,18,18,0.15)] text-near-black hover:border-near-black'
                           : 'bg-near-black border-near-black text-white',
                       )}
                     >
-                      {visible ? <><Eye size={11} /> Visible</> : <><EyeOff size={11} /> Hidden</>}
+                      {visible ? <Eye size={11} /> : <EyeOff size={11} />}
                     </button>
                   )}
                 </div>
@@ -1101,7 +1107,7 @@ function ContentTabsPanel({
                   value={form.value[key] ?? ''}
                   onChange={e => form.patch({ [key]: e.target.value } as Partial<TemplateSettings['tabs']>)}
                   maxLength={40}
-                  className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+                  className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-2 py-1.5 text-xs text-near-black focus:outline-none focus:border-near-black"
                 />
               </div>
             )
@@ -1927,9 +1933,9 @@ function FooterPanel({
       <div className="bg-cream border border-[rgba(18,18,18,0.08)] px-3 py-2.5 flex items-start gap-2">
         <Info size={13} className="text-muted-text flex-shrink-0 mt-0.5" />
         <p className="text-[11px] text-muted-text leading-relaxed">
-          Phone, email, address, and hours come from{' '}
-          <Link href="/editor/website?tab=business" scroll={false} className="text-near-black font-semibold underline">Business Info</Link>
-          {' '}and Bookings. Toggle below to choose what shows in the footer.
+          Hours come from your{' '}
+          <Link href="/editor/availability" className="text-near-black font-semibold underline">Availability</Link>
+          {' '}schedule. Toggle below to choose what shows in the footer.
         </p>
       </div>
 
@@ -1937,7 +1943,7 @@ function FooterPanel({
         label="Footer business name override (optional)"
         value={form.value.business_name_override ?? ''}
         onChange={v => form.patch({ business_name_override: v || null })}
-        placeholder="Leave blank to use Business Info name"
+        placeholder="Leave blank to use your Business Profile name"
         maxLength={120}
       />
 
@@ -3171,9 +3177,9 @@ function normalizePoliciesShape(p: BusinessPolicy): BusinessPolicy {
   }
 }
 
-// Same cap as gallery / before-after collections.
-const WEBSITE_POLICY_MAX_GROUPS         = 3
-const WEBSITE_POLICY_MAX_ITEMS_PER_GROUP = 6
+// Owners can add at most 2 custom sections × 3 items.
+const WEBSITE_POLICY_MAX_GROUPS         = 2
+const WEBSITE_POLICY_MAX_ITEMS_PER_GROUP = 3
 
 function WebsiteCustomPolicyGroupsEditor({
   groups, onChange,

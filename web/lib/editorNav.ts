@@ -76,7 +76,6 @@ export const EDITOR_SECTIONS: EditorSectionConfig[] = [
       // bookmarks + deep-links keep working. Icons intentionally omitted —
       // text labels alone read cleaner in this nav.
       { id: 'overview',     label: 'Overview' },
-      { id: 'business',     label: 'Business Info' },
       { id: 'header',       label: 'Hero' },
       { id: 'content',      label: 'Content' },
       { id: 'gallery',      label: 'Gallery' },
