@@ -491,6 +491,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
               <AftercarePanel
                 items={site.template?.settings.steps?.items}
                 heading={site.template?.settings.steps?.heading}
+                cardKicker={site.template?.settings.steps?.card_kicker}
               />
             </div>
           )}
@@ -501,6 +502,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
               <BeforePanel
                 items={site.template?.settings.before_appointment?.items}
                 heading={site.template?.settings.before_appointment?.heading}
+                cardKicker={site.template?.settings.before_appointment?.card_kicker}
               />
             </div>
           )}
@@ -1102,11 +1104,17 @@ const BEFORE_STEPS = [
 function BeforePanel({
   items,
   heading,
+  cardKicker,
 }: {
   items?: { title: string; body: string }[]
   heading?: string
+  /** Phase 8 — optional kicker rendered above each step's title. The
+   *  numbered timeline node stays regardless (it carries the structural
+   *  meaning of "step 1 of N"). */
+  cardKicker?: string
 }) {
   const steps = items && items.length > 0 ? items : BEFORE_STEPS
+  const kicker = (cardKicker ?? '').trim()
   return (
     <section className="tfr-before-appointment-section">
       <h2>{heading ?? 'Before Your Appointment'}</h2>
@@ -1117,6 +1125,7 @@ function BeforePanel({
               <span className="tfr-before-node-num">{i + 1}</span>
             </div>
             <div className="tfr-before-step-body">
+              {kicker && <span className="tfr-before-step-kicker">{kicker}</span>}
               <h3>{s.title}</h3>
               <p>{s.body}</p>
             </div>
@@ -1139,21 +1148,30 @@ const AFTERCARE_CARDS = [
 function AftercarePanel({
   items,
   heading,
+  cardKicker,
 }: {
   items?: { title: string; body: string }[]
   heading?: string
+  /** Phase 8 — optional shared label rendered above every card's title
+   *  ("Aftercare Advice", "How To..."). Blank/missing = no label row,
+   *  just the heading + body. Replaces the old auto-numbered
+   *  "Step 01/02/03" treatment. */
+  cardKicker?: string
 }) {
   const cards = items && items.length > 0 ? items : AFTERCARE_CARDS
+  const kicker = (cardKicker ?? '').trim()
   return (
     <section className="tfr-aftercare-section">
       <h2>{heading ?? 'Steps'}</h2>
       <div className="tfr-aftercare-list">
         {cards.map((c, i) => (
           <div key={i} className="tfr-aftercare-card">
-            <div className="tfr-aftercare-head">
-              <span className="tfr-aftercare-dot" aria-hidden="true" />
-              <span className="tfr-aftercare-index">Step {String(i + 1).padStart(2, '0')}</span>
-            </div>
+            {kicker && (
+              <div className="tfr-aftercare-head">
+                <span className="tfr-aftercare-dot" aria-hidden="true" />
+                <span className="tfr-aftercare-index">{kicker}</span>
+              </div>
+            )}
             <h3>{c.title}</h3>
             <p>{c.body}</p>
           </div>
@@ -1953,9 +1971,13 @@ img.tfr-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filte
 .tfr-policy-heading h2 { margin:0; color:var(--tfr-text); font-size:clamp(58px,18vw,70px); font-family:var(--tfr-serif); font-weight:400; line-height:0.95; letter-spacing:-0.055em; }
 .tfr-policy-list { display:grid; gap:12px; }
 .tfr-policy-custom-group { margin-top:36px; }
+/* Match the main policy h2's typography — DM Serif Text, no bold-display
+   weirdness, no all-caps. Smaller than the page-level h2 since it's a
+   sub-heading inside the section. */
 .tfr-policy-custom-heading {
-  margin:0 0 14px; font-family:var(--tfr-display); font-weight:800; font-size:30px;
-  letter-spacing:-0.02em; color:var(--tfr-fg); text-align:center; text-transform:uppercase;
+  margin:0 0 16px; font-family:var(--tfr-serif); font-weight:400;
+  font-size:34px; letter-spacing:-0.03em; line-height:1.05;
+  color:var(--tfr-text); text-align:center;
 }
 .tfr-policy-card {
   position:relative; width:100%; min-height:160px; padding:22px 18px;
@@ -1981,6 +2003,14 @@ img.tfr-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filte
 .tfr-before-step-body { padding:4px 4px 10px 6px; border-bottom:1px solid rgba(255,255,255,0.06); }
 .tfr-before-step-body h3 { margin:0 0 8px; color:var(--tfr-text); font-family:var(--tfr-script); font-weight:400; font-size:26px; line-height:1.1; text-shadow:var(--tfr-text-glow); }
 .tfr-before-step-body p { margin:0; color:rgba(246,245,243,0.78); font-family:var(--tfr-sans); font-size:12.5px; font-weight:400; line-height:1.5; }
+/* Phase 8 — optional shared kicker above each step's title. Same
+   typographic treatment as the aftercare card kicker so the two
+   sub-sections feel like siblings. */
+.tfr-before-step-kicker {
+  display:block; margin-bottom:4px;
+  color:var(--tfr-pink); font-family:var(--tfr-sans);
+  font-size:10px; font-weight:600; letter-spacing:0.18em; text-transform:uppercase;
+}
 
 .tfr-aftercare-section { width:min(100%,396px); margin:0 auto; background:var(--tfr-bg); overflow:hidden; padding:28px 14px 60px; }
 .tfr-aftercare-section h2 { margin:0 0 30px; color:var(--tfr-text); text-align:center; font-size:32px; font-family:var(--tfr-script); font-weight:400; line-height:1.1; text-shadow:var(--tfr-text-glow); }

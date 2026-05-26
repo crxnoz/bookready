@@ -1056,6 +1056,10 @@ export interface TemplateInstructionItem {
 
 export interface TemplateInstructionBlock {
   heading: string
+  /** Shared kicker rendered above every card's title in this block
+   *  (e.g. "Aftercare advice", "How to prep"). Empty/missing = no kicker.
+   *  Replaces the old auto-generated "Step 01/02/03" labels. */
+  card_kicker?: string
   items: TemplateInstructionItem[]
 }
 

@@ -133,6 +133,21 @@ export default function TheFadeRoomBooking({
   // services that have no category_id assigned.
   const [categoryKey, setCategoryKey] = useState<CategoryKey | null>(null)
   const fetchRef = useRef(0)
+  // Phase 8 — anchor for scroll-on-step-change. Some steps (Date & Time
+  // especially) push the next step far below the fold; without this the
+  // user clicks Continue and lands mid-form.
+  const sectionRef = useRef<HTMLElement | null>(null)
+  const didMountRef = useRef(false)
+  useEffect(() => {
+    // Skip the very first render so we don't yank the page on initial load.
+    if (! didMountRef.current) { didMountRef.current = true; return }
+    const el = sectionRef.current
+    if (! el) return
+    // Use rAF so the slide transition can settle before we measure.
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [step])
 
   const selectedService = services.find(s => s.id === serviceId) ?? null
 
@@ -493,7 +508,7 @@ export default function TheFadeRoomBooking({
   while (cells.length % 7 !== 0) cells.push(null)
 
   return (
-    <section className="tfr-booking-section">
+    <section className="tfr-booking-section" ref={sectionRef}>
 
       {/* ── Progress header ── */}
       <div className="tfr-booking-head">

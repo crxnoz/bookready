@@ -84,8 +84,12 @@ class TemplateDefaults
                 'images'     => [null, null, null],
             ],
             'steps' => [
-                'heading' => 'Advice',
-                'items'   => [
+                'heading'     => 'Advice',
+                // Phase 8 — optional shared label rendered above every
+                // card's title (replaces the old auto "Step 01" labels).
+                // Empty default = no label until the owner sets one.
+                'card_kicker' => '',
+                'items'       => [
                     ['title' => 'Keep it fresh',       'body' => 'Book maintenance regularly to keep your look at its best.'],
                     ['title' => 'Prep at home',        'body' => 'A clean canvas helps your stylist do their best work.'],
                     ['title' => 'Bring inspiration',   'body' => 'Photos and references help us nail what you want.'],
@@ -93,8 +97,9 @@ class TemplateDefaults
                 ],
             ],
             'before_appointment' => [
-                'heading' => 'Timeline',
-                'items'   => [
+                'heading'     => 'Timeline',
+                'card_kicker' => '',
+                'items'       => [
                     ['title' => 'Pick your service',  'body' => 'Choose the service that fits your appointment.'],
                     ['title' => 'Select a time',      'body' => 'Pick an available date and time from the booking calendar.'],
                     ['title' => 'Send your request',  'body' => 'Add your contact details and submit your booking request.'],

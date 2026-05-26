@@ -1260,7 +1260,13 @@ function SeoComingSoonPanel() {
 const INSTRUCTIONS_MAX_ITEMS = 8
 
 interface InstructionItem { title: string; body: string }
-interface InstructionBlock { heading: string; items: InstructionItem[] }
+interface InstructionBlock {
+  heading: string
+  /** Phase 8 — optional shared label rendered above every card's title
+   *  (e.g. "Aftercare Advice", "Prep Notes"). Empty/missing = no label. */
+  card_kicker?: string
+  items: InstructionItem[]
+}
 
 function InstructionsEditorPanel({
   title, subtitle, addLabel, emptyText, block, defaultHeading, icon, itemLabel = 'Step', onSave,
@@ -1277,8 +1283,9 @@ function InstructionsEditorPanel({
 }) {
   // Seed with at least one empty item so the user has something to fill in.
   const initial: InstructionBlock = {
-    heading: block.heading ?? defaultHeading,
-    items:   block.items?.length ? block.items : [],
+    heading:     block.heading ?? defaultHeading,
+    card_kicker: block.card_kicker ?? '',
+    items:       block.items?.length ? block.items : [],
   }
   const form = useSettingsForm<InstructionBlock>(initial, onSave)
   const { value, patch, dirty, saving, saved, error, doSave } = form
@@ -1327,6 +1334,19 @@ function InstructionsEditorPanel({
         onChange={v => patch({ heading: v })}
         placeholder={defaultHeading}
         maxLength={120}
+      />
+
+      {/* Phase 8 — shared kicker shown above every card's title. Replaces
+          the old auto-generated 'Step 01/02/03' labels. Owner picks the
+          tone (Aftercare advice, How To…, Prep notes, etc) or leaves it
+          blank for no kicker. */}
+      <TextField
+        label="Card label (optional)"
+        hint="Renders above every card's heading, e.g. “Aftercare Advice”. Leave blank for no label."
+        value={value.card_kicker ?? ''}
+        onChange={v => patch({ card_kicker: v })}
+        placeholder="Aftercare advice"
+        maxLength={40}
       />
 
       <div className="space-y-2.5">
