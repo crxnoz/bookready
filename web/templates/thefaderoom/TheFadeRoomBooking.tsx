@@ -9,8 +9,14 @@ import { getPublicAvailability, createPublicAppointment } from '@/lib/api'
 import type {
   AvailableSlot, PaymentChoice, PublicBookingPayload, Service,
   AvailabilityData, PublicPaymentSettings,
-  ServiceAddon, PublicStaffMember,
+  ServiceAddon, PublicStaffMember, ServiceCategory,
 } from '@/lib/types'
+
+// Sentinel used as the "category id" for the auto-generated bucket that
+// collects services without a category assignment. Real category ids are
+// always positive integers, so this string can't collide.
+const UNCATEGORIZED = '__other__'
+type CategoryKey = number | typeof UNCATEGORIZED
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -75,6 +81,7 @@ export default function TheFadeRoomBooking({
   requirePolicyAgreement = false,
   serviceAddons = [],
   staffMembers = [],
+  serviceCategories = [],
 }: {
   slug: string
   services: Service[]
@@ -87,6 +94,11 @@ export default function TheFadeRoomBooking({
   serviceAddons?: ServiceAddon[]
   /** Phase 7: tenant's active staff. Filtered to assigned ones per service. */
   staffMembers?: PublicStaffMember[]
+  /** Phase 8: tenant's service categories. When 2+ categories are in
+   *  active use, Step 1 shows a category tile picker first; otherwise
+   *  it falls through to the flat service grid so single-category shops
+   *  don't get a dead-end click. */
+  serviceCategories?: ServiceCategory[]
 }) {
   const [step,         setStep]         = useState<Step>(1)
   const [serviceId,    setServiceId]    = useState<number | null>(null)
@@ -107,9 +119,67 @@ export default function TheFadeRoomBooking({
   // links; required ones are auto-included even if missing here.
   const [staffId,  setStaffId]  = useState<number | null>(null)
   const [addonIds, setAddonIds] = useState<number[]>([])
+  // Phase 8 — pre-Service category pick. null means "not picked yet" (which
+  // shows the category tiles); UNCATEGORIZED is the "Other" bucket for
+  // services that have no category_id assigned.
+  const [categoryKey, setCategoryKey] = useState<CategoryKey | null>(null)
   const fetchRef = useRef(0)
 
   const selectedService = services.find(s => s.id === serviceId) ?? null
+
+  // ── Category derivations ────────────────────────────────────────────────
+  // We only show the picker for categories that:
+  //   (a) are flagged active by the owner, AND
+  //   (b) have at least one service that would appear in the booking flow.
+  // Categories with zero bookable services would be dead-end tiles, so
+  // they're filtered out — same idea as how empty groups never render
+  // on the Gallery tab.
+  const activeCategories = serviceCategories.filter(c => c.is_active)
+  const hasUncategorized = services.some(
+    s => s.category_id == null || ! activeCategories.some(c => c.id === s.category_id),
+  )
+  const categoriesInUse = activeCategories.filter(
+    c => services.some(s => s.category_id === c.id),
+  )
+  const categoryTiles: { key: CategoryKey; name: string; description: string | null; image_url: string | null; count: number }[] = [
+    ...categoriesInUse.map(c => ({
+      key:         c.id as CategoryKey,
+      name:        c.name,
+      description: c.description,
+      image_url:   c.image_url,
+      count:       services.filter(s => s.category_id === c.id).length,
+    })),
+    ...(hasUncategorized ? [{
+      key:         UNCATEGORIZED as CategoryKey,
+      name:        'Other services',
+      description: null,
+      image_url:   null,
+      count:       services.filter(
+        s => s.category_id == null || ! activeCategories.some(c => c.id === s.category_id),
+      ).length,
+    }] : []),
+  ]
+  // 0 or 1 effective category → skip the picker entirely.
+  const showCategoryPicker = categoryTiles.length >= 2
+
+  // Services visible in the grid. When the picker is in play and a
+  // category is picked, filter to that bucket; otherwise show all.
+  const visibleServices: Service[] = (() => {
+    if (! showCategoryPicker)  return services
+    if (categoryKey === null)  return []  // picker is open, no services yet
+    if (categoryKey === UNCATEGORIZED) {
+      return services.filter(
+        s => s.category_id == null || ! activeCategories.some(c => c.id === s.category_id),
+      )
+    }
+    return services.filter(s => s.category_id === categoryKey)
+  })()
+
+  const activeCategoryName = (() => {
+    if (! showCategoryPicker || categoryKey === null) return null
+    if (categoryKey === UNCATEGORIZED) return 'Other services'
+    return categoriesInUse.find(c => c.id === categoryKey)?.name ?? null
+  })()
 
   // Phase 7 — picked add-on rows + running totals. Totals show on the
   // service card, Step 2 staff label, and the Confirm step summary.
@@ -432,10 +502,68 @@ export default function TheFadeRoomBooking({
         <div className={`tfr-booking-slide${step === 1 ? ' is-active' : ''}`}>
           {services.length === 0 ? (
             <p style={{ color: 'var(--tfr-muted)', fontSize: 14 }}>No services available yet.</p>
+          ) : showCategoryPicker && categoryKey === null ? (
+            /* Phase 8 — Category sub-screen. Renders when 2+ categories
+               are in active use; user picks one before seeing services.
+               Tiles reuse the .tfr-booking-service-card visual so the
+               look matches the rest of the booking flow. */
+            <>
+              <p
+                className="tfr-booking-block-label"
+                style={{ marginBottom: 10 }}
+              >
+                Choose a category
+              </p>
+              <div className="tfr-booking-services">
+                {categoryTiles.map(tile => (
+                  <button
+                    key={String(tile.key)}
+                    type="button"
+                    className="tfr-booking-service-card"
+                    onClick={() => setCategoryKey(tile.key)}
+                    style={{ textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit' }}
+                  >
+                    <div className="tfr-booking-service-top">
+                      <h3>{tile.name}</h3>
+                      <span className="tfr-booking-price" style={{ fontSize: 11, opacity: 0.75 }}>
+                        {tile.count} service{tile.count === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    {tile.description && (
+                      <p className="tfr-booking-desc">{tile.description}</p>
+                    )}
+                    <span className="tfr-booking-pick" style={{ pointerEvents: 'none' }}>
+                      Browse <ArrowRight size={12} />
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
           ) : (
             <>
+              {/* Back link to category picker (only when the picker is in play). */}
+              {showCategoryPicker && (
+                <button
+                  type="button"
+                  className="tfr-booking-back"
+                  onClick={() => {
+                    // Reset the chain — service / addons / staff all
+                    // bound to the previous category get cleared.
+                    setCategoryKey(null)
+                    setServiceId(null)
+                    setAddonIds([])
+                    setStaffId(null)
+                  }}
+                  style={{ marginBottom: 12 }}
+                >
+                  <ArrowLeft size={12} /> All categories
+                  {activeCategoryName && (
+                    <span style={{ opacity: 0.6, marginLeft: 6 }}>· {activeCategoryName}</span>
+                  )}
+                </button>
+              )}
               <div className="tfr-booking-services">
-                {services.map(s => {
+                {visibleServices.map(s => {
                   const isSelected = serviceId === s.id
                   const hasAddons  = (s.linked_addons ?? []).length > 0
                   return (
