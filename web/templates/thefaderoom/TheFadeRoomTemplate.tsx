@@ -33,6 +33,24 @@ import type { PublicSite, Service } from '@/lib/types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// Pick a readable text color (#0E1111 or #FFFFFF) for use on top of a
+// solid accent fill. Uses the standard sRGB relative-luminance formula;
+// anything brighter than ~60% luminance gets dark text. Unknown input
+// falls back to white so existing dark accents (pink, red, blue) keep
+// their original on-pink white text.
+function pickOnAccentColor(hex: string | null | undefined): string {
+  if (!hex) return '#FFFFFF'
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  if (!m) return '#FFFFFF'
+  const n = parseInt(m[1], 16)
+  const r = ((n >> 16) & 0xff) / 255
+  const g = ((n >> 8) & 0xff) / 255
+  const b = (n & 0xff) / 255
+  // Quick perceived luminance (Rec. 709 coefficients).
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+  return lum > 0.6 ? '#0E1111' : '#FFFFFF'
+}
+
 // Convert a #RRGGBB hex string to a "R, G, B" triplet (comma-space
 // separated) for use inside `rgba(var(--tfr-pink-rgb), x)`. Returns null
 // for unrecognized input so the caller can fall back to the default.
@@ -215,11 +233,16 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
   const accentHex = site.template?.settings.theme?.accent_color ?? null
   const accentRgb = hexToRgbTriplet(accentHex) ?? '255, 61, 190'
   const accentHexResolved = accentHex ?? '#FF3DBE'
+  // On a light accent (currently only the "white" preset), the default
+  // white-on-pink button text becomes invisible. Pick a readable
+  // foreground based on the perceived luminance of the chosen accent.
+  const onAccent = pickOnAccentColor(accentHexResolved)
   const accentVars: React.CSSProperties = {
     // CSS vars passed via inline style override the root :root declarations
     // inside TFR_CSS because they're scoped to the .tfr-template element.
     ['--tfr-pink' as any]:     accentHexResolved,
     ['--tfr-pink-rgb' as any]: accentRgb,
+    ['--tfr-on-pink' as any]:  onAccent,
   }
 
   return (
@@ -1262,6 +1285,10 @@ const TFR_CSS = `
      rgba(var(--tfr-pink-rgb), opacity) glow so swapping accents
      propagates everywhere via a single override on .tfr-template. */
   --tfr-pink-rgb:    255, 61, 190;
+  /* Foreground color rendered ON TOP of a solid --tfr-pink background.
+     Default is white (legible on every preset except white itself);
+     the editor flips this to dark when the white accent is picked. */
+  --tfr-on-pink:     #FFFFFF;
   --tfr-pink-soft:   #FFA2CC;
   --tfr-dark-border: #292835;
   --tfr-glow:        0 0 10px rgba(var(--tfr-pink-rgb),0.95),0 0 22px rgba(var(--tfr-pink-rgb),0.55),0 0 40px rgba(var(--tfr-pink-rgb),0.25);
@@ -1406,7 +1433,7 @@ const TFR_CSS = `
 .tfr-header-btn { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
 .tfr-header-btn[aria-disabled] { opacity:0.5; cursor:default; transform:none !important; }
 .tfr-header-btn span:first-child { font-size:18px; }
-.tfr-header-btn-book       { background:var(--tfr-pink); box-shadow:0 0 18px rgba(var(--tfr-pink-rgb),0.4); }
+.tfr-header-btn-book       { background:var(--tfr-pink); color:var(--tfr-on-pink); box-shadow:0 0 18px rgba(var(--tfr-pink-rgb),0.4); }
 .tfr-header-btn-call       { background:linear-gradient(45deg,#A281FF 0%,#FF9CD7 100%); }
 .tfr-header-btn-chat       { background:linear-gradient(45deg,#FF987E 0%,#FF7EAC 100%); }
 .tfr-header-btn-message    { background:linear-gradient(45deg,#5B6CFF 0%,#9CC3FF 100%); }
@@ -1493,7 +1520,7 @@ const TFR_CSS = `
 }
 .tfr-booking-step-label { font-size:11px; letter-spacing:0.12em; text-transform:uppercase; font-weight:600; }
 .tfr-booking-step.is-active { color:#fff; }
-.tfr-booking-step.is-active .tfr-booking-step-num { background:var(--tfr-pink); border-color:var(--tfr-pink); color:#fff; box-shadow:0 0 14px rgba(var(--tfr-pink-rgb),0.55); }
+.tfr-booking-step.is-active .tfr-booking-step-num { background:var(--tfr-pink); border-color:var(--tfr-pink); color:var(--tfr-on-pink); box-shadow:0 0 14px rgba(var(--tfr-pink-rgb),0.55); }
 .tfr-booking-step.is-done { color:rgba(255,255,255,0.7); }
 .tfr-booking-step.is-done .tfr-booking-step-num { border-color:rgba(var(--tfr-pink-rgb),0.55); color:var(--tfr-pink); }
 .tfr-booking-slides { display:block; }
@@ -1598,10 +1625,10 @@ const TFR_CSS = `
 }
 .tfr-calendar-day--blocked:hover { transform:none; }
 .tfr-calendar-day--selected {
-  background:var(--tfr-pink); border-color:var(--tfr-pink); color:#fff;
+  background:var(--tfr-pink); border-color:var(--tfr-pink); color:var(--tfr-on-pink);
   box-shadow:0 0 16px rgba(var(--tfr-pink-rgb),0.55), inset 0 0 0 1px rgba(255,255,255,0.2);
 }
-.tfr-calendar-day--selected.tfr-calendar-day--today { color:#fff; }
+.tfr-calendar-day--selected.tfr-calendar-day--today { color:var(--tfr-on-pink); }
 .tfr-calendar-day--empty {
   background:transparent; border:0; cursor:default; visibility:hidden;
 }
@@ -1612,7 +1639,7 @@ const TFR_CSS = `
   font-family:var(--tfr-mono); font-size:13px; cursor:pointer; transition:all .2s ease; text-align:center;
 }
 .tfr-booking-time:hover { border-color:rgba(var(--tfr-pink-rgb),0.4); }
-.tfr-booking-time.is-selected { border-color:var(--tfr-pink); background:rgba(var(--tfr-pink-rgb),0.12); color:#fff; box-shadow:0 0 14px rgba(var(--tfr-pink-rgb),0.35); }
+.tfr-booking-time.is-selected { border-color:var(--tfr-pink); background:rgba(var(--tfr-pink-rgb),0.12); color:var(--tfr-text); box-shadow:0 0 14px rgba(var(--tfr-pink-rgb),0.35); }
 .tfr-slot-msg { font-size:13px; color:var(--tfr-muted); padding:16px 0; }
 .tfr-slot-error { color:#ff6b6b; }
 
@@ -1649,6 +1676,7 @@ const TFR_CSS = `
 .tfr-booking-next,
 .tfr-booking-confirm-btn {
   background:var(--tfr-pink); border-color:var(--tfr-pink);
+  color:var(--tfr-on-pink);
   box-shadow:0 0 18px rgba(var(--tfr-pink-rgb),0.45);
 }
 .tfr-booking-next:hover,
