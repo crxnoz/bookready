@@ -354,6 +354,14 @@ export default function AppointmentsEditor() {
     setMonthOffset(0)
   }
 
+  // Click a chip / day-cell in Week or Month → land on that exact day
+  // in the Today view. Centralized so both child views share the
+  // same handler; they only need the date string.
+  function jumpToDay(date: string) {
+    setDayOffset(offsetFromDate(date))
+    setFilter('today')
+  }
+
   const navLabel = filter === 'week'
     ? weekLabel(weekDays)
     : filter === 'month'
@@ -911,9 +919,19 @@ export default function AppointmentsEditor() {
             {error}
           </div>
         ) : filter === 'week' ? (
-          <WeekGridView weekDays={weekDays} appointments={filtered} today={today} />
+          <WeekGridView
+            weekDays={weekDays}
+            appointments={filtered}
+            today={today}
+            onJumpToDay={jumpToDay}
+          />
         ) : filter === 'month' ? (
-          <MonthCalendarView monthGrid={monthGrid} appointments={filtered} today={today} />
+          <MonthCalendarView
+            monthGrid={monthGrid}
+            appointments={filtered}
+            today={today}
+            onJumpToDay={jumpToDay}
+          />
         ) : filtered.length === 0 ? (
           <div className="bg-white border border-[rgba(18,18,18,0.10)] px-5 py-12 text-center">
             <Calendar size={24} className="text-muted-text mx-auto mb-3" />
@@ -990,10 +1008,15 @@ function WeekGridView({
   weekDays,
   appointments,
   today,
+  onJumpToDay,
 }: {
   weekDays: string[]
   appointments: Appointment[]
   today: string
+  /** Called with a YYYY-MM-DD when the owner clicks an appointment chip
+   *  or the day header — switches the parent into Today view focused
+   *  on that date. */
+  onJumpToDay: (date: string) => void
 }) {
   return (
     <>
@@ -1012,27 +1035,43 @@ function WeekGridView({
                 isToday ? 'bg-[#F8F6F2]' : 'bg-white',
               )}
             >
-              {/* Day header */}
-              <div className={cn(
-                'py-2.5 text-center border-b border-[rgba(18,18,18,0.06)] flex-shrink-0',
-                isToday ? 'bg-near-black' : '',
-              )}>
+              {/* Day header — clickable so empty days are reachable too.
+                  Whole column is a button stack so clicking the day number,
+                  blank space, or any chip jumps to that day's Today view. */}
+              <button
+                type="button"
+                onClick={() => onJumpToDay(date)}
+                className={cn(
+                  'py-2.5 w-full text-center border-b border-[rgba(18,18,18,0.06)] flex-shrink-0 transition-colors cursor-pointer',
+                  isToday ? 'bg-near-black hover:bg-[#2a2a2a]' : 'hover:bg-cream',
+                )}
+                aria-label={`Open ${date} in Today view`}
+              >
                 <p className={cn('text-[8px] font-bold tracking-[0.10em] uppercase', isToday ? 'text-white/60' : 'text-muted-text')}>
                   {DAY_ABBR[i]}
                 </p>
                 <p className={cn('text-sm font-bold leading-none mt-0.5', isToday ? 'text-white' : 'text-near-black')}>
                   {new Date(date + 'T00:00:00').getDate()}
                 </p>
-              </div>
+              </button>
               {/* Appointment chips */}
               <div className="p-1 space-y-0.5 flex-1 min-h-[120px]">
                 {dayAppts.length === 0 ? (
-                  <p className="text-[8px] text-muted-text text-center py-4">—</p>
+                  <button
+                    type="button"
+                    onClick={() => onJumpToDay(date)}
+                    className="text-[8px] text-muted-text text-center py-4 w-full h-full hover:text-near-black transition-colors cursor-pointer"
+                    aria-label={`Open ${date} in Today view`}
+                  >
+                    —
+                  </button>
                 ) : dayAppts.map(a => (
-                  <div
+                  <button
+                    type="button"
                     key={a.id}
+                    onClick={() => onJumpToDay(date)}
                     className={cn(
-                      'px-1 py-1 text-[8px] leading-tight border overflow-hidden',
+                      'w-full text-left px-1 py-1 text-[8px] leading-tight border overflow-hidden cursor-pointer hover:brightness-105 transition',
                       apptStatusChipCls(a.status),
                     )}
                     title={`${fmt12(a.start_time)} · ${a.customer_name} · ${a.service_name}`}
@@ -1041,7 +1080,7 @@ function WeekGridView({
                       {a.start_time.slice(0, 5)} {a.customer_name.split(' ')[0]}
                     </div>
                     <div className="truncate opacity-75">{a.service_name}</div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -1061,10 +1100,15 @@ function WeekGridView({
               key={date}
               className={cn('border overflow-hidden', isToday ? 'border-near-black' : 'border-[rgba(18,18,18,0.10)]')}
             >
-              <div className={cn(
-                'px-4 py-3 flex items-center justify-between',
-                isToday ? 'bg-near-black' : 'bg-white border-b border-[rgba(18,18,18,0.06)]',
-              )}>
+              <button
+                type="button"
+                onClick={() => onJumpToDay(date)}
+                className={cn(
+                  'w-full px-4 py-3 flex items-center justify-between transition-colors',
+                  isToday ? 'bg-near-black hover:bg-[#2a2a2a]' : 'bg-white border-b border-[rgba(18,18,18,0.06)] hover:bg-cream',
+                )}
+                aria-label={`Open ${date} in Today view`}
+              >
                 <p className={cn('text-xs font-bold', isToday ? 'text-white' : 'text-near-black')}>
                   {DAY_ABBR[i]} · {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </p>
@@ -1074,15 +1118,24 @@ function WeekGridView({
                     {dayAppts.length === 0 ? 'Free' : `${dayAppts.length} appt${dayAppts.length > 1 ? 's' : ''}`}
                   </span>
                 )}
-              </div>
+              </button>
               {dayAppts.length === 0 ? (
-                <div className="bg-white px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() => onJumpToDay(date)}
+                  className="w-full bg-white px-4 py-3 text-left hover:bg-cream transition-colors"
+                >
                   <p className="text-[11px] text-muted-text">No appointments</p>
-                </div>
+                </button>
               ) : (
                 <div className="bg-white divide-y divide-[rgba(18,18,18,0.06)]">
                   {dayAppts.map(a => (
-                    <div key={a.id} className="px-4 py-3 flex items-center gap-2 min-w-0">
+                    <button
+                      type="button"
+                      key={a.id}
+                      onClick={() => onJumpToDay(date)}
+                      className="w-full px-4 py-3 flex items-center gap-2 min-w-0 text-left hover:bg-cream transition-colors"
+                    >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[11px] font-bold text-near-black whitespace-nowrap">{fmt12(a.start_time)}</span>
@@ -1093,7 +1146,7 @@ function WeekGridView({
                           {a.customer_name} · {a.service_name}
                         </p>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
@@ -1111,10 +1164,14 @@ function MonthCalendarView({
   monthGrid,
   appointments,
   today,
+  onJumpToDay,
 }: {
   monthGrid: CalendarCell[][]
   appointments: Appointment[]
   today: string
+  /** Same contract as WeekGridView — switches the parent into Today
+   *  view on whichever date the owner clicked. */
+  onJumpToDay: (date: string) => void
 }) {
   return (
     <>
@@ -1152,12 +1209,19 @@ function MonthCalendarView({
               const extra = dayAppts.length - 2
 
               return (
-                <div
+                // Whole cell is a button so clicking anywhere — number,
+                // chip, blank space, or "+N more" — drills into that
+                // day's Today view. Inner chips stay as plain divs since
+                // they're inside the same button.
+                <button
+                  type="button"
                   key={date}
+                  onClick={() => onJumpToDay(date)}
                   className={cn(
-                    'border-r last:border-r-0 border-[rgba(18,18,18,0.06)] min-h-[80px] p-1.5 flex flex-col gap-0.5',
-                    isToday ? 'bg-near-black' : 'bg-white',
+                    'border-r last:border-r-0 border-[rgba(18,18,18,0.06)] min-h-[80px] p-1.5 flex flex-col gap-0.5 text-left transition-colors',
+                    isToday ? 'bg-near-black hover:bg-[#2a2a2a]' : 'bg-white hover:bg-cream',
                   )}
+                  aria-label={`Open ${date} in Today view`}
                 >
                   <span className={cn('text-[11px] font-bold leading-none mb-0.5', isToday ? 'text-white' : 'text-near-black')}>
                     {new Date(date + 'T00:00:00').getDate()}
@@ -1176,7 +1240,7 @@ function MonthCalendarView({
                       +{extra} more
                     </span>
                   )}
-                </div>
+                </button>
               )
             })}
           </div>
@@ -1213,18 +1277,28 @@ function MonthCalendarView({
                 key={date}
                 className={cn('border overflow-hidden', isToday ? 'border-near-black' : 'border-[rgba(18,18,18,0.10)]')}
               >
-                <div className={cn(
-                  'px-4 py-2.5 flex items-center justify-between',
-                  isToday ? 'bg-near-black' : 'bg-white border-b border-[rgba(18,18,18,0.06)]',
-                )}>
+                <button
+                  type="button"
+                  onClick={() => onJumpToDay(date)}
+                  className={cn(
+                    'w-full px-4 py-2.5 flex items-center justify-between transition-colors',
+                    isToday ? 'bg-near-black hover:bg-[#2a2a2a]' : 'bg-white border-b border-[rgba(18,18,18,0.06)] hover:bg-cream',
+                  )}
+                  aria-label={`Open ${date} in Today view`}
+                >
                   <p className={cn('text-xs font-bold', isToday ? 'text-white' : 'text-near-black')}>
                     {fmtDate(date)}
                   </p>
                   {isToday && <span className="text-[9px] text-white/60 font-bold uppercase tracking-wider">Today</span>}
-                </div>
+                </button>
                 <div className="bg-white divide-y divide-[rgba(18,18,18,0.06)]">
                   {appts.map(a => (
-                    <div key={a.id} className="px-4 py-3 flex items-center gap-2 min-w-0">
+                    <button
+                      type="button"
+                      key={a.id}
+                      onClick={() => onJumpToDay(date)}
+                      className="w-full px-4 py-3 flex items-center gap-2 min-w-0 text-left hover:bg-cream transition-colors"
+                    >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[11px] font-bold text-near-black whitespace-nowrap">{fmt12(a.start_time)}</span>
@@ -1235,7 +1309,7 @@ function MonthCalendarView({
                           {a.customer_name} · {a.service_name}
                         </p>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
