@@ -220,14 +220,17 @@ export default function StaffEditor() {
               </p>
             )}
 
-            {/* Photo */}
-            <ImageUploadField
-              label="Photo"
-              value={formData.photo_url || null}
-              onChange={v => setFormData(p => ({ ...p, photo_url: v ?? '' }))}
-              kind="staff"
-              aspectClass="aspect-square"
-            />
+            {/* Photo — constrained to a thumbnail-sized square so the
+                upload box doesn't dominate a form that's mostly text. */}
+            <div className="w-32">
+              <ImageUploadField
+                label="Photo"
+                value={formData.photo_url || null}
+                onChange={v => setFormData(p => ({ ...p, photo_url: v ?? '' }))}
+                kind="staff"
+                aspectClass="aspect-square"
+              />
+            </div>
 
             {/* Name */}
             <div>
