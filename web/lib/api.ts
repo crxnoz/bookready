@@ -16,6 +16,8 @@ import {
   Customer,
   CustomerCreatePayload,
   CustomerDetail,
+  CustomerTag,
+  CustomerTagPayload,
   CustomerUpdatePayload,
   HoursEntry,
   LoginPayload,
@@ -783,6 +785,32 @@ export async function toggleEditorCustomerVip(
   return request<Customer>(`/editor/customers/${id}/toggle-vip`, {
     method: 'POST',
     body: JSON.stringify(isVip === undefined ? {} : { is_vip: isVip }),
+  })
+}
+
+// Phase 14 — customer tag CRUD. Assignment lives on the customers
+// PATCH (`tag_ids: number[]`) — these are the master-list operations.
+export async function getEditorCustomerTags(): Promise<CustomerTag[]> {
+  return request<CustomerTag[]>('/editor/customer-tags')
+}
+export async function createEditorCustomerTag(data: CustomerTagPayload): Promise<CustomerTag> {
+  return request<CustomerTag>('/editor/customer-tags', {
+    method: 'POST',
+    body:   JSON.stringify(data),
+  })
+}
+export async function updateEditorCustomerTag(
+  id: number,
+  data: Partial<CustomerTagPayload>,
+): Promise<CustomerTag> {
+  return request<CustomerTag>(`/editor/customer-tags/${id}`, {
+    method: 'PATCH',
+    body:   JSON.stringify(data),
+  })
+}
+export async function deleteEditorCustomerTag(id: number): Promise<{ deleted: boolean }> {
+  return request<{ deleted: boolean }>(`/editor/customer-tags/${id}`, {
+    method: 'DELETE',
   })
 }
 

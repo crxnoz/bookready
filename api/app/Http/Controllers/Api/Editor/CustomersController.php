@@ -60,14 +60,18 @@ class CustomersController extends Controller
         // aggregates need to walk the rows anyway (last payment status,
         // pending balance, etc — not all expressible as plain SUM()s).
         $apptsByClient = collect();
+        $tagsByClient  = collect();
         if (! empty($clientIds)) {
             $apptsByClient = $this->loadClientAppointments($clientIds);
+            // Phase 14 — one extra query for the tag pivot, mirrored shape.
+            $tagsByClient  = $this->loadClientTags($clientIds);
         }
 
         $today  = now()->toDateString();
         $result = $clients->map(fn ($c) => $this->formatClient(
             $c,
             $apptsByClient->get($c->id, collect()),
+            $tagsByClient->get($c->id, collect()),
             $today,
             $hasVip,
         ))->all();
@@ -91,8 +95,9 @@ class CustomersController extends Controller
 
         $hasVip  = Schema::hasColumn('clients', 'is_vip');
         $appts   = $this->loadClientAppointments([$customer])->get($customer, collect());
+        $tags    = $this->loadClientTags([$customer])->get($customer, collect());
 
-        $base    = $this->formatClient($row, $appts, now()->toDateString(), $hasVip);
+        $base    = $this->formatClient($row, $appts, $tags, now()->toDateString(), $hasVip);
         // Detail view also returns the full timeline so the drawer can
         // render it without a second round-trip. Reverse-chrono so the
         // most recent appointment is on top.
@@ -139,7 +144,7 @@ class CustomersController extends Controller
 
         $row    = DB::table('clients')->find($id);
         $hasVip = Schema::hasColumn('clients', 'is_vip');
-        $result = $this->formatClient($row, collect(), now()->toDateString(), $hasVip);
+        $result = $this->formatClient($row, collect(), collect(), now()->toDateString(), $hasVip);
 
         tenancy()->end();
 
@@ -154,6 +159,18 @@ class CustomersController extends Controller
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:50',
             'notes' => 'nullable|string|max:5000',
+            // Phase 14 — structured preferences (all optional, all nullable).
+            'preferred_service_id'     => 'sometimes|nullable|integer',
+            'preferred_staff_id'       => 'sometimes|nullable|integer',
+            'preferred_time_of_day'    => 'sometimes|nullable|in:morning,afternoon,evening',
+            'preferred_contact_method' => 'sometimes|nullable|in:email,sms,phone',
+            'birthday'                 => 'sometimes|nullable|date_format:Y-m-d',
+            'preferences_notes'        => 'sometimes|nullable|string|max:5000',
+            // Atomic tag pivot replace — presence of `tag_ids` clears and
+            // re-inserts the customer's tag links. Omitting it leaves the
+            // current set alone (so saving just the name doesn't wipe tags).
+            'tag_ids'                  => 'sometimes|array',
+            'tag_ids.*'                => 'integer',
         ]);
 
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
@@ -176,18 +193,50 @@ class CustomersController extends Controller
             }
         }
 
-        DB::table('clients')->where('id', $customer)->update([
+        $update = [
             'name'       => $validated['name'],
             'email'      => $validated['email'] ?? null,
             'phone'      => $validated['phone'] ?? null,
             'notes'      => $validated['notes'] ?? null,
             'updated_at' => now(),
-        ]);
+        ];
+        // Only set preference columns when both the column exists AND the
+        // request actually included the key — keeps PATCH partial-safe
+        // and tenant-migration-safe.
+        foreach ([
+            'preferred_service_id',
+            'preferred_staff_id',
+            'preferred_time_of_day',
+            'preferred_contact_method',
+            'birthday',
+            'preferences_notes',
+        ] as $field) {
+            if (array_key_exists($field, $validated) && Schema::hasColumn('clients', $field)) {
+                $update[$field] = $validated[$field];
+            }
+        }
+        DB::table('clients')->where('id', $customer)->update($update);
+
+        // Replace tag links atomically when the key was supplied. Skipping
+        // when the column is absent so older tenants don't 500 on a
+        // request that quietly includes `tag_ids: []`.
+        if (array_key_exists('tag_ids', $validated) && Schema::hasTable('client_tag_links')) {
+            DB::table('client_tag_links')->where('client_id', $customer)->delete();
+            $rows = array_values(array_unique($validated['tag_ids']));
+            if (! empty($rows)) {
+                DB::table('client_tag_links')->insert(array_map(fn ($tagId) => [
+                    'client_id'  => $customer,
+                    'tag_id'     => (int) $tagId,
+                    'created_at' => now(),
+                ], $rows));
+            }
+        }
 
         $updated = DB::table('clients')->find($customer);
         $hasVip  = Schema::hasColumn('clients', 'is_vip');
         $appts   = $this->loadClientAppointments([$customer])->get($customer, collect());
-        $result  = $this->formatClient($updated, $appts, now()->toDateString(), $hasVip);
+        $tags    = $this->loadClientTags([$customer])->get($customer, collect());
+        $result  = $this->formatClient($updated, $appts, $tags, now()->toDateString(), $hasVip);
 
         tenancy()->end();
 
@@ -227,7 +276,8 @@ class CustomersController extends Controller
 
         $updated = DB::table('clients')->find($customer);
         $appts   = $this->loadClientAppointments([$customer])->get($customer, collect());
-        $result  = $this->formatClient($updated, $appts, now()->toDateString(), true);
+        $tags    = $this->loadClientTags([$customer])->get($customer, collect());
+        $result  = $this->formatClient($updated, $appts, $tags, now()->toDateString(), true);
 
         tenancy()->end();
 
@@ -268,12 +318,34 @@ class CustomersController extends Controller
     }
 
     /**
+     * Phase 14 — single round-trip to fetch the tag pivot for a page of
+     * clients. Joins through to customer_tags so the formatter has
+     * everything it needs (id, name, color) without a second lookup.
+     * Returns Collection<int, Collection<int, object>> keyed by client_id.
+     */
+    private function loadClientTags(array $clientIds): Collection
+    {
+        if (empty($clientIds))                       return collect();
+        if (! Schema::hasTable('client_tag_links'))  return collect();
+        if (! Schema::hasTable('customer_tags'))     return collect();
+
+        return DB::table('client_tag_links as l')
+            ->join('customer_tags as t', 't.id', '=', 'l.tag_id')
+            ->whereIn('l.client_id', $clientIds)
+            ->select('l.client_id', 't.id', 't.name', 't.color', 't.sort_order')
+            ->orderBy('t.sort_order')
+            ->orderBy('t.name')
+            ->get()
+            ->groupBy('client_id');
+    }
+
+    /**
      * Reduce a client + their appointment rows into the API shape the
      * directory + drawer both consume. Status is auto-derived here so
      * the frontend never re-computes; VIP override is honored when
      * `clients.is_vip` is true.
      */
-    private function formatClient(object $c, Collection $appts, string $today, bool $hasVip): array
+    private function formatClient(object $c, Collection $appts, Collection $tags, string $today, bool $hasVip): array
     {
         // Drop cancelled rows for the stats; keep them for the timeline
         // (the caller in show() re-builds the timeline from raw $appts).
@@ -315,6 +387,30 @@ class CustomersController extends Controller
         $isVip  = $hasVip ? (bool) ($c->is_vip ?? false) : false;
         $status = $this->deriveStatus($isVip, $completedCount, $lastCompleted, $today);
 
+        // Phase 14 — no-show risk. Two heuristics, OR'd:
+        //   (a) 2+ no_show in the last 5 actually-attendable visits
+        //   (b) >= 30% no_show ratio across at least 3 attendable visits
+        // "Attendable" = anything that isn't cancelled (no_show + completed).
+        $noShowRisk = $this->computeNoShowRisk($countable);
+
+        // Phase 14 — tags → flat array of {id, name, color}.
+        $tagsOut = $tags->map(fn ($t) => [
+            'id'    => (int) $t->id,
+            'name'  => $t->name,
+            'color' => $t->color,
+        ])->values()->all();
+
+        // Phase 14 — preferences block. Always returned (with nulls) so
+        // the frontend doesn't have to feature-detect each field.
+        $preferences = [
+            'preferred_service_id'     => isset($c->preferred_service_id)     ? (int) $c->preferred_service_id     : null,
+            'preferred_staff_id'       => isset($c->preferred_staff_id)       ? (int) $c->preferred_staff_id       : null,
+            'preferred_time_of_day'    => $c->preferred_time_of_day    ?? null,
+            'preferred_contact_method' => $c->preferred_contact_method ?? null,
+            'birthday'                 => $c->birthday                 ?? null,
+            'preferences_notes'        => $c->preferences_notes        ?? null,
+        ];
+
         return [
             'id'                         => (int) $c->id,
             'name'                       => $c->name,
@@ -323,6 +419,9 @@ class CustomersController extends Controller
             'notes'                      => $c->notes,
             'is_vip'                     => $isVip,
             'status'                     => $status,
+            'no_show_risk'               => $noShowRisk,
+            'tags'                       => $tagsOut,
+            'preferences'                => $preferences,
             'last_appointment_at'        => $c->last_booked_at ?? null,
             'appointment_count'          => $countable->count(),
             'upcoming_appointment_count' => $upcoming->count(),
@@ -367,6 +466,41 @@ class CustomersController extends Controller
         if ($daysSinceLast !== null && $daysSinceLast > self::INACTIVE_DAYS) return 'inactive';
 
         return $completedCount >= self::REGULAR_MIN_COMPLETED ? 'regular' : 'returning';
+    }
+
+    /**
+     * Phase 14 — no-show risk flag.
+     *
+     * Two heuristics, OR'd:
+     *   (a) 2+ no_show among the last 5 attendable visits
+     *   (b) ≥30% no_show ratio across ≥3 attendable visits
+     *
+     * "Attendable" excludes cancelled and future appointments — the
+     * caller already passed in the non-cancelled set; we further trim
+     * to dates on/before today since a pending future booking isn't a
+     * signal yet.
+     */
+    private function computeNoShowRisk(Collection $appts): bool
+    {
+        $today = now()->toDateString();
+        $past  = $appts
+            ->filter(fn ($a) => $a->appointment_date <= $today)
+            ->filter(fn ($a) => in_array($a->status, ['completed', 'no_show'], true))
+            ->sortByDesc(fn ($a) => $a->appointment_date . ' ' . $a->start_time)
+            ->values();
+
+        if ($past->count() < 2) return false;
+
+        $last5      = $past->take(5);
+        $recentMiss = $last5->where('status', 'no_show')->count();
+        if ($recentMiss >= 2) return true;
+
+        if ($past->count() >= 3) {
+            $missRate = $past->where('status', 'no_show')->count() / $past->count();
+            if ($missRate >= 0.30) return true;
+        }
+
+        return false;
     }
 
     /**

@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\Editor\AvailabilityController;
 use App\Http\Controllers\Api\Editor\BlockedDatesController;
 use App\Http\Controllers\Api\Editor\BusinessPolicyController;
 use App\Http\Controllers\Api\Editor\BusinessProfileController;
+use App\Http\Controllers\Api\Editor\CustomerTagsController;
 use App\Http\Controllers\Api\Editor\CustomersController;
 use App\Http\Controllers\Api\Editor\HoursController;
 use App\Http\Controllers\Api\Editor\BookingSettingsController;
@@ -145,6 +146,11 @@ Route::prefix('v1')->group(function () {
         Route::post('customers',                    [CustomersController::class, 'store']);
         Route::patch('customers/{customer}',        [CustomersController::class, 'update']);
         Route::post('customers/{customer}/toggle-vip', [CustomersController::class, 'toggleVip']);
+        // Phase 14 — customer tag CRUD (assignment lives on customers PATCH).
+        Route::get('customer-tags',                 [CustomerTagsController::class, 'index']);
+        Route::post('customer-tags',                [CustomerTagsController::class, 'store']);
+        Route::patch('customer-tags/{tag}',         [CustomerTagsController::class, 'update']);
+        Route::delete('customer-tags/{tag}',        [CustomerTagsController::class, 'destroy']);
 
         Route::get('staff',              [StaffController::class, 'index']);
         Route::post('staff',             [StaffController::class, 'store']);

@@ -665,6 +665,9 @@ export default function AppointmentsEditor() {
                   <p className="text-[8px] font-bold tracking-[0.10em] uppercase text-muted-text truncate">{label}</p>
                 </div>
                 <p className="text-2xl font-bold text-near-black tabular-nums">{loading ? '—' : value}</p>
+                <p className="text-[9px] font-semibold text-muted-text group-hover:text-near-black mt-0.5 inline-flex items-center gap-0.5">
+                  {isActive ? 'Viewing' : 'View'} <ChevronRight size={10} />
+                </p>
               </button>
             )
           })}

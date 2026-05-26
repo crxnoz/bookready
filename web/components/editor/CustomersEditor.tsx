@@ -1,40 +1,49 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertCircle,
-  ArrowRight,
+  AlertTriangle,
   Calendar,
-  Check,
+  CalendarClock,
   ChevronRight,
-  CreditCard,
   DollarSign,
   Mail,
-  MessageSquare,
+  Pencil,
   Phone,
   Plus,
   Search,
-  Sparkles,
   Star,
   StickyNote,
-  User,
+  Tag as TagIcon,
+  Trash2,
   Users,
   X,
 } from 'lucide-react'
 import {
   createEditorCustomer,
+  createEditorCustomerTag,
+  deleteEditorCustomerTag,
   getEditorCustomer,
   getEditorCustomers,
+  getEditorCustomerTags,
+  getEditorServices,
+  getEditorStaff,
   toggleEditorCustomerVip,
   updateEditorCustomer,
+  updateEditorCustomerTag,
 } from '@/lib/api'
 import type {
+  ApiStaffMember,
   Customer,
   CustomerAppointmentRow,
   CustomerCreatePayload,
   CustomerDetail,
   CustomerStatus,
+  CustomerTag,
+  CustomerTagPayload,
   CustomerUpdatePayload,
+  Service,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
 
@@ -116,16 +125,20 @@ function ApptStatusPill({ status }: { status: string }) {
 
 // ── Filter chip type ──────────────────────────────────────────────────────────
 
-type Filter = 'all' | 'new' | 'returning' | 'regular' | 'vip' | 'inactive' | 'balance_due'
+type Filter =
+  | 'all' | 'new' | 'returning' | 'regular' | 'vip' | 'inactive'
+  | 'balance_due' | 'upcoming' | 'no_show_risk'
 
 const FILTERS: { key: Filter; label: string }[] = [
-  { key: 'all',         label: 'All' },
-  { key: 'new',         label: 'New' },
-  { key: 'returning',   label: 'Returning' },
-  { key: 'regular',     label: 'Regular' },
-  { key: 'vip',         label: 'VIP' },
-  { key: 'inactive',    label: 'Inactive' },
-  { key: 'balance_due', label: 'Balance Due' },
+  { key: 'all',          label: 'All' },
+  { key: 'new',          label: 'New' },
+  { key: 'returning',    label: 'Returning' },
+  { key: 'regular',      label: 'Regular' },
+  { key: 'vip',          label: 'VIP' },
+  { key: 'inactive',     label: 'Inactive' },
+  { key: 'balance_due',  label: 'Balance Due' },
+  { key: 'upcoming',     label: 'Upcoming' },
+  { key: 'no_show_risk', label: 'No-Show Risk' },
 ]
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -145,9 +158,27 @@ export default function CustomersEditor() {
   // Create dialog
   const [showCreate, setShowCreate] = useState(false)
 
+  // Phase 14 — master tag list + service / staff lookups for the
+  // preferences dropdowns inside the drawer. Loaded once on mount;
+  // each individually defensive so a 503 on one doesn't break the page.
+  const [tags, setTags]         = useState<CustomerTag[]>([])
+  const [services, setServices] = useState<Service[]>([])
+  const [staff, setStaff]       = useState<ApiStaffMember[]>([])
+  const [showTagsModal, setShowTagsModal] = useState(false)
+
   useEffect(() => {
-    getEditorCustomers({ limit: 200 })
-      .then(setCustomers)
+    Promise.all([
+      getEditorCustomers({ limit: 200 }),
+      getEditorCustomerTags().catch(() => [] as CustomerTag[]),
+      getEditorServices().catch(() => [] as Service[]),
+      getEditorStaff({ active: true }).catch(() => [] as ApiStaffMember[]),
+    ])
+      .then(([cs, ts, svcs, stf]) => {
+        setCustomers(cs)
+        setTags(ts)
+        setServices(svcs.filter(s => s.is_active))
+        setStaff(stf.filter(s => s.is_active))
+      })
       .catch(() => setError('Failed to load customers.'))
       .finally(() => setLoading(false))
   }, [])
@@ -173,6 +204,10 @@ export default function CustomersEditor() {
     }
     if (filter === 'balance_due') {
       list = list.filter(c => (c.outstanding_balance ?? 0) > 0)
+    } else if (filter === 'upcoming') {
+      list = list.filter(c => (c.upcoming_appointment_count ?? 0) > 0)
+    } else if (filter === 'no_show_risk') {
+      list = list.filter(c => c.no_show_risk)
     } else if (filter !== 'all') {
       list = list.filter(c => c.status === filter)
     }
@@ -215,7 +250,13 @@ export default function CustomersEditor() {
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
 
         {/* Action bar */}
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={() => setShowTagsModal(true)}
+            className="flex items-center gap-1.5 bg-white border border-[rgba(18,18,18,0.15)] text-near-black px-3 py-1.5 text-[10px] font-bold tracking-[0.08em] uppercase hover:bg-cream transition-colors"
+          >
+            <TagIcon size={11} /> Manage Tags
+          </button>
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-1.5 bg-near-black text-white px-3 py-1.5 text-[10px] font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors"
@@ -239,7 +280,7 @@ export default function CustomersEditor() {
                 type="button"
                 onClick={() => setFilter(target)}
                 className={cn(
-                  'bg-white p-3 min-w-0 overflow-hidden text-left transition-colors',
+                  'bg-white p-3 min-w-0 overflow-hidden text-left transition-colors group',
                   isActive ? 'bg-cream' : 'hover:bg-cream',
                 )}
               >
@@ -248,6 +289,9 @@ export default function CustomersEditor() {
                   <p className="text-[8px] font-bold tracking-[0.10em] uppercase text-muted-text truncate">{label}</p>
                 </div>
                 <p className="text-2xl font-bold text-near-black tabular-nums">{loading ? '—' : value}</p>
+                <p className="text-[9px] font-semibold text-muted-text group-hover:text-near-black mt-0.5 inline-flex items-center gap-0.5">
+                  {isActive ? 'Viewing' : 'View'} <ChevronRight size={10} />
+                </p>
               </button>
             )
           })}
@@ -309,8 +353,18 @@ export default function CustomersEditor() {
         <CustomerDrawer
           drawerCustomer={detail}
           loading={detailLoading}
+          tags={tags}
+          services={services}
+          staff={staff}
           onClose={closeDrawer}
           onApply={applyCustomer}
+          onCreateTag={async (name, color) => {
+            const created = await createEditorCustomerTag({ name, color })
+            setTags(prev => [...prev, created].sort((a, b) =>
+              a.sort_order - b.sort_order || a.name.localeCompare(b.name),
+            ))
+            return created
+          }}
         />
       )}
 
@@ -321,6 +375,44 @@ export default function CustomersEditor() {
           onCreated={c => {
             setCustomers(prev => [c, ...prev])
             setShowCreate(false)
+          }}
+        />
+      )}
+
+      {/* Manage tags modal (Phase 14) */}
+      {showTagsModal && (
+        <ManageTagsModal
+          tags={tags}
+          onClose={() => setShowTagsModal(false)}
+          onCreate={async (name, color) => {
+            const t = await createEditorCustomerTag({ name, color })
+            setTags(prev => [...prev, t].sort((a, b) =>
+              a.sort_order - b.sort_order || a.name.localeCompare(b.name),
+            ))
+          }}
+          onUpdate={async (id, patch) => {
+            const t = await updateEditorCustomerTag(id, patch)
+            setTags(prev => prev.map(x => x.id === id ? t : x))
+            // Also reflect the rename/color on the open detail's tags.
+            setDetail(prev => prev
+              ? { ...prev, tags: prev.tags.map(x => x.id === id ? { ...x, ...t } : x) }
+              : prev)
+            setCustomers(prev => prev.map(c => ({
+              ...c,
+              tags: c.tags?.map(x => x.id === id ? { ...x, ...t } : x) ?? c.tags,
+            })))
+          }}
+          onDelete={async id => {
+            await deleteEditorCustomerTag(id)
+            setTags(prev => prev.filter(t => t.id !== id))
+            // Strip the deleted tag from every customer + the detail.
+            setDetail(prev => prev
+              ? { ...prev, tags: prev.tags.filter(t => t.id !== id) }
+              : prev)
+            setCustomers(prev => prev.map(c => ({
+              ...c,
+              tags: c.tags?.filter(t => t.id !== id) ?? c.tags,
+            })))
           }}
         />
       )}
@@ -343,6 +435,8 @@ function EmptyMessage({ children, error = false }: { children: React.ReactNode; 
 
 function CustomerRow({ customer: c, onOpen }: { customer: Customer; onOpen: () => void }) {
   const balanceDue = (c.outstanding_balance ?? 0) > 0
+  const tagsShown  = (c.tags ?? []).slice(0, 3)
+  const tagsExtra  = Math.max(0, (c.tags?.length ?? 0) - tagsShown.length)
   return (
     <button
       type="button"
@@ -358,7 +452,23 @@ function CustomerRow({ customer: c, onOpen }: { customer: Customer; onOpen: () =
               {fmtMoney(c.outstanding_balance)} due
             </span>
           )}
+          {c.no_show_risk && (
+            <span
+              className="inline-flex items-center gap-1 text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(180,40,40,0.30)] bg-[#fff3f3] text-[#b42828] px-2 py-0.5"
+              title="2+ no-shows in last 5 visits or ≥30% no-show rate"
+            >
+              <AlertTriangle size={9} /> No-show risk
+            </span>
+          )}
         </div>
+        {tagsShown.length > 0 && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {tagsShown.map(t => <TagChip key={t.id} tag={t} />)}
+            {tagsExtra > 0 && (
+              <span className="text-[10px] font-semibold text-muted-text">+{tagsExtra}</span>
+            )}
+          </div>
+        )}
         {(c.email || c.phone) && (
           <p className="text-[11px] text-muted-text truncate">
             {[c.email, c.phone].filter(Boolean).join(' · ')}
@@ -394,13 +504,23 @@ function CustomerRow({ customer: c, onOpen }: { customer: Customer; onOpen: () =
 function CustomerDrawer({
   drawerCustomer,
   loading,
+  tags,
+  services,
+  staff,
   onClose,
   onApply,
+  onCreateTag,
 }: {
   drawerCustomer: CustomerDetail | null
-  loading: boolean
-  onClose: () => void
-  onApply: (c: Customer) => void
+  loading:        boolean
+  tags:           CustomerTag[]
+  services:       Service[]
+  staff:          ApiStaffMember[]
+  onClose:        () => void
+  onApply:        (c: Customer) => void
+  /** Inline tag creation from the picker. Returns the newly created
+   *  tag so the picker can immediately add it to the customer's set. */
+  onCreateTag:    (name: string, color: string | null) => Promise<CustomerTag>
 }) {
   // ESC closes the drawer
   useEffect(() => {
@@ -425,7 +545,15 @@ function CustomerDrawer({
         {loading || !drawerCustomer ? (
           <div className="p-6 text-sm text-muted-text">Loading customer…</div>
         ) : (
-          <DrawerContent c={drawerCustomer} onClose={onClose} onApply={onApply} />
+          <DrawerContent
+            c={drawerCustomer}
+            tags={tags}
+            services={services}
+            staff={staff}
+            onClose={onClose}
+            onApply={onApply}
+            onCreateTag={onCreateTag}
+          />
         )}
       </div>
     </div>
@@ -434,12 +562,20 @@ function CustomerDrawer({
 
 function DrawerContent({
   c,
+  tags,
+  services,
+  staff,
   onClose,
   onApply,
+  onCreateTag,
 }: {
-  c: CustomerDetail
-  onClose: () => void
-  onApply: (c: Customer) => void
+  c:           CustomerDetail
+  tags:        CustomerTag[]
+  services:    Service[]
+  staff:       ApiStaffMember[]
+  onClose:     () => void
+  onApply:     (c: Customer) => void
+  onCreateTag: (name: string, color: string | null) => Promise<CustomerTag>
 }) {
   const [notes, setNotes] = useState(c.notes ?? '')
   const [notesSaving, setNotesSaving] = useState(false)
@@ -535,6 +671,25 @@ function DrawerContent({
           />
         </div>
 
+        {/* Tags (Phase 14) */}
+        <DrawerSection title="Tags" subtitle="Quick labels for techs and segmentation.">
+          <TagsPicker
+            customerId={c.id}
+            assigned={c.tags}
+            available={tags}
+            onCreateTag={onCreateTag}
+            onChange={async nextIds => {
+              // Save the new tag set immediately. We send a partial PATCH
+              // that only touches the pivot so other fields don't bounce.
+              const updated = await updateEditorCustomer(c.id, {
+                name:    c.name,
+                tag_ids: nextIds,
+              })
+              onApply(updated)
+            }}
+          />
+        </DrawerSection>
+
         {/* Contact */}
         <DrawerSection title="Contact">
           <ContactRow icon={<Mail size={11} />} label="Email" value={c.email} />
@@ -543,6 +698,19 @@ function DrawerContent({
             icon={<Calendar size={11} />}
             label="Customer since"
             value={fmtDate(c.created_at.slice(0, 10))}
+          />
+        </DrawerSection>
+
+        {/* Preferences (Phase 14) */}
+        <DrawerSection
+          title="Preferences"
+          subtitle="What they like — drives smarter pre-fills in future bookings."
+        >
+          <PreferencesForm
+            customer={c}
+            services={services}
+            staff={staff}
+            onApply={onApply}
           />
         </DrawerSection>
 
@@ -848,6 +1016,562 @@ function CreateCustomerDialog({
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  )
+}
+
+// ── Tag UI helpers (Phase 14) ─────────────────────────────────────────────────
+
+/** Small fixed palette so tags feel branded without a full color picker. */
+const TAG_PALETTE: { name: string; hex: string; ink: 'light' | 'dark' }[] = [
+  { name: 'Pink',     hex: '#E8C7DA', ink: 'dark' },
+  { name: 'Lavender', hex: '#C9B4E6', ink: 'dark' },
+  { name: 'Blush',    hex: '#F4D9CE', ink: 'dark' },
+  { name: 'Ink',      hex: '#121212', ink: 'light' },
+  { name: 'Forest',   hex: '#0F6F3D', ink: 'light' },
+  { name: 'Clay',     hex: '#B45F3A', ink: 'light' },
+]
+
+function inkForTag(hex: string | null | undefined): 'light' | 'dark' {
+  const match = TAG_PALETTE.find(p => p.hex.toLowerCase() === (hex ?? '').toLowerCase())
+  return match?.ink ?? 'dark'
+}
+
+function TagChip({ tag, onRemove }: { tag: CustomerTag; onRemove?: () => void }) {
+  const ink   = inkForTag(tag.color)
+  const style = tag.color
+    ? { backgroundColor: tag.color, color: ink === 'light' ? '#fff' : '#121212', borderColor: 'transparent' }
+    : undefined
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.04em] border border-[rgba(18,18,18,0.12)] bg-white text-near-black px-2 py-0.5"
+      style={style}
+    >
+      {tag.name}
+      {onRemove && (
+        <button
+          type="button"
+          onClick={e => { e.preventDefault(); e.stopPropagation(); onRemove() }}
+          className="opacity-70 hover:opacity-100"
+          aria-label={`Remove ${tag.name}`}
+        >
+          <X size={10} />
+        </button>
+      )}
+    </span>
+  )
+}
+
+function TagsPicker({
+  customerId, assigned, available, onCreateTag, onChange,
+}: {
+  customerId:  number
+  assigned:    CustomerTag[]
+  available:   CustomerTag[]
+  onCreateTag: (name: string, color: string | null) => Promise<CustomerTag>
+  onChange:    (nextIds: number[]) => Promise<void>
+}) {
+  const [open, setOpen]         = useState(false)
+  const [query, setQuery]       = useState('')
+  const [busy, setBusy]         = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [newName, setNewName]   = useState('')
+  const [newColor, setNewColor] = useState<string | null>(null)
+  const ref = useRef<HTMLDivElement | null>(null)
+
+  // Close on outside click + Escape.
+  useEffect(() => {
+    if (! open) return
+    function onDown(e: MouseEvent) {
+      if (ref.current && ! ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const assignedIds = new Set(assigned.map(t => t.id))
+  const filtered = available.filter(t =>
+    ! assignedIds.has(t.id) &&
+    t.name.toLowerCase().includes(query.toLowerCase()),
+  )
+
+  async function toggle(tagId: number, on: boolean) {
+    setBusy(true)
+    try {
+      const next = on
+        ? Array.from(new Set([...assigned.map(t => t.id), tagId]))
+        : assigned.map(t => t.id).filter(id => id !== tagId)
+      await onChange(next)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submitNew() {
+    const name = newName.trim()
+    if (! name || busy) return
+    setBusy(true)
+    try {
+      const created = await onCreateTag(name, newColor)
+      await onChange([...assigned.map(t => t.id), created.id])
+      setNewName('')
+      setNewColor(null)
+      setCreating(false)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="relative" ref={ref}>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {assigned.map(t => (
+          <TagChip key={t.id} tag={t} onRemove={() => toggle(t.id, false)} />
+        ))}
+        <button
+          type="button"
+          onClick={() => setOpen(o => ! o)}
+          disabled={busy}
+          className="inline-flex items-center gap-1 text-[10px] font-bold tracking-[0.08em] uppercase border border-dashed border-[rgba(18,18,18,0.30)] text-near-black bg-white px-2 py-0.5 hover:bg-cream transition-colors disabled:opacity-50"
+        >
+          <Plus size={10} /> Add tag
+        </button>
+      </div>
+
+      {open && (
+        <div className="absolute z-20 mt-2 left-0 w-[280px] bg-white border border-[rgba(18,18,18,0.15)] shadow-xl p-2">
+          {! creating && (
+            <>
+              <input
+                type="text"
+                placeholder="Search tags…"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                className="w-full border border-[rgba(18,18,18,0.12)] bg-white px-2 py-1.5 text-xs text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black mb-2"
+              />
+              <div className="max-h-44 overflow-y-auto space-y-1">
+                {filtered.length === 0 ? (
+                  <p className="text-[11px] text-muted-text px-1.5 py-2">
+                    {available.length === 0
+                      ? 'No tags yet — create one below.'
+                      : 'No matching tags.'}
+                  </p>
+                ) : filtered.map(t => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => toggle(t.id, true)}
+                    disabled={busy}
+                    className="w-full flex items-center gap-2 px-1.5 py-1 text-left hover:bg-cream transition-colors text-xs disabled:opacity-50"
+                  >
+                    <TagChip tag={t} />
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => { setCreating(true); setNewName(query) }}
+                className="mt-2 w-full flex items-center justify-center gap-1 text-[10px] font-bold tracking-[0.08em] uppercase bg-near-black text-white py-1.5 hover:bg-[#2a2a2a] transition-colors"
+              >
+                <Plus size={10} /> Create new tag
+              </button>
+            </>
+          )}
+          {creating && (
+            <div className="space-y-2">
+              <p className="text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text">New tag</p>
+              <input
+                type="text"
+                placeholder="Tag name"
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') submitNew() }}
+                autoFocus
+                className="w-full border border-[rgba(18,18,18,0.12)] bg-white px-2 py-1.5 text-xs text-near-black focus:outline-none focus:border-near-black"
+              />
+              <ColorPalettePicker value={newColor} onChange={setNewColor} />
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={submitNew}
+                  disabled={! newName.trim() || busy}
+                  className="flex-1 bg-near-black text-white py-1.5 text-[10px] font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors disabled:opacity-50"
+                >Create</button>
+                <button
+                  type="button"
+                  onClick={() => { setCreating(false); setNewName(''); setNewColor(null) }}
+                  className="border border-[rgba(18,18,18,0.15)] bg-white px-3 py-1.5 text-[10px] font-semibold text-near-black hover:bg-cream transition-colors"
+                >Cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ColorPalettePicker({
+  value, onChange,
+}: { value: string | null; onChange: (v: string | null) => void }) {
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <button
+        type="button"
+        onClick={() => onChange(null)}
+        className={cn(
+          'w-6 h-6 border border-[rgba(18,18,18,0.15)] flex items-center justify-center text-[9px] font-bold',
+          value === null && 'ring-2 ring-near-black',
+        )}
+        title="No color"
+      >×</button>
+      {TAG_PALETTE.map(p => (
+        <button
+          key={p.hex}
+          type="button"
+          onClick={() => onChange(p.hex)}
+          style={{ backgroundColor: p.hex }}
+          className={cn(
+            'w-6 h-6 border border-[rgba(18,18,18,0.15)]',
+            value === p.hex && 'ring-2 ring-near-black',
+          )}
+          title={p.name}
+        />
+      ))}
+    </div>
+  )
+}
+
+// ── Preferences form (Phase 14) ──────────────────────────────────────────────
+
+function PreferencesForm({
+  customer, services, staff, onApply,
+}: {
+  customer: CustomerDetail
+  services: Service[]
+  staff:    ApiStaffMember[]
+  onApply:  (c: Customer) => void
+}) {
+  const p = customer.preferences
+  const initial = {
+    preferred_service_id:     p.preferred_service_id     ?? '',
+    preferred_staff_id:       p.preferred_staff_id       ?? '',
+    preferred_time_of_day:    p.preferred_time_of_day    ?? '',
+    preferred_contact_method: p.preferred_contact_method ?? '',
+    birthday:                 p.birthday                 ?? '',
+    preferences_notes:        p.preferences_notes        ?? '',
+  }
+  const [form, setForm] = useState(initial)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  // Reset when the drawer switches customer.
+  useEffect(() => {
+    setForm({
+      preferred_service_id:     p.preferred_service_id     ?? '',
+      preferred_staff_id:       p.preferred_staff_id       ?? '',
+      preferred_time_of_day:    p.preferred_time_of_day    ?? '',
+      preferred_contact_method: p.preferred_contact_method ?? '',
+      birthday:                 p.birthday                 ?? '',
+      preferences_notes:        p.preferences_notes        ?? '',
+    })
+    setSaved(false)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customer.id])
+
+  const dirty =
+    String(form.preferred_service_id)     !== String(p.preferred_service_id     ?? '') ||
+    String(form.preferred_staff_id)       !== String(p.preferred_staff_id       ?? '') ||
+    (form.preferred_time_of_day    || null) !== (p.preferred_time_of_day    ?? null) ||
+    (form.preferred_contact_method || null) !== (p.preferred_contact_method ?? null) ||
+    (form.birthday                 || null) !== (p.birthday                 ?? null) ||
+    (form.preferences_notes        || null) !== (p.preferences_notes        ?? null)
+
+  async function save() {
+    if (! dirty) return
+    setSaving(true)
+    setSaved(false)
+    try {
+      const payload: CustomerUpdatePayload = {
+        name:                      customer.name,
+        preferred_service_id:      form.preferred_service_id === '' ? null : Number(form.preferred_service_id),
+        preferred_staff_id:        form.preferred_staff_id   === '' ? null : Number(form.preferred_staff_id),
+        preferred_time_of_day:     (form.preferred_time_of_day    || null) as CustomerUpdatePayload['preferred_time_of_day'],
+        preferred_contact_method:  (form.preferred_contact_method || null) as CustomerUpdatePayload['preferred_contact_method'],
+        birthday:                  form.birthday || null,
+        preferences_notes:         form.preferences_notes || null,
+      }
+      const updated = await updateEditorCustomer(customer.id, payload)
+      onApply(updated)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2200)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="space-y-2.5">
+      <PrefDropdown
+        label="Preferred service"
+        value={String(form.preferred_service_id)}
+        onChange={v => setForm(f => ({ ...f, preferred_service_id: v }))}
+        options={[{ value: '', label: 'No preference' }, ...services.map(s => ({ value: String(s.id), label: s.name }))]}
+      />
+      <PrefDropdown
+        label="Preferred staff"
+        value={String(form.preferred_staff_id)}
+        onChange={v => setForm(f => ({ ...f, preferred_staff_id: v }))}
+        options={[{ value: '', label: 'No preference' }, ...staff.map(s => ({ value: String(s.id), label: s.name }))]}
+      />
+      <PrefDropdown
+        label="Preferred time of day"
+        value={form.preferred_time_of_day}
+        onChange={v => setForm(f => ({ ...f, preferred_time_of_day: v }))}
+        options={[
+          { value: '',          label: 'No preference' },
+          { value: 'morning',   label: 'Morning' },
+          { value: 'afternoon', label: 'Afternoon' },
+          { value: 'evening',   label: 'Evening' },
+        ]}
+      />
+      <PrefDropdown
+        label="Preferred contact"
+        value={form.preferred_contact_method}
+        onChange={v => setForm(f => ({ ...f, preferred_contact_method: v }))}
+        options={[
+          { value: '',      label: 'No preference' },
+          { value: 'email', label: 'Email' },
+          { value: 'sms',   label: 'Text message' },
+          { value: 'phone', label: 'Phone call' },
+        ]}
+      />
+      <div className="bg-white border border-[rgba(18,18,18,0.08)] px-3 py-2.5">
+        <p className="text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text mb-1">Birthday</p>
+        <input
+          type="date"
+          value={form.birthday}
+          onChange={e => setForm(f => ({ ...f, birthday: e.target.value }))}
+          className="w-full text-xs text-near-black bg-transparent focus:outline-none"
+        />
+      </div>
+      <div className="bg-white border border-[rgba(18,18,18,0.08)] px-3 py-2.5">
+        <p className="text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text mb-1">
+          Service preferences
+        </p>
+        <p className="text-[10px] text-muted-text mb-2">
+          Hair / skin / nails / lashes specifics, allergies, formulas they hate, etc.
+        </p>
+        <textarea
+          value={form.preferences_notes}
+          onChange={e => setForm(f => ({ ...f, preferences_notes: e.target.value }))}
+          placeholder="e.g. Allergic to lavender, prefers shorter cuticles, hates pink polish…"
+          rows={4}
+          className="w-full border-0 bg-transparent text-xs text-near-black placeholder:text-muted-text focus:outline-none resize-none p-0"
+        />
+      </div>
+      <div className="flex items-center justify-end gap-2">
+        {saved && (
+          <span className="text-[9px] font-bold tracking-[0.08em] uppercase text-[#0f6f3d]">Saved</span>
+        )}
+        <button
+          type="button"
+          onClick={save}
+          disabled={! dirty || saving}
+          className="px-3 py-1.5 text-[10px] font-bold tracking-[0.08em] uppercase bg-near-black text-white hover:bg-[#2a2a2a] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {saving ? 'Saving…' : 'Save preferences'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function PrefDropdown({
+  label, value, onChange, options,
+}: {
+  label:    string
+  value:    string
+  onChange: (v: string) => void
+  options:  { value: string; label: string }[]
+}) {
+  return (
+    <div className="bg-white border border-[rgba(18,18,18,0.08)] px-3 py-2.5">
+      <p className="text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text mb-1">{label}</p>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full text-xs text-near-black bg-transparent focus:outline-none appearance-none cursor-pointer"
+      >
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </div>
+  )
+}
+
+// ── Manage tags modal (Phase 14) ─────────────────────────────────────────────
+
+function ManageTagsModal({
+  tags, onClose, onCreate, onUpdate, onDelete,
+}: {
+  tags:     CustomerTag[]
+  onClose:  () => void
+  onCreate: (name: string, color: string | null) => Promise<void>
+  onUpdate: (id: number, patch: Partial<CustomerTagPayload>) => Promise<void>
+  onDelete: (id: number) => Promise<void>
+}) {
+  const [creating, setCreating] = useState(false)
+  const [newName, setNewName]   = useState('')
+  const [newColor, setNewColor] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editName, setEditName]   = useState('')
+  const [editColor, setEditColor] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function submitNew() {
+    const name = newName.trim()
+    if (! name || busy) return
+    setBusy(true)
+    try {
+      await onCreate(name, newColor)
+      setNewName(''); setNewColor(null); setCreating(false)
+    } finally { setBusy(false) }
+  }
+  async function submitEdit(id: number) {
+    if (! editName.trim() || busy) return
+    setBusy(true)
+    try {
+      await onUpdate(id, { name: editName.trim(), color: editColor })
+      setEditingId(null)
+    } finally { setBusy(false) }
+  }
+  async function remove(id: number) {
+    if (! confirm('Delete this tag? It will be removed from every customer.')) return
+    setBusy(true)
+    try { await onDelete(id) } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close dialog"
+        className="absolute inset-0 bg-near-black/40 cursor-default"
+      />
+      <div className="relative bg-white w-full max-w-md border border-[rgba(18,18,18,0.12)] max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(18,18,18,0.08)]">
+          <h2 className="text-sm font-bold text-near-black tracking-tight inline-flex items-center gap-2">
+            <TagIcon size={14} /> Manage Tags
+          </h2>
+          <button onClick={onClose} className="text-muted-text hover:text-near-black transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-3">
+          {tags.length === 0 && ! creating && (
+            <p className="text-xs text-muted-text">No tags yet — create your first one below.</p>
+          )}
+
+          {tags.map(t => (
+            <div key={t.id} className="border border-[rgba(18,18,18,0.08)] bg-white p-3">
+              {editingId === t.id ? (
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') submitEdit(t.id) }}
+                    className="w-full border border-[rgba(18,18,18,0.12)] bg-white px-2 py-1.5 text-xs text-near-black focus:outline-none focus:border-near-black"
+                    autoFocus
+                  />
+                  <ColorPalettePicker value={editColor} onChange={setEditColor} />
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => submitEdit(t.id)}
+                      disabled={busy}
+                      className="flex-1 bg-near-black text-white py-1.5 text-[10px] font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors disabled:opacity-50"
+                    >Save</button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingId(null)}
+                      className="border border-[rgba(18,18,18,0.15)] bg-white px-3 py-1.5 text-[10px] font-semibold text-near-black hover:bg-cream transition-colors"
+                    >Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2">
+                  <TagChip tag={t} />
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => { setEditingId(t.id); setEditName(t.name); setEditColor(t.color) }}
+                      disabled={busy}
+                      className="text-muted-text hover:text-near-black p-1"
+                      title="Rename"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => remove(t.id)}
+                      disabled={busy}
+                      className="text-muted-text hover:text-[#b42828] p-1"
+                      title="Delete"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {creating ? (
+            <div className="border border-[rgba(18,18,18,0.08)] bg-cream p-3 space-y-2">
+              <p className="text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text">New tag</p>
+              <input
+                type="text"
+                placeholder="Tag name (e.g. Allergy: latex)"
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') submitNew() }}
+                autoFocus
+                className="w-full border border-[rgba(18,18,18,0.12)] bg-white px-2 py-1.5 text-xs text-near-black focus:outline-none focus:border-near-black"
+              />
+              <ColorPalettePicker value={newColor} onChange={setNewColor} />
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={submitNew}
+                  disabled={! newName.trim() || busy}
+                  className="flex-1 bg-near-black text-white py-1.5 text-[10px] font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors disabled:opacity-50"
+                >Create</button>
+                <button
+                  type="button"
+                  onClick={() => { setCreating(false); setNewName(''); setNewColor(null) }}
+                  className="border border-[rgba(18,18,18,0.15)] bg-white px-3 py-1.5 text-[10px] font-semibold text-near-black hover:bg-cream transition-colors"
+                >Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="w-full inline-flex items-center justify-center gap-1 bg-near-black text-white py-2 text-[10px] font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors"
+            >
+              <Plus size={11} /> New tag
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -717,6 +717,36 @@ export interface CustomerAppointmentSummary {
  *  history in CustomersController::deriveStatus. */
 export type CustomerStatus = 'new' | 'returning' | 'regular' | 'vip' | 'inactive'
 
+/** Phase 14 — tenant-defined tag managed via /editor/customer-tags. */
+export interface CustomerTag {
+  id: number
+  name: string
+  /** 7-char hex (#RRGGBB) or null for default chip styling. */
+  color: string | null
+  sort_order: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface CustomerTagPayload {
+  name:        string
+  color?:      string | null
+  sort_order?: number
+}
+
+/** Phase 14 — preferred-this preferred-that. All nullable; the
+ *  preferences block is always present on Customer (with nulls)
+ *  so the frontend doesn't have to feature-detect each field. */
+export interface CustomerPreferences {
+  preferred_service_id:     number | null
+  preferred_staff_id:       number | null
+  preferred_time_of_day:    'morning' | 'afternoon' | 'evening' | null
+  preferred_contact_method: 'email'   | 'sms'       | 'phone'   | null
+  /** YYYY-MM-DD. */
+  birthday:                 string | null
+  preferences_notes:        string | null
+}
+
 export interface Customer {
   id: number
   name: string
@@ -727,6 +757,14 @@ export interface Customer {
   is_vip: boolean
   /** Phase 13 — auto-derived (or 'vip' when is_vip is true). */
   status: CustomerStatus
+  /** Phase 14 — true when 2+ no_show in last 5 visits OR >=30% rate
+   *  across at least 3 attendable visits. Drives the No-Show Risk
+   *  segment chip + a warning chip on the customer row. */
+  no_show_risk: boolean
+  /** Phase 14 — tag chips assigned to this customer. */
+  tags: CustomerTag[]
+  /** Phase 14 — structured preferences (all nullable). */
+  preferences: CustomerPreferences
   last_appointment_at: string | null
   appointment_count: number
   upcoming_appointment_count: number
@@ -779,6 +817,16 @@ export interface CustomerUpdatePayload {
   email?: string | null
   phone?: string | null
   notes?: string | null
+  // Phase 14 — preferences are optional in PATCH so the drawer can
+  // save just one section at a time. Presence of `tag_ids` replaces
+  // the pivot atomically; omission leaves it alone.
+  preferred_service_id?:     number | null
+  preferred_staff_id?:       number | null
+  preferred_time_of_day?:    'morning' | 'afternoon' | 'evening' | null
+  preferred_contact_method?: 'email'   | 'sms'       | 'phone'   | null
+  birthday?:                 string | null
+  preferences_notes?:        string | null
+  tag_ids?:                  number[]
 }
 
 export type PaymentStatus =
