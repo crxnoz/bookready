@@ -60,6 +60,17 @@ class SlotGenerator
             }
         }
 
+        // ── Phase 4: per-service available_days override ──────────────────
+        // If the service restricts itself to specific weekdays, reject any
+        // date that doesn't fall on one of them. Null/empty array = inherit.
+        $availableDays = self::serviceAvailableDays($service);
+        if ($availableDays !== null) {
+            $dow = Carbon::parse($date, $appTimezone)->dayOfWeek; // 0=Sun
+            if (! in_array($dow, $availableDays, true)) {
+                return ['slots' => [], 'message' => 'This service is not offered on this day.'];
+            }
+        }
+
         // ── Business hours for this day ───────────────────────────────────
         if (! $hoursRow || $hoursRow->is_closed) {
             return ['slots' => [], 'message' => 'The business is closed on this day.'];
@@ -72,8 +83,13 @@ class SlotGenerator
         // ── Settings with defaults ────────────────────────────────────────
         $duration         = (int) ($service->duration   ?? 60);
         $intervalMins     = (int) ($settings->booking_interval_minutes ?? 30);
-        $bufferBefore     = (int) ($settings->buffer_before_minutes    ?? 0);
-        $bufferAfter      = (int) ($settings->buffer_after_minutes     ?? 15);
+        // Phase 4: buffers fall back to the global setting unless the
+        // service explicitly overrides them. An override of 0 is "no
+        // buffer" — explicitly different from "inherit".
+        $bufferBefore     = self::serviceBuffer($service, 'before',
+                              (int) ($settings->buffer_before_minutes ?? 0));
+        $bufferAfter      = self::serviceBuffer($service, 'after',
+                              (int) ($settings->buffer_after_minutes  ?? 15));
         $minimumNotice    = (int) ($settings->minimum_notice_minutes   ?? 720);
 
         // ── Time boundaries (minutes from midnight) ───────────────────────
@@ -142,6 +158,40 @@ class SlotGenerator
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Phase 4: resolve the buffer for a service. Returns the override when
+     * the column exists AND is non-null (an explicit 0 is honored as "no
+     * buffer"); otherwise falls back to the global setting.
+     */
+    public static function serviceBuffer(object $service, string $which, int $globalFallback): int
+    {
+        $col = $which === 'before'
+            ? 'buffer_before_override_minutes'
+            : 'buffer_after_override_minutes';
+        if (property_exists($service, $col) && $service->{$col} !== null) {
+            return max(0, (int) $service->{$col});
+        }
+        return $globalFallback;
+    }
+
+    /**
+     * Phase 4: parse services.available_days (JSON array of 0-6). Returns
+     * null when the column is missing, null in the DB, or empty — meaning
+     * "no restriction, inherit business open days".
+     */
+    public static function serviceAvailableDays(object $service): ?array
+    {
+        if (! property_exists($service, 'available_days') || $service->available_days === null) {
+            return null;
+        }
+        $raw = $service->available_days;
+        $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+        if (! is_array($decoded) || empty($decoded)) return null;
+        $days = array_values(array_unique(array_map('intval', $decoded)));
+        $days = array_values(array_filter($days, fn ($d) => $d >= 0 && $d <= 6));
+        return empty($days) ? null : $days;
+    }
 
     public static function toMinutes(string $time): int
     {

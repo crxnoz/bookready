@@ -34,6 +34,15 @@ export interface Service {
   category_id?: number | null
   /** Phase 3: per-service image (UploadKind 'service'). */
   image_url?: string | null
+  /** Phase 4: null = inherit the global before-buffer. Integer ≥ 0 = exact
+   *  override (a 0 explicitly disables the buffer for this service). */
+  buffer_before_override_minutes?: number | null
+  buffer_after_override_minutes?:  number | null
+  /** Phase 4: weekdays this service is offered (0=Sun..6=Sat). null = inherit
+   *  business hours (every day the business is open). */
+  available_days?: number[] | null
+  /** Phase 4: staff that can perform this service. Empty = any staff. */
+  assigned_staff_ids?: number[]
   is_active: boolean
   sort_order: number
 }

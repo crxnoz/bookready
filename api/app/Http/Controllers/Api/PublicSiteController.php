@@ -33,30 +33,64 @@ class PublicSiteController extends Controller
 
         $profile  = BusinessProfile::first();
         $policies = BusinessPolicy::first();
-        // Phase 3: categories are now a separate resource. Old tenants that
-        // haven't run the migration are tolerated via Schema::hasColumn /
-        // hasTable checks so the public payload never explodes.
+        // Phase 3 + 4: categories are now a separate resource, services
+        // carry per-service overrides + assigned staff. Old tenants that
+        // haven't run the migrations are tolerated via Schema checks so
+        // the public payload never explodes.
         $hasCategoryId   = Schema::hasColumn('services', 'category_id');
         $hasServiceImage = Schema::hasColumn('services', 'image_url');
+        $hasBufferBefore = Schema::hasColumn('services', 'buffer_before_override_minutes');
+        $hasBufferAfter  = Schema::hasColumn('services', 'buffer_after_override_minutes');
+        $hasAvailDays    = Schema::hasColumn('services', 'available_days');
+
+        // Bulk-load the service_staff pivot so we don't pay an N+1.
+        $assignedByService = [];
+        if (Schema::hasTable('service_staff')) {
+            $assignedByService = DB::table('service_staff')
+                ->orderBy('service_id')
+                ->get(['service_id', 'staff_id'])
+                ->groupBy('service_id')
+                ->map(fn ($rows) => $rows->pluck('staff_id')->map(fn ($i) => (int) $i)->values()->all())
+                ->toArray();
+        }
 
         $services = DB::table('services')
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get()
-            ->map(fn ($r) => [
-                'id'               => (int)  $r->id,
-                'name'             =>         $r->name,
-                'description'      =>         $r->description,
-                'price'            => (float) $r->price,
-                'duration_minutes' => (int)   $r->duration,
-                // Legacy free-text category — kept until Phase 8 drops it.
-                'category'         =>         $r->category ?? null,
-                'category_id'      => $hasCategoryId && $r->category_id !== null ? (int) $r->category_id : null,
-                'image_url'        => $hasServiceImage ? ($r->image_url ?? null) : null,
-                'is_active'        => (bool)  $r->is_active,
-                'sort_order'       => (int)   $r->sort_order,
-            ])
+            ->map(function ($r) use ($hasCategoryId, $hasServiceImage, $hasBufferBefore, $hasBufferAfter, $hasAvailDays, $assignedByService) {
+                $availableDays = null;
+                if ($hasAvailDays && $r->available_days !== null) {
+                    $decoded = is_string($r->available_days) ? json_decode($r->available_days, true) : $r->available_days;
+                    if (is_array($decoded)) {
+                        $availableDays = array_values(array_filter(
+                            array_map('intval', $decoded),
+                            fn ($d) => $d >= 0 && $d <= 6,
+                        ));
+                        if (empty($availableDays)) $availableDays = null;
+                    }
+                }
+                return [
+                    'id'               => (int)  $r->id,
+                    'name'             =>         $r->name,
+                    'description'      =>         $r->description,
+                    'price'            => (float) $r->price,
+                    'duration_minutes' => (int)   $r->duration,
+                    // Legacy free-text category — kept until Phase 8 drops it.
+                    'category'         =>         $r->category ?? null,
+                    'category_id'      => $hasCategoryId && $r->category_id !== null ? (int) $r->category_id : null,
+                    'image_url'        => $hasServiceImage ? ($r->image_url ?? null) : null,
+                    'buffer_before_override_minutes' => $hasBufferBefore && $r->buffer_before_override_minutes !== null
+                        ? (int) $r->buffer_before_override_minutes : null,
+                    'buffer_after_override_minutes'  => $hasBufferAfter && $r->buffer_after_override_minutes !== null
+                        ? (int) $r->buffer_after_override_minutes  : null,
+                    'available_days'                 => $availableDays,
+                    'assigned_staff_ids'             => $assignedByService[(int) $r->id] ?? [],
+                    'is_active'        => (bool)  $r->is_active,
+                    'sort_order'       => (int)   $r->sort_order,
+                ];
+            })
             ->values();
 
         // Service categories — exposed so the booking widget can group

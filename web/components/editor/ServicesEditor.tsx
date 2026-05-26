@@ -5,7 +5,7 @@ import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import Button from '@/components/ui/Button'
 import ImageUploadField from '@/components/editor/ImageUploadField'
-import { Service, ServiceCategory } from '@/lib/types'
+import { Service, ServiceCategory, ApiStaffMember } from '@/lib/types'
 import {
   getEditorServices,
   createEditorService,
@@ -15,9 +15,11 @@ import {
   createEditorServiceCategory,
   updateEditorServiceCategory,
   deleteEditorServiceCategory,
+  getEditorStaff,
 } from '@/lib/api'
 import {
   Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Tag, X, Edit2, Image as ImageIcon, AlertCircle,
+  Settings as SettingsIcon, ChevronRight, Users,
 } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -27,9 +29,14 @@ type Draft = {
   description: string
   price: string
   duration_minutes: string
-  category_id: string   // "" = uncategorized; numeric string otherwise
+  category_id: string                            // "" = uncategorized; numeric string otherwise
   image_url: string
   is_active: boolean
+  // Phase 4 — Advanced
+  buffer_before_override_minutes: string         // "" = inherit; "0" = explicit zero
+  buffer_after_override_minutes:  string
+  available_days: number[]                       // [] = inherit; otherwise dows
+  assigned_staff_ids: number[]
 }
 
 function toDraft(s: Service): Draft {
@@ -41,7 +48,21 @@ function toDraft(s: Service): Draft {
     category_id:      s.category_id != null ? String(s.category_id) : '',
     image_url:        s.image_url ?? '',
     is_active:        s.is_active,
+    buffer_before_override_minutes:
+      s.buffer_before_override_minutes == null ? '' : String(s.buffer_before_override_minutes),
+    buffer_after_override_minutes:
+      s.buffer_after_override_minutes  == null ? '' : String(s.buffer_after_override_minutes),
+    available_days:    Array.isArray(s.available_days) ? [...s.available_days] : [],
+    assigned_staff_ids: Array.isArray(s.assigned_staff_ids) ? [...s.assigned_staff_ids] : [],
   }
+}
+
+// Map override draft fields to API payload values. Empty string → null
+// (inherit). Anything else parsed to integer with a floor of 0.
+function parseOverrideMinutes(raw: string): number | null {
+  if (raw.trim() === '') return null
+  const n = parseInt(raw, 10)
+  return Number.isFinite(n) && n >= 0 ? n : null
 }
 
 // ── ServiceRow ────────────────────────────────────────────────────────────────
@@ -49,6 +70,7 @@ function toDraft(s: Service): Draft {
 interface ServiceRowProps {
   service: Service
   categories: ServiceCategory[]
+  staff: ApiStaffMember[]
   index: number
   total: number
   isDragging: boolean
@@ -66,6 +88,7 @@ interface ServiceRowProps {
 function ServiceRow({
   service,
   categories,
+  staff,
   index,
   total,
   isDragging,
@@ -108,6 +131,11 @@ function ServiceRow({
           : null,
         image_url:        draft.image_url || null,
         is_active:        draft.is_active,
+        // Phase 4 overrides — null = inherit; empty array = inherit.
+        buffer_before_override_minutes: parseOverrideMinutes(draft.buffer_before_override_minutes),
+        buffer_after_override_minutes:  parseOverrideMinutes(draft.buffer_after_override_minutes),
+        available_days:    draft.available_days.length ? draft.available_days : null,
+        assigned_staff_ids: draft.assigned_staff_ids,
       })
       onSaved(updated)
       setOpen(false)
@@ -283,6 +311,12 @@ function ServiceRow({
             <span className="text-xs font-semibold text-near-black">Active (visible on site)</span>
           </label>
 
+          <AdvancedSection
+            draft={draft}
+            staff={staff}
+            onChange={(next) => setDraft(prev => ({ ...prev, ...next }))}
+          />
+
           {error && <p className="text-xs text-red-600">{error}</p>}
 
           <div className="flex items-center justify-between pt-1">
@@ -314,6 +348,10 @@ const BLANK_DRAFT: Draft = {
   category_id:      '',
   image_url:        '',
   is_active:        true,
+  buffer_before_override_minutes: '',
+  buffer_after_override_minutes:  '',
+  available_days:    [],
+  assigned_staff_ids: [],
 }
 
 function AddServiceForm({
@@ -321,11 +359,13 @@ function AddServiceForm({
   onCancel,
   nextSortOrder,
   categories,
+  staff,
 }: {
   onCreated: (service: Service) => void
   onCancel: () => void
   nextSortOrder: number
   categories: ServiceCategory[]
+  staff: ApiStaffMember[]
 }) {
   const [draft, setDraft]   = useState<Draft>(BLANK_DRAFT)
   const [saving, setSaving] = useState(false)
@@ -353,6 +393,10 @@ function AddServiceForm({
         image_url:        draft.image_url || null,
         is_active:        draft.is_active,
         sort_order:       nextSortOrder,
+        buffer_before_override_minutes: parseOverrideMinutes(draft.buffer_before_override_minutes),
+        buffer_after_override_minutes:  parseOverrideMinutes(draft.buffer_after_override_minutes),
+        available_days:    draft.available_days.length ? draft.available_days : null,
+        assigned_staff_ids: draft.assigned_staff_ids,
       })
       onCreated(created)
     } catch (err: unknown) {
@@ -397,6 +441,12 @@ function AddServiceForm({
         </select>
       </label>
 
+      <AdvancedSection
+        draft={draft}
+        staff={staff}
+        onChange={(next) => setDraft(prev => ({ ...prev, ...next }))}
+      />
+
       {error && <p className="text-xs text-red-600">{error}</p>}
 
       <div className="flex items-center gap-3 pt-1">
@@ -418,6 +468,7 @@ type PageStatus = 'loading' | 'idle' | 'error'
 export default function ServicesEditor() {
   const [services, setServices]       = useState<Service[]>([])
   const [categories, setCategories]   = useState<ServiceCategory[]>([])
+  const [staff, setStaff]             = useState<ApiStaffMember[]>([])
   const [status, setStatus]           = useState<PageStatus>('loading')
   const [errorMsg, setErrorMsg]       = useState<string | null>(null)
   const [adding, setAdding]           = useState(false)
@@ -429,10 +480,14 @@ export default function ServicesEditor() {
     Promise.all([
       getEditorServices(),
       getEditorServiceCategories().catch(() => [] as ServiceCategory[]),
+      // Staff is optional in this view — if the endpoint errors we still
+      // render the editor without staff assignment options.
+      getEditorStaff({ active: true }).catch(() => [] as ApiStaffMember[]),
     ])
-      .then(([svcs, cats]) => {
+      .then(([svcs, cats, st]) => {
         setServices([...svcs].sort((a, b) => a.sort_order - b.sort_order))
         setCategories([...cats].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id))
+        setStaff([...st].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id))
         setStatus('idle')
       })
       .catch(err => {
@@ -515,6 +570,7 @@ export default function ServicesEditor() {
             key={s.id}
             service={s}
             categories={categories}
+            staff={staff}
             index={i}
             total={services.length}
             isDragging={dragIndex === i}
@@ -538,6 +594,7 @@ export default function ServicesEditor() {
           onCancel={() => setAdding(false)}
           nextSortOrder={services.length}
           categories={categories}
+          staff={staff}
         />
       ) : (
         <Button variant="secondary" size="sm" onClick={() => setAdding(true)}>
@@ -780,6 +837,178 @@ function CategoryDialog({
           </div>
         </form>
       </div>
+    </div>
+  )
+}
+
+// ── Advanced section ─────────────────────────────────────────────────────────
+//
+// Collapsible "Advanced" block on each service form. Holds the Phase 4
+// override fields: per-service buffers, per-service available days, and
+// the assigned-staff multi-select. Empty values throughout = "inherit
+// from the global Booking Settings + business hours".
+
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function AdvancedSection({
+  draft, staff, onChange,
+}: {
+  draft: Draft
+  staff: ApiStaffMember[]
+  onChange: (patch: Partial<Draft>) => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  function toggleDay(dow: number) {
+    const next = new Set(draft.available_days)
+    next.has(dow) ? next.delete(dow) : next.add(dow)
+    onChange({ available_days: Array.from(next).sort((a, b) => a - b) })
+  }
+
+  function toggleStaff(id: number) {
+    const next = new Set(draft.assigned_staff_ids)
+    next.has(id) ? next.delete(id) : next.add(id)
+    onChange({ assigned_staff_ids: Array.from(next).sort((a, b) => a - b) })
+  }
+
+  const overridesActive =
+       draft.buffer_before_override_minutes !== ''
+    || draft.buffer_after_override_minutes  !== ''
+    || draft.available_days.length > 0
+    || draft.assigned_staff_ids.length > 0
+
+  return (
+    <div className="border border-[rgba(18,18,18,0.10)] bg-cream/40">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between gap-3 px-3 py-2 hover:bg-cream transition-colors"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <SettingsIcon size={13} className="text-near-black flex-shrink-0" />
+          <span className="text-xs font-bold text-near-black">Advanced</span>
+          {overridesActive && (
+            <span className="text-[9px] font-bold tracking-[0.06em] uppercase bg-lavender text-near-black px-1.5 py-0.5">
+              Overrides set
+            </span>
+          )}
+        </div>
+        {open
+          ? <ChevronDown size={13} className="text-muted-text" />
+          : <ChevronRight size={13} className="text-muted-text" />
+        }
+      </button>
+
+      {open && (
+        <div className="border-t border-[rgba(18,18,18,0.08)] p-3 space-y-3.5">
+          {/* Buffers */}
+          <div>
+            <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5">
+              Buffer overrides
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Before (min)"
+                type="number"
+                value={draft.buffer_before_override_minutes}
+                placeholder="Inherit"
+                onChange={e => onChange({ buffer_before_override_minutes: e.target.value })}
+              />
+              <Input
+                label="After (min)"
+                type="number"
+                value={draft.buffer_after_override_minutes}
+                placeholder="Inherit"
+                onChange={e => onChange({ buffer_after_override_minutes: e.target.value })}
+              />
+            </div>
+            <p className="text-[10px] text-muted-text mt-1.5">
+              Leave blank to inherit from Booking Settings. Enter 0 to disable
+              the buffer for this service only.
+            </p>
+          </div>
+
+          {/* Available days */}
+          <div>
+            <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5">
+              Available days
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {DAY_LABELS.map((label, dow) => {
+                const active = draft.available_days.includes(dow)
+                return (
+                  <button
+                    key={dow}
+                    type="button"
+                    onClick={() => toggleDay(dow)}
+                    className={
+                      'text-[10px] font-bold tracking-[0.08em] uppercase border px-2 py-1.5 transition-colors '
+                      + (active
+                        ? 'bg-near-black text-white border-near-black'
+                        : 'bg-white text-muted-text border-[rgba(18,18,18,0.15)] hover:text-near-black')
+                    }
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-[10px] text-muted-text mt-1.5">
+              {draft.available_days.length === 0
+                ? 'No restriction — uses the business hours.'
+                : 'Service is only offered on the selected days.'}
+            </p>
+          </div>
+
+          {/* Assigned staff */}
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text inline-flex items-center gap-1.5">
+                <Users size={11} /> Assigned staff
+              </p>
+              <span className="text-[10px] text-muted-text">
+                {draft.assigned_staff_ids.length}/{staff.length}
+              </span>
+            </div>
+            {staff.length === 0 ? (
+              <p className="text-[11px] text-muted-text italic">
+                No active staff to assign yet.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {staff.map(s => {
+                  const active = draft.assigned_staff_ids.includes(s.id)
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => toggleStaff(s.id)}
+                      className={
+                        'inline-flex items-center gap-1.5 text-[11px] font-semibold border px-2 py-1.5 transition-colors '
+                        + (active
+                          ? 'bg-near-black text-white border-near-black'
+                          : 'bg-white text-near-black border-[rgba(18,18,18,0.15)] hover:border-near-black')
+                      }
+                    >
+                      {s.photo_url
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        ? <img src={s.photo_url} alt={s.name} className="w-4 h-4 object-cover border border-white/40" />
+                        : <Users size={11} />
+                      }
+                      {s.name}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            <p className="text-[10px] text-muted-text mt-1.5">
+              {draft.assigned_staff_ids.length === 0
+                ? 'No staff assigned — any staff can perform this service.'
+                : 'Only the selected staff will be offered for this service.'}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
