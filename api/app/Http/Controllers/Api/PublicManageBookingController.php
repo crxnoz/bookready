@@ -146,6 +146,10 @@ class PublicManageBookingController extends Controller
         ]);
 
         // Build email payload before ending tenancy.
+        $extras = \App\Services\AppointmentMailer::buildExtras(
+            (int) $row->id,
+            property_exists($row, 'staff_id') ? $row->staff_id : null,
+        );
         $appt = [
             'id'               => (int) $row->id,
             'customer_name'    => $row->customer_name,
@@ -157,6 +161,8 @@ class PublicManageBookingController extends Controller
             'end_time'         => substr($row->end_time,   0, 5),
             'status'           => 'cancelled',
             'notes'            => $row->notes,
+            'staff_name'       => $extras['staff_name'],
+            'addons'           => $extras['addons'],
         ];
         $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
         $notify       = NotificationSettingsService::load();
@@ -338,6 +344,10 @@ class PublicManageBookingController extends Controller
         // Plain-array snapshot for both emails.
         $manageToken = property_exists($updated, 'manage_token') ? $updated->manage_token : null;
         $manageUrl   = $manageToken ? sprintf('https://%s.bkrdy.me/manage/%s', $tenant->id, $manageToken) : null;
+        $extras = \App\Services\AppointmentMailer::buildExtras(
+            (int) $updated->id,
+            property_exists($updated, 'staff_id') ? $updated->staff_id : null,
+        );
         $apptForMail = [
             'id'               => (int) $updated->id,
             'customer_name'    => $updated->customer_name,
@@ -349,6 +359,8 @@ class PublicManageBookingController extends Controller
             'end_time'         => substr($updated->end_time,   0, 5),
             'status'           => $updated->status,
             'manage_url'       => $manageUrl,
+            'staff_name'       => $extras['staff_name'],
+            'addons'           => $extras['addons'],
         ];
 
         tenancy()->end();

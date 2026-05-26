@@ -10,11 +10,51 @@ use App\Mail\BookingRequestClientMail;
 use App\Mail\BookingRequestOwnerMail;
 use App\Mail\ClientCancelledOwnerMail;
 use App\Mail\ClientRescheduledOwnerMail;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 
 class AppointmentMailer
 {
+    /**
+     * Phase 7 — pull the staff name + appointment_addons snapshot for an
+     * appointment, formatted to drop straight into a $appt mailer array.
+     *
+     * MUST be called inside tenant scope (before `tenancy()->end()`) so
+     * the staff/appointment_addons queries hit the right database. The
+     * returned arrays default to safe empties so callers can blindly
+     * splat them into their $appt array even on tenants that pre-date
+     * the Phase 5/7 tables.
+     *
+     * Returns: ['staff_name' => string|null, 'addons' => array<int, array>]
+     */
+    public static function buildExtras(int $appointmentId, ?int $staffId): array
+    {
+        $staffName = null;
+        if ($staffId !== null && Schema::hasTable('staff')) {
+            $staffName = DB::table('staff')->where('id', $staffId)->value('name');
+        }
+
+        $addons = [];
+        if (Schema::hasTable('appointment_addons')) {
+            $addons = DB::table('appointment_addons')
+                ->where('appointment_id', $appointmentId)
+                ->get(['name_snapshot', 'price_snapshot_cents', 'duration_snapshot_minutes'])
+                ->map(fn ($a) => [
+                    'name'                   => $a->name_snapshot,
+                    'extra_price'            => round($a->price_snapshot_cents / 100, 2),
+                    'extra_duration_minutes' => (int) $a->duration_snapshot_minutes,
+                ])
+                ->all();
+        }
+
+        return [
+            'staff_name' => $staffName,
+            'addons'     => $addons,
+        ];
+    }
+
     /**
      * Send booking request emails after a public booking is created.
      *

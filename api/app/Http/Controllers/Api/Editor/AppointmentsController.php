@@ -616,6 +616,10 @@ class AppointmentsController extends Controller
         if (! empty($appt->customer_email) && $appt->status !== 'cancelled') {
             $manageToken = property_exists($appt, 'manage_token') ? $appt->manage_token : null;
             $manageUrl   = $manageToken ? sprintf('https://%s.bkrdy.me/manage/%s', $tenant->id, $manageToken) : null;
+            $extras = AppointmentMailer::buildExtras(
+                (int) $appt->id,
+                property_exists($appt, 'staff_id') ? $appt->staff_id : null,
+            );
             $emailAppt = [
                 'id'               => (int) $appt->id,
                 'customer_name'    => $appt->customer_name,
@@ -627,6 +631,8 @@ class AppointmentsController extends Controller
                 'status'           => 'cancelled',
                 'notes'            => $appt->notes,
                 'manage_url'       => $manageUrl,
+                'staff_name'       => $extras['staff_name'],
+                'addons'           => $extras['addons'],
             ];
             $emailBusiness = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
             $emailNotify   = NotificationSettingsService::load();
