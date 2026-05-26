@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Api\Auth;
 
+use App\Http\Controllers\Api\Auth\EmailVerificationController;
 use App\Http\Controllers\Controller;
 use App\Services\PlatformMailer;
 use App\Services\TenantProvisioningService;
 use App\Support\AuthCookie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class RegisterController extends Controller
 {
@@ -36,6 +38,18 @@ class RegisterController extends Controller
             ownerName:    $owner->name,
             businessName: $data['business_name'],
         );
+
+        // Phase S6 part 2 — send the verify-email link. Best-effort; the
+        // user can also resend from the dashboard if the first attempt
+        // bounces or hits spam.
+        try {
+            EmailVerificationController::sendVerificationEmail($owner);
+        } catch (\Throwable $e) {
+            Log::warning('verify-email send failed at signup', [
+                'user_id' => $owner->id,
+                'error'   => $e->getMessage(),
+            ]);
+        }
 
         // Phase S6 — same cookie-attach as login(). Body still carries the
         // token for backward compatibility.

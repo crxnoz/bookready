@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Admin\AdminTenantsController;
 use App\Http\Controllers\Api\PlatformAnnouncementsController;
 use App\Http\Controllers\Api\AppointmentPaymentWebhookController;
 use App\Http\Controllers\Api\Auth\AuthController;
+use App\Http\Controllers\Api\Auth\EmailVerificationController;
 use App\Http\Controllers\Api\Auth\GoogleAuthController;
 use App\Http\Controllers\Api\Auth\PasswordResetController;
 use App\Http\Controllers\Api\Auth\RegisterController;
@@ -123,9 +124,24 @@ Route::prefix('v1')->group(function () {
         Route::post('password/forgot', [PasswordResetController::class, 'forgot'])->middleware('throttle:5,1');
         Route::post('password/reset',  [PasswordResetController::class, 'reset'])->middleware('throttle:10,1');
 
+        // Phase S6 part 2 — email verification.
+        // verify is GET because it's clicked from a mail client (browser
+        // top-level navigation). The handler redirects to a frontend
+        // success/error page rather than returning JSON. Throttle keeps
+        // a brute-force sig guesser slow even though the HMAC space is
+        // already infeasible to scan.
+        Route::get('verify-email/{id}', [EmailVerificationController::class, 'verify'])
+            ->whereNumber('id')
+            ->middleware('throttle:30,1');
+
         Route::middleware('auth:sanctum')->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);
             Route::get('me',      [AuthController::class, 'me']);
+            // Resend the verification email — authed so we don't expose
+            // verification state to anonymous probing. Throttled to
+            // 3 sends per hour per IP.
+            Route::post('verify-email/resend', [EmailVerificationController::class, 'resend'])
+                ->middleware('throttle:3,60');
         });
     });
 

@@ -1185,6 +1185,9 @@ export interface AuthUser {
   tenant_id: string
   is_owner: boolean
   is_admin?: boolean
+  // Phase S6 part 2 — ISO 8601 string when the user has verified, or
+  // null/undefined for unverified accounts. Drives the dashboard nag.
+  email_verified_at?: string | null
 }
 
 export interface RegisterPayload {

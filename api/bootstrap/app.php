@@ -36,5 +36,12 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // Phase S6 — force JSON responses for /api/* paths regardless of
+        // the request's Accept header. Without this, Laravel's
+        // Authenticate middleware tries to redirect unauthenticated
+        // HTML-accepting requests to route('login'), which doesn't exist
+        // in this API-only application — that throws RouteNotFoundException
+        // and surfaces as a 500. Pinning JSON keeps everything as proper
+        // 401/422/etc responses.
+        $exceptions->shouldRenderJsonWhen(fn ($request) => $request->is('api/*'));
     })->create();

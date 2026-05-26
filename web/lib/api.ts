@@ -184,6 +184,12 @@ export async function uploadEditorImage(file: File, kind: UploadKind): Promise<U
   return res.json() as Promise<UploadResponse>
 }
 
+// Phase S6 part 2 — ask the backend to re-send the verify-email link
+// for the signed-in user. Throttled at the route level (3/hour/IP).
+export async function resendVerificationEmail(): Promise<{ message: string }> {
+  return request<{ message: string }>('/auth/verify-email/resend', { method: 'POST' })
+}
+
 export async function logout(): Promise<void> {
   await request('/auth/logout', { method: 'POST' })
 }

@@ -68,12 +68,14 @@ class AuthController extends Controller
         $user = $request->user();
 
         return response()->json([
-            'id'        => $user->id,
-            'name'      => $user->name,
-            'email'     => $user->email,
-            'tenant_id' => $user->tenant_id,
-            'is_owner'  => $user->is_owner,
-            'is_admin'  => (bool) ($user->is_admin ?? false),
+            'id'                 => $user->id,
+            'name'               => $user->name,
+            'email'              => $user->email,
+            'tenant_id'          => $user->tenant_id,
+            'is_owner'           => $user->is_owner,
+            'is_admin'           => (bool) ($user->is_admin ?? false),
+            // Phase S6 part 2 — frontend nag banner gates on this.
+            'email_verified_at'  => $user->email_verified_at?->toAtomString(),
         ]);
     }
 }

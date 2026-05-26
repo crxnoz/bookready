@@ -137,6 +137,15 @@ class GoogleAuthController extends Controller
                 'No BookReady account uses this Google email. Sign up first.'
             );
         }
+
+        // Phase S6 part 2 — Google has verified the email on its end, so
+        // a password-signup-then-Google-sign-in user gets retroactively
+        // marked verified. No-op for already-verified accounts.
+        if (! $user->email_verified_at) {
+            $user->email_verified_at = now();
+            $user->save();
+        }
+
         return $this->finishWithUser($user, 'google-oauth');
     }
 
@@ -212,6 +221,12 @@ class GoogleAuthController extends Controller
             ]);
             return $this->errorBack('signup', 'Could not finish creating your workspace. Try again.');
         }
+
+        // Phase S6 part 2 — Google verified the email, no signup verify
+        // round-trip needed. The provisioner doesn't set this column so
+        // we stamp it here.
+        $owner->email_verified_at = now();
+        $owner->save();
 
         // Best-effort welcome email (never blocks signup).
         PlatformMailer::sendWelcome(
@@ -289,6 +304,10 @@ class GoogleAuthController extends Controller
                 'message' => 'Could not finish creating your workspace. Try again.',
             ], 500);
         }
+
+        // Phase S6 part 2 — Google verified the email; mark verified.
+        $owner->email_verified_at = now();
+        $owner->save();
 
         // One-shot: this handoff token must never be replayable.
         Cache::forget($cacheKey);

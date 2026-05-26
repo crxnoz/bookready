@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Menu } from 'lucide-react'
 import AppSidebar from './AppSidebar'
+import EmailVerifyBanner from './EmailVerifyBanner'
 
 interface AppShellProps {
   children: React.ReactNode
@@ -40,6 +41,10 @@ export default function AppShell({ children, slug }: AppShellProps) {
       <AppSidebar slug={slug} drawerOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
       <div className="flex-1 min-w-0 flex flex-col md:h-screen md:overflow-hidden">
+        {/* Phase S6 part 2 — verify-email nag (renders nothing for
+            already-verified accounts and during the /auth/me roundtrip) */}
+        <EmailVerifyBanner />
+
         {/* Mobile-only hamburger row — desktop uses the sidebar instead */}
         <div className="md:hidden flex items-center gap-2 border-b border-[rgba(18,18,18,0.10)] bg-white px-3 py-2 flex-shrink-0">
           <button
