@@ -955,6 +955,12 @@ export interface TemplateAdditionalsSettings {
   reviews?: TemplateReviewsSettings
 }
 
+export interface TemplateThemeSettings {
+  /** One of the preset accent hexes (#FF3DBE, #F9FAFB, #22F5A3, #FF3B5C,
+   *  #FFD84D, #3DA9FC). Null/unknown → template default. */
+  accent_color?: string | null
+}
+
 export interface TemplateSettings {
   header: TemplateHeaderSettings
   tabs: TemplateTabLabels
@@ -963,6 +969,7 @@ export interface TemplateSettings {
   footer: TemplateFooterSettings
   additionals?: TemplateAdditionalsSettings
   about?: TemplateAboutSettings
+  theme?: TemplateThemeSettings
 }
 
 export interface TemplateSettingsResponse {

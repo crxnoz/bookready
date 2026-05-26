@@ -74,6 +74,19 @@ function hrefFor(tab: SubTab): string {
   return tab === 'overview' ? '/editor/website' : `/editor/website?tab=${tab}`
 }
 
+// TheFadeRoom accent palette. `#FF3DBE` is the original pink and saves
+// as `null` (so future template-default tweaks propagate). The rest are
+// stored verbatim and resolved client-side to an `rgba(R,G,B,a)` triplet
+// for the dozens of glow shadows in TFR_CSS.
+const ACCENT_PRESETS: { hex: string; label: string }[] = [
+  { hex: '#FF3DBE', label: 'Pink (default)' },
+  { hex: '#F9FAFB', label: 'White' },
+  { hex: '#22F5A3', label: 'Mint' },
+  { hex: '#FF3B5C', label: 'Red' },
+  { hex: '#FFD84D', label: 'Yellow' },
+  { hex: '#3DA9FC', label: 'Blue' },
+]
+
 const SECTION_LABEL_FOR_KEY: Record<string, string> = {
   header:             'Header',
   book:               'Booking',
@@ -233,6 +246,7 @@ export default function WebsiteHub() {
                   sections={sections}
                   publicUrl={publicUrl}
                   onToggleSection={toggleSection}
+                  onSaveSettings={saveSettings}
                 />
               )}
 
@@ -631,13 +645,14 @@ function useSettingsForm<T extends object>(
 // ── Overview ─────────────────────────────────────────────────────────────────
 
 function OverviewPanel({
-  templateSlug, settings, sections, publicUrl, onToggleSection,
+  templateSlug, settings, sections, publicUrl, onToggleSection, onSaveSettings,
 }: {
   templateSlug: string
   settings: TemplateSettings
   sections: WebsiteSection[]
   publicUrl: string
   onToggleSection: (id: number, enabled: boolean) => Promise<void>
+  onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
 }) {
   const sorted = useMemo(
     () => [...sections].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id),
@@ -646,6 +661,25 @@ function OverviewPanel({
   const [busyId, setBusyId] = useState<number | null>(null)
 
   const enabledCount = sections.filter(s => s.is_enabled).length
+
+  // Accent color picker — single source of truth lives in
+  // settings.theme.accent_color. Null = use the template's default
+  // pink. Each swatch click PATCHes the template and the preview
+  // iframe re-keys via the existing previewKey bump in the parent.
+  const accent = settings.theme?.accent_color ?? null
+  const [savingAccent, setSavingAccent] = useState<string | null>(null)
+  const [accentError,  setAccentError]  = useState<string | null>(null)
+  async function pickAccent(hex: string | null) {
+    if ((accent ?? null) === (hex ?? null)) return
+    setSavingAccent(hex ?? '__default__'); setAccentError(null)
+    try {
+      await onSaveSettings({ theme: { accent_color: hex } })
+    } catch (e) {
+      setAccentError(e instanceof Error ? e.message : 'Failed to update accent')
+    } finally {
+      setSavingAccent(null)
+    }
+  }
 
   const QUICK_LINKS: { tab: SubTab; label: string; icon: React.ElementType; hint: string }[] = [
     { tab: 'header',      label: 'Header / Hero',  icon: Sparkles,   hint: 'Announcement, tagline, buttons' },
@@ -685,6 +719,59 @@ function OverviewPanel({
           Changing templates keeps your business info, services, bookings, staff,
           customers, availability, and policies. Template-specific settings may reset.
         </p>
+
+        {/* ── Accent color ── */}
+        <div className="space-y-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+              Accent color
+            </p>
+            <p className="text-[10px] text-muted-text">
+              Swaps the highlight pink across the site
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {ACCENT_PRESETS.map(({ hex, label }) => {
+              const isActive = (accent ?? '#FF3DBE').toUpperCase() === hex.toUpperCase()
+              const isBusy   = savingAccent === hex
+              return (
+                <button
+                  key={hex}
+                  type="button"
+                  onClick={() => pickAccent(hex === '#FF3DBE' ? null : hex)}
+                  disabled={!!savingAccent}
+                  title={label}
+                  aria-label={`Accent: ${label}`}
+                  aria-pressed={isActive}
+                  className={cn(
+                    'relative w-8 h-8 border transition-shadow disabled:opacity-50',
+                    isActive
+                      ? 'border-near-black ring-2 ring-offset-2 ring-near-black/20'
+                      : 'border-[rgba(18,18,18,0.18)] hover:border-near-black',
+                  )}
+                  style={{ background: hex }}
+                >
+                  {isBusy && (
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/30">
+                      <Loader2 size={12} className="animate-spin text-white" />
+                    </span>
+                  )}
+                  {isActive && !isBusy && (
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <Check size={14} className="text-white drop-shadow-[0_0_2px_rgba(0,0,0,0.6)]" />
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+          {accentError && (
+            <p className="text-[11px] text-red-700 flex items-center gap-1.5">
+              <AlertCircle size={12} /> {accentError}
+            </p>
+          )}
+        </div>
+
         <button
           disabled
           className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.12)] bg-cream text-muted-text px-3 py-2 cursor-not-allowed"

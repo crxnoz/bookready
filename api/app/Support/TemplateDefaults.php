@@ -124,6 +124,11 @@ class TemplateDefaults
                 'show_contact_links'     => true,
                 'show_powered_by'        => true,
             ],
+            // Visual theming. Currently only an accent color override —
+            // null means "use the template default" (pink for TFR).
+            'theme' => [
+                'accent_color' => null,
+            ],
         ];
     }
 
