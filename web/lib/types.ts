@@ -27,9 +27,36 @@ export interface Service {
   description: string | null
   price: number
   duration_minutes: number
+  /** Legacy free-text category — kept for one release so older payloads
+   *  still type-check. New code should use category_id + ServiceCategory. */
   category: string | null
+  /** Phase 3: FK into ServiceCategory. */
+  category_id?: number | null
+  /** Phase 3: per-service image (UploadKind 'service'). */
+  image_url?: string | null
   is_active: boolean
   sort_order: number
+}
+
+// Phase 3: rich service category. Replaces the free-text `category`
+// column with an editable resource (image, description, active flag).
+export interface ServiceCategory {
+  id: number
+  name: string
+  description: string | null
+  image_url: string | null
+  is_active: boolean
+  sort_order: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ServiceCategoryPayload {
+  name: string
+  description?: string | null
+  image_url?: string | null
+  is_active?: boolean
+  sort_order?: number
 }
 
 export interface StaffMember {
@@ -387,6 +414,7 @@ export interface PublicSite {
   status: string
   profile?: BusinessProfile | null
   services?: Service[]
+  service_categories?: ServiceCategory[]
   hours?: HoursEntry[]
   policies?: BusinessPolicy | null
   staff?: PublicStaffMember[]

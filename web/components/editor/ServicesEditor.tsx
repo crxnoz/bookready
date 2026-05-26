@@ -1,17 +1,24 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import Button from '@/components/ui/Button'
-import { Service } from '@/lib/types'
+import ImageUploadField from '@/components/editor/ImageUploadField'
+import { Service, ServiceCategory } from '@/lib/types'
 import {
   getEditorServices,
   createEditorService,
   updateEditorService,
   deleteEditorService,
+  getEditorServiceCategories,
+  createEditorServiceCategory,
+  updateEditorServiceCategory,
+  deleteEditorServiceCategory,
 } from '@/lib/api'
-import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown } from 'lucide-react'
+import {
+  Plus, Trash2, GripVertical, ChevronUp, ChevronDown, Tag, X, Edit2, Image as ImageIcon, AlertCircle,
+} from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -20,7 +27,8 @@ type Draft = {
   description: string
   price: string
   duration_minutes: string
-  category: string
+  category_id: string   // "" = uncategorized; numeric string otherwise
+  image_url: string
   is_active: boolean
 }
 
@@ -30,7 +38,8 @@ function toDraft(s: Service): Draft {
     description:      s.description ?? '',
     price:            String(s.price),
     duration_minutes: String(s.duration_minutes),
-    category:         s.category ?? '',
+    category_id:      s.category_id != null ? String(s.category_id) : '',
+    image_url:        s.image_url ?? '',
     is_active:        s.is_active,
   }
 }
@@ -39,6 +48,7 @@ function toDraft(s: Service): Draft {
 
 interface ServiceRowProps {
   service: Service
+  categories: ServiceCategory[]
   index: number
   total: number
   isDragging: boolean
@@ -55,6 +65,7 @@ interface ServiceRowProps {
 
 function ServiceRow({
   service,
+  categories,
   index,
   total,
   isDragging,
@@ -74,7 +85,7 @@ function ServiceRow({
   const [deleting, setDeleting] = useState(false)
   const [error, setError]       = useState<string | null>(null)
 
-  function set(field: keyof Draft, value: string | boolean) {
+  function set<K extends keyof Draft>(field: K, value: Draft[K]) {
     setDraft(prev => ({ ...prev, [field]: value }))
     setError(null)
   }
@@ -88,7 +99,14 @@ function ServiceRow({
         description:      draft.description || null,
         price:            parseFloat(draft.price) || 0,
         duration_minutes: parseInt(draft.duration_minutes, 10) || 30,
-        category:         draft.category || null,
+        // Phase 3: category_id is the source of truth. Mirror to the legacy
+        // free-text column so old payload consumers (public site groupBy on
+        // the string) keep working until Phase 8 drops the column.
+        category_id:      draft.category_id ? Number(draft.category_id) : null,
+        category:         draft.category_id
+          ? (categories.find(c => c.id === Number(draft.category_id))?.name ?? null)
+          : null,
+        image_url:        draft.image_url || null,
         is_active:        draft.is_active,
       })
       onSaved(updated)
@@ -110,6 +128,10 @@ function ServiceRow({
       setDeleting(false)
     }
   }
+
+  const categoryName = service.category_id != null
+    ? (categories.find(c => c.id === service.category_id)?.name ?? null)
+    : (service.category ?? null)
 
   return (
     <div
@@ -150,21 +172,37 @@ function ServiceRow({
           </button>
         </div>
 
+        {/* Thumbnail — small square so the row stays compact */}
+        <div className="w-10 h-10 bg-cream border border-[rgba(18,18,18,0.08)] flex-shrink-0 overflow-hidden">
+          {service.image_url
+            /* eslint-disable-next-line @next/next/no-img-element */
+            ? <img src={service.image_url} alt={service.name} className="w-full h-full object-cover" />
+            : <div className="w-full h-full flex items-center justify-center text-muted-text"><ImageIcon size={14} /></div>
+          }
+        </div>
+
         {/* Info */}
         <div
           className="flex-1 min-w-0 cursor-pointer"
           onClick={() => setOpen(o => !o)}
         >
-          <p className="text-sm font-semibold text-near-black truncate">
-            {service.name || 'Untitled Service'}
-          </p>
-          <p className="text-xs text-muted-text">
-            {service.duration_minutes} min · ${Number(service.price).toFixed(2)}
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-semibold text-near-black truncate">
+              {service.name || 'Untitled Service'}
+            </p>
+            {categoryName && (
+              <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.12)] bg-cream text-near-black px-1.5 py-0.5 flex-shrink-0">
+                {categoryName}
+              </span>
+            )}
             {!service.is_active && (
-              <span className="ml-2 text-[10px] font-bold tracking-wide uppercase text-amber-600">
+              <span className="text-[10px] font-bold tracking-wide uppercase text-amber-600">
                 Inactive
               </span>
             )}
+          </div>
+          <p className="text-xs text-muted-text">
+            {service.duration_minutes} min · ${Number(service.price).toFixed(2)}
           </p>
         </div>
 
@@ -181,6 +219,17 @@ function ServiceRow({
       {/* Edit form */}
       {open && (
         <div className="px-4 pb-4 border-t border-[rgba(18,18,18,0.08)] pt-4 space-y-3">
+          {/* Photo (thumbnail-size) */}
+          <div className="w-32">
+            <ImageUploadField
+              label="Image"
+              value={draft.image_url || null}
+              onChange={v => set('image_url', v ?? '')}
+              kind="service"
+              aspectClass="aspect-square"
+            />
+          </div>
+
           <Input
             label="Service Name"
             value={draft.name}
@@ -209,13 +258,20 @@ function ServiceRow({
             />
           </div>
 
-          {/* Category — full width */}
-          <Input
-            label="Category"
-            value={draft.category}
-            placeholder="e.g. Haircuts"
-            onChange={e => set('category', e.target.value)}
-          />
+          {/* Category — dropdown of existing categories */}
+          <label className="block">
+            <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Category</span>
+            <select
+              value={draft.category_id}
+              onChange={e => set('category_id', e.target.value)}
+              className="w-full mt-1.5 bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+            >
+              <option value="">Uncategorized</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </label>
 
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -255,7 +311,8 @@ const BLANK_DRAFT: Draft = {
   description:      '',
   price:            '',
   duration_minutes: '30',
-  category:         '',
+  category_id:      '',
+  image_url:        '',
   is_active:        true,
 }
 
@@ -263,16 +320,18 @@ function AddServiceForm({
   onCreated,
   onCancel,
   nextSortOrder,
+  categories,
 }: {
   onCreated: (service: Service) => void
   onCancel: () => void
   nextSortOrder: number
+  categories: ServiceCategory[]
 }) {
   const [draft, setDraft]   = useState<Draft>(BLANK_DRAFT)
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState<string | null>(null)
 
-  function set(field: keyof Draft, value: string | boolean) {
+  function set<K extends keyof Draft>(field: K, value: Draft[K]) {
     setDraft(prev => ({ ...prev, [field]: value }))
     setError(null)
   }
@@ -287,7 +346,11 @@ function AddServiceForm({
         description:      draft.description || null,
         price:            parseFloat(draft.price) || 0,
         duration_minutes: parseInt(draft.duration_minutes, 10) || 30,
-        category:         draft.category || null,
+        category_id:      draft.category_id ? Number(draft.category_id) : null,
+        category:         draft.category_id
+          ? (categories.find(c => c.id === Number(draft.category_id))?.name ?? null)
+          : null,
+        image_url:        draft.image_url || null,
         is_active:        draft.is_active,
         sort_order:       nextSortOrder,
       })
@@ -302,6 +365,16 @@ function AddServiceForm({
     <div className="border border-[rgba(18,18,18,0.15)] bg-cream p-4 space-y-3">
       <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">New Service</p>
 
+      <div className="w-32">
+        <ImageUploadField
+          label="Image"
+          value={draft.image_url || null}
+          onChange={v => set('image_url', v ?? '')}
+          kind="service"
+          aspectClass="aspect-square"
+        />
+      </div>
+
       <Input label="Service Name" value={draft.name} onChange={e => set('name', e.target.value)} autoFocus />
       <Textarea label="Description" value={draft.description} rows={2} onChange={e => set('description', e.target.value)} />
 
@@ -310,7 +383,19 @@ function AddServiceForm({
         <Input label="Price ($)" type="number" value={draft.price} onChange={e => set('price', e.target.value)} />
       </div>
 
-      <Input label="Category" value={draft.category} placeholder="e.g. Haircuts" onChange={e => set('category', e.target.value)} />
+      <label className="block">
+        <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Category</span>
+        <select
+          value={draft.category_id}
+          onChange={e => set('category_id', e.target.value)}
+          className="w-full mt-1.5 bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+        >
+          <option value="">Uncategorized</option>
+          {categories.map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+      </label>
 
       {error && <p className="text-xs text-red-600">{error}</p>}
 
@@ -331,18 +416,23 @@ function AddServiceForm({
 type PageStatus = 'loading' | 'idle' | 'error'
 
 export default function ServicesEditor() {
-  const [services, setServices]   = useState<Service[]>([])
-  const [status, setStatus]       = useState<PageStatus>('loading')
-  const [errorMsg, setErrorMsg]   = useState<string | null>(null)
-  const [adding, setAdding]       = useState(false)
-  const [dragIndex, setDragIndex] = useState<number | null>(null)
-  const [dragOver, setDragOver]   = useState<number | null>(null)
+  const [services, setServices]       = useState<Service[]>([])
+  const [categories, setCategories]   = useState<ServiceCategory[]>([])
+  const [status, setStatus]           = useState<PageStatus>('loading')
+  const [errorMsg, setErrorMsg]       = useState<string | null>(null)
+  const [adding, setAdding]           = useState(false)
+  const [dragIndex, setDragIndex]     = useState<number | null>(null)
+  const [dragOver, setDragOver]       = useState<number | null>(null)
+  const [catsOpen, setCatsOpen]       = useState(false)
 
   useEffect(() => {
-    getEditorServices()
-      .then(data => {
-        // Sort by sort_order ascending on load
-        setServices([...data].sort((a, b) => a.sort_order - b.sort_order))
+    Promise.all([
+      getEditorServices(),
+      getEditorServiceCategories().catch(() => [] as ServiceCategory[]),
+    ])
+      .then(([svcs, cats]) => {
+        setServices([...svcs].sort((a, b) => a.sort_order - b.sort_order))
+        setCategories([...cats].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id))
         setStatus('idle')
       })
       .catch(err => {
@@ -378,6 +468,17 @@ export default function ServicesEditor() {
     setAdding(false)
   }
 
+  // Category mutations propagate into the service-row badges immediately
+  // so the owner sees their renames + new entries in dropdowns without
+  // a page refresh.
+  function handleCategoryCreated(c: ServiceCategory)  { setCategories(prev => [...prev, c]) }
+  function handleCategoryUpdated(c: ServiceCategory)  { setCategories(prev => prev.map(x => x.id === c.id ? c : x)) }
+  function handleCategoryDeleted(id: number)          {
+    setCategories(prev => prev.filter(c => c.id !== id))
+    // Local services that pointed at this category now show Uncategorized.
+    setServices(prev => prev.map(s => s.category_id === id ? { ...s, category_id: null, category: null } : s))
+  }
+
   if (status === 'loading') {
     return <div className="p-6"><p className="text-xs text-muted-text">Loading…</p></div>
   }
@@ -387,7 +488,7 @@ export default function ServicesEditor() {
       {/* Heading — section + page titles live in EditorShell */}
       <div>
         <p className="text-xs text-muted-text">
-          {services.length} service{services.length !== 1 ? 's' : ''} · Drag or use arrows to reorder.
+          {services.length} service{services.length !== 1 ? 's' : ''} · {categories.length} categor{categories.length === 1 ? 'y' : 'ies'} · Drag or use arrows to reorder.
         </p>
       </div>
 
@@ -397,12 +498,23 @@ export default function ServicesEditor() {
         </div>
       )}
 
+      {/* Categories panel */}
+      <CategoriesPanel
+        open={catsOpen}
+        onToggle={() => setCatsOpen(o => !o)}
+        categories={categories}
+        onCreated={handleCategoryCreated}
+        onUpdated={handleCategoryUpdated}
+        onDeleted={handleCategoryDeleted}
+      />
+
       {/* Service rows */}
       <div className="space-y-2">
         {services.map((s, i) => (
           <ServiceRow
             key={s.id}
             service={s}
+            categories={categories}
             index={i}
             total={services.length}
             isDragging={dragIndex === i}
@@ -425,6 +537,7 @@ export default function ServicesEditor() {
           onCreated={handleCreated}
           onCancel={() => setAdding(false)}
           nextSortOrder={services.length}
+          categories={categories}
         />
       ) : (
         <Button variant="secondary" size="sm" onClick={() => setAdding(true)}>
@@ -432,6 +545,241 @@ export default function ServicesEditor() {
           Add Service
         </Button>
       )}
+    </div>
+  )
+}
+
+// ── Categories panel ─────────────────────────────────────────────────────────
+
+const CATEGORIES_MAX = 8
+
+function CategoriesPanel({
+  open, onToggle, categories, onCreated, onUpdated, onDeleted,
+}: {
+  open: boolean
+  onToggle: () => void
+  categories: ServiceCategory[]
+  onCreated: (c: ServiceCategory) => void
+  onUpdated: (c: ServiceCategory) => void
+  onDeleted: (id: number) => void
+}) {
+  const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState<ServiceCategory | null>(null)
+
+  return (
+    <div className="bg-white border border-[rgba(18,18,18,0.10)]">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-cream transition-colors"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <Tag size={14} className="text-near-black flex-shrink-0" />
+          <p className="text-sm font-bold text-near-black">Categories</p>
+          <span className="text-[10px] font-bold tracking-[0.06em] uppercase text-muted-text">
+            {categories.length}/{CATEGORIES_MAX}
+          </span>
+        </div>
+        <span className="text-muted-text text-lg leading-none">{open ? '−' : '+'}</span>
+      </button>
+
+      {open && (
+        <div className="border-t border-[rgba(18,18,18,0.08)] p-4 space-y-3">
+          {categories.length === 0 && !adding && (
+            <p className="text-[11px] text-muted-text italic">
+              No categories yet. Add a few to group services on your booking page.
+            </p>
+          )}
+
+          {categories.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {categories.map(c => (
+                <CategoryRow
+                  key={c.id}
+                  category={c}
+                  onEdit={() => setEditing(c)}
+                  onDeleted={onDeleted}
+                />
+              ))}
+            </div>
+          )}
+
+          {!adding && categories.length < CATEGORIES_MAX && (
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2.5 py-1.5 hover:border-near-black"
+            >
+              <Plus size={12} /> Add Category
+            </button>
+          )}
+
+          {adding && (
+            <CategoryDialog
+              category={null}
+              onClose={() => setAdding(false)}
+              onSaved={(c) => { onCreated(c); setAdding(false) }}
+            />
+          )}
+          {editing && (
+            <CategoryDialog
+              category={editing}
+              onClose={() => setEditing(null)}
+              onSaved={(c) => { onUpdated(c); setEditing(null) }}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CategoryRow({
+  category, onEdit, onDeleted,
+}: {
+  category: ServiceCategory
+  onEdit: () => void
+  onDeleted: (id: number) => void
+}) {
+  const [busy, setBusy] = useState(false)
+  async function handleDelete() {
+    if (!confirm(`Delete "${category.name}"? Services in this category will be moved to "Uncategorized".`)) return
+    setBusy(true)
+    try {
+      await deleteEditorServiceCategory(category.id)
+      onDeleted(category.id)
+    } catch {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="flex items-center gap-2 border border-[rgba(18,18,18,0.08)] bg-cream/50 p-2">
+      <div className="w-10 h-10 bg-white border border-[rgba(18,18,18,0.08)] flex-shrink-0 overflow-hidden">
+        {category.image_url
+          /* eslint-disable-next-line @next/next/no-img-element */
+          ? <img src={category.image_url} alt={category.name} className="w-full h-full object-cover" />
+          : <div className="w-full h-full flex items-center justify-center text-muted-text"><ImageIcon size={13} /></div>
+        }
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[12px] font-semibold text-near-black truncate">{category.name}</p>
+        {category.description && (
+          <p className="text-[10px] text-muted-text truncate">{category.description}</p>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onEdit}
+        disabled={busy}
+        className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black flex-shrink-0"
+        title="Edit"
+      >
+        <Edit2 size={11} />
+      </button>
+      <button
+        type="button"
+        onClick={handleDelete}
+        disabled={busy}
+        className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600 flex-shrink-0"
+        title="Delete"
+      >
+        <Trash2 size={11} />
+      </button>
+    </div>
+  )
+}
+
+function CategoryDialog({
+  category, onClose, onSaved,
+}: {
+  category: ServiceCategory | null
+  onClose: () => void
+  onSaved: (c: ServiceCategory) => void
+}) {
+  const [name,        setName]        = useState(category?.name        ?? '')
+  const [description, setDescription] = useState(category?.description ?? '')
+  const [imageUrl,    setImageUrl]    = useState(category?.image_url   ?? '')
+  const [isActive,    setIsActive]    = useState(category?.is_active   ?? true)
+  const [saving,      setSaving]      = useState(false)
+  const [error,       setError]       = useState<string | null>(null)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    const n = name.trim()
+    if (!n) { setError('Name is required'); return }
+    setSaving(true); setError(null)
+    try {
+      const payload = {
+        name: n,
+        description: description.trim() || null,
+        image_url:   imageUrl.trim()    || null,
+        is_active:   isActive,
+      }
+      const result = category
+        ? await updateEditorServiceCategory(category.id, payload)
+        : await createEditorServiceCategory(payload)
+      onSaved(result)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-sm border border-[rgba(18,18,18,0.15)] max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-[rgba(18,18,18,0.10)] px-4 py-3">
+          <h3 className="text-sm font-bold text-near-black">{category ? 'Edit category' : 'New category'}</h3>
+          <button onClick={onClose} className="text-muted-text hover:text-near-black"><X size={16} /></button>
+        </div>
+        <form onSubmit={submit} className="p-4 space-y-3">
+          <div className="w-32">
+            <ImageUploadField
+              label="Image"
+              value={imageUrl || null}
+              onChange={v => setImageUrl(v ?? '')}
+              kind="category"
+              aspectClass="aspect-square"
+            />
+          </div>
+          <Input
+            label="Name"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="Haircuts, Lashes, Nails…"
+          />
+          <Textarea
+            label="Description (optional)"
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            rows={2}
+          />
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isActive}
+              onChange={e => setIsActive(e.target.checked)}
+              className="w-4 h-4 accent-near-black"
+            />
+            <span className="text-xs font-semibold text-near-black">Active</span>
+          </label>
+          {error && (
+            <p className="text-xs text-red-700 flex items-center gap-1.5">
+              <AlertCircle size={12} /> {error}
+            </p>
+          )}
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+            <button
+              type="button" onClick={onClose}
+              className="text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2"
+            >Cancel</button>
+            <Button size="sm" type="submit" disabled={saving}>
+              {saving ? 'Saving…' : category ? 'Save' : 'Create'}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

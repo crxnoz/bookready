@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\Editor\BeforeAfterItemsController;
 use App\Http\Controllers\Api\Editor\GalleryGroupController;
 use App\Http\Controllers\Api\Editor\GalleryItemsController;
 use App\Http\Controllers\Api\Editor\ServicesController;
+use App\Http\Controllers\Api\Editor\ServiceCategoriesController;
 use App\Http\Controllers\Api\Editor\StaffController;
 use App\Http\Controllers\Api\Editor\StaffHoursController;
 use App\Http\Controllers\Api\Editor\StaffBlockedDatesController;
@@ -96,6 +97,12 @@ Route::prefix('v1')->group(function () {
         Route::get('business',  [BusinessProfileController::class, 'show']);
         Route::patch('business', [BusinessProfileController::class, 'update']);
 
+        // Categories MUST come before /services/{service} so the static
+        // 'categories' segment isn't swallowed by the dynamic {service} matcher.
+        Route::get   ('services/categories',          [ServiceCategoriesController::class, 'index']);
+        Route::post  ('services/categories',          [ServiceCategoriesController::class, 'store']);
+        Route::patch ('services/categories/{id}',     [ServiceCategoriesController::class, 'update']);
+        Route::delete('services/categories/{id}',     [ServiceCategoriesController::class, 'destroy']);
         Route::get('services',              [ServicesController::class, 'index']);
         Route::post('services',             [ServicesController::class, 'store']);
         Route::patch('services/{service}',  [ServicesController::class, 'update']);

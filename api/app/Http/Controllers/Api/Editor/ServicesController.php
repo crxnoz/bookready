@@ -18,7 +18,11 @@ class ServicesController extends Controller
             'description'      =>          $row->description,
             'price'            => (float)  $row->price,
             'duration_minutes' => (int)    $row->duration,
-            'category'         =>          $row->category ?? null,
+            // Legacy free-text category — kept on the payload for one release
+            // so older frontends still render. New UI reads category_id.
+            'category'         =>          $row->category    ?? null,
+            'category_id'      => $row->category_id !== null ? (int) $row->category_id : null,
+            'image_url'        =>          $row->image_url   ?? null,
             'is_active'        => (bool)   $row->is_active,
             'sort_order'       => (int)    $row->sort_order,
         ];
@@ -49,12 +53,24 @@ class ServicesController extends Controller
             'duration_minutes' => 'required|integer|min:5',
             'description'      => 'nullable|string',
             'category'         => 'nullable|string|max:100',
+            'category_id'      => 'nullable|integer',
+            'image_url'        => 'nullable|string|max:1000',
             'is_active'        => 'nullable|boolean',
             'sort_order'       => 'nullable|integer',
         ]);
 
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
+
+        // Verify category_id exists in this tenant so we never persist a
+        // dangling FK reference (and so clients can't probe other tenants).
+        if (isset($validated['category_id'])) {
+            $exists = DB::table('service_categories')->where('id', $validated['category_id'])->exists();
+            if (! $exists) {
+                tenancy()->end();
+                return response()->json(['message' => 'Category not found'], 422);
+            }
+        }
 
         $nextOrder = (int) DB::table('services')->max('sort_order') + 1;
 
@@ -63,9 +79,11 @@ class ServicesController extends Controller
             'price'       => $validated['price'],
             'duration'    => $validated['duration_minutes'],
             'description' => $validated['description'] ?? null,
-            'category'    => $validated['category'] ?? null,
-            'is_active'   => $validated['is_active'] ?? true,
-            'sort_order'  => $validated['sort_order'] ?? $nextOrder,
+            'category'    => $validated['category']    ?? null,
+            'category_id' => $validated['category_id'] ?? null,
+            'image_url'   => $validated['image_url']   ?? null,
+            'is_active'   => $validated['is_active']   ?? true,
+            'sort_order'  => $validated['sort_order']  ?? $nextOrder,
             'created_at'  => now(),
             'updated_at'  => now(),
         ]);
@@ -84,6 +102,8 @@ class ServicesController extends Controller
             'duration_minutes' => 'sometimes|integer|min:5',
             'description'      => 'nullable|string',
             'category'         => 'nullable|string|max:100',
+            'category_id'      => 'nullable|integer',
+            'image_url'        => 'nullable|string|max:1000',
             'is_active'        => 'sometimes|boolean',
             'sort_order'       => 'sometimes|integer',
         ]);
@@ -91,12 +111,22 @@ class ServicesController extends Controller
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
+        if (array_key_exists('category_id', $validated) && $validated['category_id'] !== null) {
+            $exists = DB::table('service_categories')->where('id', $validated['category_id'])->exists();
+            if (! $exists) {
+                tenancy()->end();
+                return response()->json(['message' => 'Category not found'], 422);
+            }
+        }
+
         $data = ['updated_at' => now()];
         if (isset($validated['name']))             $data['name']        = $validated['name'];
         if (isset($validated['price']))            $data['price']       = $validated['price'];
         if (isset($validated['duration_minutes'])) $data['duration']    = $validated['duration_minutes'];
         if (array_key_exists('description', $validated)) $data['description'] = $validated['description'];
         if (array_key_exists('category', $validated))    $data['category']    = $validated['category'];
+        if (array_key_exists('category_id', $validated)) $data['category_id'] = $validated['category_id'];
+        if (array_key_exists('image_url', $validated))   $data['image_url']   = $validated['image_url'];
         if (isset($validated['is_active']))        $data['is_active']   = $validated['is_active'];
         if (isset($validated['sort_order']))       $data['sort_order']  = $validated['sort_order'];
 

@@ -54,6 +54,8 @@ import {
   StripeConnectStartResponse,
   StripeConnectStatusResponse,
   Service,
+  ServiceCategory,
+  ServiceCategoryPayload,
   StaffMemberPayload,
   StaffHoursEntry,
   StaffBlockedDate,
@@ -131,7 +133,7 @@ export async function getCurrentUser(): Promise<AuthUser> {
 
 // ── Image uploads ────────────────────────────────────────────────────────────
 
-export type UploadKind = 'gallery' | 'before_after' | 'header' | 'logo' | 'about' | 'staff'
+export type UploadKind = 'gallery' | 'before_after' | 'header' | 'logo' | 'about' | 'staff' | 'service' | 'category'
 
 export interface UploadResponse {
   url: string
@@ -334,6 +336,35 @@ export async function updateEditorService(id: number, data: Partial<Omit<Service
 
 export async function deleteEditorService(id: number): Promise<void> {
   await request(`/editor/services/${id}`, { method: 'DELETE' })
+}
+
+// ── Service categories (Phase 3) ─────────────────────────────────────────────
+
+export async function getEditorServiceCategories(): Promise<ServiceCategory[]> {
+  return request<ServiceCategory[]>('/editor/services/categories')
+}
+
+export async function createEditorServiceCategory(
+  payload: ServiceCategoryPayload,
+): Promise<ServiceCategory> {
+  return request<ServiceCategory>('/editor/services/categories', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateEditorServiceCategory(
+  id: number,
+  payload: Partial<ServiceCategoryPayload>,
+): Promise<ServiceCategory> {
+  return request<ServiceCategory>(`/editor/services/categories/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteEditorServiceCategory(id: number): Promise<{ deleted?: boolean }> {
+  return request(`/editor/services/categories/${id}`, { method: 'DELETE' })
 }
 
 export async function getEditorHours(): Promise<HoursEntry[]> {

@@ -33,6 +33,12 @@ class PublicSiteController extends Controller
 
         $profile  = BusinessProfile::first();
         $policies = BusinessPolicy::first();
+        // Phase 3: categories are now a separate resource. Old tenants that
+        // haven't run the migration are tolerated via Schema::hasColumn /
+        // hasTable checks so the public payload never explodes.
+        $hasCategoryId   = Schema::hasColumn('services', 'category_id');
+        $hasServiceImage = Schema::hasColumn('services', 'image_url');
+
         $services = DB::table('services')
             ->where('is_active', true)
             ->orderBy('sort_order')
@@ -44,11 +50,37 @@ class PublicSiteController extends Controller
                 'description'      =>         $r->description,
                 'price'            => (float) $r->price,
                 'duration_minutes' => (int)   $r->duration,
+                // Legacy free-text category — kept until Phase 8 drops it.
                 'category'         =>         $r->category ?? null,
+                'category_id'      => $hasCategoryId && $r->category_id !== null ? (int) $r->category_id : null,
+                'image_url'        => $hasServiceImage ? ($r->image_url ?? null) : null,
                 'is_active'        => (bool)  $r->is_active,
                 'sort_order'       => (int)   $r->sort_order,
             ])
             ->values();
+
+        // Service categories — exposed so the booking widget can group
+        // services by category card on the public site.
+        $serviceCategories = [];
+        if (Schema::hasTable('service_categories')) {
+            $hasCatDesc   = Schema::hasColumn('service_categories', 'description');
+            $hasCatImg    = Schema::hasColumn('service_categories', 'image_url');
+            $hasCatActive = Schema::hasColumn('service_categories', 'is_active');
+            $serviceCategories = DB::table('service_categories')
+                ->when($hasCatActive, fn ($q) => $q->where('is_active', true))
+                ->orderBy('sort_order', 'asc')
+                ->orderBy('id', 'asc')
+                ->get()
+                ->map(fn ($r) => [
+                    'id'          => (int) $r->id,
+                    'name'        =>       $r->name,
+                    'description' => $hasCatDesc ? ($r->description ?? null) : null,
+                    'image_url'   => $hasCatImg  ? ($r->image_url   ?? null) : null,
+                    'sort_order'  => (int) $r->sort_order,
+                ])
+                ->values()
+                ->all();
+        }
 
         $dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         $fmtTime  = fn (?string $t) => $t ? substr($t, 0, 5) : null;
@@ -390,7 +422,8 @@ class PublicSiteController extends Controller
             'plan'          => $tenant->plan,
             'status'        => 'active',
             'profile'       => $profileArr,
-            'services'      => $services,
+            'services'           => $services,
+            'service_categories' => $serviceCategories,
             'hours'         => $hours,
             'policies'      => $policiesArr,
             'staff'         => $staff,
