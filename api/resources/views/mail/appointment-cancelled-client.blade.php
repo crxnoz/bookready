@@ -2,7 +2,7 @@
   'preheader' => 'Your appointment with ' . $businessName . ' has been cancelled.',
   'eyebrow'   => 'Appointment cancelled',
   'headline'  => 'Your appointment was cancelled.',
-  'intro'     => $businessName . ' cancelled the appointment below. If this wasn’t expected, reply to this email and they’ll be in touch.',
+  'intro'     => ($customIntro ?? null) ?: ($businessName . ' cancelled the appointment below. If this wasn’t expected, reply to this email and they’ll be in touch.'),
 ])
 
 @section('details')
@@ -16,4 +16,7 @@
 
 @section('extra')
 Want to pick another time? Just visit the booking page again to choose a new slot.
+@if (! empty($customSignoff))
+<div style="margin-top:14px;">{!! nl2br(e($customSignoff)) !!}</div>
+@endif
 @endsection

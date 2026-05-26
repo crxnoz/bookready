@@ -2,7 +2,7 @@
   'preheader' => 'We received your booking request for ' . $businessName . '.',
   'eyebrow'   => 'Booking request received',
   'headline'  => 'Thanks, ' . $appt['customer_name'] . '!',
-  'intro'     => 'We received your request and ' . $businessName . ' will review and confirm shortly.',
+  'intro'     => ($customIntro ?? null) ?: ('We received your request and ' . $businessName . ' will review and confirm shortly.'),
 ])
 
 @section('details')
@@ -54,5 +54,11 @@
 <a href="{{ $appt['manage_url'] }}" style="display:inline-block;background:#121212;color:#FFFFFF;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:14px 22px;border:1px solid #121212;">
   Manage your booking &rarr;
 </a>
+@endsection
+@endif
+
+@if (! empty($customSignoff))
+@section('extra')
+{!! nl2br(e($customSignoff)) !!}
 @endsection
 @endif

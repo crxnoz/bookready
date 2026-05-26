@@ -15,23 +15,28 @@ class AppointmentReminderClientMail extends Mailable
     public function __construct(
         public readonly array  $appt,
         public readonly string $businessName,
-        public readonly int    $hoursBefore,
+        public readonly ?array $customization = null,
+        public readonly int    $hoursBefore = 24,
     ) {}
 
     public function envelope(): Envelope
     {
+        $custom = $this->customization['subject'] ?? null;
         return new Envelope(
-            subject: 'Reminder: your ' . $this->businessName . ' appointment',
+            subject: $custom ?: ('Reminder: your ' . $this->businessName . ' appointment'),
         );
     }
 
     public function content(): Content
     {
-        return new Content(view: 'mail.appointment-reminder-client');
+        return new Content(
+            view: 'mail.appointment-reminder-client',
+            with: [
+                'customIntro'   => $this->customization['intro']   ?? null,
+                'customSignoff' => $this->customization['signoff'] ?? null,
+            ],
+        );
     }
 
-    public function attachments(): array
-    {
-        return [];
-    }
+    public function attachments(): array { return []; }
 }

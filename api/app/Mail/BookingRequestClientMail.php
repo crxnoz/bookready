@@ -15,12 +15,15 @@ class BookingRequestClientMail extends Mailable
     public function __construct(
         public readonly array $appt,
         public readonly string $businessName,
+        // Phase 17 — tenant-saved overrides: { subject?, intro?, signoff? }
+        public readonly ?array $customization = null,
     ) {}
 
     public function envelope(): Envelope
     {
+        $custom = $this->customization['subject'] ?? null;
         return new Envelope(
-            subject: 'Booking request received — ' . $this->businessName,
+            subject: $custom ?: ('Booking request received — ' . $this->businessName),
         );
     }
 
@@ -28,11 +31,12 @@ class BookingRequestClientMail extends Mailable
     {
         return new Content(
             view: 'mail.booking-request-client',
+            with: [
+                'customIntro'   => $this->customization['intro']   ?? null,
+                'customSignoff' => $this->customization['signoff'] ?? null,
+            ],
         );
     }
 
-    public function attachments(): array
-    {
-        return [];
-    }
+    public function attachments(): array { return []; }
 }

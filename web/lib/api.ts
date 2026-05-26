@@ -57,6 +57,7 @@ import {
   ChangePasswordPayload,
   NotificationSettings,
   NotificationSettingsPayload,
+  EmailTemplateKey,
   SignOutEverywhereResponse,
   PaymentSettings,
   PaymentSettingsPayload,
@@ -600,6 +601,16 @@ export async function updateEditorNotificationSettings(
   return request<NotificationSettings>('/editor/settings/notifications', {
     method: 'PATCH',
     body:   JSON.stringify(payload),
+  })
+}
+
+/** Phase 17 — send a test email of the chosen template to the owner. */
+export async function sendNotificationTestEmail(
+  template: EmailTemplateKey,
+): Promise<{ message: string; sent_to: string }> {
+  return request<{ message: string; sent_to: string }>('/editor/settings/notifications/test-send', {
+    method: 'POST',
+    body:   JSON.stringify({ template }),
   })
 }
 

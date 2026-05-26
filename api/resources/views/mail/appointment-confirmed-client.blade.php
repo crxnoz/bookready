@@ -2,7 +2,7 @@
   'preheader' => 'Your appointment with ' . $businessName . ' is confirmed.',
   'eyebrow'   => 'Appointment confirmed',
   'headline'  => 'You’re booked in!',
-  'intro'     => $businessName . ' just confirmed your appointment. We’ll see you soon.',
+  'intro'     => ($customIntro ?? null) ?: ($businessName . ' just confirmed your appointment. We’ll see you soon.'),
 ])
 
 @section('details')
@@ -28,5 +28,8 @@
 Use the button above to reschedule or cancel within your business&rsquo;s policy window. You can also reply to this email if you need help.
 @else
 Need to reschedule or cancel? Reply to this email and the team will take care of it.
+@endif
+@if (! empty($customSignoff))
+<div style="margin-top:14px;">{!! nl2br(e($customSignoff)) !!}</div>
 @endif
 @endsection

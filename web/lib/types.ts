@@ -721,12 +721,39 @@ export interface NotificationSettings {
   reminder_hours_before:                number
   reply_to_email:                       string | null
   sender_name:                          string | null
+  /** Phase 17 — per-template subject/intro/signoff overrides. Keyed by
+   *  template id (see EMAIL_TEMPLATE_KEYS below). */
+  email_templates?:                     Partial<Record<EmailTemplateKey, EmailTemplateOverride>>
+  /** Read-only — derived server-side from mail.from + sender_name. */
+  effective_from_address?:              string
+  effective_from_name?:                 string
   created_at?:                          string
   updated_at?:                          string
 }
 
+export type EmailTemplateKey =
+  | 'booking_request_client'
+  | 'appointment_confirmed'
+  | 'appointment_cancelled'
+  | 'appointment_rescheduled'
+  | 'appointment_reminder'
+
+export interface EmailTemplateOverride {
+  subject?: string | null
+  intro?:   string | null
+  signoff?: string | null
+}
+
+export const EMAIL_TEMPLATE_KEYS: EmailTemplateKey[] = [
+  'booking_request_client',
+  'appointment_confirmed',
+  'appointment_cancelled',
+  'appointment_rescheduled',
+  'appointment_reminder',
+]
+
 export type NotificationSettingsPayload = Partial<Omit<NotificationSettings,
-  'id' | 'created_at' | 'updated_at'>>
+  'id' | 'created_at' | 'updated_at' | 'effective_from_address' | 'effective_from_name'>>
 
 // ── Booking settings ────────────────────────────────────────────────────────
 

@@ -86,7 +86,8 @@ class AppointmentMailer
 
         if (! empty($appt['customer_email']) && NotificationSettingsService::shouldSendClientBookingEmail($notify)) {
             try {
-                Mail::to($appt['customer_email'])->send(new BookingRequestClientMail($appt, $businessName));
+                $custom = NotificationSettingsService::templateCustomization($notify, 'booking_request_client');
+                Mail::to($appt['customer_email'])->send(new BookingRequestClientMail($appt, $businessName, $custom));
             } catch (\Throwable $e) {
                 Log::error('[BookReady] BookingRequestClientMail failed', [
                     'appointment_id' => $appt['id'] ?? null,
@@ -110,7 +111,8 @@ class AppointmentMailer
         }
 
         try {
-            Mail::to($appt['customer_email'])->send(new AppointmentConfirmedClientMail($appt, $businessName));
+            $custom = NotificationSettingsService::templateCustomization($notify, 'appointment_confirmed');
+            Mail::to($appt['customer_email'])->send(new AppointmentConfirmedClientMail($appt, $businessName, $custom));
         } catch (\Throwable $e) {
             Log::error('[BookReady] AppointmentConfirmedClientMail failed', [
                 'appointment_id' => $appt['id'] ?? null,
@@ -184,8 +186,9 @@ class AppointmentMailer
         if (! NotificationSettingsService::shouldSendConfirmedEmail($notify)) return;
 
         try {
+            $custom = NotificationSettingsService::templateCustomization($notify, 'appointment_rescheduled');
             Mail::to($appt['customer_email'])->send(
-                new AppointmentRescheduledClientMail($appt, $oldAppt, $businessName, $initiatedBy),
+                new AppointmentRescheduledClientMail($appt, $oldAppt, $businessName, $initiatedBy, $custom),
             );
         } catch (\Throwable $e) {
             Log::error('[BookReady] AppointmentRescheduledClientMail failed', [
@@ -202,12 +205,13 @@ class AppointmentMailer
      * for honoring the tenant's reminder_email_enabled toggle and for
      * idempotency (don't double-send for the same appointment).
      */
-    public static function sendReminder(array $appt, string $businessName, int $hoursBefore): void
+    public static function sendReminder(array $appt, string $businessName, int $hoursBefore, ?array $notify = null): void
     {
         if (empty($appt['customer_email'])) return;
         try {
+            $custom = NotificationSettingsService::templateCustomization($notify, 'appointment_reminder');
             Mail::to($appt['customer_email'])->send(
-                new AppointmentReminderClientMail($appt, $businessName, $hoursBefore),
+                new AppointmentReminderClientMail($appt, $businessName, $custom, $hoursBefore),
             );
         } catch (\Throwable $e) {
             Log::error('[BookReady] AppointmentReminderClientMail failed', [
@@ -231,7 +235,8 @@ class AppointmentMailer
         }
 
         try {
-            Mail::to($appt['customer_email'])->send(new AppointmentCancelledClientMail($appt, $businessName));
+            $custom = NotificationSettingsService::templateCustomization($notify, 'appointment_cancelled');
+            Mail::to($appt['customer_email'])->send(new AppointmentCancelledClientMail($appt, $businessName, $custom));
         } catch (\Throwable $e) {
             Log::error('[BookReady] AppointmentCancelledClientMail failed', [
                 'appointment_id' => $appt['id'] ?? null,

@@ -18,22 +18,27 @@ class AppointmentRescheduledClientMail extends Mailable
         public readonly string $businessName,
         /** 'owner' | 'client' — who initiated the reschedule */
         public readonly string $initiatedBy,
+        public readonly ?array $customization = null,
     ) {}
 
     public function envelope(): Envelope
     {
+        $custom = $this->customization['subject'] ?? null;
         return new Envelope(
-            subject: 'Your appointment has been rescheduled — ' . $this->businessName,
+            subject: $custom ?: ('Your appointment has been rescheduled — ' . $this->businessName),
         );
     }
 
     public function content(): Content
     {
-        return new Content(view: 'mail.appointment-rescheduled-client');
+        return new Content(
+            view: 'mail.appointment-rescheduled-client',
+            with: [
+                'customIntro'   => $this->customization['intro']   ?? null,
+                'customSignoff' => $this->customization['signoff'] ?? null,
+            ],
+        );
     }
 
-    public function attachments(): array
-    {
-        return [];
-    }
+    public function attachments(): array { return []; }
 }

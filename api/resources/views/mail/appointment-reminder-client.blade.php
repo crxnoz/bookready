@@ -2,7 +2,7 @@
   'preheader' => 'Your appointment with ' . $businessName . ' is coming up.',
   'eyebrow'   => 'Reminder',
   'headline'  => 'See you soon, ' . $appt['customer_name'] . '.',
-  'intro'     => 'Your appointment with ' . $businessName . ' is coming up in roughly ' . $hoursBefore . ' hour' . ($hoursBefore === 1 ? '' : 's') . '.',
+  'intro'     => ($customIntro ?? null) ?: ('Your appointment with ' . $businessName . ' is coming up in roughly ' . $hoursBefore . ' hour' . ($hoursBefore === 1 ? '' : 's') . '.'),
 ])
 
 @section('details')
@@ -24,4 +24,7 @@
 
 @section('extra')
 Need to reschedule or cancel? Use the link above or reply to this email and the team will help.
+@if (! empty($customSignoff))
+<div style="margin-top:14px;">{!! nl2br(e($customSignoff)) !!}</div>
+@endif
 @endsection

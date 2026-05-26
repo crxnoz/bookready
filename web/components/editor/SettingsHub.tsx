@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation'
 import { clearAuth } from '@/lib/auth'
 import {
   Building2, Calendar, CalendarClock, CreditCard, Bell, UserCircle,
-  Plug, AlertTriangle, ChevronRight, Loader2, Check, AlertCircle,
+  Plug, AlertTriangle, ChevronRight, ChevronDown, Loader2, Check, AlertCircle,
   DollarSign, Download, Instagram, Mail, MapPin, MessageSquare, Phone,
   Percent, Lock, ExternalLink, RefreshCw, ShieldCheck, Send, Trash2, Webhook, Sparkles,
   X,
@@ -31,6 +31,7 @@ import {
   updateEditorBookingSettings,
   getEditorNotificationSettings,
   updateEditorNotificationSettings,
+  sendNotificationTestEmail,
   getEditorAccount,
   updateEditorAccount,
   changeEditorPassword,
@@ -51,6 +52,8 @@ import type {
   DepositType,
   NotificationSettings,
   NotificationSettingsPayload,
+  EmailTemplateKey,
+  EmailTemplateOverride,
   PaymentSettings,
   PaymentSettingsPayload,
   SlotReleaseMode,
@@ -1001,6 +1004,7 @@ function NotificationSettingsPanel() {
         reminder_hours_before:               draft.reminder_hours_before,
         reply_to_email:                      draft.reply_to_email,
         sender_name:                         draft.sender_name,
+        email_templates:                     draft.email_templates ?? {},
       }
       const next = await updateEditorNotificationSettings(payload)
       setData(next)
@@ -1080,16 +1084,11 @@ function NotificationSettingsPanel() {
       </section>
 
       {/* Reminder */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3 opacity-95">
-        <div className="flex items-start gap-2">
-          <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Reminders</p>
-          <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.15)] bg-cream text-muted-text px-1.5 py-0.5">
-            Coming soon
-          </span>
-        </div>
+      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Reminders</p>
         <Toggle
           label="Send appointment reminders"
-          hint="The scheduler hasn’t shipped yet — your preference will be stored and applied when it does."
+          hint="Email each client roughly N hours before their appointment. Runs hourly in the background."
           on={draft.reminder_email_enabled}
           onToggle={() => patch({ reminder_email_enabled: !draft.reminder_email_enabled })}
         />
@@ -1106,9 +1105,32 @@ function NotificationSettingsPanel() {
         )}
       </section>
 
+      {/* Email content (per-template overrides) */}
+      <EmailContentEditor
+        draft={draft}
+        onChange={(key, override) => {
+          const next = { ...(draft.email_templates ?? {}) }
+          next[key] = override
+          patch({ email_templates: next })
+        }}
+      />
+
       {/* Reply-to + sender name */}
       <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
         <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Email identity</p>
+
+        {/* Phase 17 — show what FROM address Resend will actually use, since
+            owners often want to verify it matches their domain. */}
+        <div className="bg-cream/60 border border-[rgba(18,18,18,0.08)] p-2.5">
+          <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">From address</p>
+          <p className="text-[12px] text-near-black mt-0.5 font-mono break-all">
+            {(draft.effective_from_name || 'BookReady')} &lt;{draft.effective_from_address || '—'}&gt;
+          </p>
+          <p className="text-[10px] text-muted-text mt-1.5">
+            This is the address clients see in their inbox. Reply-to and sender name below customize it.
+          </p>
+        </div>
+
         <label className="block">
           <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Reply-to email</span>
           <input
@@ -2914,6 +2936,198 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── Email content editor (Phase 17) ─────────────────────────────────────────
+
+interface EmailTemplateMeta {
+  key:           EmailTemplateKey
+  label:         string
+  description:   string
+  defaultSubject: string
+  defaultIntro:   string
+}
+
+const EMAIL_TEMPLATES: EmailTemplateMeta[] = [
+  {
+    key: 'booking_request_client',
+    label: 'Booking request received',
+    description: 'Sent right after a client submits a booking request.',
+    defaultSubject: 'Booking request received — Your business',
+    defaultIntro:   'We received your request and Your business will review and confirm shortly.',
+  },
+  {
+    key: 'appointment_confirmed',
+    label: 'Appointment confirmed',
+    description: 'Sent when you confirm a booking (or it auto-confirms).',
+    defaultSubject: 'Appointment confirmed — Your business',
+    defaultIntro:   'Your business just confirmed your appointment. We will see you soon.',
+  },
+  {
+    key: 'appointment_cancelled',
+    label: 'Appointment cancelled',
+    description: 'Sent when an appointment is cancelled (owner or client).',
+    defaultSubject: 'Appointment cancelled — Your business',
+    defaultIntro:   'Your business cancelled the appointment below.',
+  },
+  {
+    key: 'appointment_rescheduled',
+    label: 'Appointment rescheduled',
+    description: 'Sent when an appointment moves to a new time.',
+    defaultSubject: 'Your appointment has been rescheduled — Your business',
+    defaultIntro:   'Your business moved your appointment to a new time. Details below.',
+  },
+  {
+    key: 'appointment_reminder',
+    label: 'Appointment reminder',
+    description: 'Sent automatically a configurable number of hours before the appointment.',
+    defaultSubject: 'Reminder: your Your business appointment',
+    defaultIntro:   'Your appointment with Your business is coming up soon.',
+  },
+]
+
+function EmailContentEditor({
+  draft, onChange,
+}: {
+  draft:    NotificationSettings
+  onChange: (key: EmailTemplateKey, value: EmailTemplateOverride) => void
+}) {
+  return (
+    <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-2.5">
+      <div className="flex items-start gap-2 mb-1">
+        <Mail size={13} className="text-near-black mt-0.5 flex-shrink-0" />
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Email content</p>
+          <p className="text-[11px] text-muted-text mt-0.5">
+            Override the subject line, opening, or sign-off on the 5 emails that go to your clients.
+            Leave blank to use BookReady defaults. Sample data + your saved overrides are used for test sends.
+          </p>
+        </div>
+      </div>
+
+      <div className="divide-y divide-[rgba(18,18,18,0.06)]">
+        {EMAIL_TEMPLATES.map(meta => (
+          <EmailTemplateCard
+            key={meta.key}
+            meta={meta}
+            value={(draft.email_templates ?? {})[meta.key] ?? {}}
+            onChange={v => onChange(meta.key, v)}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function EmailTemplateCard({
+  meta, value, onChange,
+}: {
+  meta:     EmailTemplateMeta
+  value:    EmailTemplateOverride
+  onChange: (v: EmailTemplateOverride) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [sendMsg, setSendMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+
+  const hasOverride = !! (value.subject || value.intro || value.signoff)
+
+  async function testSend() {
+    setSending(true); setSendMsg(null)
+    try {
+      const r = await sendNotificationTestEmail(meta.key)
+      setSendMsg({ kind: 'ok', text: r.message })
+    } catch (e) {
+      setSendMsg({ kind: 'err', text: e instanceof Error ? e.message : 'Test send failed' })
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <div className="py-2.5">
+      <button
+        type="button"
+        onClick={() => setOpen(o => ! o)}
+        className="flex items-start gap-2 w-full text-left hover:opacity-80 transition-opacity"
+      >
+        <ChevronDown
+          size={13}
+          className={cn('text-muted-text mt-0.5 flex-shrink-0 transition-transform', open ? 'rotate-0' : '-rotate-90')}
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-[13px] font-semibold text-near-black">{meta.label}</p>
+            {hasOverride && (
+              <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.15)] bg-cream text-near-black px-1.5 py-0.5">
+                Customized
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-text mt-0.5">{meta.description}</p>
+        </div>
+      </button>
+
+      {open && (
+        <div className="mt-3 pl-5 space-y-2.5">
+          <label className="block">
+            <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Subject</span>
+            <input
+              type="text"
+              value={value.subject ?? ''}
+              onChange={e => onChange({ ...value, subject: e.target.value || null })}
+              placeholder={meta.defaultSubject}
+              className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black"
+              maxLength={255}
+            />
+          </label>
+          <label className="block">
+            <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Intro paragraph</span>
+            <textarea
+              rows={3}
+              value={value.intro ?? ''}
+              onChange={e => onChange({ ...value, intro: e.target.value || null })}
+              placeholder={meta.defaultIntro}
+              className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black resize-y leading-relaxed"
+              maxLength={2000}
+            />
+          </label>
+          <label className="block">
+            <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Sign-off paragraph</span>
+            <textarea
+              rows={2}
+              value={value.signoff ?? ''}
+              onChange={e => onChange({ ...value, signoff: e.target.value || null })}
+              placeholder="e.g. Thanks for choosing us — Anna"
+              className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black resize-y leading-relaxed"
+              maxLength={2000}
+            />
+          </label>
+
+          <div className="flex items-center justify-between gap-3 pt-1 border-t border-[rgba(18,18,18,0.06)]">
+            <p className={cn(
+              'text-[11px] flex-1 min-w-0',
+              sendMsg?.kind === 'err' ? 'text-[#b42828]' : 'text-muted-text',
+            )}>
+              {sendMsg
+                ? sendMsg.text
+                : 'Send a test to your account email to verify deliverability + saved content.'}
+            </p>
+            <button
+              type="button"
+              onClick={testSend}
+              disabled={sending}
+              className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.10em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2.5 py-1.5 hover:border-near-black disabled:opacity-50 whitespace-nowrap"
+            >
+              {sending
+                ? <><Loader2 size={11} className="animate-spin" /> Sending</>
+                : <><Send size={11} /> Test send</>}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

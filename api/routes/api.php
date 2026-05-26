@@ -208,6 +208,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('settings/notifications',          [NotificationSettingsController::class, 'show']);
         Route::patch('settings/notifications',        [NotificationSettingsController::class, 'update']);
+        Route::post('settings/notifications/test-send', [NotificationSettingsController::class, 'testSend']);
 
         // ── Account (central User, no tenancy init) ─────────────────────────
         Route::get   ('account',                              [AccountController::class, 'show']);

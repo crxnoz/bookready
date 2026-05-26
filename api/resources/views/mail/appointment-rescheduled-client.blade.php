@@ -2,9 +2,9 @@
   'preheader' => 'New time for your ' . $businessName . ' appointment.',
   'eyebrow'   => 'Appointment rescheduled',
   'headline'  => $initiatedBy === 'client' ? 'Your new time is set.' : 'Your appointment was moved.',
-  'intro'     => $initiatedBy === 'client'
+  'intro'     => ($customIntro ?? null) ?: ($initiatedBy === 'client'
                   ? ('Here&rsquo;s your updated appointment with ' . $businessName . '.')
-                  : ($businessName . ' moved your appointment to a new time. Details below.'),
+                  : ($businessName . ' moved your appointment to a new time. Details below.')),
 ])
 
 @section('details')
@@ -30,6 +30,9 @@
 
 @section('extra')
 {{ $initiatedBy === 'client'
-    ? 'If you need to change this again or cancel, use the link above. We&rsquo;ll see you then.'
-    : 'If this new time doesn&rsquo;t work for you, use the link above to reschedule or reply to this email.' }}
+    ? 'If you need to change this again or cancel, use the link above. We will see you then.'
+    : 'If this new time does not work for you, use the link above to reschedule or reply to this email.' }}
+@if (! empty($customSignoff))
+<div style="margin-top:14px;">{!! nl2br(e($customSignoff)) !!}</div>
+@endif
 @endsection

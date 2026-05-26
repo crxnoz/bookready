@@ -107,7 +107,7 @@ class SendAppointmentReminders extends Command
                         'updated_at'       => now(),
                     ]);
 
-                    AppointmentMailer::sendReminder($appt, $businessName, $hoursBefore);
+                    AppointmentMailer::sendReminder($appt, $businessName, $hoursBefore, $notify);
                     $sentTotal++;
                 }
 
