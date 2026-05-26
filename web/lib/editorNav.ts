@@ -116,8 +116,9 @@ export const EDITOR_SECTIONS: EditorSectionConfig[] = [
     innerNav: [
       { id: 'overview', label: 'Overview' },
       { id: 'list',     label: 'Customers' },
-      { id: 'segments', label: 'Segments', soon: true },
-      { id: 'notes',    label: 'Notes',    soon: true },
+      { id: 'loyalty',  label: 'Loyalty Rewards',   soon: true },
+      { id: 'accounts', label: 'Customer Accounts', soon: true },
+      { id: 'reviews',  label: 'Reviews',           soon: true },
     ],
     defaultTitle:    'Customers',
     defaultSubtitle: 'Your client list, contact details, and booking history.',
