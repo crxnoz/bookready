@@ -531,7 +531,13 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
               )}
               <div className="tfr-thanks-sig">
                 <span className="tfr-thanks-line" />
-                <em>{signatureWord(displayName)}</em>
+                <em>{
+                  // Owner-overridden signature wins; otherwise drop leading
+                  // articles from the business name so "The Fade Room" signs
+                  // as "Fade" instead of "The".
+                  site.template?.settings.additionals?.thank_you_signature?.trim()
+                    || signatureWord(displayName)
+                }</em>
                 <span className="tfr-thanks-line" />
               </div>
             </div>

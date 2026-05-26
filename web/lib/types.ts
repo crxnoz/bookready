@@ -947,6 +947,10 @@ export interface TemplateAdditionalsSettings {
   show_thank_you?: boolean
   thank_you_title?: string | null
   thank_you_body?: string | null
+  /** Single-word signature shown between the two thin lines at the bottom of
+   * the thank-you section. Empty/null falls back to the auto-computed first
+   * meaningful word of the business name. */
+  thank_you_signature?: string | null
   faq?:     TemplateFaqSettings
   reviews?: TemplateReviewsSettings
 }

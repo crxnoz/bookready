@@ -1638,9 +1638,10 @@ function AdditionalsPanel({
   // Normalize the whole shape on mount — guarantees faq/reviews are always
   // present so the form's dirty-tracking compares apples to apples.
   const initial: TemplateAdditionalsSettings = {
-    show_thank_you:  settings.additionals?.show_thank_you  ?? true,
-    thank_you_title: settings.additionals?.thank_you_title ?? 'Thank you for choosing us',
-    thank_you_body:  settings.additionals?.thank_you_body  ?? '',
+    show_thank_you:      settings.additionals?.show_thank_you      ?? true,
+    thank_you_title:     settings.additionals?.thank_you_title     ?? 'Thank you for choosing us',
+    thank_you_body:      settings.additionals?.thank_you_body      ?? '',
+    thank_you_signature: settings.additionals?.thank_you_signature ?? '',
     faq: {
       enabled: settings.additionals?.faq?.enabled ?? false,
       heading: settings.additionals?.faq?.heading ?? 'Frequently asked',
@@ -1715,6 +1716,14 @@ function AdditionalsPanel({
           placeholder="A short note your visitors will see at the end of the page."
           rows={3}
           maxLength={400}
+        />
+        <TextField
+          label="Signature (optional)"
+          value={form.value.thank_you_signature ?? ''}
+          onChange={v => form.patch({ thank_you_signature: v || null })}
+          placeholder="Leave empty to use your business name"
+          maxLength={40}
+          hint="One short word or phrase shown between the two thin lines at the bottom of the section."
         />
       </Panel>
 
