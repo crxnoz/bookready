@@ -2,24 +2,44 @@ import { getPublicSite } from '@/lib/api'
 import { PublicSite } from '@/lib/types'
 import { resolveTemplate } from '@/templates/registry'
 import PublicBookingForm from '@/components/public/PublicBookingForm'
+import SiteLockScreen from '@/components/public/SiteLockScreen'
+import SiteComingSoonScreen from '@/components/public/SiteComingSoonScreen'
 
 export const dynamic = 'force-dynamic'
 
 interface Props {
-  params: { slug: string }
+  params:       { slug: string }
+  searchParams: { unlock?: string }
 }
 
-export async function generateMetadata({ params }: Props) {
-  const site = await getPublicSite(params.slug).catch(() => null)
+export async function generateMetadata({ params, searchParams }: Props) {
+  const site = await getPublicSite(params.slug, searchParams?.unlock).catch(() => null)
   if (!site) return { title: 'Not Found — BookReady' }
   return { title: `${site.business_name ?? site.slug} — BookReady` }
 }
 
-export default async function PublicSitePage({ params }: Props) {
-  const site = await getPublicSite(params.slug).catch((): null => null)
+export default async function PublicSitePage({ params, searchParams }: Props) {
+  // Phase S1 — pass the unlock token (if any) through to the API. The
+  // server validates it before returning the full payload.
+  const site = await getPublicSite(params.slug, searchParams?.unlock).catch((): null => null)
   const baseDomain = process.env.NEXT_PUBLIC_TENANT_BASE_DOMAIN ?? 'bkrdy.me'
 
   if (!site) return <NotFound slug={params.slug} baseDomain={baseDomain} />
+
+  // Phase S1 — privacy gate. When the API returns a non-active status
+  // we render a dedicated screen and never touch the template.
+  if (site.status === 'coming_soon') {
+    return <SiteComingSoonScreen businessName={site.business_name ?? null} slug={params.slug} />
+  }
+  if (site.status === 'locked') {
+    return (
+      <SiteLockScreen
+        slug={params.slug}
+        businessName={site.business_name ?? null}
+        hasPassword={!! site.has_password}
+      />
+    )
+  }
 
   const loader = resolveTemplate(site)
   if (loader) {

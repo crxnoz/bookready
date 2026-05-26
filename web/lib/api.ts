@@ -202,11 +202,42 @@ export async function resetPassword(payload: {
 
 // ── Public ────────────────────────────────────────────────────────────────────
 
-export async function getPublicSite(slug: string): Promise<PublicSite> {
+export async function getPublicSite(slug: string, unlockToken?: string | null): Promise<PublicSite> {
   // cache: 'no-store' so SSR always sees the latest template_settings + sections
   // (the public/site route is force-dynamic but Next's fetch-level cache must
   // also be disabled to actually re-fetch from the API on every request).
-  return request<PublicSite>(`/public/sites/${slug}`, { cache: 'no-store' })
+  const qs = unlockToken ? `?unlock=${encodeURIComponent(unlockToken)}` : ''
+  return request<PublicSite>(`/public/sites/${slug}${qs}`, { cache: 'no-store' })
+}
+
+/**
+ * Phase S1 — try a password against a private site. Returns a short-lived
+ * unlock token on success. The frontend then re-fetches the site with
+ * ?unlock=<token> appended.
+ */
+export async function unlockPublicSite(slug: string, password: string): Promise<{ token?: string; error?: string }> {
+  const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
+  const res = await fetch(`${base}/public/sites/${slug}/unlock`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body:    JSON.stringify({ password }),
+  })
+  return res.json().catch(() => ({ error: 'network' }))
+}
+
+/**
+ * Phase S1 — read the unlock token from the current URL so private-site
+ * subsequent calls (availability + booking POST) carry it through.
+ * Browser-only; returns null in SSR.
+ */
+function currentUnlockToken(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const url = new URL(window.location.href)
+    return url.searchParams.get('unlock')
+  } catch {
+    return null
+  }
 }
 
 export async function getPublicAvailability(
@@ -220,6 +251,8 @@ export async function getPublicAvailability(
   // get filtered to that staff member's calendar on the server.
   const params: Record<string, string> = { service_id: String(serviceId), date }
   if (staffId != null) params.staff_id = String(staffId)
+  const unlock = currentUnlockToken()
+  if (unlock) params.unlock = unlock
   const qs   = new URLSearchParams(params).toString()
   const res  = await fetch(`${base}/public/sites/${slug}/availability?${qs}`, {
     headers: { Accept: 'application/json' },
@@ -237,10 +270,13 @@ export async function createPublicAppointment(
   data: PublicBookingPayload,
 ): Promise<PublicBookingResponse> {
   const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
+  // Phase S1 — thread the unlock token through for private sites.
+  const unlock = currentUnlockToken()
+  const body   = unlock ? { ...data, unlock } : data
   const res = await fetch(`${base}/public/sites/${slug}/appointments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(body),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }))

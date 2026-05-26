@@ -30,6 +30,7 @@ function WhatsAppGlyph({ size = 16 }: { size?: number }) {
 }
 import TheFadeRoomBooking from './TheFadeRoomBooking'
 import type { PublicSite, Service } from '@/lib/types'
+import { safeHref } from '@/lib/safeHref'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -300,7 +301,10 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
 
             <div className="tfr-header-buttons">
               {header.show_book_button && (() => {
-                const url = header.book_button_url?.trim() || null
+                // Phase S2 — safeHref strips javascript:/data:/vbscript: from
+                // tenant-controlled URLs. Falls back to the scroll-to-book
+                // button when the URL is missing or unsafe.
+                const url = safeHref(header.book_button_url)
                 if (url) {
                   return (
                     <a className="tfr-header-btn tfr-header-btn-book" href={url} target="_blank" rel="noopener noreferrer">
@@ -342,7 +346,9 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 )
               })()}
               {header.show_directions_button && (() => {
-                const override = header.directions_button_url?.trim() || null
+                // Phase S2 — safeHref blocks javascript:/data: schemes. The
+                // address fallback is a static maps URL so no encoding gap.
+                const override = safeHref(header.directions_button_url)
                 const href = override ?? (address ? `https://maps.google.com/?q=${encodeURIComponent(address)}` : null)
                 return (
                   <a className="tfr-header-btn tfr-header-btn-directions" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
@@ -351,7 +357,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 )
               })()}
               {header.show_instagram_button && (() => {
-                const href = header.instagram_button_url?.trim() || p?.instagram_url || null
+                const href = safeHref(header.instagram_button_url) ?? safeHref(p?.instagram_url) ?? null
                 return (
                   <a className="tfr-header-btn tfr-header-btn-instagram" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
                     <Instagram size={16} /><span>Instagram</span>
@@ -359,7 +365,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 )
               })()}
               {header.show_tiktok_button && (() => {
-                const href = header.tiktok_button_url?.trim() || null
+                const href = safeHref(header.tiktok_button_url) ?? null
                 return (
                   <a className="tfr-header-btn tfr-header-btn-tiktok" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
                     <TikTokGlyph size={16} /><span>TikTok</span>
@@ -367,7 +373,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 )
               })()}
               {header.show_youtube_button && (() => {
-                const href = header.youtube_button_url?.trim() || null
+                const href = safeHref(header.youtube_button_url) ?? null
                 return (
                   <a className="tfr-header-btn tfr-header-btn-youtube" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
                     <Youtube size={16} /><span>YouTube</span>
@@ -375,7 +381,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 )
               })()}
               {header.show_facebook_button && (() => {
-                const href = header.facebook_button_url?.trim() || null
+                const href = safeHref(header.facebook_button_url) ?? null
                 return (
                   <a className="tfr-header-btn tfr-header-btn-facebook" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
                     <Facebook size={16} /><span>Facebook</span>
@@ -383,7 +389,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 )
               })()}
               {header.show_pinterest_button && (() => {
-                const href = header.pinterest_button_url?.trim() || null
+                const href = safeHref(header.pinterest_button_url) ?? null
                 return (
                   <a className="tfr-header-btn tfr-header-btn-pinterest" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
                     <PinterestGlyph size={16} /><span>Pinterest</span>
@@ -391,7 +397,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 )
               })()}
               {header.show_whatsapp_button && (() => {
-                const href = header.whatsapp_button_url?.trim() || null
+                const href = safeHref(header.whatsapp_button_url) ?? null
                 return (
                   <a className="tfr-header-btn tfr-header-btn-whatsapp" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
                     <WhatsAppGlyph size={16} /><span>WhatsApp</span>

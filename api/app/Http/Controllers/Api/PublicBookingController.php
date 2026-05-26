@@ -9,6 +9,7 @@ use App\Exceptions\StripeConnectNotReadyException;
 use App\Services\AppointmentPaymentService;
 use App\Services\NotificationSettingsService;
 use App\Services\PlatformMailer;
+use App\Services\SitePrivacyService;
 use App\Services\SlotGenerator;
 use App\Services\StripeConnectService;
 use Carbon\Carbon;
@@ -62,6 +63,8 @@ class PublicBookingController extends Controller
             'question_answers.*.question_id'   => 'required_with:question_answers|integer',
             'question_answers.*.value'         => 'sometimes|nullable',
             'question_answers.*.image_url'     => 'sometimes|nullable|string|max:2000',
+            // Phase S1 — unlock token for private sites
+            'unlock'           => 'sometimes|nullable|string|max:500',
         ]);
 
         $serviceId = (int)    $validated['service_id'];
@@ -77,6 +80,18 @@ class PublicBookingController extends Controller
         $ownerName  = $tenant->owner?->name ?? 'there';
 
         tenancy()->initialize($tenant);
+
+        // Phase S1 — block bookings when the site is private or coming-soon.
+        // The booking POST accepts an optional unlock token (passed by the
+        // public booking form when the visitor has unlocked the site).
+        $unlockToken = $request->input('unlock') ?? $request->query('unlock');
+        $block = SitePrivacyService::check($slug, is_string($unlockToken) ? $unlockToken : null);
+        if ($block !== null) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'Bookings for this site are not currently available.',
+            ], 403);
+        }
 
         // Policy enforcement: require_policy_agreement. Reject early if the
         // tenant requires it and the client didn't tick the box.

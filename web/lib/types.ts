@@ -518,12 +518,18 @@ export interface PublicStaffMember {
 // Public tenant lookup
 export interface PublicSite {
   availability?: AvailabilityData | null
-  tenant_id: string
+  // Phase S1: 'locked' or 'coming_soon' when the owner has restricted
+  // public access. Most callers should only render the full template
+  // when status === 'active'.
+  tenant_id?: string
   slug: string
-  domain: string | null
-  business_name: string | null
-  plan: string
+  domain?: string | null
+  business_name?: string | null
+  plan?: string
   status: string
+  // Set when status === 'locked' — tells the lock screen whether to
+  // show a password prompt.
+  has_password?: boolean
   profile?: BusinessProfile | null
   services?: Service[]
   service_categories?: ServiceCategory[]

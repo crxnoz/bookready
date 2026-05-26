@@ -6,14 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\BusinessPolicy;
 use App\Models\BusinessProfile;
 use App\Models\Tenant;
+use App\Services\SitePrivacyService;
 use App\Support\TemplateDefaults;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class PublicSiteController extends Controller
 {
-    public function show(string $slug): JsonResponse
+    public function show(string $slug, Request $request): JsonResponse
     {
         // Accept only lowercase letters and numbers — reject anything else
         $slug = strtolower($slug);
@@ -30,6 +32,16 @@ class PublicSiteController extends Controller
         $domain = $tenant->domains()->first();
 
         tenancy()->initialize($tenant);
+
+        // Phase S1 — visibility gate. Sites in 'coming_soon' or 'private'
+        // get a minimal payload; the full data is never serialized.
+        $block = SitePrivacyService::check($slug, $request->query('unlock'));
+        if ($block !== null) {
+            tenancy()->end();
+            return response()->json(array_merge([
+                'slug' => $slug,
+            ], $block));
+        }
 
         $profile  = BusinessProfile::first();
         $policies = BusinessPolicy::first();

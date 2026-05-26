@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
+use App\Services\SitePrivacyService;
 use App\Services\SlotGenerator;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -44,6 +45,15 @@ class PublicAvailabilityController extends Controller
             : null;
 
         tenancy()->initialize($tenant);
+
+        // Phase S1 — visibility gate. Private + coming-soon sites must
+        // never leak availability either; respond 403 so the booking
+        // form fails gracefully rather than appearing functional.
+        $block = SitePrivacyService::check($slug, $request->query('unlock'));
+        if ($block !== null) {
+            tenancy()->end();
+            return response()->json(['message' => 'Site unavailable'], 403);
+        }
 
         // Load service (must be active)
         $service = DB::table('services')

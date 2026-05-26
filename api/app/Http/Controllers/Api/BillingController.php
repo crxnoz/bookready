@@ -72,8 +72,25 @@ class BillingController extends Controller
      */
     public function checkoutSession(Request $request, string $sessionId): JsonResponse
     {
-        $stripe  = Cashier::stripe();
-        $session = $stripe->checkout->sessions->retrieve($sessionId);
+        $stripe = Cashier::stripe();
+
+        try {
+            $session = $stripe->checkout->sessions->retrieve($sessionId);
+        } catch (\Throwable $e) {
+            // Don't leak whether the session exists or not — same response
+            // as the ownership-mismatch path below.
+            return response()->json(['message' => 'Session not found'], 404);
+        }
+
+        // Phase S1 — ownership check. The Checkout Session metadata is
+        // stamped with tenant_id at creation (see checkout() above). Reject
+        // when the signed-in user's tenant doesn't match — prevents any
+        // authed user from peeking at another tenant's Stripe state.
+        $sessionTenantId = $session->metadata->tenant_id ?? null;
+        $userTenantId    = $request->user()->tenant_id;
+        if (! $sessionTenantId || $sessionTenantId !== $userTenantId) {
+            return response()->json(['message' => 'Session not found'], 404);
+        }
 
         return response()->json([
             'id'             => $session->id,

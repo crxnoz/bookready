@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\Editor\ServiceCategoriesController;
 use App\Http\Controllers\Api\Editor\ServiceAddonsController;
 use App\Http\Controllers\Api\Editor\BookingQuestionsController;
 use App\Http\Controllers\Api\PublicBookingAnswerUploadController;
+use App\Http\Controllers\Api\PublicSiteUnlockController;
 use App\Http\Controllers\Api\Editor\StaffController;
 use App\Http\Controllers\Api\Editor\StaffHoursController;
 use App\Http\Controllers\Api\Editor\StaffBlockedDatesController;
@@ -62,6 +63,10 @@ Route::prefix('v1')->group(function () {
     Route::get('public/sites/{slug}/availability',        [PublicAvailabilityController::class, 'show']);
     Route::post('public/sites/{slug}/appointments',       [PublicBookingController::class,     'store']);
     Route::post('public/sites/{slug}/booking-answer-upload', [PublicBookingAnswerUploadController::class, 'store']);
+    // Phase S1 — site unlock for password-protected sites. Throttled to
+    // make brute-force impractical.
+    Route::post('public/sites/{slug}/unlock', [PublicSiteUnlockController::class, 'unlock'])
+        ->middleware('throttle:8,1');
 
     // ── Public manage-booking (token-gated) ──────────────────────────────
     Route::get ('public/sites/{slug}/manage/{token}',             [PublicManageBookingController::class, 'show']);
