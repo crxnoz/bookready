@@ -15,11 +15,11 @@ function useScrollResetOnTab(tab: string) {
 import { useRouter } from 'next/navigation'
 import { clearAuth } from '@/lib/auth'
 import {
-  Building2, Calendar, CalendarClock, CreditCard, Bell, FileText, UserCircle,
+  Building2, Calendar, CalendarClock, CreditCard, Bell, UserCircle,
   Plug, AlertTriangle, ChevronRight, Loader2, Check, AlertCircle,
   DollarSign, Download, Instagram, Mail, MapPin, MessageSquare, Phone,
   Percent, Lock, ExternalLink, RefreshCw, ShieldCheck, Send, Trash2, Webhook, Sparkles,
-  X, Plus,
+  X,
 } from 'lucide-react'
 import {
   getEditorPaymentSettings,
@@ -48,7 +48,6 @@ import type {
   BookingSettingsPayload,
   BusinessPolicy,
   BusinessProfile,
-  PolicyCustomGroup,
   DepositType,
   NotificationSettings,
   NotificationSettingsPayload,
@@ -63,11 +62,11 @@ import { cn } from '@/lib/cn'
 
 type SettingsTab =
   | 'overview' | 'business' | 'preferences' | 'booking' | 'payments'
-  | 'notifications' | 'policies' | 'account' | 'integrations' | 'danger'
+  | 'notifications' | 'account' | 'integrations' | 'danger'
 
 const VALID_TABS: SettingsTab[] = [
   'overview', 'business', 'preferences', 'booking', 'payments',
-  'notifications', 'policies', 'account', 'integrations', 'danger',
+  'notifications', 'account', 'integrations', 'danger',
 ]
 
 interface GroupDef {
@@ -85,7 +84,6 @@ const GROUPS: GroupDef[] = [
   { tab: 'booking',       label: 'Booking Settings',   hint: 'Booking window, notice, auto-confirm, rules',    icon: Calendar,     status: 'ready' },
   { tab: 'payments',      label: 'Payment Settings',   hint: 'Customer payments, deposits, currency',          icon: CreditCard,   status: 'ready' },
   { tab: 'notifications', label: 'Notifications',      hint: 'Toggle booking emails, reply-to, sender',        icon: Bell,         status: 'ready' },
-  { tab: 'policies',      label: 'Policies',           hint: 'Enforcement rules + client-facing copy',         icon: FileText,     status: 'ready' },
   { tab: 'account',       label: 'Account',            hint: 'Owner profile, password, sign-out everywhere',   icon: UserCircle,   status: 'ready' },
   { tab: 'integrations',  label: 'Integrations',       hint: 'Stripe, calendar, SMS, webhooks',                icon: Plug,         status: 'ready' },
   { tab: 'danger',        label: 'Danger Zone',        hint: 'Pause bookings, export data, delete account',    icon: AlertTriangle, status: 'ready', tone: 'danger' },
@@ -114,7 +112,6 @@ export default function SettingsHub() {
       {tab === 'payments'      && <PaymentSettingsPanel />}
       {tab === 'booking'       && <BookingSettingsPanel />}
       {tab === 'notifications' && <NotificationSettingsPanel />}
-      {tab === 'policies'      && <PoliciesSettingsPanel />}
       {tab === 'account'       && <AccountSettingsPanel />}
       {tab === 'integrations'  && <IntegrationsSettingsPanel />}
       {tab === 'danger'        && <DangerSettingsPanel />}
@@ -617,9 +614,30 @@ function PaymentSettingsPanel() {
 
 const SLOT_INTERVALS = [15, 30, 45, 60] as const
 
+// Subset of BusinessPolicy that we edit inline on the Booking Settings panel.
+// The display-copy fields (cancellation_policy, etc.) live in Website → Policies.
+interface PolicyEnforcement {
+  require_policy_agreement:       boolean
+  forfeit_deposit_on_late_cancel: boolean
+  max_reschedules_per_booking:    number | null
+  late_grace_period_minutes:      number
+}
+
+function normalizeEnforcement(p: BusinessPolicy): PolicyEnforcement {
+  return {
+    require_policy_agreement:       !! p.require_policy_agreement,
+    forfeit_deposit_on_late_cancel: !! p.forfeit_deposit_on_late_cancel,
+    max_reschedules_per_booking:    p.max_reschedules_per_booking ?? null,
+    late_grace_period_minutes:      p.late_grace_period_minutes   ?? 0,
+  }
+}
+
 function BookingSettingsPanel() {
   const [data,    setData]    = useState<BookingSettings | null>(null)
   const [draft,   setDraft]   = useState<BookingSettings | null>(null)
+  // Enforcement rules live on business_policies — same panel, dual save.
+  const [policyData,  setPolicyData]  = useState<PolicyEnforcement | null>(null)
+  const [policyDraft, setPolicyDraft] = useState<PolicyEnforcement | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadErr, setLoadErr] = useState<string | null>(null)
   const [saveState, setSaveState] = useState<SaveState>('idle')
@@ -627,8 +645,18 @@ function BookingSettingsPanel() {
 
   useEffect(() => {
     let cancelled = false
-    getEditorBookingSettings()
-      .then(d => { if (!cancelled) { setData(d); setDraft(d) } })
+    Promise.all([
+      getEditorBookingSettings(),
+      getEditorPolicies().catch(() => null),
+    ])
+      .then(([bs, pol]) => {
+        if (cancelled) return
+        setData(bs); setDraft(bs)
+        if (pol) {
+          const norm = normalizeEnforcement(pol)
+          setPolicyData(norm); setPolicyDraft(norm)
+        }
+      })
       .catch(e => { if (!cancelled) setLoadErr(e instanceof Error ? e.message : 'Failed to load') })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
@@ -636,11 +664,20 @@ function BookingSettingsPanel() {
 
   const dirty = useMemo(() => {
     if (!data || !draft) return false
-    return JSON.stringify(stripMeta(data)) !== JSON.stringify(stripMeta(draft))
-  }, [data, draft])
+    const bookingDirty = JSON.stringify(stripMeta(data)) !== JSON.stringify(stripMeta(draft))
+    const policyDirty  = policyData && policyDraft
+      ? JSON.stringify(policyData) !== JSON.stringify(policyDraft)
+      : false
+    return bookingDirty || policyDirty
+  }, [data, draft, policyData, policyDraft])
 
   function patch(p: Partial<BookingSettings>) {
     setDraft(d => d ? { ...d, ...p } : d)
+    setSaveState('idle')
+    setSaveErr(null)
+  }
+  function patchPolicy(p: Partial<PolicyEnforcement>) {
+    setPolicyDraft(d => d ? { ...d, ...p } : d)
     setSaveState('idle')
     setSaveErr(null)
   }
@@ -665,6 +702,21 @@ function BookingSettingsPanel() {
       const next = await updateEditorBookingSettings(payload)
       setData(next)
       setDraft(next)
+
+      // Persist enforcement fields too. Best-effort: a partial save success on
+      // booking settings shouldn't get rolled back if the policy patch fails,
+      // but we do surface the error.
+      if (policyDraft) {
+        const polNext = await updateEditorPolicies({
+          require_policy_agreement:       policyDraft.require_policy_agreement,
+          forfeit_deposit_on_late_cancel: policyDraft.forfeit_deposit_on_late_cancel,
+          max_reschedules_per_booking:    policyDraft.max_reschedules_per_booking,
+          late_grace_period_minutes:      policyDraft.late_grace_period_minutes,
+        })
+        const norm = normalizeEnforcement(polNext)
+        setPolicyData(norm); setPolicyDraft(norm)
+      }
+
       setSaveState('saved')
     } catch (e) {
       setSaveState('error')
@@ -815,6 +867,52 @@ function BookingSettingsPanel() {
           />
         </div>
       </section>
+
+      {/* Enforcement rules — moved from the old Policies tab. These are the
+          knobs BookReady acts on automatically; the public-facing copy lives
+          in Website → Policies. */}
+      {policyDraft && (
+        <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+          <SectionTitle icon={ShieldCheck} label="Enforcement rules" hint="Real rules — BookReady enforces these automatically." />
+
+          <Toggle
+            label="Require clients to agree to your policies"
+            hint="Adds a checkbox to the booking form. Bookings are rejected without it."
+            on={policyDraft.require_policy_agreement}
+            onToggle={() => patchPolicy({ require_policy_agreement: !policyDraft.require_policy_agreement })}
+          />
+
+          <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
+            <Toggle
+              label="Forfeit deposit on late cancellation"
+              hint="When a client cancels within the cancellation window, their deposit becomes non-refundable. You can still refund manually."
+              on={policyDraft.forfeit_deposit_on_late_cancel}
+              onToggle={() => patchPolicy({ forfeit_deposit_on_late_cancel: !policyDraft.forfeit_deposit_on_late_cancel })}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-[rgba(18,18,18,0.06)] pt-3">
+            <NumberField
+              label="Max reschedules per booking"
+              value={policyDraft.max_reschedules_per_booking ?? 0}
+              onChange={v => patchPolicy({ max_reschedules_per_booking: v <= 0 ? null : v })}
+              min={0}
+              max={50}
+              suffix="0 = unlimited"
+              hint="Cap how many times a client can reschedule a single appointment via the manage link."
+            />
+            <NumberField
+              label="Late grace period"
+              value={policyDraft.late_grace_period_minutes}
+              onChange={v => patchPolicy({ late_grace_period_minutes: v })}
+              min={0}
+              max={240}
+              suffix="minutes"
+              hint="How many minutes past the start time a client is still considered on time."
+            />
+          </div>
+        </section>
+      )}
 
       {/* Save bar */}
       <div className="sticky bottom-0 bg-cream/95 backdrop-blur border-t border-[rgba(18,18,18,0.08)] pt-3 pb-2 flex items-center justify-between gap-3">
@@ -1937,446 +2035,6 @@ function BusinessSettingsPanel() {
         onSave={save}
       />
     </div>
-  )
-}
-
-// ── Policies Settings panel ─────────────────────────────────────────────────
-
-const POLICY_FIELDS: { key: keyof BusinessPolicy; label: string; placeholder: string; hint?: string }[] = [
-  { key: 'cancellation_policy', label: 'Cancellation policy', placeholder: '24 hours notice required for cancellations…',
-    hint: 'How much notice clients need to give and any fees.' },
-  { key: 'late_policy',         label: 'Late arrival policy', placeholder: 'After 15 minutes, your appointment may be cancelled…' },
-  { key: 'no_show_policy',      label: 'No-show policy',      placeholder: 'No-shows are charged the full service price…' },
-  { key: 'deposit_policy',      label: 'Deposit policy',      placeholder: 'A 25% deposit is required at booking. Non-refundable.' },
-  { key: 'reschedule_policy',   label: 'Reschedule policy',   placeholder: 'Reschedule up to 24 hours before your appointment.' },
-  { key: 'extra_notes',         label: 'Additional notes',    placeholder: 'Anything else clients should know before they book.' },
-]
-
-function PoliciesSettingsPanel() {
-  const [data,    setData]    = useState<BusinessPolicy | null>(null)
-  const [draft,   setDraft]   = useState<BusinessPolicy | null>(null)
-  // Cross-section pull-throughs so the owner can see the whole policy stack
-  // in one place. We don't edit these here — just display + deep-link.
-  const [booking, setBooking] = useState<BookingSettings | null>(null)
-  const [payment, setPayment] = useState<PaymentSettings | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [loadErr, setLoadErr] = useState<string | null>(null)
-  const [saveState, setSaveState] = useState<SaveState>('idle')
-  const [saveErr,   setSaveErr]   = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    Promise.all([
-      getEditorPolicies(),
-      getEditorBookingSettings().catch(() => null),
-      getEditorPaymentSettings().catch(() => null),
-    ])
-      .then(([p, bs, ps]) => {
-        if (cancelled) return
-        const normalized = normalizePolicy(p)
-        setData(normalized); setDraft(normalized)
-        setBooking(bs); setPayment(ps)
-      })
-      .catch(e => { if (!cancelled) setLoadErr(e instanceof Error ? e.message : 'Failed to load') })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
-  }, [])
-
-  const dirty = useMemo(() => {
-    if (!data || !draft) return false
-    return JSON.stringify(data) !== JSON.stringify(draft)
-  }, [data, draft])
-
-  const copyCount = useMemo(() => {
-    if (!draft) return 0
-    return POLICY_FIELDS.filter(({ key }) => {
-      const v = draft[key]
-      return typeof v === 'string' && v.trim().length > 0
-    }).length
-  }, [draft])
-
-  function patch(p: Partial<BusinessPolicy>) {
-    setDraft(d => d ? { ...d, ...p } : d)
-    setSaveState('idle'); setSaveErr(null)
-  }
-  function patchText(key: keyof BusinessPolicy, value: string) {
-    patch({ [key]: value } as Partial<BusinessPolicy>)
-  }
-
-  async function save() {
-    if (!draft) return
-    setSaveState('saving'); setSaveErr(null)
-    try {
-      // Empty strings → null so old policies clear properly.
-      const payload: Partial<BusinessPolicy> = {}
-      for (const { key } of POLICY_FIELDS) {
-        const v = (draft[key] as string | null) ?? ''
-        ;(payload as Record<string, string | null>)[key] = v.trim().length > 0 ? v : null
-      }
-      payload.late_grace_period_minutes      = draft.late_grace_period_minutes ?? 0
-      payload.forfeit_deposit_on_late_cancel = !! draft.forfeit_deposit_on_late_cancel
-      payload.max_reschedules_per_booking    = draft.max_reschedules_per_booking ?? null
-      payload.require_policy_agreement       = !! draft.require_policy_agreement
-      // Custom groups — strip empties so a half-typed row doesn't error on the API,
-      // and drop trailing-whitespace-only headings/titles.
-      payload.custom_groups = (draft.custom_groups ?? [])
-        .map(g => ({
-          heading: (g.heading ?? '').trim(),
-          items: (g.items ?? [])
-            .map(it => ({
-              title:   (it.title   ?? '').trim(),
-              content: (it.content ?? '').trim(),
-            }))
-            .filter(it => it.title.length > 0),
-        }))
-        .filter(g => g.heading.length > 0)
-      const next = await updateEditorPolicies(payload)
-      const normalized = normalizePolicy(next)
-      setData(normalized); setDraft(normalized)
-      setSaveState('saved')
-    } catch (e) {
-      setSaveState('error')
-      setSaveErr(e instanceof Error ? e.message : 'Save failed')
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center gap-2 text-xs text-muted-text px-1 py-8">
-        <Loader2 size={14} className="animate-spin" /> Loading policies…
-      </div>
-    )
-  }
-  if (loadErr || !draft) {
-    return (
-      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-[#b42828] flex items-center gap-2">
-        <AlertCircle size={14} /> {loadErr ?? 'Could not load policies'}
-      </div>
-    )
-  }
-
-  const currency = (payment?.currency ?? 'USD').toUpperCase()
-  const sym      = currency === 'USD' ? '$' : ''
-
-  return (
-    <div className="space-y-3">
-      <Link
-        href={hrefFor('overview')}
-        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
-      >
-        ← Back to Settings
-      </Link>
-
-      <header className="px-1">
-        <h1 className="text-base font-bold text-near-black">Policies</h1>
-        <p className="text-xs text-muted-text mt-0.5">
-          Enforcement rules that actually do something, plus the copy your clients read on your site and emails.
-        </p>
-      </header>
-
-      {/* ── Enforcement rules (live here) ── */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
-        <SectionTitle icon={ShieldCheck} label="Enforcement rules" hint="Real rules — BookReady enforces these automatically." />
-
-        <Toggle
-          label="Require clients to agree to your policies"
-          hint="Adds a checkbox to the booking form. Bookings are rejected without it."
-          on={!! draft.require_policy_agreement}
-          onToggle={() => patch({ require_policy_agreement: !draft.require_policy_agreement })}
-        />
-
-        <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
-          <Toggle
-            label="Forfeit deposit on late cancellation"
-            hint="When a client cancels within the cancellation window, their deposit becomes non-refundable. You can still refund manually."
-            on={!! draft.forfeit_deposit_on_late_cancel}
-            onToggle={() => patch({ forfeit_deposit_on_late_cancel: !draft.forfeit_deposit_on_late_cancel })}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-[rgba(18,18,18,0.06)] pt-3">
-          <NumberField
-            label="Max reschedules per booking"
-            value={draft.max_reschedules_per_booking ?? 0}
-            onChange={v => patch({ max_reschedules_per_booking: v <= 0 ? null : v })}
-            min={0}
-            max={50}
-            suffix="0 = unlimited"
-            hint="Cap how many times a client can reschedule a single appointment via the manage link."
-          />
-          <NumberField
-            label="Late grace period"
-            value={draft.late_grace_period_minutes ?? 0}
-            onChange={v => patch({ late_grace_period_minutes: v })}
-            min={0}
-            max={240}
-            suffix="minutes"
-            hint="Auto-no-show enforcement cron coming soon. Setting saved either way."
-          />
-        </div>
-      </section>
-
-      {/* ── Rules configured elsewhere (read-only summary) ── */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-2.5">
-        <SectionTitle icon={ExternalLink} label="Set elsewhere" hint="These rules live in other tabs — shown here for context." />
-
-        <PolicyReadout
-          label="Cancellation window"
-          value={`${booking?.cancellation_window_hours ?? 24} hour${(booking?.cancellation_window_hours ?? 24) === 1 ? '' : 's'} notice required`}
-          href={hrefFor('booking')}
-        />
-        <PolicyReadout
-          label="Reschedule window"
-          value={`${booking?.reschedule_window_hours ?? 24} hour${(booking?.reschedule_window_hours ?? 24) === 1 ? '' : 's'} notice required`}
-          href={hrefFor('booking')}
-        />
-        <PolicyReadout
-          label="No-show fee"
-          value={payment?.no_show_fee_amount ? `${sym}${payment.no_show_fee_amount.toFixed(2)} charged to saved card` : 'Not configured'}
-          href={hrefFor('payments')}
-          muted={! payment?.no_show_fee_amount}
-        />
-        <PolicyReadout
-          label="Late-cancel fee"
-          value={payment?.late_cancel_fee_amount ? `${sym}${payment.late_cancel_fee_amount.toFixed(2)} charged to saved card` : 'Not configured'}
-          href={hrefFor('payments')}
-          muted={! payment?.late_cancel_fee_amount}
-        />
-        <PolicyReadout
-          label="Deposit"
-          value={payment?.deposits_enabled
-            ? (payment.deposit_type === 'percent'
-                ? `${payment.deposit_amount ?? 0}% deposit required`
-                : `${sym}${(payment.deposit_amount ?? 0).toFixed(2)} flat deposit required`)
-            : 'No deposit required'}
-          href={hrefFor('payments')}
-          muted={! payment?.deposits_enabled}
-        />
-      </section>
-
-      {/* ── Client-facing copy ── */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
-        <div className="flex items-baseline justify-between gap-3">
-          <SectionTitle icon={FileText} label="Client-facing copy" hint="Text that appears on your booking site and in confirmation emails." />
-          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text whitespace-nowrap">
-            {copyCount}/{POLICY_FIELDS.length} set
-          </span>
-        </div>
-        {POLICY_FIELDS.map(({ key, label, placeholder, hint }) => (
-          <TextAreaField
-            key={key}
-            label={label}
-            value={(draft[key] as string) ?? ''}
-            onChange={v => patchText(key, v)}
-            placeholder={placeholder}
-            hint={hint}
-            rows={3}
-          />
-        ))}
-      </section>
-
-      {/* ── Custom policy sections ── */}
-      <CustomPolicyGroupsEditor
-        groups={draft.custom_groups ?? []}
-        onChange={(next) => patch({ custom_groups: next })}
-      />
-
-      <SaveBar
-        dirty={dirty}
-        saveState={saveState}
-        saveErr={saveErr}
-        onSave={save}
-      />
-    </div>
-  )
-}
-
-function normalizePolicy(p: BusinessPolicy): BusinessPolicy {
-  const rawGroups = Array.isArray(p.custom_groups) ? p.custom_groups : []
-  return {
-    id: p.id,
-    cancellation_policy: p.cancellation_policy ?? '',
-    late_policy:         p.late_policy         ?? '',
-    no_show_policy:      p.no_show_policy      ?? '',
-    deposit_policy:      p.deposit_policy      ?? '',
-    reschedule_policy:   p.reschedule_policy   ?? '',
-    extra_notes:         p.extra_notes         ?? '',
-    late_grace_period_minutes:      p.late_grace_period_minutes      ?? 0,
-    forfeit_deposit_on_late_cancel: !! p.forfeit_deposit_on_late_cancel,
-    max_reschedules_per_booking:    p.max_reschedules_per_booking    ?? null,
-    require_policy_agreement:       !! p.require_policy_agreement,
-    custom_groups: rawGroups.map(g => ({
-      heading: g?.heading ?? '',
-      items: Array.isArray(g?.items) ? g.items.map(it => ({
-        title:   it?.title   ?? '',
-        content: it?.content ?? '',
-      })) : [],
-    })),
-  }
-}
-
-function PolicyReadout({
-  label, value, href, muted,
-}: {
-  label: string
-  value: string
-  href:  string
-  muted?: boolean
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center justify-between gap-3 py-2 border-b border-[rgba(18,18,18,0.04)] last:border-b-0 group"
-    >
-      <div className="min-w-0">
-        <p className="text-[11px] font-semibold text-near-black">{label}</p>
-        <p className={cn('text-[11px] mt-0.5 truncate', muted ? 'text-muted-text/70' : 'text-muted-text')}>
-          {value}
-        </p>
-      </div>
-      <ChevronRight size={12} className="text-muted-text group-hover:text-near-black flex-shrink-0" />
-    </Link>
-  )
-}
-
-// ── Custom policy groups editor ─────────────────────────────────────────────
-
-// Keep the policies tab from sprawling into walls of text — owners can
-// add at most 2 custom sections × 3 items each.
-const CUSTOM_POLICY_MAX_GROUPS         = 2
-const CUSTOM_POLICY_MAX_ITEMS_PER_GROUP = 3
-
-function CustomPolicyGroupsEditor({
-  groups, onChange,
-}: {
-  groups: PolicyCustomGroup[]
-  onChange: (next: PolicyCustomGroup[]) => void
-}) {
-  function addGroup() {
-    if (groups.length >= CUSTOM_POLICY_MAX_GROUPS) return
-    onChange([...groups, { heading: '', items: [{ title: '', content: '' }] }])
-  }
-  function patchGroup(gi: number, p: Partial<PolicyCustomGroup>) {
-    onChange(groups.map((g, idx) => idx === gi ? { ...g, ...p } : g))
-  }
-  function removeGroup(gi: number) {
-    onChange(groups.filter((_, idx) => idx !== gi))
-  }
-  function addItem(gi: number) {
-    const g = groups[gi]
-    if (!g) return
-    if (g.items.length >= CUSTOM_POLICY_MAX_ITEMS_PER_GROUP) return
-    patchGroup(gi, { items: [...g.items, { title: '', content: '' }] })
-  }
-  function patchItem(gi: number, ii: number, p: Partial<{ title: string; content: string }>) {
-    const g = groups[gi]
-    if (!g) return
-    patchGroup(gi, { items: g.items.map((it, idx) => idx === ii ? { ...it, ...p } : it) })
-  }
-  function removeItem(gi: number, ii: number) {
-    const g = groups[gi]
-    if (!g) return
-    patchGroup(gi, { items: g.items.filter((_, idx) => idx !== ii) })
-  }
-
-  return (
-    <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <SectionTitle
-          icon={Plus}
-          label="Custom policy sections"
-          hint={`Add your own sections — up to ${CUSTOM_POLICY_MAX_GROUPS}, with ${CUSTOM_POLICY_MAX_ITEMS_PER_GROUP} items each.`}
-        />
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <span className="text-[10px] font-bold tracking-[0.06em] uppercase text-muted-text">
-            {groups.length}/{CUSTOM_POLICY_MAX_GROUPS}
-          </span>
-          <button
-            type="button"
-            onClick={addGroup}
-            disabled={groups.length >= CUSTOM_POLICY_MAX_GROUPS}
-            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2.5 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Plus size={12} /> Add section
-          </button>
-        </div>
-      </div>
-
-      {groups.length === 0 && (
-        <p className="text-[11px] text-muted-text italic">
-          No custom sections yet. Use these for product care, aftercare instructions, parking notes, or anything else clients need to know.
-        </p>
-      )}
-
-      {groups.map((g, gi) => (
-        <div key={gi} className="bg-cream border border-[rgba(18,18,18,0.08)] p-3 space-y-2.5">
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <TextField
-                label={`Section ${gi + 1} heading`}
-                value={g.heading}
-                onChange={v => patchGroup(gi, { heading: v })}
-                placeholder="Aftercare, Parking, Add-Ons…"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => removeGroup(gi)}
-              className="w-9 h-9 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600"
-              title="Delete section"
-            >
-              <Trash2 size={12} />
-            </button>
-          </div>
-
-          <div className="space-y-2 pl-2 border-l-2 border-[rgba(18,18,18,0.08)]">
-            {g.items.map((it, ii) => (
-              <div key={ii} className="bg-white border border-[rgba(18,18,18,0.08)] p-2.5 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
-                    Item {ii + 1}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeItem(gi, ii)}
-                    className="w-6 h-6 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600"
-                    title="Delete item"
-                  >
-                    <X size={11} />
-                  </button>
-                </div>
-                <TextField
-                  label="Title"
-                  value={it.title}
-                  onChange={v => patchItem(gi, ii, { title: v })}
-                  placeholder="What clients see as the bullet heading"
-                />
-                <TextAreaField
-                  label="Content"
-                  value={it.content ?? ''}
-                  onChange={v => patchItem(gi, ii, { content: v })}
-                  placeholder="The body text shown under the title."
-                  rows={2}
-                />
-              </div>
-            ))}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold tracking-[0.06em] uppercase text-muted-text">
-                {g.items.length}/{CUSTOM_POLICY_MAX_ITEMS_PER_GROUP}
-              </span>
-              <button
-                type="button"
-                onClick={() => addItem(gi)}
-                disabled={g.items.length >= CUSTOM_POLICY_MAX_ITEMS_PER_GROUP}
-                className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <Plus size={11} /> Add item
-              </button>
-            </div>
-          </div>
-        </div>
-      ))}
-    </section>
   )
 }
 

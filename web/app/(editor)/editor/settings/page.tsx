@@ -3,7 +3,7 @@ import SettingsHub from '@/components/editor/SettingsHub'
 
 export default function SettingsPage() {
   return (
-    <EditorShell>
+    <EditorShell pageHeader={false}>
       <SettingsHub />
     </EditorShell>
   )
