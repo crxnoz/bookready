@@ -34,6 +34,17 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenancy' => \App\Http\Middleware\InitializeTenancyBySubdomain::class,
             'admin'   => \App\Http\Middleware\EnsureAdmin::class,
         ]);
+
+        // Phase S6 — disable the default "redirect guests to route('login')"
+        // behavior. Laravel 11 ships with a default redirectGuestsTo
+        // callback that tries to resolve a `login` named route; we're an
+        // API-only app and don't define one, so the callback throws
+        // RouteNotFoundException and surfaces as a 500 for any non-JSON
+        // request to a protected endpoint. Returning null makes
+        // Authenticate->redirectTo() return null, AuthenticationException
+        // is thrown cleanly, and our exception handler (below) renders
+        // it as 401 JSON.
+        $middleware->redirectGuestsTo(fn () => null);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Phase S6 — force JSON responses for /api/* paths regardless of
