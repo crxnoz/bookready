@@ -50,6 +50,8 @@ import {
   AccountProfile,
   AccountUpdatePayload,
   AdminTenantsResponse,
+  PlatformAnnouncement,
+  PlatformAnnouncementPayload,
   BookingSettings,
   BookingSettingsPayload,
   ChangePasswordPayload,
@@ -549,6 +551,41 @@ export async function deleteAdminTenant(id: string, confirmSlug: string): Promis
     method: 'DELETE',
     body:   JSON.stringify({ confirm_slug: confirmSlug }),
   })
+}
+
+// ── Platform announcements ──────────────────────────────────────────────────
+
+/** Public-ish — any authed user can fetch active announcements for the
+ *  dashboard. */
+export async function getPlatformAnnouncements(): Promise<PlatformAnnouncement[]> {
+  return request<PlatformAnnouncement[]>('/platform/announcements')
+}
+
+export async function getAdminAnnouncements(): Promise<PlatformAnnouncement[]> {
+  return request<PlatformAnnouncement[]>('/admin/announcements')
+}
+
+export async function createAdminAnnouncement(
+  payload: PlatformAnnouncementPayload,
+): Promise<PlatformAnnouncement> {
+  return request<PlatformAnnouncement>('/admin/announcements', {
+    method: 'POST',
+    body:   JSON.stringify(payload),
+  })
+}
+
+export async function updateAdminAnnouncement(
+  id: number,
+  payload: PlatformAnnouncementPayload,
+): Promise<PlatformAnnouncement> {
+  return request<PlatformAnnouncement>(`/admin/announcements/${id}`, {
+    method: 'PATCH',
+    body:   JSON.stringify(payload),
+  })
+}
+
+export async function deleteAdminAnnouncement(id: number): Promise<{ deleted?: boolean }> {
+  return request(`/admin/announcements/${id}`, { method: 'DELETE' })
 }
 
 // ── Settings: Notifications ─────────────────────────────────────────────────

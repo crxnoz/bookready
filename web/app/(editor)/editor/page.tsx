@@ -29,37 +29,12 @@ import {
   getEditorPolicies,
   getStripeConnectStatus,
   getEditorAppointments,
+  getPlatformAnnouncements,
 } from '@/lib/api'
 import type {
   AuthUser, BusinessProfile, Service, HoursEntry, BusinessPolicy,
-  StripeConnectStatus, Appointment,
+  StripeConnectStatus, Appointment, PlatformAnnouncement,
 } from '@/lib/types'
-
-// ── Announcements (platform-wide news) ──────────────────────────────────────
-// Edit this array to push news to every tenant's dashboard. Keep the most
-// recent first; the dashboard renders the top 2.
-const ANNOUNCEMENTS: {
-  id: string
-  date: string                       // ISO yyyy-mm-dd
-  title: string
-  body: string
-  cta?: { label: string; href: string }
-}[] = [
-  {
-    id: 'p16-booking-form',
-    date: '2026-05-26',
-    title: 'Custom booking-form questions are live',
-    body: 'Ask clients anything before they book — text, checkbox, dropdown, or image upload. Scope a question to specific services or show it on every booking.',
-    cta: { label: 'Open the form builder', href: '/editor/booking-form' },
-  },
-  {
-    id: 'p15-payments',
-    date: '2026-05-24',
-    title: 'Payments tab gets Transactions + Payouts',
-    body: 'Search receipts by number, filter transactions by status, and watch payouts flow from Stripe — all under Payments.',
-    cta: { label: 'Open Payments', href: '/editor/payments' },
-  },
-]
 
 // ── Root ────────────────────────────────────────────────────────────────────
 
@@ -79,6 +54,7 @@ function DashboardBody() {
   const [policies, setPolicies] = useState<BusinessPolicy | null>(null)
   const [stripe,   setStripe]   = useState<StripeConnectStatus | null>(null)
   const [appts,    setAppts]    = useState<Appointment[]>([])
+  const [announcements, setAnnouncements] = useState<PlatformAnnouncement[]>([])
   const [loading,  setLoading]  = useState(true)
   const [loadErr,  setLoadErr]  = useState<string | null>(null)
 
@@ -94,8 +70,9 @@ function DashboardBody() {
       // Pull a generous window so we can compute today / week / month buckets
       // without paginating.
       getEditorAppointments({ limit: 200 }).catch(() => [] as Appointment[]),
+      getPlatformAnnouncements().catch(() => [] as PlatformAnnouncement[]),
     ])
-      .then(([u, b, sv, hr, pol, st, ap]) => {
+      .then(([u, b, sv, hr, pol, st, ap, an]) => {
         if (cancelled) return
         setUser(u as AuthUser | null)
         setBusiness(b as BusinessProfile | null)
@@ -104,6 +81,7 @@ function DashboardBody() {
         setPolicies(pol as BusinessPolicy | null)
         setStripe(st as StripeConnectStatus | null)
         setAppts(Array.isArray(ap) ? (ap as Appointment[]) : [])
+        setAnnouncements(Array.isArray(an) ? (an as PlatformAnnouncement[]) : [])
       })
       .catch(e => { if (! cancelled) setLoadErr(e instanceof Error ? e.message : 'Failed to load') })
       .finally(() => { if (! cancelled) setLoading(false) })
@@ -194,7 +172,7 @@ function DashboardBody() {
       </header>
 
       {/* ── 2. Announcements ── */}
-      <AnnouncementsBlock />
+      <AnnouncementsBlock items={announcements} />
 
       {/* ── 3. Today's appointments ── */}
       <section>
@@ -357,8 +335,11 @@ function StatusPill({ status }: { status: string }) {
   )
 }
 
-function AnnouncementsBlock() {
-  const shown = ANNOUNCEMENTS.slice(0, 2)
+function AnnouncementsBlock({ items }: { items: PlatformAnnouncement[] }) {
+  // Hide the section entirely when there's nothing to show, so dashboards
+  // don't render an empty header for tenants who joined before any
+  // announcement was posted.
+  const shown = items.slice(0, 2)
   if (shown.length === 0) return null
   return (
     <section>
@@ -368,29 +349,44 @@ function AnnouncementsBlock() {
         subtitle="What's new from the BookReady team."
       />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {shown.map(a => (
-          <article
-            key={a.id}
-            className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 flex flex-col"
-          >
-            <div className="flex items-start gap-2 mb-1.5">
-              <Sparkles size={13} className="text-near-black mt-0.5 flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-bold text-near-black leading-tight">{a.title}</p>
-                <p className="text-[10px] text-muted-text mt-0.5">{fmtDate(a.date)}</p>
+        {shown.map(a => {
+          const when = a.published_at ?? a.created_at ?? ''
+          const isInternal = !! a.cta_href && a.cta_href.startsWith('/')
+          return (
+            <article
+              key={a.id}
+              className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 flex flex-col"
+            >
+              <div className="flex items-start gap-2 mb-1.5">
+                <Sparkles size={13} className="text-near-black mt-0.5 flex-shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-bold text-near-black leading-tight">{a.title}</p>
+                  {when && <p className="text-[10px] text-muted-text mt-0.5">{fmtDate(when.slice(0, 10))}</p>}
+                </div>
               </div>
-            </div>
-            <p className="text-[12px] text-near-black/80 leading-snug">{a.body}</p>
-            {a.cta && (
-              <Link
-                href={a.cta.href}
-                className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-near-black hover:underline self-start"
-              >
-                {a.cta.label} <ArrowUpRight size={11} />
-              </Link>
-            )}
-          </article>
-        ))}
+              <p className="text-[12px] text-near-black/80 leading-snug whitespace-pre-line">{a.body}</p>
+              {a.cta_label && a.cta_href && (
+                isInternal ? (
+                  <Link
+                    href={a.cta_href}
+                    className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-near-black hover:underline self-start"
+                  >
+                    {a.cta_label} <ArrowUpRight size={11} />
+                  </Link>
+                ) : (
+                  <a
+                    href={a.cta_href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-near-black hover:underline self-start"
+                  >
+                    {a.cta_label} <ArrowUpRight size={11} />
+                  </a>
+                )
+              )}
+            </article>
+          )
+        })}
       </div>
     </section>
   )

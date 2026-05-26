@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminTenantsController;
+use App\Http\Controllers\Api\PlatformAnnouncementsController;
 use App\Http\Controllers\Api\AppointmentPaymentWebhookController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\GoogleAuthController;
@@ -240,6 +241,17 @@ Route::prefix('v1')->group(function () {
     Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
         Route::get   ('tenants',          [AdminTenantsController::class, 'index']);
         Route::delete('tenants/{id}',     [AdminTenantsController::class, 'destroy']);
+        // Platform announcements (admin CRUD)
+        Route::get   ('announcements',        [PlatformAnnouncementsController::class, 'adminIndex']);
+        Route::post  ('announcements',        [PlatformAnnouncementsController::class, 'store']);
+        Route::patch ('announcements/{id}',   [PlatformAnnouncementsController::class, 'update']);
+        Route::delete('announcements/{id}',   [PlatformAnnouncementsController::class, 'destroy']);
+    });
+
+    // ── Platform announcements — read for any authed user (every owner
+    //    needs them on their dashboard) ───────────────────────────────────
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('platform/announcements', [PlatformAnnouncementsController::class, 'index']);
     });
 
     // ── Stripe webhook (no auth, no CSRF) ────────────────────────────────

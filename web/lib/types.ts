@@ -628,6 +628,31 @@ export interface AdminTenantsResponse {
   count:   number
 }
 
+// ── Platform announcements (central, admin-editable) ────────────────────────
+
+export interface PlatformAnnouncement {
+  id:           number
+  title:        string
+  body:         string
+  cta_label:    string | null
+  cta_href:     string | null
+  is_active:    boolean
+  sort_order:   number
+  published_at: string | null
+  created_at?:  string
+  updated_at?:  string
+}
+
+export interface PlatformAnnouncementPayload {
+  title?:        string
+  body?:         string
+  cta_label?:    string | null
+  cta_href?:     string | null
+  is_active?:    boolean
+  sort_order?:   number
+  published_at?: string | null
+}
+
 // ── Account (owner profile + password + sessions) ───────────────────────────
 
 export interface AccountProfile {
