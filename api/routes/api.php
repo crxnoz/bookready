@@ -62,7 +62,11 @@ Route::prefix('v1')->group(function () {
     Route::get('public/sites/{slug}',                     [PublicSiteController::class,       'show']);
     Route::get('public/sites/{slug}/availability',        [PublicAvailabilityController::class, 'show']);
     Route::post('public/sites/{slug}/appointments',       [PublicBookingController::class,     'store']);
-    Route::post('public/sites/{slug}/booking-answer-upload', [PublicBookingAnswerUploadController::class, 'store']);
+    // Phase S3 — public upload throttled to 5/min per IP. Combined with
+    // the active-question + daily-cap gates in the controller this kills
+    // anonymous R2 storage abuse.
+    Route::post('public/sites/{slug}/booking-answer-upload', [PublicBookingAnswerUploadController::class, 'store'])
+        ->middleware('throttle:5,1');
     // Phase S1 — site unlock for password-protected sites. Throttled to
     // make brute-force impractical.
     Route::post('public/sites/{slug}/unlock', [PublicSiteUnlockController::class, 'unlock'])
@@ -86,6 +90,10 @@ Route::prefix('v1')->group(function () {
         Route::get ('google/redirect',         [GoogleAuthController::class, 'redirect']);
         Route::get ('google/callback',         [GoogleAuthController::class, 'callback']);
         Route::post('google/complete-signup',  [GoogleAuthController::class, 'completeSignup']);
+        // Phase S4 — exchange the short-lived ?code= for the real Sanctum
+        // token. Throttled so a leaked code can't be brute-forced.
+        Route::post('google/exchange',         [GoogleAuthController::class, 'exchange'])
+            ->middleware('throttle:30,1');
 
         // Forgot / reset password.
         Route::post('password/forgot', [PasswordResetController::class, 'forgot']);

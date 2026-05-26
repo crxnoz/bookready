@@ -25,14 +25,20 @@ use Laravel\Socialite\Facades\Socialite;
  * Sign-up payload shape (base64 of JSON):
  *   { business_name: string, template?: string, owner_name?: string }
  *
- * Caveat: stateless OAuth means we can't CSRF-validate the state. A
- * tampered state can at worst cause a sign-up with a different business
- * name than the user intended — they'll see the mismatch in the editor
- * and can delete the tenant from the admin area.
+ * Phase S4 security:
+ *   - state is HMAC-SHA256 signed with APP_KEY + carries a single-use nonce
+ *     cached for 10 minutes. Forged or replayed state callbacks are rejected.
+ *   - the final auth payload is NEVER sent back through the URL fragment.
+ *     Instead we mint a short-lived single-use exchange code, cache the
+ *     payload under it for 60 seconds, and redirect with ?code=. The
+ *     frontend POSTs the code to /auth/google/exchange to read the actual
+ *     Sanctum token. Eliminates token-in-URL leakage to history / referrer.
  */
 class GoogleAuthController extends Controller
 {
-    private const APP_BASE = 'https://app.bkrdy.me';
+    private const APP_BASE          = 'https://app.bkrdy.me';
+    private const STATE_TTL_SECONDS = 600;   // 10 minutes
+    private const CODE_TTL_SECONDS  = 60;    // exchange window
 
     public function __construct(
         private readonly TenantProvisioningService $provisioner,
@@ -47,10 +53,9 @@ class GoogleAuthController extends Controller
             return $this->errorBack($intent, 'Google sign-in is not configured. Contact support.');
         }
 
-        $state = base64_encode(json_encode([
-            'intent'  => $intent === 'signup' ? 'signup' : 'signin',
-            'payload' => $payload,
-        ]));
+        // Phase S4 — mint signed state with a single-use nonce. The nonce
+        // is parked in cache and burned on callback to defeat replay.
+        $state = $this->mintState($intent === 'signup' ? 'signup' : 'signin', $payload);
 
         return Socialite::driver('google')
             ->stateless()
@@ -67,9 +72,10 @@ class GoogleAuthController extends Controller
 
     public function callback(Request $request): RedirectResponse
     {
-        // Decode our state envelope first so we know which flow to run.
+        // Decode + verify our signed state envelope FIRST. Forged or
+        // replayed callbacks bounce here.
         $stateRaw = (string) $request->query('state', '');
-        $envelope = $this->decodeState($stateRaw);
+        $envelope = $this->verifyState($stateRaw);
         $intent   = $envelope['intent'] ?? 'signin';
 
         if (! $this->credentialsConfigured()) {
@@ -85,6 +91,13 @@ class GoogleAuthController extends Controller
         // callback URL directly (refresh, bookmark, bot). Avoids a noisy
         // Socialite exception + WARN log for non-error traffic.
         if (! $request->filled('code')) {
+            return $this->errorBack($intent, 'Sign-in didn’t complete. Please start again.');
+        }
+
+        // Phase S4 — reject when state is missing, tampered, replayed, or
+        // expired. Without this, any OAuth callback URL crafted by an
+        // attacker could mint a token for the visitor's browser.
+        if ($envelope === [] || empty($envelope['nonce'])) {
             return $this->errorBack($intent, 'Sign-in didn’t complete. Please start again.');
         }
 
@@ -296,6 +309,32 @@ class GoogleAuthController extends Controller
         ]);
     }
 
+    /**
+     * Phase S4 — exchange a short-lived single-use auth code for the real
+     * Sanctum token. Replaces the prior URL-fragment scheme.
+     *
+     * POST /api/v1/auth/google/exchange { code }
+     */
+    public function exchange(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'code' => 'required|string|size:40',
+        ]);
+
+        $cacheKey = "google_auth_code:{$validated['code']}";
+        $payload  = Cache::get($cacheKey);
+        if (! is_array($payload) || empty($payload['token'])) {
+            return response()->json([
+                'message' => 'Sign-in session expired or already used. Please try again.',
+            ], 410);
+        }
+
+        // Single-use: burn immediately, before returning.
+        Cache::forget($cacheKey);
+
+        return response()->json($payload);
+    }
+
     // ── Shared finalization ──────────────────────────────────────────────
 
     private function finishWithUser(User $user, string $tokenName): RedirectResponse
@@ -314,20 +353,88 @@ class GoogleAuthController extends Controller
                 'is_admin'  => (bool) ($user->is_admin ?? false),
             ],
         ];
-        $fragment = base64_encode(json_encode($payload));
-        return redirect()->away(self::APP_BASE . '/auth/google/complete#' . $fragment);
+
+        // Phase S4 — park the payload under a short-lived single-use code
+        // and redirect with ?code=. Never put the token in the URL fragment
+        // (it leaks to browser history + referrer headers from any redirect).
+        $code = Str::random(40);
+        Cache::put("google_auth_code:{$code}", $payload, self::CODE_TTL_SECONDS);
+
+        return redirect()->away(self::APP_BASE . '/auth/google/complete?code=' . $code);
     }
 
-    // ── State / payload helpers ──────────────────────────────────────────
+    // ── State signing / verification ─────────────────────────────────────
 
-    /** @return array{intent?: string, payload?: string} */
-    private function decodeState(string $stateRaw): array
+    /**
+     * Mint a signed state envelope:
+     *   base64url( JSON({ intent, payload, nonce, exp, sig }) )
+     * where sig = HMAC-SHA256(intent + "|" + payload + "|" + nonce + "|" + exp, APP_KEY)
+     *
+     * The nonce is stored in cache for STATE_TTL_SECONDS and burned on
+     * verify so a captured state cannot be replayed.
+     */
+    private function mintState(string $intent, string $payload): string
+    {
+        $nonce = Str::random(32);
+        $exp   = time() + self::STATE_TTL_SECONDS;
+        $sig   = $this->signState($intent, $payload, $nonce, $exp);
+
+        Cache::put("google_oauth_nonce:{$nonce}", true, self::STATE_TTL_SECONDS);
+
+        $json = json_encode([
+            'intent'  => $intent,
+            'payload' => $payload,
+            'nonce'   => $nonce,
+            'exp'     => $exp,
+            'sig'     => $sig,
+        ]);
+        return rtrim(strtr(base64_encode($json), '+/', '-_'), '=');
+    }
+
+    /**
+     * Verify + consume a state envelope. Returns the decoded envelope on
+     * success or `[]` when the state is missing/tampered/expired/replayed.
+     *
+     * @return array{intent?: string, payload?: string, nonce?: string}
+     */
+    private function verifyState(string $stateRaw): array
     {
         if ($stateRaw === '') return [];
-        $json = base64_decode($stateRaw, true);
+
+        $padded = $stateRaw . str_repeat('=', (4 - strlen($stateRaw) % 4) % 4);
+        $json   = base64_decode(strtr($padded, '-_', '+/'), true);
         if ($json === false) return [];
+
         $decoded = json_decode($json, true);
-        return is_array($decoded) ? $decoded : [];
+        if (! is_array($decoded)) return [];
+
+        $intent  = (string) ($decoded['intent']  ?? '');
+        $payload = (string) ($decoded['payload'] ?? '');
+        $nonce   = (string) ($decoded['nonce']   ?? '');
+        $exp     = (int)    ($decoded['exp']     ?? 0);
+        $sig     = (string) ($decoded['sig']     ?? '');
+
+        if ($nonce === '' || $sig === '' || $exp <= time()) return [];
+
+        $expected = $this->signState($intent, $payload, $nonce, $exp);
+        if (! hash_equals($expected, $sig)) return [];
+
+        // Single-use: pop the nonce. If it's already gone, this is a replay.
+        $cacheKey = "google_oauth_nonce:{$nonce}";
+        if (! Cache::has($cacheKey)) return [];
+        Cache::forget($cacheKey);
+
+        return [
+            'intent'  => $intent,
+            'payload' => $payload,
+            'nonce'   => $nonce,
+        ];
+    }
+
+    private function signState(string $intent, string $payload, string $nonce, int $exp): string
+    {
+        $key = (string) config('app.key');
+        return hash_hmac('sha256', "{$intent}|{$payload}|{$nonce}|{$exp}", $key);
     }
 
     /** @return array<string, mixed> */
