@@ -257,7 +257,13 @@ export default function AppointmentsEditor() {
   const searchParams = useSearchParams()
   const initialFilter: Filter = (() => {
     const q = searchParams?.get('filter')
-    return q && (VALID_FILTERS as string[]).includes(q) ? (q as Filter) : 'upcoming'
+    if (q && (VALID_FILTERS as string[]).includes(q)) return q as Filter
+    // Phase 13 — when arriving filtered to a customer, default to 'all'
+    // so their full history surfaces immediately (otherwise upcoming-
+    // only would hide past visits, which is usually the point of
+    // opening someone's history).
+    if (searchParams?.get('customer_id')) return 'all'
+    return 'upcoming'
   })()
 
   const [appointments, setAppointments] = useState<Appointment[]>([])
@@ -287,6 +293,21 @@ export default function AppointmentsEditor() {
   const [chargeBalanceTarget, setChargeBalanceTarget] = useState<Appointment | null>(null)
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings | null>(null)
 
+  // Phase 13 — deep-link from Customers drawer:
+  //   ?customer_id=N           → filter list to that customer's appointments
+  //   ?new=1&customer_id=N     → also open the New Appointment dialog,
+  //                              pre-filled with that customer's contact info
+  // Pinned name surfaces in the filter banner so the owner sees who's
+  // currently being filtered before they jump in.
+  const customerIdParam = (() => {
+    const raw = searchParams?.get('customer_id')
+    const n = raw ? parseInt(raw, 10) : NaN
+    return Number.isFinite(n) ? n : null
+  })()
+  const wantsNew = searchParams?.get('new') === '1'
+  const [filterCustomerName, setFilterCustomerName] = useState<string | null>(null)
+  const [filterCustomerId,   setFilterCustomerId]   = useState<number | null>(customerIdParam)
+
   useEffect(() => {
     Promise.all([
       getEditorAppointments({ limit: 200 }),
@@ -305,6 +326,44 @@ export default function AppointmentsEditor() {
       .catch(() => setError('Failed to load appointments.'))
       .finally(() => setLoading(false))
   }, [])
+
+  // Phase 13 — when arriving via the Customers drawer, hydrate the
+  // customer for the banner label + the optional create-pre-fill.
+  // Runs once per customer_id; clearing the filter resets state.
+  useEffect(() => {
+    if (filterCustomerId == null) {
+      setFilterCustomerName(null)
+      return
+    }
+    let cancelled = false
+    import('@/lib/api').then(({ getEditorCustomer }) => getEditorCustomer(filterCustomerId))
+      .then(c => {
+        if (cancelled) return
+        setFilterCustomerName(c.name)
+        if (wantsNew) {
+          // Pre-fill the new-appointment form with the customer's contact
+          // info, open it, and strip the ?new=1 so a refresh doesn't
+          // re-pop the dialog on every render.
+          setForm(f => ({
+            ...f,
+            customer_name:  c.name,
+            customer_email: c.email ?? '',
+            customer_phone: c.phone ?? '',
+          }))
+          setEditId(null)
+          setFormError(null)
+          setShowForm(true)
+          if (typeof window !== 'undefined') {
+            const url = new URL(window.location.href)
+            url.searchParams.delete('new')
+            window.history.replaceState({}, '', url.toString())
+          }
+        }
+      })
+      .catch(() => { /* leave label empty — filter still applies by id */ })
+    return () => { cancelled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterCustomerId])
 
   const today = todayStr()
   // The date currently displayed by the Today view. Defaults to actual today;
@@ -326,6 +385,10 @@ export default function AppointmentsEditor() {
   }
 
   const filtered = appointments
+    // Phase 13 — customer-scoped filter from the Customers drawer link.
+    // Layered ON TOP of the existing filter chip so the owner can still
+    // narrow to today/week/etc within a single customer's history.
+    .filter(a => filterCustomerId == null || a.customer_id === filterCustomerId)
     .filter(a => {
       if (filter === 'today')    return a.appointment_date === selectedDay
       if (filter === 'week')     return weekDays.includes(a.appointment_date) && a.status !== 'cancelled'
@@ -542,6 +605,36 @@ export default function AppointmentsEditor() {
             <Plus size={11} /> New Appointment
           </button>
         </div>
+
+        {/* Phase 13 — when arriving via a Customer drawer link, surface
+            the active customer filter so the owner knows the list is
+            scoped, with a one-click clear. The list-filter chips still
+            work *within* this scope. */}
+        {filterCustomerId != null && (
+          <div className="flex items-center justify-between gap-3 bg-lavender px-4 py-3 border border-[rgba(18,18,18,0.08)]">
+            <p className="text-[12px] font-semibold text-near-black truncate">
+              Showing appointments for{' '}
+              <span className="font-bold">
+                {filterCustomerName ?? `customer #${filterCustomerId}`}
+              </span>
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setFilterCustomerId(null)
+                setFilterCustomerName(null)
+                if (typeof window !== 'undefined') {
+                  const url = new URL(window.location.href)
+                  url.searchParams.delete('customer_id')
+                  window.history.replaceState({}, '', url.toString())
+                }
+              }}
+              className="text-[10px] font-bold text-near-black underline underline-offset-2 flex-shrink-0 whitespace-nowrap"
+            >
+              Clear filter
+            </button>
+          </div>
+        )}
 
         {/* Stats strip — each cell switches the filter below to that view.
             Today resets the day offset so we always land on actual today. */}

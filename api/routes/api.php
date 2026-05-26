@@ -140,9 +140,11 @@ Route::prefix('v1')->group(function () {
         Route::post('appointments/{appointment}/request-tip',       [AppointmentsController::class, 'requestTip']);
         Route::post('appointments/{appointment}/charge-late-fee',   [AppointmentsController::class, 'chargeLateFee']);
 
-        Route::get('customers',              [CustomersController::class, 'index']);
-        Route::post('customers',             [CustomersController::class, 'store']);
-        Route::patch('customers/{customer}', [CustomersController::class, 'update']);
+        Route::get('customers',                     [CustomersController::class, 'index']);
+        Route::get('customers/{customer}',          [CustomersController::class, 'show']);
+        Route::post('customers',                    [CustomersController::class, 'store']);
+        Route::patch('customers/{customer}',        [CustomersController::class, 'update']);
+        Route::post('customers/{customer}/toggle-vip', [CustomersController::class, 'toggleVip']);
 
         Route::get('staff',              [StaffController::class, 'index']);
         Route::post('staff',             [StaffController::class, 'store']);

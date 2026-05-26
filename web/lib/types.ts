@@ -712,19 +712,59 @@ export interface CustomerAppointmentSummary {
   start_time?: string
 }
 
+/** Phase 13 — server-decided CRM status. VIP is the only manual one
+ *  (clients.is_vip); everything else is derived from appointment
+ *  history in CustomersController::deriveStatus. */
+export type CustomerStatus = 'new' | 'returning' | 'regular' | 'vip' | 'inactive'
+
 export interface Customer {
   id: number
   name: string
   email: string | null
   phone: string | null
   notes: string | null
+  /** Phase 13 — manual override that supersedes the auto status. */
+  is_vip: boolean
+  /** Phase 13 — auto-derived (or 'vip' when is_vip is true). */
+  status: CustomerStatus
   last_appointment_at: string | null
   appointment_count: number
   upcoming_appointment_count: number
+  completed_count: number
   last_appointment: CustomerAppointmentSummary | null
   next_appointment: CustomerAppointmentSummary | null
+  /** Phase 13 — payment rollups across this customer's appointments.
+   *  total_spent = deposits + balances + tips - refunds.
+   *  outstanding_balance = sum of amount_due where balance still owed. */
+  total_spent: number
+  deposits_paid: number
+  outstanding_balance: number
+  last_payment_status: string | null
   created_at: string
   updated_at: string
+}
+
+/** Phase 13 — single appointment row inside the customer detail timeline. */
+export interface CustomerAppointmentRow {
+  id: number
+  appointment_date: string
+  start_time: string
+  end_time: string | null
+  service_name: string
+  service_price: number | null
+  status: string
+  payment_status: string | null
+  deposit_paid_amount: number | null
+  balance_paid_amount: number | null
+  amount_due: number | null
+  tip_amount: number | null
+  refunded_amount: number | null
+}
+
+/** Phase 13 — GET /editor/customers/{id} returns a Customer with the
+ *  full appointment history attached. */
+export interface CustomerDetail extends Customer {
+  appointments: CustomerAppointmentRow[]
 }
 
 export interface CustomerCreatePayload {

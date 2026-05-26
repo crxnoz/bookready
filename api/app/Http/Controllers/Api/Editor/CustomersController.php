@@ -6,10 +6,28 @@ use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
+/**
+ * Phase 13 — Customers CRM.
+ *
+ * Listing returns each client enriched with auto-derived status,
+ * payment rollups (total_spent, deposits_paid, balance_due, last
+ * payment status), and appointment counts. show() also returns the
+ * full appointment timeline. VIP is the only manual override and lives
+ * in clients.is_vip; the other statuses (New/Returning/Regular/Inactive)
+ * are computed from appointment history every request.
+ */
 class CustomersController extends Controller
 {
+    /** Number of days of inactivity before auto-flipping to "inactive". */
+    private const INACTIVE_DAYS = 90;
+
+    /** Minimum completed appointments to count as "regular". */
+    private const REGULAR_MIN_COMPLETED = 4;
+
     // GET /editor/customers
     public function index(Request $request): JsonResponse
     {
@@ -18,6 +36,8 @@ class CustomersController extends Controller
 
         $search = trim((string) $request->input('search', ''));
         $limit  = max(1, min(500, (int) $request->input('limit', 200)));
+
+        $hasVip = Schema::hasColumn('clients', 'is_vip');
 
         $query = DB::table('clients')
             ->orderByDesc('last_booked_at')
@@ -35,27 +55,56 @@ class CustomersController extends Controller
         $clients   = $query->limit($limit)->get();
         $clientIds = $clients->pluck('id')->filter()->values()->all();
 
-        $apptGroups = collect();
+        // One round-trip for every appointment that belongs to any client
+        // in the page. We group client-side because the per-customer
+        // aggregates need to walk the rows anyway (last payment status,
+        // pending balance, etc — not all expressible as plain SUM()s).
+        $apptsByClient = collect();
         if (! empty($clientIds)) {
-            $apptGroups = DB::table('appointments')
-                ->whereIn('client_id', $clientIds)
-                ->whereNotIn('status', ['cancelled'])
-                ->select('client_id', 'appointment_date', 'start_time', 'service_name', 'status')
-                ->orderBy('appointment_date')
-                ->orderBy('start_time')
-                ->get()
-                ->groupBy('client_id');
+            $apptsByClient = $this->loadClientAppointments($clientIds);
         }
 
         $today  = now()->toDateString();
-        $result = $clients->map(function ($c) use ($apptGroups, $today) {
-            $appts = collect($apptGroups->get($c->id, collect()));
-            return $this->formatClient($c, $appts, $today);
-        })->all();
+        $result = $clients->map(fn ($c) => $this->formatClient(
+            $c,
+            $apptsByClient->get($c->id, collect()),
+            $today,
+            $hasVip,
+        ))->all();
 
         tenancy()->end();
 
         return response()->json($result);
+    }
+
+    // GET /editor/customers/{customer}
+    public function show(Request $request, int $customer): JsonResponse
+    {
+        $tenant = Tenant::findOrFail($request->user()->tenant_id);
+        tenancy()->initialize($tenant);
+
+        $row = DB::table('clients')->find($customer);
+        if (! $row) {
+            tenancy()->end();
+            return response()->json(['message' => 'Customer not found.'], 404);
+        }
+
+        $hasVip  = Schema::hasColumn('clients', 'is_vip');
+        $appts   = $this->loadClientAppointments([$customer])->get($customer, collect());
+
+        $base    = $this->formatClient($row, $appts, now()->toDateString(), $hasVip);
+        // Detail view also returns the full timeline so the drawer can
+        // render it without a second round-trip. Reverse-chrono so the
+        // most recent appointment is on top.
+        $base['appointments'] = $appts
+            ->sortByDesc(fn ($a) => $a->appointment_date . ' ' . $a->start_time)
+            ->values()
+            ->map(fn ($a) => $this->formatAppointmentRow($a))
+            ->all();
+
+        tenancy()->end();
+
+        return response()->json($base);
     }
 
     // POST /editor/customers
@@ -89,7 +138,8 @@ class CustomersController extends Controller
         ]);
 
         $row    = DB::table('clients')->find($id);
-        $result = $this->formatClient($row, collect(), now()->toDateString());
+        $hasVip = Schema::hasColumn('clients', 'is_vip');
+        $result = $this->formatClient($row, collect(), now()->toDateString(), $hasVip);
 
         tenancy()->end();
 
@@ -135,30 +185,135 @@ class CustomersController extends Controller
         ]);
 
         $updated = DB::table('clients')->find($customer);
-
-        $appts = DB::table('appointments')
-            ->where('client_id', $customer)
-            ->whereNotIn('status', ['cancelled'])
-            ->select('client_id', 'appointment_date', 'start_time', 'service_name', 'status')
-            ->orderBy('appointment_date')
-            ->orderBy('start_time')
-            ->get();
-
-        $result = $this->formatClient($updated, $appts, now()->toDateString());
+        $hasVip  = Schema::hasColumn('clients', 'is_vip');
+        $appts   = $this->loadClientAppointments([$customer])->get($customer, collect());
+        $result  = $this->formatClient($updated, $appts, now()->toDateString(), $hasVip);
 
         tenancy()->end();
 
         return response()->json($result);
     }
 
-    // ── Shared formatter ──────────────────────────────────────────────────────
-
-    private function formatClient(object $c, \Illuminate\Support\Collection $appts, string $today): array
+    // POST /editor/customers/{customer}/toggle-vip
+    // Body: { is_vip?: bool }  — when omitted, flips the current value.
+    public function toggleVip(Request $request, int $customer): JsonResponse
     {
-        $pastAppts     = $appts->filter(fn ($a) => $a->appointment_date <  $today)->values();
-        $upcomingAppts = $appts->filter(fn ($a) => $a->appointment_date >= $today)->values();
-        $lastAppt      = $pastAppts->last();
-        $nextAppt      = $upcomingAppts->first();
+        $validated = $request->validate([
+            'is_vip' => 'sometimes|boolean',
+        ]);
+
+        $tenant = Tenant::findOrFail($request->user()->tenant_id);
+        tenancy()->initialize($tenant);
+
+        if (! Schema::hasColumn('clients', 'is_vip')) {
+            tenancy()->end();
+            return response()->json(['message' => 'VIP support not migrated yet.'], 503);
+        }
+
+        $row = DB::table('clients')->find($customer);
+        if (! $row) {
+            tenancy()->end();
+            return response()->json(['message' => 'Customer not found.'], 404);
+        }
+
+        $next = array_key_exists('is_vip', $validated)
+            ? (bool) $validated['is_vip']
+            : ! (bool) ($row->is_vip ?? false);
+
+        DB::table('clients')->where('id', $customer)->update([
+            'is_vip'     => $next,
+            'updated_at' => now(),
+        ]);
+
+        $updated = DB::table('clients')->find($customer);
+        $appts   = $this->loadClientAppointments([$customer])->get($customer, collect());
+        $result  = $this->formatClient($updated, $appts, now()->toDateString(), true);
+
+        tenancy()->end();
+
+        return response()->json($result);
+    }
+
+    // ── Shared helpers ────────────────────────────────────────────────────────
+
+    /**
+     * Pull every appointment (non-cancelled by default for stats, but
+     * we keep cancelled in the timeline view) for the given client ids.
+     * Returns a Collection<int, Collection<int, object>> keyed by client id.
+     */
+    private function loadClientAppointments(array $clientIds): Collection
+    {
+        if (empty($clientIds)) return collect();
+
+        // Select everything we might need across index + show + format.
+        // Cheaper than picking columns conditionally — these are flat,
+        // and the row count per page is bounded by `limit`.
+        $select = [
+            'id', 'client_id', 'appointment_date', 'start_time', 'end_time',
+            'service_name', 'service_price', 'status',
+            'payment_status', 'deposit_paid_amount', 'balance_paid_amount',
+            'amount_due', 'balance_paid_at', 'tip_amount', 'refunded_amount',
+            'paid_at', 'created_at',
+        ];
+        // Some legacy tenants may not yet have every payment column.
+        $select = array_values(array_filter($select, fn ($c) => Schema::hasColumn('appointments', $c)));
+
+        return DB::table('appointments')
+            ->whereIn('client_id', $clientIds)
+            ->select($select)
+            ->orderBy('appointment_date')
+            ->orderBy('start_time')
+            ->get()
+            ->groupBy('client_id');
+    }
+
+    /**
+     * Reduce a client + their appointment rows into the API shape the
+     * directory + drawer both consume. Status is auto-derived here so
+     * the frontend never re-computes; VIP override is honored when
+     * `clients.is_vip` is true.
+     */
+    private function formatClient(object $c, Collection $appts, string $today, bool $hasVip): array
+    {
+        // Drop cancelled rows for the stats; keep them for the timeline
+        // (the caller in show() re-builds the timeline from raw $appts).
+        $countable = $appts->filter(fn ($a) => $a->status !== 'cancelled');
+
+        $past     = $countable->filter(fn ($a) => $a->appointment_date <  $today)->values();
+        $upcoming = $countable->filter(fn ($a) => $a->appointment_date >= $today)->values();
+        $lastAppt = $past->last();
+        $nextAppt = $upcoming->first();
+
+        $completedCount = $countable->where('status', 'completed')->count();
+        $lastCompleted  = $countable->where('status', 'completed')->last();
+
+        // ── Payment rollups ──
+        // Total spent =  every dollar the customer has actually paid, net of refunds.
+        //              deposits + balances + tips, MINUS refunded_amount.
+        $totalDeposits = (float) $countable->sum(fn ($a) => (float) ($a->deposit_paid_amount ?? 0));
+        $totalBalances = (float) $countable->sum(fn ($a) => (float) ($a->balance_paid_amount ?? 0));
+        $totalTips     = (float) $countable->sum(fn ($a) => (float) ($a->tip_amount         ?? 0));
+        $totalRefunded = (float) $countable->sum(fn ($a) => (float) ($a->refunded_amount    ?? 0));
+        $totalSpent    = max(0.0, $totalDeposits + $totalBalances + $totalTips - $totalRefunded);
+
+        // Outstanding balance = future / today appointments still owing
+        // their remainder. Skip rows whose balance has already cleared,
+        // or that were cancelled / no-showed.
+        $outstandingBalance = (float) $countable
+            ->filter(fn ($a) => empty($a->balance_paid_at))
+            ->filter(fn ($a) => ($a->payment_status ?? null) === 'deposit_paid')
+            ->sum(fn ($a) => (float) ($a->amount_due ?? 0));
+
+        // Most recent payment_status — useful as a quick health signal.
+        // We take the latest appointment that ever had a payment_status.
+        $lastPaymentStatus = optional(
+            $countable->sortByDesc(fn ($a) => $a->appointment_date . ' ' . $a->start_time)
+                      ->first(fn ($a) => ! empty($a->payment_status))
+        )->payment_status;
+
+        // ── Status ──
+        $isVip  = $hasVip ? (bool) ($c->is_vip ?? false) : false;
+        $status = $this->deriveStatus($isVip, $completedCount, $lastCompleted, $today);
 
         return [
             'id'                         => (int) $c->id,
@@ -166,9 +321,12 @@ class CustomersController extends Controller
             'email'                      => $c->email,
             'phone'                      => $c->phone,
             'notes'                      => $c->notes,
+            'is_vip'                     => $isVip,
+            'status'                     => $status,
             'last_appointment_at'        => $c->last_booked_at ?? null,
-            'appointment_count'          => $appts->count(),
-            'upcoming_appointment_count' => $upcomingAppts->count(),
+            'appointment_count'          => $countable->count(),
+            'upcoming_appointment_count' => $upcoming->count(),
+            'completed_count'            => $completedCount,
             'last_appointment'           => $lastAppt ? [
                 'date'         => $lastAppt->appointment_date,
                 'service_name' => $lastAppt->service_name,
@@ -180,8 +338,59 @@ class CustomersController extends Controller
                 'service_name' => $nextAppt->service_name,
                 'status'       => $nextAppt->status,
             ] : null,
+            'total_spent'                => round($totalSpent, 2),
+            'deposits_paid'              => round($totalDeposits, 2),
+            'outstanding_balance'        => round($outstandingBalance, 2),
+            'last_payment_status'        => $lastPaymentStatus,
             'created_at'                 => $c->created_at,
             'updated_at'                 => $c->updated_at,
+        ];
+    }
+
+    /**
+     * Phase 13 status rules (matches the spec the owner approved).
+     *  VIP     — manual override (clients.is_vip true)
+     *  New     — 0 completed appointments, ever
+     *  Inactive — at least 1 completed, last completed > 90 days ago
+     *  Regular — 4+ completed AND last completed within 90 days
+     *  Returning — 1–3 completed AND last completed within 90 days
+     */
+    private function deriveStatus(bool $isVip, int $completedCount, ?object $lastCompleted, string $today): string
+    {
+        if ($isVip)                   return 'vip';
+        if ($completedCount === 0)    return 'new';
+
+        $daysSinceLast = $lastCompleted
+            ? \Carbon\Carbon::parse($lastCompleted->appointment_date)->diffInDays(\Carbon\Carbon::parse($today), false)
+            : null;
+
+        if ($daysSinceLast !== null && $daysSinceLast > self::INACTIVE_DAYS) return 'inactive';
+
+        return $completedCount >= self::REGULAR_MIN_COMPLETED ? 'regular' : 'returning';
+    }
+
+    /**
+     * Per-appointment shape used by show()'s timeline. Trimmed down
+     * from the full appointments controller output — we only need
+     * enough for the drawer to render date / service / status /
+     * payment chip.
+     */
+    private function formatAppointmentRow(object $a): array
+    {
+        return [
+            'id'               => (int) $a->id,
+            'appointment_date' => $a->appointment_date,
+            'start_time'       => substr((string) $a->start_time, 0, 5),
+            'end_time'         => substr((string) ($a->end_time ?? ''), 0, 5) ?: null,
+            'service_name'     => $a->service_name,
+            'service_price'    => isset($a->service_price) ? (float) $a->service_price : null,
+            'status'           => $a->status,
+            'payment_status'   => $a->payment_status ?? null,
+            'deposit_paid_amount' => isset($a->deposit_paid_amount) ? (float) $a->deposit_paid_amount : null,
+            'balance_paid_amount' => isset($a->balance_paid_amount) ? (float) $a->balance_paid_amount : null,
+            'amount_due'       => isset($a->amount_due) ? (float) $a->amount_due : null,
+            'tip_amount'       => isset($a->tip_amount) ? (float) $a->tip_amount : null,
+            'refunded_amount'  => isset($a->refunded_amount) ? (float) $a->refunded_amount : null,
         ];
     }
 }

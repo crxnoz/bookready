@@ -15,6 +15,7 @@ import {
   CreateAppointmentPayload,
   Customer,
   CustomerCreatePayload,
+  CustomerDetail,
   CustomerUpdatePayload,
   HoursEntry,
   LoginPayload,
@@ -760,6 +761,28 @@ export async function updateEditorCustomer(id: number, data: CustomerUpdatePaylo
   return request<Customer>(`/editor/customers/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
+  })
+}
+
+// Phase 13 — Customers CRM.
+export async function getEditorCustomer(id: number): Promise<CustomerDetail> {
+  return request<CustomerDetail>(`/editor/customers/${id}`)
+}
+
+/**
+ * Phase 13 — flip a customer's VIP flag. Omitting `is_vip` toggles
+ * the current value; passing it explicitly forces a state (useful when
+ * the UI wants idempotent "set" behavior). Server re-derives status
+ * after the write, so the returned Customer is ready to splice into
+ * local state.
+ */
+export async function toggleEditorCustomerVip(
+  id: number,
+  isVip?: boolean,
+): Promise<Customer> {
+  return request<Customer>(`/editor/customers/${id}/toggle-vip`, {
+    method: 'POST',
+    body: JSON.stringify(isVip === undefined ? {} : { is_vip: isVip }),
   })
 }
 
