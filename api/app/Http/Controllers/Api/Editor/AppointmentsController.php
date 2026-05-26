@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Log;
 
 class AppointmentsController extends Controller
 {
-    private function format(object $row): array
+    private function format(object $row, array $addons = [], ?string $staffName = null): array
     {
         // Payment columns are nullable in the model row when the tenant
         // migration hasn't run yet — guard each access with property_exists
@@ -34,6 +34,13 @@ class AppointmentsController extends Controller
             'id'                       => (int) $row->id,
             'customer_id'              => $row->client_id !== null ? (int) $row->client_id : null,
             'service_id'               => $row->service_id !== null ? (int) $row->service_id : null,
+            // Phase 7 — staff assignment + add-on snapshot
+            'staff_id'                 => $get('staff_id') !== null ? (int) $get('staff_id') : null,
+            'staff_name'               => $staffName,
+            'addons'                   => $addons,
+            'addons_subtotal'          => $get('addons_subtotal_cents') !== null
+                ? round(((int) $get('addons_subtotal_cents')) / 100, 2)
+                : 0,
             'customer_name'            => $row->customer_name,
             'customer_email'           => $row->customer_email,
             'customer_phone'           => $row->customer_phone,
@@ -87,6 +94,46 @@ class AppointmentsController extends Controller
             'dispute_opened_at'        => $get('dispute_opened_at'),
             'dispute_closed_at'        => $get('dispute_closed_at'),
         ];
+    }
+
+    /**
+     * Phase 7: format() with the add-on snapshot + staff name pre-loaded.
+     * Centralizes the loadAppointmentExtras() call so format() call sites
+     * (of which there are ~9) don't need to repeat the boilerplate.
+     */
+    private function formatWithExtras(object $row): array
+    {
+        [$addons, $staffName] = $this->loadAppointmentExtras($row);
+        return $this->format($row, $addons, $staffName);
+    }
+
+    /**
+     * Phase 7: load appointment_addons rows + staff name in one place so
+     * format() callers stay one-liners.
+     */
+    private function loadAppointmentExtras(object $row): array
+    {
+        $addons = [];
+        if (Schema::hasTable('appointment_addons')) {
+            $addons = DB::table('appointment_addons')
+                ->where('appointment_id', $row->id)
+                ->orderBy('id')
+                ->get(['addon_id', 'price_snapshot_cents', 'duration_snapshot_minutes', 'name_snapshot'])
+                ->map(fn ($a) => [
+                    'addon_id'         => (int) $a->addon_id,
+                    'name'             =>       $a->name_snapshot,
+                    'extra_price'      => round(((int) $a->price_snapshot_cents) / 100, 2),
+                    'extra_price_cents'=> (int) $a->price_snapshot_cents,
+                    'extra_duration_minutes' => (int) $a->duration_snapshot_minutes,
+                ])
+                ->all();
+        }
+        $staffName = null;
+        $staffId   = property_exists($row, 'staff_id') ? $row->staff_id : null;
+        if ($staffId && Schema::hasTable('staff')) {
+            $staffName = DB::table('staff')->where('id', $staffId)->value('name');
+        }
+        return [$addons, $staffName];
     }
 
     private function calcEndTime(string $startTime, int $durationMinutes): string
@@ -158,7 +205,10 @@ class AppointmentsController extends Controller
 
         $appointments = $query->limit($limit)
             ->get()
-            ->map(fn ($r) => $this->format($r))
+            // formatWithExtras() runs 1 query/row for staff + add-ons.
+            // For a page-sized list this is fine; if we grow to
+            // hundreds of rows, swap to a single bulk-load pre-pass.
+            ->map(fn ($r) => $this->formatWithExtras($r))
             ->all();
 
         tenancy()->end();
@@ -179,6 +229,10 @@ class AppointmentsController extends Controller
             'status'           => 'nullable|in:pending,confirmed,cancelled,completed,no_show',
             'notes'            => 'nullable|string|max:5000',
             'internal_notes'   => 'nullable|string|max:5000',
+            // Phase 7
+            'addon_ids'        => 'sometimes|array',
+            'addon_ids.*'      => 'integer',
+            'staff_id'         => 'sometimes|nullable|integer',
         ]);
 
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
@@ -190,7 +244,18 @@ class AppointmentsController extends Controller
             return response()->json(['message' => 'Service not found'], 422);
         }
 
-        $duration  = (int) $service->duration;
+        [$selectedAddons, $addonsDuration, $addonsSubtotal] = $this->resolveAddons(
+            (int) $service->id,
+            array_values(array_unique(array_map('intval', $validated['addon_ids'] ?? []))),
+        );
+        $staffId = $this->resolveStaffId(
+            (int) $service->id,
+            isset($validated['staff_id']) && $validated['staff_id'] !== null
+                ? (int) $validated['staff_id']
+                : null,
+        );
+
+        $duration  = (int) $service->duration + $addonsDuration;
         $endTime   = $this->calcEndTime($validated['start_time'], $duration);
         $clientId  = $this->findOrCreateClient(
             $validated['customer_name'],
@@ -219,14 +284,91 @@ class AppointmentsController extends Controller
         if (Schema::hasColumn('appointments', 'manage_token')) {
             $insertData['manage_token'] = Str::random(40);
         }
+        if (Schema::hasColumn('appointments', 'staff_id')) {
+            $insertData['staff_id'] = $staffId;
+        }
+        if (Schema::hasColumn('appointments', 'addons_subtotal_cents')) {
+            $insertData['addons_subtotal_cents'] = $addonsSubtotal;
+        }
         $id = DB::table('appointments')->insertGetId($insertData);
 
+        // Phase 7: persist add-on snapshots so future add-on edits don't
+        // rewrite this appointment's totals.
+        if (! empty($selectedAddons) && Schema::hasTable('appointment_addons')) {
+            $rows = array_map(fn ($a) => [
+                'appointment_id'           => $id,
+                'addon_id'                 => $a['id'],
+                'price_snapshot_cents'     => $a['extra_price_cents'],
+                'duration_snapshot_minutes'=> $a['extra_duration_minutes'],
+                'name_snapshot'            => $a['name'],
+                'created_at'               => now(),
+                'updated_at'               => now(),
+            ], $selectedAddons);
+            DB::table('appointment_addons')->insert($rows);
+        }
+
         $row = DB::table('appointments')->find($id);
-        $formatted = $this->format($row);
+        $formatted = $this->formatWithExtras($row);
 
         tenancy()->end();
 
         return response()->json($formatted, 201);
+    }
+
+    /**
+     * Phase 7 helper: identical to PublicBookingController::resolveAddons.
+     * Lives here too so owners can attach add-ons when creating manually.
+     */
+    private function resolveAddons(int $serviceId, array $requestedIds): array
+    {
+        if (! Schema::hasTable('service_addon_links') || ! Schema::hasTable('service_addons')) {
+            return [[], 0, 0];
+        }
+        $links = DB::table('service_addon_links')
+            ->where('service_id', $serviceId)
+            ->get(['addon_id', 'is_required']);
+        $linkedIds   = $links->pluck('addon_id')->map(fn ($i) => (int) $i)->all();
+        $requiredIds = $links->where('is_required', true)->pluck('addon_id')->map(fn ($i) => (int) $i)->all();
+        $effectiveIds = array_values(array_unique(array_merge(
+            array_intersect($requestedIds, $linkedIds),
+            $requiredIds,
+        )));
+        if (empty($effectiveIds)) return [[], 0, 0];
+
+        $addons = DB::table('service_addons')
+            ->whereIn('id', $effectiveIds)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get(['id', 'name', 'extra_price_cents', 'extra_duration_minutes'])
+            ->map(fn ($r) => [
+                'id'                     => (int) $r->id,
+                'name'                   =>       $r->name,
+                'extra_price_cents'      => (int) $r->extra_price_cents,
+                'extra_duration_minutes' => (int) $r->extra_duration_minutes,
+            ])
+            ->all();
+
+        $duration = array_sum(array_column($addons, 'extra_duration_minutes'));
+        $subtotal = array_sum(array_column($addons, 'extra_price_cents'));
+        return [$addons, $duration, $subtotal];
+    }
+
+    /**
+     * Phase 7 helper: ensure staff_id is one of this service's assigned
+     * staff (or any tenant staff when the service has no assignments).
+     */
+    private function resolveStaffId(int $serviceId, ?int $requestedStaffId): ?int
+    {
+        if ($requestedStaffId === null) return null;
+        if (! Schema::hasTable('service_staff')) return null;
+        $assigned = DB::table('service_staff')
+            ->where('service_id', $serviceId)
+            ->pluck('staff_id')
+            ->map(fn ($i) => (int) $i)
+            ->all();
+        if (! empty($assigned) && ! in_array($requestedStaffId, $assigned, true)) return null;
+        $exists = DB::table('staff')->where('id', $requestedStaffId)->exists();
+        return $exists ? $requestedStaffId : null;
     }
 
     // GET /editor/appointments/{appointment}
@@ -242,7 +384,7 @@ class AppointmentsController extends Controller
             return response()->json(['message' => 'Appointment not found'], 404);
         }
 
-        $formatted = $this->format($row);
+        $formatted = $this->formatWithExtras($row);
         tenancy()->end();
 
         return response()->json($formatted);
@@ -261,6 +403,10 @@ class AppointmentsController extends Controller
             'status'           => 'sometimes|in:pending,confirmed,cancelled,completed,no_show',
             'notes'            => 'nullable|string|max:5000',
             'internal_notes'   => 'nullable|string|max:5000',
+            // Phase 7
+            'addon_ids'        => 'sometimes|array',
+            'addon_ids.*'      => 'integer',
+            'staff_id'         => 'sometimes|nullable|integer',
         ]);
 
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
@@ -279,7 +425,14 @@ class AppointmentsController extends Controller
         $data         = ['updated_at' => now()];
         $duration     = (int) ($appt->service_duration_minutes ?? 30);
 
-        // If service_id is changing, update snapshot and recalculate duration
+        // Phase 7: figure out the effective service id BEFORE add-on /
+        // staff resolution so we whitelist against the right service.
+        $effectiveServiceId = isset($validated['service_id'])
+            ? (int) $validated['service_id']
+            : (int) $appt->service_id;
+
+        // If service_id is changing, update snapshot and reset duration
+        // to the new service's base. Add-on duration is layered on below.
         if (isset($validated['service_id'])) {
             $service = DB::table('services')->find((int) $validated['service_id']);
             if (! $service) {
@@ -293,8 +446,49 @@ class AppointmentsController extends Controller
             $data['service_duration_minutes'] = $duration;
         }
 
-        // Recalculate end_time if start_time or service changed
-        if (isset($validated['start_time']) || isset($validated['service_id'])) {
+        // Phase 7: replace add-on snapshot atomically when addon_ids is
+        // in the payload. Recalculates duration + subtotal each time.
+        $addonsChanged = array_key_exists('addon_ids', $validated);
+        if ($addonsChanged) {
+            [$selectedAddons, $addonsDuration, $addonsSubtotal] = $this->resolveAddons(
+                $effectiveServiceId,
+                array_values(array_unique(array_map('intval', $validated['addon_ids'] ?? []))),
+            );
+            if (Schema::hasTable('appointment_addons')) {
+                DB::table('appointment_addons')->where('appointment_id', $appointment)->delete();
+                if (! empty($selectedAddons)) {
+                    $rows = array_map(fn ($a) => [
+                        'appointment_id'           => $appointment,
+                        'addon_id'                 => $a['id'],
+                        'price_snapshot_cents'     => $a['extra_price_cents'],
+                        'duration_snapshot_minutes'=> $a['extra_duration_minutes'],
+                        'name_snapshot'            => $a['name'],
+                        'created_at'               => now(),
+                        'updated_at'               => now(),
+                    ], $selectedAddons);
+                    DB::table('appointment_addons')->insert($rows);
+                }
+            }
+            $duration += $addonsDuration;
+            if (Schema::hasColumn('appointments', 'addons_subtotal_cents')) {
+                $data['addons_subtotal_cents'] = $addonsSubtotal;
+            }
+            // Push the merged duration through to the snapshot column too
+            // so receipts / calendar blocks reflect the new total length.
+            $data['service_duration_minutes'] = $duration;
+        }
+
+        // Phase 7: validate staff_id against the (possibly updated)
+        // service's assigned_staff_ids before persisting.
+        if (array_key_exists('staff_id', $validated) && Schema::hasColumn('appointments', 'staff_id')) {
+            $data['staff_id'] = $this->resolveStaffId(
+                $effectiveServiceId,
+                $validated['staff_id'] !== null ? (int) $validated['staff_id'] : null,
+            );
+        }
+
+        // Recalculate end_time if start_time, service, or addons changed
+        if (isset($validated['start_time']) || isset($validated['service_id']) || $addonsChanged) {
             $startTime          = $validated['start_time'] ?? substr($appt->start_time, 0, 5);
             $data['start_time'] = $startTime;
             $data['end_time']   = $this->calcEndTime($startTime, $duration);
@@ -309,7 +503,7 @@ class AppointmentsController extends Controller
 
         DB::table('appointments')->where('id', $appointment)->update($data);
         $row       = DB::table('appointments')->find($appointment);
-        $formatted = $this->format($row);
+        $formatted = $this->formatWithExtras($row);
 
         // Collect email payload before ending tenancy if status changed
         // to confirmed/cancelled OR if date/time was rescheduled.
@@ -330,6 +524,26 @@ class AppointmentsController extends Controller
         if (! empty($row->customer_email) && ($statusChanged || $rescheduled)) {
             $manageToken = property_exists($row, 'manage_token') ? $row->manage_token : null;
             $manageUrl   = $manageToken ? sprintf('https://%s.bkrdy.me/manage/%s', $tenant->id, $manageToken) : null;
+
+            // Phase 7 — look up staff name + per-appointment add-on snapshot
+            // inside the tenant scope so the mailer doesn't need DB access.
+            $emailStaffName = null;
+            if (property_exists($row, 'staff_id') && $row->staff_id && Schema::hasTable('staff')) {
+                $emailStaffName = DB::table('staff')->where('id', $row->staff_id)->value('name');
+            }
+            $emailAddons = [];
+            if (Schema::hasTable('appointment_addons')) {
+                $emailAddons = DB::table('appointment_addons')
+                    ->where('appointment_id', $row->id)
+                    ->get(['name_snapshot', 'price_snapshot_cents', 'duration_snapshot_minutes'])
+                    ->map(fn ($a) => [
+                        'name'                   => $a->name_snapshot,
+                        'extra_price'            => round($a->price_snapshot_cents / 100, 2),
+                        'extra_duration_minutes' => (int) $a->duration_snapshot_minutes,
+                    ])
+                    ->all();
+            }
+
             $emailAppt = [
                 'id'               => (int) $row->id,
                 'customer_name'    => $row->customer_name,
@@ -341,6 +555,8 @@ class AppointmentsController extends Controller
                 'status'           => $row->status,
                 'notes'            => $row->notes,
                 'manage_url'       => $manageUrl,
+                'staff_name'       => $emailStaffName,
+                'addons'           => $emailAddons,
             ];
             $emailBusiness = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
             $emailNotify   = NotificationSettingsService::load();
@@ -517,7 +733,7 @@ class AppointmentsController extends Controller
                 'updated_at'      => now(),
             ]);
             $fresh = DB::table('appointments')->where('id', $appointment)->first();
-            $result = $this->format($fresh);
+            $result = $this->formatWithExtras($fresh);
             tenancy()->end();
             return response()->json([
                 'message'     => $isFull ? 'Refund recorded.' : 'Partial refund recorded.',
@@ -574,7 +790,7 @@ class AppointmentsController extends Controller
             'updated_at'        => now(),
         ]);
         $fresh = DB::table('appointments')->where('id', $appointment)->first();
-        $result = $this->format($fresh);
+        $result = $this->formatWithExtras($fresh);
         tenancy()->end();
 
         return response()->json([
@@ -648,7 +864,7 @@ class AppointmentsController extends Controller
 
         DB::table('appointments')->where('id', $appointment)->update($update);
         $fresh  = DB::table('appointments')->where('id', $appointment)->first();
-        $result = $this->format($fresh);
+        $result = $this->formatWithExtras($fresh);
         tenancy()->end();
 
         return response()->json([
@@ -820,7 +1036,7 @@ class AppointmentsController extends Controller
         }
         DB::table('appointments')->where('id', $appointment)->update($update);
         $fresh  = DB::table('appointments')->where('id', $appointment)->first();
-        $result = $this->format($fresh);
+        $result = $this->formatWithExtras($fresh);
         $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
         tenancy()->end();
 
@@ -1042,7 +1258,7 @@ class AppointmentsController extends Controller
             'updated_at'                  => now(),
         ]);
         $fresh  = DB::table('appointments')->where('id', $appointment)->first();
-        $result = $this->format($fresh);
+        $result = $this->formatWithExtras($fresh);
         tenancy()->end();
 
         // Best-effort customer receipt — never block the response on it.

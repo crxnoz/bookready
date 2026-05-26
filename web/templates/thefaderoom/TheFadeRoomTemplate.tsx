@@ -439,6 +439,8 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
                 availability={availability}
                 paymentSettings={site.payment_settings ?? null}
                 requirePolicyAgreement={!! site.policies?.require_policy_agreement}
+                serviceAddons={site.service_addons ?? []}
+                staffMembers={site.staff ?? []}
               />
             )}
           </div>

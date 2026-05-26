@@ -19,6 +19,7 @@
   @if (!empty($appt['notes']))
     @include('mail.partials.kv', ['label' => 'Notes', 'value' => $appt['notes']])
   @endif
+  @include('mail.partials.addons-and-staff', ['appt' => $appt])
 </table>
 
 @if (! empty($appt['payment_amount']) && $appt['payment_amount'] > 0)

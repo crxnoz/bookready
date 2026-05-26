@@ -16,6 +16,7 @@
     'label' => 'Was on',
     'value' => \Carbon\Carbon::parse($oldAppt['appointment_date'])->format('l, F j, Y') . ' at ' . \Carbon\Carbon::createFromFormat('H:i', $oldAppt['start_time'])->format('g:i A'),
   ])
+  @include('mail.partials.addons-and-staff', ['appt' => $appt])
 </table>
 @endsection
 

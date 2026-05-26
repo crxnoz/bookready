@@ -27,13 +27,16 @@ import {
   deleteEditorAppointment,
   getEditorAppointments,
   getEditorPaymentSettings,
+  getEditorServiceAddons,
   getEditorServices,
+  getEditorStaff,
   markEditorAppointmentPaid,
   refundEditorAppointment,
   requestEditorAppointmentTip,
   updateEditorAppointment,
 } from '@/lib/api'
 import type {
+  ApiStaffMember,
   Appointment,
   AppointmentStatus,
   CreateAppointmentPayload,
@@ -41,6 +44,7 @@ import type {
   PaymentSettings,
   RefundPayload,
   Service,
+  ServiceAddon,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
 import { PaymentPill, PaymentSummary } from '@/components/editor/AppointmentPaymentStatus'
@@ -205,6 +209,10 @@ interface FormState {
   start_time: string
   notes: string
   status: AppointmentStatus
+  // Phase 7 — chosen staff + add-on selection. Empty string staff_id
+  // means "any staff" (server stores null).
+  staff_id: string
+  addon_ids: number[]
 }
 
 function emptyForm(): FormState {
@@ -217,6 +225,8 @@ function emptyForm(): FormState {
     start_time: '',
     notes: '',
     status: 'pending',
+    staff_id: '',
+    addon_ids: [],
   }
 }
 
@@ -230,6 +240,8 @@ function appointmentToForm(a: Appointment): FormState {
     start_time:       a.start_time,
     notes:            a.notes ?? '',
     status:           a.status,
+    staff_id:         a.staff_id != null ? String(a.staff_id) : '',
+    addon_ids:        (a.addons ?? []).map(x => x.addon_id),
   }
 }
 
@@ -250,6 +262,11 @@ export default function AppointmentsEditor() {
 
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [services, setServices] = useState<Service[]>([])
+  // Phase 7 — staff roster + add-on catalog drive the new form widgets.
+  // Both fetch defensively (.catch(() => [])) so tenants that haven't
+  // migrated yet still get a working appointments page.
+  const [staff, setStaff] = useState<ApiStaffMember[]>([])
+  const [addons, setAddons] = useState<ServiceAddon[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>(initialFilter)
@@ -275,11 +292,15 @@ export default function AppointmentsEditor() {
       getEditorAppointments({ limit: 200 }),
       getEditorServices(),
       getEditorPaymentSettings().catch(() => null),
+      getEditorStaff({ active: true }).catch(() => [] as ApiStaffMember[]),
+      getEditorServiceAddons().catch(() => [] as ServiceAddon[]),
     ])
-      .then(([appts, svcs, ps]) => {
+      .then(([appts, svcs, ps, stf, ads]) => {
         setAppointments(appts)
         setServices(svcs.filter(s => s.is_active))
         setPaymentSettings(ps)
+        setStaff(stf.filter(s => s.is_active))
+        setAddons(ads.filter(a => a.is_active))
       })
       .catch(() => setError('Failed to load appointments.'))
       .finally(() => setLoading(false))
@@ -386,6 +407,11 @@ export default function AppointmentsEditor() {
           start_time:       form.start_time,
           notes:            form.notes || null,
           status:           form.status,
+          // Phase 7 — empty string means "any staff" (server stores null).
+          staff_id:         form.staff_id ? Number(form.staff_id) : null,
+          // Always send addon_ids on edit so omission == "remove all".
+          // (The backend treats key-presence as the replace signal.)
+          addon_ids:        form.addon_ids,
         })
         setAppointments(prev => prev.map(a => a.id === editId ? updated : a))
       } else {
@@ -397,6 +423,8 @@ export default function AppointmentsEditor() {
           appointment_date: form.appointment_date,
           start_time:       form.start_time,
           notes:            form.notes || undefined,
+          staff_id:         form.staff_id ? Number(form.staff_id) : null,
+          addon_ids:        form.addon_ids,
         }
         const created = await createEditorAppointment(payload)
         setAppointments(prev =>
@@ -594,7 +622,35 @@ export default function AppointmentsEditor() {
               <div className="space-y-3">
                 <p className="text-[9px] font-bold tracking-[0.16em] uppercase text-muted-text">Service</p>
                 <select
-                  required value={form.service_id} onChange={e => setField('service_id', e.target.value)}
+                  required
+                  value={form.service_id}
+                  onChange={e => {
+                    const newServiceId = e.target.value
+                    // When the service changes, drop any add-on selections
+                    // that aren't linked to the new service and any staff
+                    // pick that isn't on the new service's assigned list.
+                    setForm(f => {
+                      const next = { ...f, service_id: newServiceId }
+                      const svc = services.find(s => s.id === Number(newServiceId))
+                      if (svc) {
+                        const allowedAddons = new Set((svc.linked_addons ?? []).map(l => l.addon_id))
+                        next.addon_ids = f.addon_ids.filter(id => allowedAddons.has(id))
+                        // Auto-include required add-ons so the totals
+                        // shown to the owner match what the backend will
+                        // persist (resolveAddons unions them anyway).
+                        for (const link of svc.linked_addons ?? []) {
+                          if (link.is_required && !next.addon_ids.includes(link.addon_id)) {
+                            next.addon_ids = [...next.addon_ids, link.addon_id]
+                          }
+                        }
+                        const assigned = svc.assigned_staff_ids ?? []
+                        if (assigned.length > 0 && f.staff_id && !assigned.includes(Number(f.staff_id))) {
+                          next.staff_id = ''
+                        }
+                      }
+                      return next
+                    })
+                  }}
                   className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black appearance-none"
                 >
                   <option value="">Select a service *</option>
@@ -604,12 +660,112 @@ export default function AppointmentsEditor() {
                     </option>
                   ))}
                 </select>
-                {selectedService && (
-                  <p className="text-xs text-muted-text">
-                    Duration: {selectedService.duration_minutes} min · Price: ${selectedService.price.toFixed(2)}
-                  </p>
-                )}
+                {selectedService && (() => {
+                  const addonLinks   = selectedService.linked_addons ?? []
+                  const selectedAddons = addons.filter(a => form.addon_ids.includes(a.id))
+                  const addonPrice    = selectedAddons.reduce((s, a) => s + a.extra_price, 0)
+                  const addonMinutes  = selectedAddons.reduce((s, a) => s + a.extra_duration_minutes, 0)
+                  const totalMinutes  = selectedService.duration_minutes + addonMinutes
+                  const totalPrice    = selectedService.price + addonPrice
+                  return (
+                    <p className="text-xs text-muted-text">
+                      Total: {totalMinutes} min · ${totalPrice.toFixed(2)}
+                      {addonLinks.length > 0 && addonPrice > 0 && (
+                        <span className="ml-1 opacity-75">
+                          (base ${selectedService.price.toFixed(2)} + add-ons ${addonPrice.toFixed(2)})
+                        </span>
+                      )}
+                    </p>
+                  )
+                })()}
               </div>
+
+              {/* Phase 7 — Add-ons. Only shown when the chosen service has
+                  linked add-ons. Required links are forced-checked and
+                  disabled so owners can't accidentally drop them. */}
+              {selectedService && (selectedService.linked_addons ?? []).length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[9px] font-bold tracking-[0.16em] uppercase text-muted-text">Add-ons</p>
+                  <div className="border border-[rgba(18,18,18,0.12)] bg-white divide-y divide-[rgba(18,18,18,0.06)]">
+                    {(selectedService.linked_addons ?? []).map(link => {
+                      const addon = addons.find(a => a.id === link.addon_id)
+                      if (!addon) return null
+                      const checked = form.addon_ids.includes(addon.id)
+                      return (
+                        <label
+                          key={addon.id}
+                          className={cn(
+                            'flex items-start gap-2.5 px-3 py-2.5 cursor-pointer hover:bg-cream transition-colors',
+                            link.is_required && 'opacity-90',
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={link.is_required}
+                            onChange={e => {
+                              setForm(f => ({
+                                ...f,
+                                addon_ids: e.target.checked
+                                  ? [...f.addon_ids, addon.id]
+                                  : f.addon_ids.filter(id => id !== addon.id),
+                              }))
+                            }}
+                            className="mt-0.5 accent-near-black"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="text-xs font-semibold text-near-black truncate">{addon.name}</p>
+                              {link.is_required && (
+                                <span className="text-[8px] font-bold tracking-[0.08em] uppercase bg-blush text-near-black px-1.5 py-0.5">
+                                  Required
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-muted-text mt-0.5">
+                              +${addon.extra_price.toFixed(2)}
+                              {addon.extra_duration_minutes > 0 && ` · +${addon.extra_duration_minutes} min`}
+                            </p>
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Phase 7 — Staff picker. When the service has assigned_staff_ids,
+                  filter the dropdown to those only. Otherwise show every active
+                  staff member. Empty string = "any staff" (server stores null). */}
+              {selectedService && (() => {
+                const assigned = selectedService.assigned_staff_ids ?? []
+                const options  = assigned.length > 0
+                  ? staff.filter(s => assigned.includes(s.id))
+                  : staff
+                if (options.length === 0) return null
+                return (
+                  <div className="space-y-2">
+                    <p className="text-[9px] font-bold tracking-[0.16em] uppercase text-muted-text">Staff</p>
+                    <select
+                      value={form.staff_id}
+                      onChange={e => setField('staff_id', e.target.value)}
+                      className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black appearance-none"
+                    >
+                      <option value="">Any staff</option>
+                      {options.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}{s.role ? ` — ${s.role}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {assigned.length > 0 && (
+                      <p className="text-[10px] text-muted-text">
+                        Filtered to staff trained on this service.
+                      </p>
+                    )}
+                  </div>
+                )
+              })()}
               <div className="space-y-3">
                 <p className="text-[9px] font-bold tracking-[0.16em] uppercase text-muted-text">Date &amp; Time</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

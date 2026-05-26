@@ -752,10 +752,26 @@ export type DisputeStatus =
   | 'won' | 'lost'
   | 'charge_refunded'
 
+/** Phase 7: snapshot of an add-on attached to an appointment.
+ *  Price + duration are frozen at booking time so future catalog edits
+ *  don't rewrite this appointment's totals. */
+export interface AppointmentAddon {
+  addon_id: number
+  name: string
+  extra_price: number
+  extra_price_cents: number
+  extra_duration_minutes: number
+}
+
 export interface Appointment {
   id: number
   customer_id: number | null
   service_id: number | null
+  /** Phase 7: optional staff assignment + add-on snapshot. */
+  staff_id?: number | null
+  staff_name?: string | null
+  addons?: AppointmentAddon[]
+  addons_subtotal?: number
   customer_name: string
   customer_email: string | null
   customer_phone: string | null
@@ -873,6 +889,11 @@ export interface CreateAppointmentPayload {
   notes?: string
   internal_notes?: string
   status?: AppointmentStatus
+  /** Phase 7: optional staff assignment + add-on list. The backend
+   *  whitelists addon_ids against the service's links and auto-adds
+   *  any required ones the client missed. */
+  staff_id?: number | null
+  addon_ids?: number[]
 }
 
 export interface UpdateAppointmentPayload {
@@ -885,6 +906,10 @@ export interface UpdateAppointmentPayload {
   status?: AppointmentStatus
   notes?: string | null
   internal_notes?: string | null
+  /** Phase 7: presence replaces the pivot atomically (omission leaves
+   *  the current set alone). */
+  staff_id?: number | null
+  addon_ids?: number[]
 }
 
 // Public availability
@@ -920,6 +945,11 @@ export interface PublicBookingPayload {
   payment_choice?: PaymentChoice
   /** Required when the tenant has require_policy_agreement turned on. */
   policy_agreed?: boolean
+  /** Phase 7: optional staff assignment + add-on list. Backend whitelists
+   *  addon_ids against the service's links and auto-includes any required
+   *  ones the client missed. Empty/missing staff_id = "any staff". */
+  staff_id?: number | null
+  addon_ids?: number[]
 }
 
 export interface PublicBookingResponse {

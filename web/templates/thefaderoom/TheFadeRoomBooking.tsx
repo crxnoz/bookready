@@ -9,6 +9,7 @@ import { getPublicAvailability, createPublicAppointment } from '@/lib/api'
 import type {
   AvailableSlot, PaymentChoice, PublicBookingPayload, Service,
   AvailabilityData, PublicPaymentSettings,
+  ServiceAddon, PublicStaffMember,
 } from '@/lib/types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -72,6 +73,8 @@ export default function TheFadeRoomBooking({
   availability,
   paymentSettings,
   requirePolicyAgreement = false,
+  serviceAddons = [],
+  staffMembers = [],
 }: {
   slug: string
   services: Service[]
@@ -79,6 +82,11 @@ export default function TheFadeRoomBooking({
   availability: AvailabilityData | null
   paymentSettings: PublicPaymentSettings | null
   requirePolicyAgreement?: boolean
+  /** Phase 7: tenant's full add-on catalog. Per-service links live on
+   *  `service.linked_addons`; we look up the rich row here. */
+  serviceAddons?: ServiceAddon[]
+  /** Phase 7: tenant's active staff. Filtered to assigned ones per service. */
+  staffMembers?: PublicStaffMember[]
 }) {
   const [step,         setStep]         = useState<Step>(1)
   const [serviceId,    setServiceId]    = useState<number | null>(null)
@@ -94,9 +102,43 @@ export default function TheFadeRoomBooking({
   const [submitError,  setSubmitError]  = useState<string | null>(null)
   const [paymentChoice, setPaymentChoice] = useState<PaymentChoice>('deposit')
   const [policyAgreed, setPolicyAgreed] = useState(false)
+  // Phase 7 — staff + add-on selection. Empty staffId = any staff (server
+  // stores null). addonIds get whitelisted server-side against the service's
+  // links; required ones are auto-included even if missing here.
+  const [staffId,  setStaffId]  = useState<number | null>(null)
+  const [addonIds, setAddonIds] = useState<number[]>([])
   const fetchRef = useRef(0)
 
   const selectedService = services.find(s => s.id === serviceId) ?? null
+
+  // Phase 7 — picked add-on rows + running totals. Totals show on the
+  // service card, Step 2 staff label, and the Confirm step summary.
+  const pickedAddons = (() => {
+    if (!selectedService) return []
+    const links = selectedService.linked_addons ?? []
+    const allowed = new Set(links.map(l => l.addon_id))
+    return serviceAddons.filter(a => allowed.has(a.id) && addonIds.includes(a.id))
+  })()
+  const addonExtraPrice   = pickedAddons.reduce((sum, a) => sum + a.extra_price, 0)
+  const addonExtraMinutes = pickedAddons.reduce((sum, a) => sum + a.extra_duration_minutes, 0)
+  const totalPrice = (selectedService?.price ?? 0) + addonExtraPrice
+  const totalMinutes = (selectedService?.duration_minutes ?? 0) + addonExtraMinutes
+
+  // Staff options filtered to the assigned list (empty assignment = anyone).
+  const availableStaff: PublicStaffMember[] = (() => {
+    if (!selectedService) return []
+    const assigned = selectedService.assigned_staff_ids ?? []
+    if (assigned.length === 0) return staffMembers
+    return staffMembers.filter(s => assigned.includes(s.id))
+  })()
+  const showStaffPicker = availableStaff.length >= 2
+  // When only one option exists, lock to it implicitly without an extra UI step.
+  const effectiveStaffId: number | null = showStaffPicker
+    ? staffId
+    : (availableStaff.length === 1 ? availableStaff[0].id : null)
+  const effectiveStaffName: string | null = effectiveStaffId != null
+    ? (availableStaff.find(s => s.id === effectiveStaffId)?.name ?? null)
+    : null
 
   // ── Calendar state ──
   const today = new Date()
@@ -129,7 +171,9 @@ export default function TheFadeRoomBooking({
     return false
   }
 
-  // Same stale-fetch protection pattern as before
+  // Same stale-fetch protection pattern as before. Phase 7 adds staff
+  // filtering: a different staff means a different conflict + blocked-date
+  // set, so the slots list refreshes when the picker changes.
   useEffect(() => {
     if (!serviceId || !date) {
       setSlotState({ status: 'idle' })
@@ -140,7 +184,7 @@ export default function TheFadeRoomBooking({
     setSlotState({ status: 'loading' })
     setSelectedSlot('')
 
-    getPublicAvailability(slug, serviceId, date)
+    getPublicAvailability(slug, serviceId, date, effectiveStaffId)
       .then(res => {
         if (id !== fetchRef.current) return
         setSlotState({ status: 'loaded', slots: res.slots, message: res.message })
@@ -149,7 +193,35 @@ export default function TheFadeRoomBooking({
         if (id !== fetchRef.current) return
         setSlotState({ status: 'error', message: err instanceof Error ? err.message : 'Failed to load times.' })
       })
-  }, [serviceId, date, slug])
+  }, [serviceId, date, slug, effectiveStaffId])
+
+  // Reset add-on + staff picks whenever the chosen service changes — the
+  // available set depends on the service's links/assignment list and we
+  // don't want stale selections to leak across services. Required add-ons
+  // get auto-included so the totals shown match what the server will save.
+  useEffect(() => {
+    if (!selectedService) {
+      setAddonIds([])
+      setStaffId(null)
+      return
+    }
+    const links = selectedService.linked_addons ?? []
+    const allowed = new Set(links.map(l => l.addon_id))
+    setAddonIds(prev => {
+      const kept = prev.filter(id => allowed.has(id))
+      for (const link of links) {
+        if (link.is_required && !kept.includes(link.addon_id)) kept.push(link.addon_id)
+      }
+      return kept
+    })
+    const assigned = selectedService.assigned_staff_ids ?? []
+    if (assigned.length > 0) {
+      setStaffId(curr => (curr != null && assigned.includes(curr) ? curr : null))
+    } else {
+      setStaffId(null)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceId])
 
   // Compute payment previews. Authoritative calc still runs on the server —
   // these are friendly heads-up amounts for the Confirm step.
@@ -163,7 +235,9 @@ export default function TheFadeRoomBooking({
       return Math.round(amount * 100) / 100
     }
     if (paymentSettings.deposit_type === 'percent') {
-      const price = selectedService?.price ?? null
+      // Phase 7 — percent deposit applies to service + selected add-ons,
+      // matching the server's AppointmentPaymentService logic.
+      const price = selectedService ? totalPrice : null
       if (price == null || price <= 0) return null
       const pct = Math.max(0, Math.min(100, amount))
       const dep = Math.min(price, (price * pct) / 100)
@@ -176,7 +250,8 @@ export default function TheFadeRoomBooking({
     if (!paymentSettings) return null
     if (!paymentSettings.payments_enabled) return null
     if (!paymentSettings.allow_full_payment) return null
-    const price = selectedService?.price ?? null
+    // Phase 7 — full payment covers the service + add-ons total.
+    const price = selectedService ? totalPrice : null
     if (price == null || price <= 0) return null
     return Math.round(price * 100) / 100
   })()
@@ -194,7 +269,7 @@ export default function TheFadeRoomBooking({
   const chargePreview: number | null = effectiveChoice === 'full' ? fullPreview : depositPreview
   const remainingBalance: number | null =
     effectiveChoice === 'deposit' && selectedService && depositPreview != null
-      ? Math.max(0, Math.round((selectedService.price - depositPreview) * 100) / 100)
+      ? Math.max(0, Math.round((totalPrice - depositPreview) * 100) / 100)
       : 0
 
   // Back-compat alias for the rest of the component
@@ -219,6 +294,14 @@ export default function TheFadeRoomBooking({
       }
       if (requirePolicyAgreement) {
         payload.policy_agreed = true // backend rejects if false/missing
+      }
+      // Phase 7 — addon_ids gets whitelisted server-side; required ones
+      // auto-included even if missing here. staff_id null = any staff.
+      if (addonIds.length > 0) {
+        payload.addon_ids = addonIds
+      }
+      if (effectiveStaffId != null) {
+        payload.staff_id = effectiveStaffId
       }
       const res = await createPublicAppointment(slug, payload)
       if (res.checkout_url) {
@@ -352,28 +435,111 @@ export default function TheFadeRoomBooking({
           ) : (
             <>
               <div className="tfr-booking-services">
-                {services.map(s => (
-                  <div
-                    key={s.id}
-                    className={`tfr-booking-service-card${serviceId === s.id ? ' is-selected' : ''}`}
-                  >
-                    <div className="tfr-booking-service-top">
-                      <h3>{s.name}</h3>
-                      <span className="tfr-booking-price">${Number(s.price).toFixed(2)}</span>
-                    </div>
-                    {s.description && <p className="tfr-booking-desc">{s.description}</p>}
-                    <p className="tfr-booking-meta">
-                      <Clock size={12} /> {s.duration_minutes} min
-                    </p>
-                    <button
-                      className="tfr-booking-pick"
-                      onClick={() => { setServiceId(s.id); setStep(2) }}
+                {services.map(s => {
+                  const isSelected = serviceId === s.id
+                  const hasAddons  = (s.linked_addons ?? []).length > 0
+                  return (
+                    <div
+                      key={s.id}
+                      className={`tfr-booking-service-card${isSelected ? ' is-selected' : ''}`}
                     >
-                      Select <ArrowRight size={12} />
-                    </button>
-                  </div>
-                ))}
+                      <div className="tfr-booking-service-top">
+                        <h3>{s.name}</h3>
+                        <span className="tfr-booking-price">${Number(s.price).toFixed(2)}</span>
+                      </div>
+                      {s.description && <p className="tfr-booking-desc">{s.description}</p>}
+                      <p className="tfr-booking-meta">
+                        <Clock size={12} /> {s.duration_minutes} min
+                        {hasAddons && <span style={{ opacity: 0.7, marginLeft: 6 }}>· add-ons available</span>}
+                      </p>
+                      <button
+                        className="tfr-booking-pick"
+                        onClick={() => {
+                          // Phase 7 — don't auto-advance when the service
+                          // has add-ons; the customer needs to tick any
+                          // optional extras before continuing. If there
+                          // are no add-ons, jump straight to date/time
+                          // like the old flow did.
+                          setServiceId(s.id)
+                          if (!hasAddons) setStep(2)
+                        }}
+                      >
+                        {isSelected ? 'Selected' : 'Select'} <ArrowRight size={12} />
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
+
+              {/* Phase 7 — Add-ons for the chosen service. Required links
+                  are pre-checked and disabled so the customer can't drop
+                  them; optional ones toggle freely. Running total shown
+                  underneath so the price/duration impact is obvious. */}
+              {selectedService && (selectedService.linked_addons ?? []).length > 0 && (
+                <div className="tfr-booking-block" style={{ marginTop: 24 }}>
+                  <span className="tfr-booking-block-label">Add-ons (optional)</span>
+                  <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+                    {(selectedService.linked_addons ?? []).map(link => {
+                      const addon = serviceAddons.find(a => a.id === link.addon_id)
+                      if (!addon) return null
+                      const checked = addonIds.includes(addon.id)
+                      return (
+                        <label
+                          key={addon.id}
+                          style={{
+                            display: 'flex', alignItems: 'flex-start', gap: 10,
+                            padding: '10px 12px',
+                            border: '1px solid ' + (checked ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.15)'),
+                            background: checked ? 'rgba(255,255,255,0.06)' : 'transparent',
+                            cursor: link.is_required ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={link.is_required}
+                            onChange={e => {
+                              setAddonIds(prev => e.target.checked
+                                ? [...prev, addon.id]
+                                : prev.filter(id => id !== addon.id))
+                            }}
+                            style={{ marginTop: 3, accentColor: '#fff', flexShrink: 0 }}
+                          />
+                          <span style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 13, fontWeight: 600 }}>{addon.name}</span>
+                              {link.is_required && (
+                                <span style={{
+                                  fontSize: 9, fontWeight: 700, letterSpacing: '0.08em',
+                                  textTransform: 'uppercase', padding: '2px 6px',
+                                  background: 'rgba(255,255,255,0.12)',
+                                }}>
+                                  Required
+                                </span>
+                              )}
+                            </span>
+                            {addon.description && (
+                              <span style={{ display: 'block', fontSize: 11, opacity: 0.75, marginTop: 2 }}>
+                                {addon.description}
+                              </span>
+                            )}
+                            <span style={{ display: 'block', fontSize: 11, opacity: 0.85, marginTop: 4 }}>
+                              +${addon.extra_price.toFixed(2)}
+                              {addon.extra_duration_minutes > 0 && ` · +${addon.extra_duration_minutes} min`}
+                            </span>
+                          </span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                  {addonExtraPrice > 0 && (
+                    <p style={{ marginTop: 10, fontSize: 12, opacity: 0.8 }}>
+                      Running total: <strong>${totalPrice.toFixed(2)}</strong> · {totalMinutes} min
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="tfr-booking-nav" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
                 <button
                   className="tfr-booking-next"
@@ -390,6 +556,81 @@ export default function TheFadeRoomBooking({
         {/* ── Step 2: Date & Time ── */}
         <div className={`tfr-booking-slide${step === 2 ? ' is-active' : ''}`}>
           <div className="tfr-booking-datetime">
+
+            {/* Phase 7 — Staff picker. Only shown when 2+ staff can do
+                this service. A single assigned staff is locked-in
+                implicitly so we don't waste a UI step on a non-choice.
+                Changing this re-fetches slots (effectiveStaffId is in
+                the availability useEffect's dep list). */}
+            {showStaffPicker && (
+              <div className="tfr-booking-block">
+                <span className="tfr-booking-block-label">Choose Your Staff</span>
+                <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setStaffId(null)}
+                    style={{
+                      padding: '10px 12px',
+                      textAlign: 'left',
+                      border: '1px solid ' + (staffId == null ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.15)'),
+                      background: staffId == null ? 'rgba(255,255,255,0.06)' : 'transparent',
+                      color: 'inherit',
+                      cursor: 'pointer',
+                      borderRadius: 0,
+                    }}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>Any available staff</div>
+                    <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>
+                      We&apos;ll match you with whoever&apos;s free at your chosen time.
+                    </div>
+                  </button>
+                  {availableStaff.map(s => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setStaffId(s.id)}
+                      style={{
+                        padding: '10px 12px',
+                        textAlign: 'left',
+                        border: '1px solid ' + (staffId === s.id ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.15)'),
+                        background: staffId === s.id ? 'rgba(255,255,255,0.06)' : 'transparent',
+                        color: 'inherit',
+                        cursor: 'pointer',
+                        borderRadius: 0,
+                        display: 'flex',
+                        gap: 12,
+                        alignItems: 'center',
+                      }}
+                    >
+                      {s.photo_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={s.photo_url}
+                          alt=""
+                          width={40}
+                          height={40}
+                          style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: '50%', flexShrink: 0 }}
+                        />
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>{s.name}</div>
+                        {s.role && (
+                          <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>{s.role}</div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* When only one staff is eligible, surface a soft note so
+                the customer knows who they're booking with. */}
+            {!showStaffPicker && availableStaff.length === 1 && (
+              <p style={{ fontSize: 12, opacity: 0.8 }}>
+                You&apos;ll be booking with <strong>{availableStaff[0].name}</strong>.
+              </p>
+            )}
 
             <div className="tfr-booking-block">
               <span className="tfr-booking-block-label">Pick a Day</span>
@@ -566,15 +807,29 @@ export default function TheFadeRoomBooking({
                 {selectedService && (
                   <div><dt>Service</dt><dd>{selectedService.name}</dd></div>
                 )}
+                {/* Phase 7 — one row per picked add-on so the customer
+                    sees exactly what they're paying for. */}
+                {pickedAddons.map(a => (
+                  <div key={a.id}>
+                    <dt>+ {a.name}</dt>
+                    <dd>
+                      +${a.extra_price.toFixed(2)}
+                      {a.extra_duration_minutes > 0 && ` · +${a.extra_duration_minutes} min`}
+                    </dd>
+                  </div>
+                ))}
+                {effectiveStaffName && (
+                  <div><dt>Staff</dt><dd>{effectiveStaffName}</dd></div>
+                )}
                 <div><dt>Date</dt><dd>{date ? fmtDateDisplay(date) : '—'}</dd></div>
                 <div><dt>Time</dt><dd>{selectedSlot ? fmt12(selectedSlot) : '—'}</dd></div>
                 {selectedService && (
-                  <div><dt>Duration</dt><dd>{selectedService.duration_minutes} min</dd></div>
+                  <div><dt>Duration</dt><dd>{totalMinutes} min</dd></div>
                 )}
                 {selectedService && (
                   <div className="tfr-booking-total">
                     <dt>Total</dt>
-                    <dd>${Number(selectedService.price).toFixed(2)}</dd>
+                    <dd>${totalPrice.toFixed(2)}</dd>
                   </div>
                 )}
               </dl>

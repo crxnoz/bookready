@@ -203,9 +203,14 @@ export async function getPublicAvailability(
   slug: string,
   serviceId: number,
   date: string,
+  staffId?: number | null,
 ): Promise<PublicAvailabilityResponse> {
   const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
-  const qs   = new URLSearchParams({ service_id: String(serviceId), date }).toString()
+  // Phase 7 — when staffId is set, conflicts + per-staff blocked dates
+  // get filtered to that staff member's calendar on the server.
+  const params: Record<string, string> = { service_id: String(serviceId), date }
+  if (staffId != null) params.staff_id = String(staffId)
+  const qs   = new URLSearchParams(params).toString()
   const res  = await fetch(`${base}/public/sites/${slug}/availability?${qs}`, {
     headers: { Accept: 'application/json' },
     cache:   'no-store',

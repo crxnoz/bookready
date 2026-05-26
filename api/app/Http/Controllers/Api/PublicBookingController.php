@@ -52,11 +52,19 @@ class PublicBookingController extends Controller
             // Policy-agreement flag. Required only when the tenant has
             // require_policy_agreement turned on (validated below).
             'policy_agreed'    => 'sometimes|boolean',
+            // Phase 7: optional add-on ids + chosen staff member.
+            'addon_ids'        => 'sometimes|array',
+            'addon_ids.*'      => 'integer',
+            'staff_id'         => 'sometimes|nullable|integer',
         ]);
 
         $serviceId = (int)    $validated['service_id'];
         $date      =          $validated['appointment_date'];
         $startTime = substr($validated['start_time'], 0, 5);
+        $requestedAddonIds = array_values(array_unique(array_map('intval', $validated['addon_ids'] ?? [])));
+        $requestedStaffId  = isset($validated['staff_id']) && $validated['staff_id'] !== null
+            ? (int) $validated['staff_id']
+            : null;
 
         // Fetch owner email from central DB before switching tenant connection.
         $ownerEmail = $tenant->owner?->email;
@@ -168,8 +176,20 @@ class PublicBookingController extends Controller
             return response()->json(['message' => 'This time is no longer available.'], 422);
         }
 
-        // ── Calculate end time ───────────────────────────────────────────
-        $duration = (int) $service->duration;
+        // ── Phase 7: resolve add-ons + staff ─────────────────────────────
+        // Add-ons must be linked to THIS service (defends against clients
+        // sending arbitrary addon ids). Required add-ons are auto-added
+        // server-side even if the client somehow drops them.
+        [$selectedAddons, $addonsDurationMinutes, $addonsSubtotalCents] =
+            $this->resolveAddons((int) $service->id, $requestedAddonIds);
+
+        // Staff: must be in the service's assigned_staff_ids pivot when
+        // that pivot is non-empty. Empty pivot = any staff is fine, so
+        // we leave $staffId null in that case (legacy behaviour).
+        $staffId = $this->resolveStaffId((int) $service->id, $requestedStaffId);
+
+        // ── Calculate end time (service + add-on durations) ──────────────
+        $duration = (int) $service->duration + $addonsDurationMinutes;
         $endTime  = Carbon::createFromFormat('H:i', $startTime)
             ->addMinutes($duration)
             ->format('H:i');
@@ -211,7 +231,13 @@ class PublicBookingController extends Controller
         // ── Payment branching ────────────────────────────────────────────
         // Defaults: payments off, no charge, no special status.
         $payment      = $this->loadPaymentSettings();
-        $servicePrice = $service->price !== null ? (float) $service->price : null;
+        // Phase 7: roll any selected add-ons into the price the client is
+        // charged for (deposit + full both use this combined total). The
+        // original service price is preserved on the appointment for the
+        // receipt line; addons_subtotal lives in its own column.
+        $servicePrice = $service->price !== null
+            ? (float) $service->price + ($addonsSubtotalCents / 100)
+            : null;
 
         $depositAmount = AppointmentPaymentService::calculateDeposit($payment, $servicePrice);
         $fullAmount    = AppointmentPaymentService::calculateFullPayment($payment, $servicePrice);
@@ -280,6 +306,13 @@ class PublicBookingController extends Controller
         if ($manageToken !== null) {
             $insertData['manage_token'] = $manageToken;
         }
+        // Phase 7 columns — defensive so legacy tenants don't blow up.
+        if (Schema::hasColumn('appointments', 'staff_id')) {
+            $insertData['staff_id'] = $staffId;
+        }
+        if (Schema::hasColumn('appointments', 'addons_subtotal_cents')) {
+            $insertData['addons_subtotal_cents'] = $addonsSubtotalCents;
+        }
 
         if ($appointmentsHasPaymentCols) {
             if ($paymentRequired) {
@@ -303,7 +336,36 @@ class PublicBookingController extends Controller
         }
 
         $id  = DB::table('appointments')->insertGetId($insertData);
+
+        // Phase 7: persist add-on snapshots — captures price + duration
+        // at booking time so future add-on edits don't rewrite history.
+        if (! empty($selectedAddons) && Schema::hasTable('appointment_addons')) {
+            $rows = array_map(fn ($a) => [
+                'appointment_id'           => $id,
+                'addon_id'                 => $a['id'],
+                'price_snapshot_cents'     => $a['extra_price_cents'],
+                'duration_snapshot_minutes'=> $a['extra_duration_minutes'],
+                'name_snapshot'            => $a['name'],
+                'created_at'               => now(),
+                'updated_at'               => now(),
+            ], $selectedAddons);
+            DB::table('appointment_addons')->insert($rows);
+        }
+
         $row = DB::table('appointments')->find($id);
+
+        // Phase 7 — staff name + add-on summary for the email templates.
+        // Looked up inside the tenant scope so the mailer (which runs after
+        // tenancy()->end()) doesn't need to re-open a connection.
+        $staffName = null;
+        if ($staffId !== null && Schema::hasTable('staff')) {
+            $staffName = DB::table('staff')->where('id', $staffId)->value('name');
+        }
+        $apptAddons = array_map(fn ($a) => [
+            'name'                   => $a['name'],
+            'extra_price'            => round($a['extra_price_cents'] / 100, 2),
+            'extra_duration_minutes' => $a['extra_duration_minutes'],
+        ], $selectedAddons);
 
         // Build a plain-array snapshot for use after tenancy ends.
         $apptToken = property_exists($row, 'manage_token') ? $row->manage_token : null;
@@ -320,6 +382,10 @@ class PublicBookingController extends Controller
             'status'           => $row->status,
             'notes'            => $row->notes,
             'manage_url'       => $manageUrl,
+            // Phase 7 extras. Empty array / null when not used so blades
+            // can @if-guard cheaply.
+            'staff_name'       => $staffName,
+            'addons'           => $apptAddons,
         ];
 
         $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
@@ -433,6 +499,84 @@ class PublicBookingController extends Controller
         }
 
         return response()->json($response, 201);
+    }
+
+    /**
+     * Phase 7: resolve which add-ons apply to this booking.
+     *
+     * Required add-ons (per the service_addon_links pivot) are always
+     * included even if the client omitted them — they're called required
+     * because they are. Optional ones are kept only when both linked and
+     * active. Returns:
+     *   - $selectedAddons: list of ['id','name','extra_price_cents','extra_duration_minutes']
+     *   - $durationMinutes: sum of all extra_duration_minutes
+     *   - $subtotalCents:   sum of all extra_price_cents
+     */
+    private function resolveAddons(int $serviceId, array $requestedIds): array
+    {
+        if (! Schema::hasTable('service_addon_links') || ! Schema::hasTable('service_addons')) {
+            return [[], 0, 0];
+        }
+        $links = DB::table('service_addon_links')
+            ->where('service_id', $serviceId)
+            ->get(['addon_id', 'is_required']);
+
+        $linkedIds   = $links->pluck('addon_id')->map(fn ($i) => (int) $i)->all();
+        $requiredIds = $links->where('is_required', true)->pluck('addon_id')->map(fn ($i) => (int) $i)->all();
+
+        // Only keep client picks that are actually linked to this service,
+        // then union with the required set so required can't be dropped.
+        $effectiveIds = array_values(array_unique(array_merge(
+            array_intersect($requestedIds, $linkedIds),
+            $requiredIds,
+        )));
+        if (empty($effectiveIds)) {
+            return [[], 0, 0];
+        }
+
+        $addons = DB::table('service_addons')
+            ->whereIn('id', $effectiveIds)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get(['id', 'name', 'extra_price_cents', 'extra_duration_minutes'])
+            ->map(fn ($r) => [
+                'id'                     => (int) $r->id,
+                'name'                   =>       $r->name,
+                'extra_price_cents'      => (int) $r->extra_price_cents,
+                'extra_duration_minutes' => (int) $r->extra_duration_minutes,
+            ])
+            ->all();
+
+        $duration = array_sum(array_column($addons, 'extra_duration_minutes'));
+        $subtotal = array_sum(array_column($addons, 'extra_price_cents'));
+
+        return [$addons, $duration, $subtotal];
+    }
+
+    /**
+     * Phase 7: validate the requested staff_id against the service's
+     * assigned_staff_ids pivot. When the service has no assignments,
+     * any staff (including the null "unassigned" sentinel) is fine.
+     */
+    private function resolveStaffId(int $serviceId, ?int $requestedStaffId): ?int
+    {
+        if ($requestedStaffId === null) return null;
+        if (! Schema::hasTable('service_staff')) return null;
+
+        $assigned = DB::table('service_staff')
+            ->where('service_id', $serviceId)
+            ->pluck('staff_id')
+            ->map(fn ($i) => (int) $i)
+            ->all();
+
+        // Empty assignment list = any staff member is acceptable (we
+        // still verify the staff row exists below).
+        if (! empty($assigned) && ! in_array($requestedStaffId, $assigned, true)) {
+            return null;
+        }
+        // Verify the staff row actually exists in this tenant.
+        $exists = DB::table('staff')->where('id', $requestedStaffId)->exists();
+        return $exists ? $requestedStaffId : null;
     }
 
     /**

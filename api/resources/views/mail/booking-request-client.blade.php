@@ -11,6 +11,7 @@
   @include('mail.partials.kv', ['label' => 'Date',    'value' => \Carbon\Carbon::parse($appt['appointment_date'])->format('l, F j, Y')])
   @include('mail.partials.kv', ['label' => 'Time',    'value' => \Carbon\Carbon::createFromFormat('H:i', $appt['start_time'])->format('g:i A')])
   @include('mail.partials.kv', ['label' => 'Status',  'value' => 'Pending confirmation'])
+  @include('mail.partials.addons-and-staff', ['appt' => $appt])
 </table>
 
 @if (! empty($appt['payment_amount']) && $appt['payment_amount'] > 0)

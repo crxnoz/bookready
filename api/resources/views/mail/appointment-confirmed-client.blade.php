@@ -11,6 +11,7 @@
   @include('mail.partials.kv', ['label' => 'Date',    'value' => \Carbon\Carbon::parse($appt['appointment_date'])->format('l, F j, Y')])
   @include('mail.partials.kv', ['label' => 'Time',    'value' => \Carbon\Carbon::createFromFormat('H:i', $appt['start_time'])->format('g:i A')])
   @include('mail.partials.kv', ['label' => 'Status',  'value' => 'Confirmed'])
+  @include('mail.partials.addons-and-staff', ['appt' => $appt])
 </table>
 @endsection
 

@@ -242,6 +242,25 @@ class AppointmentPaymentWebhookController extends Controller
 
             $manageToken = property_exists($updated, 'manage_token') ? $updated->manage_token : null;
             $manageUrl   = $manageToken ? sprintf('https://%s.bkrdy.me/manage/%s', $tenant->id, $manageToken) : null;
+
+            // Phase 7 — staff name + add-on snapshot for email templates.
+            $apptStaffName = null;
+            if (property_exists($updated, 'staff_id') && $updated->staff_id && \Illuminate\Support\Facades\Schema::hasTable('staff')) {
+                $apptStaffName = DB::table('staff')->where('id', $updated->staff_id)->value('name');
+            }
+            $apptAddons = [];
+            if (\Illuminate\Support\Facades\Schema::hasTable('appointment_addons')) {
+                $apptAddons = DB::table('appointment_addons')
+                    ->where('appointment_id', $updated->id)
+                    ->get(['name_snapshot', 'price_snapshot_cents', 'duration_snapshot_minutes'])
+                    ->map(fn ($a) => [
+                        'name'                   => $a->name_snapshot,
+                        'extra_price'            => round($a->price_snapshot_cents / 100, 2),
+                        'extra_duration_minutes' => (int) $a->duration_snapshot_minutes,
+                    ])
+                    ->all();
+            }
+
             $appt = [
                 'id'               => (int) $updated->id,
                 'customer_name'    => $updated->customer_name,
@@ -254,6 +273,8 @@ class AppointmentPaymentWebhookController extends Controller
                 'status'           => $updated->status,
                 'notes'            => $updated->notes,
                 'manage_url'       => $manageUrl,
+                'staff_name'       => $apptStaffName,
+                'addons'           => $apptAddons,
                 // Payment receipt fields — blades render a receipt block when these are present.
                 'payment_amount'   => $amountTotal,
                 'payment_type'     => $paymentType, // 'deposit' | 'full'
