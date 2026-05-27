@@ -460,6 +460,14 @@ function CustomerRow({ customer: c, onOpen }: { customer: Customer; onOpen: () =
               <AlertTriangle size={9} /> No-show risk
             </span>
           )}
+          {c.is_account_holder && (
+            <span
+              className="inline-flex items-center gap-1 text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.20)] bg-lavender text-near-black px-2 py-0.5"
+              title="This customer has a BookReady account — verified email, stable identity, can self-manage bookings."
+            >
+              Account
+            </span>
+          )}
         </div>
         {tagsShown.length > 0 && (
           <div className="flex items-center gap-1 flex-wrap">

@@ -347,6 +347,19 @@ class CustomersController extends Controller
      */
     private function formatClient(object $c, Collection $appts, Collection $tags, string $today, bool $hasVip): array
     {
+        // Phase 5 customer-accounts — surface whether this customer has
+        // claimed a BookReady account. is_account_holder=true means the
+        // customer can also see this booking history from their /account
+        // dashboard. Owner-facing CRM intentionally shows ONLY this
+        // boolean — no cross-business activity, no central-identity
+        // metadata. The customer is still primarily the business's CRM
+        // record; the account flag is a side-channel signal.
+        //
+        // Defensive: Schema::hasColumn() so a tenant that hasn't run
+        // the Phase 1 migration yet doesn't 500 the customer list.
+        $isAccountHolder = Schema::hasColumn('clients', 'customer_user_id')
+            && ! empty($c->customer_user_id);
+
         // Drop cancelled rows for the stats; keep them for the timeline
         // (the caller in show() re-builds the timeline from raw $appts).
         $countable = $appts->filter(fn ($a) => $a->status !== 'cancelled');
@@ -418,6 +431,7 @@ class CustomersController extends Controller
             'phone'                      => $c->phone,
             'notes'                      => $c->notes,
             'is_vip'                     => $isVip,
+            'is_account_holder'          => $isAccountHolder,
             'status'                     => $status,
             'no_show_risk'               => $noShowRisk,
             'tags'                       => $tagsOut,

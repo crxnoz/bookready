@@ -862,6 +862,11 @@ export interface Customer {
   notes: string | null
   /** Phase 13 — manual override that supersedes the auto status. */
   is_vip: boolean
+  /** Phase 5 customer-accounts — true when this clients row is linked
+   *  to a CustomerUser (the end-client has claimed a BookReady account
+   *  and can manage this booking from their /account dashboard).
+   *  Owner-facing implication: verified email + stable identity. */
+  is_account_holder?: boolean
   /** Phase 13 — auto-derived (or 'vip' when is_vip is true). */
   status: CustomerStatus
   /** Phase 14 — true when 2+ no_show in last 5 visits OR >=30% rate
