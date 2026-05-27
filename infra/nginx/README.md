@@ -39,7 +39,7 @@ infra/nginx/
 │   └── refresh-cf-ips.sh              → /usr/local/bin/refresh-cf-ips.sh
 ├── snippets/
 │   ├── cloudflare-realip.conf         → /etc/nginx/snippets/cloudflare-realip.conf
-│   └── security-headers.conf          → /etc/nginx/snippets/security-headers.conf
+│   └── hsts.conf                      → /etc/nginx/snippets/hsts.conf
 └── sites/
     ├── app.bkrdy.me.conf              → /etc/nginx/sites-available/app.bkrdy.me
     ├── api.bkrdy.me.conf              → /etc/nginx/sites-available/api.bkrdy.me
@@ -58,7 +58,7 @@ published IP lists. The first run on a fresh server creates it.
    # From your laptop:
    scp infra/nginx/bin/refresh-cf-ips.sh         root@198.211.116.44:/usr/local/bin/
    scp infra/nginx/snippets/cloudflare-realip.conf root@198.211.116.44:/etc/nginx/snippets/
-   scp infra/nginx/snippets/security-headers.conf  root@198.211.116.44:/etc/nginx/snippets/
+   scp infra/nginx/snippets/hsts.conf              root@198.211.116.44:/etc/nginx/snippets/
    scp infra/nginx/sites/app.bkrdy.me.conf        root@198.211.116.44:/etc/nginx/sites-available/app.bkrdy.me
    scp infra/nginx/sites/api.bkrdy.me.conf        root@198.211.116.44:/etc/nginx/sites-available/api.bkrdy.me
    scp infra/nginx/sites/tenant-wildcard.bkrdy.me.conf \
