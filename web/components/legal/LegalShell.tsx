@@ -112,6 +112,41 @@ export default function LegalShell({ eyebrow, title, effectiveDate, children }: 
           font-size: 13px;
           font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         }
+        .legal-prose ol {
+          margin: 0 0 14px 22px;
+          padding: 0;
+        }
+        .legal-prose ol li {
+          font-size: 15px;
+          line-height: 1.7;
+          color: #2a2a2a;
+          margin-bottom: 6px;
+        }
+        .legal-prose .legal-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 14px 0 20px;
+          font-size: 13.5px;
+        }
+        .legal-prose .legal-table th,
+        .legal-prose .legal-table td {
+          border: 1px solid rgba(18,18,18,0.15);
+          padding: 8px 10px;
+          vertical-align: top;
+          text-align: left;
+          color: #2a2a2a;
+        }
+        .legal-prose .legal-table th {
+          background: rgba(18,18,18,0.04);
+          font-weight: 700;
+          color: #121212;
+        }
+        .legal-prose .legal-table td:last-child {
+          text-align: center;
+          font-weight: 700;
+          color: #121212;
+          white-space: nowrap;
+        }
       `}</style>
     </div>
   )
