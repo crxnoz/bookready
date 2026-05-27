@@ -59,6 +59,7 @@ export default function LegalShell({ eyebrow, title, effectiveDate, children }: 
           <div className="flex gap-5">
             <Link href="/privacy" className="hover:text-near-black transition-colors">Privacy</Link>
             <Link href="/terms" className="hover:text-near-black transition-colors">Terms</Link>
+            <Link href="/cookies" className="hover:text-near-black transition-colors">Cookies</Link>
             <a href="mailto:hello@mybookready.com" className="hover:text-near-black transition-colors">
               hello@mybookready.com
             </a>

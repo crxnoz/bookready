@@ -209,7 +209,8 @@ export default function PrivacyPage() {
         Like many businesses, we also collect information through cookies and similar
         technologies. See section{' '}
         <a href="#cookies">Do we use cookies and other tracking technologies?</a>{' '}
-        for details.
+        for a summary, or our full{' '}
+        <a href="/cookies">Cookie Policy</a> for details.
       </p>
       <p>The information we collect includes:</p>
       <ul>
