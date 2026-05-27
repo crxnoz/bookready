@@ -2,9 +2,9 @@
 
 import { Suspense, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { customerLogin } from '@/lib/customerApi'
-import { setCustomerLoggedIn } from '@/lib/customerAuth'
+import { setCustomerLoggedIn, safeReturnTo } from '@/lib/customerAuth'
 import AuthShell from '@/components/auth/AuthShell'
 
 /**
@@ -25,6 +25,12 @@ export default function CustomerLoginPage() {
 
 function Inner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnTo = safeReturnTo(searchParams?.get('return_to'))
+  // Preserve return_to so toggling Sign up / Sign in tabs doesn't lose it.
+  const registerHref = returnTo
+    ? `/account/register?return_to=${encodeURIComponent(returnTo)}`
+    : '/account/register'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -37,6 +43,11 @@ function Inner() {
     try {
       await customerLogin({ email, password })
       setCustomerLoggedIn()
+      if (returnTo) {
+        // Cross-origin redirect — router.push won't work, hard-nav.
+        window.location.href = returnTo
+        return
+      }
       router.push('/account')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed.')
@@ -52,7 +63,7 @@ function Inner() {
           Sign in
         </span>
         <Link
-          href="/account/register"
+          href={registerHref}
           className="text-center py-2.5 text-[11px] font-bold tracking-[0.08em] uppercase text-muted-text hover:text-near-black transition-colors"
         >
           Sign up
@@ -113,8 +124,16 @@ function Inner() {
 
       <p className="text-xs text-muted-text mt-6 text-center">
         New to BookReady?{' '}
-        <Link href="/account/register" className="text-near-black font-semibold underline underline-offset-2 hover:opacity-75">
+        <Link href={registerHref} className="text-near-black font-semibold underline underline-offset-2 hover:opacity-75">
           Create an account
+        </Link>
+      </p>
+      {/* This page is for END CUSTOMERS managing their bookings. Business
+          owners who run a salon on BookReady belong on /login. */}
+      <p className="text-xs text-muted-text mt-2 text-center">
+        Run a business on BookReady?{' '}
+        <Link href="/login" className="text-near-black underline underline-offset-2 hover:opacity-75">
+          Owner sign-in →
         </Link>
       </p>
       <div className="mt-3 flex justify-center gap-4 text-xs text-muted-text">

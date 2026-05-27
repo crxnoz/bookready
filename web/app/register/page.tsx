@@ -229,6 +229,15 @@ function RegisterForm() {
           Sign in
         </Link>
       </p>
+      {/* This page is for BUSINESS OWNERS signing up to run their salon
+          on BookReady. Customers who just want to manage personal bookings
+          belong on /account/register instead. */}
+      <p className="text-xs text-muted-text mt-2 text-center">
+        Not a business owner?{' '}
+        <Link href="/account/register" className="text-near-black underline underline-offset-2 hover:opacity-75">
+          Create a customer account →
+        </Link>
+      </p>
     </AuthShell>
   )
 }

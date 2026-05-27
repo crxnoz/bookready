@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { customerRegister } from '@/lib/customerApi'
-import { setCustomerLoggedIn } from '@/lib/customerAuth'
+import { setCustomerLoggedIn, safeReturnTo } from '@/lib/customerAuth'
 import AuthShell from '@/components/auth/AuthShell'
 
 /**
@@ -14,9 +14,27 @@ import AuthShell from '@/components/auth/AuthShell'
  * "save" — they sign up here, then book at a tenant site later. The
  * usual onboarding flow is the booking-confirmation claim CTA instead;
  * this is the secondary entry point.
+ *
+ * Accepts ?return_to= to support the cross-subdomain entry point
+ * from a tenant site (see TfrCustomerAccountWidget). After signup we
+ * bounce the user back to where they were if it's a safe URL.
  */
 export default function CustomerRegisterPage() {
+  return (
+    <Suspense fallback={<AuthShell><p className="text-xs text-muted-text">Loading…</p></AuthShell>}>
+      <Inner />
+    </Suspense>
+  )
+}
+
+function Inner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnTo = safeReturnTo(searchParams?.get('return_to'))
+  // Used to preserve the param when the user toggles to the Sign-in tab.
+  const loginHref = returnTo
+    ? `/account/login?return_to=${encodeURIComponent(returnTo)}`
+    : '/account/login'
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -42,6 +60,10 @@ export default function CustomerRegisterPage() {
         phone: phone || undefined,
       })
       setCustomerLoggedIn()
+      if (returnTo) {
+        window.location.href = returnTo
+        return
+      }
       router.push('/account')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign-up failed.')
@@ -54,7 +76,7 @@ export default function CustomerRegisterPage() {
     <AuthShell>
       <div className="grid grid-cols-2 border border-[rgba(18,18,18,0.12)] mb-7 overflow-hidden">
         <Link
-          href="/account/login"
+          href={loginHref}
           className="text-center py-2.5 text-[11px] font-bold tracking-[0.08em] uppercase text-muted-text hover:text-near-black transition-colors"
         >
           Sign in
@@ -146,8 +168,15 @@ export default function CustomerRegisterPage() {
 
       <p className="text-xs text-muted-text mt-6 text-center">
         Already have an account?{' '}
-        <Link href="/account/login" className="text-near-black font-semibold underline underline-offset-2 hover:opacity-75">
+        <Link href={loginHref} className="text-near-black font-semibold underline underline-offset-2 hover:opacity-75">
           Sign in
+        </Link>
+      </p>
+      {/* This page is for END CUSTOMERS. Business owners belong on /register. */}
+      <p className="text-xs text-muted-text mt-2 text-center">
+        Want to put <em>your</em> business on BookReady?{' '}
+        <Link href="/register" className="text-near-black underline underline-offset-2 hover:opacity-75">
+          Create a business account →
         </Link>
       </p>
       <div className="mt-3 flex justify-center gap-4 text-xs text-muted-text">

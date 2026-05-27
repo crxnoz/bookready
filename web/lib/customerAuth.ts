@@ -30,3 +30,36 @@ export function clearCustomerAuth(): void {
   if (typeof window === 'undefined') return
   localStorage.removeItem(LOGGED_IN_KEY)
 }
+
+/**
+ * Validate a `return_to` query param. Used by /account/login and
+ * /account/register so a customer who clicked "Sign in" from a tenant
+ * site (e.g. https://lushstudio.bkrdy.me) bounces back there after
+ * authentication instead of landing on /account.
+ *
+ * Security:
+ *   - Only absolute URLs accepted (relative paths could be ambiguous
+ *     after the auth subdomain hop).
+ *   - https: only in production. http://localhost is permitted as a
+ *     dev convenience.
+ *   - Hostname must be `bkrdy.me` or `*.bkrdy.me`. Anything else
+ *     returns null — prevents open-redirect attacks where an attacker
+ *     phishes "https://app.bkrdy.me/account/login?return_to=https://
+ *     evil.com" hoping the post-auth redirect lands the user on a
+ *     lookalike page.
+ *   - URLs with embedded credentials (user:pass@) are rejected.
+ *
+ * Returns the normalized URL string (URL.toString() form) or null.
+ */
+export function safeReturnTo(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  let url: URL
+  try { url = new URL(raw) } catch { return null }
+  if (url.username || url.password) return null
+  // Dev allowance — http://localhost only.
+  if (url.protocol === 'http:' && url.hostname === 'localhost') return url.toString()
+  if (url.protocol !== 'https:') return null
+  const host = url.hostname.toLowerCase()
+  if (host !== 'bkrdy.me' && !host.endsWith('.bkrdy.me')) return null
+  return url.toString()
+}

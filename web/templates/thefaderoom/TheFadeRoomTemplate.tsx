@@ -29,6 +29,7 @@ function WhatsAppGlyph({ size = 16 }: { size?: number }) {
   )
 }
 import TheFadeRoomBooking from './TheFadeRoomBooking'
+import TfrCustomerAccountWidget from './TfrCustomerAccountWidget'
 import type { PublicSite, Service } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 
@@ -284,6 +285,9 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
 
         {/* ── Header ── */}
         <section className="tfr-header-section">
+          {/* Customer-account widget: absolutely positioned top-right of header. */}
+          <TfrCustomerAccountWidget />
+
           <span className="tfr-floating-heart tfr-fh-1" aria-hidden="true"><Heart size={14} fill="currentColor" /></span>
           <span className="tfr-floating-heart tfr-fh-2" aria-hidden="true"><Heart size={18} fill="currentColor" /></span>
           <span className="tfr-floating-heart tfr-fh-3" aria-hidden="true"><Heart size={12} /></span>
@@ -1380,6 +1384,38 @@ const TFR_CSS = `
   width:100%; min-height:100vh; background:var(--tfr-bg);
   overflow:hidden; position:relative;
 }
+/* Customer-account widget: absolutely positioned top-right of the
+   header. Frosted-white pill so it reads on any cover image. Hidden
+   inside the .tfr-template scope so it never affects the editor UI. */
+.tfr-account-widget {
+  position:absolute; top:14px; right:14px; z-index:6;
+  display:inline-flex; align-items:center; gap:6px;
+  padding:7px 12px; border-radius:999px;
+  background:rgba(255,255,255,0.92);
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+  border:1px solid rgba(0,0,0,0.08);
+  color:var(--tfr-text); font-family:var(--tfr-ui);
+  font-size:12px; font-weight:500; line-height:1; text-decoration:none;
+  box-shadow:0 1px 3px rgba(0,0,0,0.06);
+  transition:background .18s ease,border-color .18s ease;
+}
+@media (hover:hover) and (pointer:fine) {
+  .tfr-account-widget:hover { background:#fff; border-color:rgba(0,0,0,0.15); }
+}
+.tfr-account-widget--authed { padding:0; gap:0; overflow:hidden; }
+.tfr-account-widget-link {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:7px 12px; color:inherit; text-decoration:none;
+}
+.tfr-account-widget-signout {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:30px; height:30px; padding:0;
+  border:none; border-left:1px solid rgba(0,0,0,0.08);
+  background:transparent; color:var(--tfr-text); cursor:pointer;
+}
+@media (hover:hover) and (pointer:fine) {
+  .tfr-account-widget-signout:hover { background:rgba(0,0,0,0.04); }
+}
 .tfr-header-cover {
   width:100%; height:42vh; min-height:320px; position:relative;
   background:linear-gradient(135deg,#170810 0%,#0E1111 40%,#1a0a2a 70%,#0E1111 100%);
@@ -1804,6 +1840,32 @@ const TFR_CSS = `
 .tfr-slot-error { color:#ff6b6b; }
 
 /* Details step */
+/* Customer-account banner above the Details step inputs. Two states:
+   the default "Have an account?" prompt and the --authed "Booking as
+   {name}" confirmation. Sign-in link opens in a new tab so the user
+   doesn't lose booking state to the auth round-trip. */
+.tfr-booking-auth {
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  padding:10px 14px; margin-bottom:14px;
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.10);
+  border-radius:10px;
+  font-size:13px; line-height:1.3;
+  color:var(--tfr-text);
+}
+.tfr-booking-auth--authed {
+  background:rgba(var(--tfr-pink-rgb),0.10);
+  border-color:rgba(var(--tfr-pink-rgb),0.30);
+}
+.tfr-booking-auth strong { font-weight:600; }
+.tfr-booking-auth-link {
+  margin-left:auto; color:inherit; text-decoration:underline;
+  text-underline-offset:2px; font-weight:500; font-size:12px; white-space:nowrap;
+}
+@media (hover:hover) and (pointer:fine) {
+  .tfr-booking-auth-link:hover { opacity:0.75; }
+}
+
 .tfr-booking-fields { display:grid; gap:14px; }
 .tfr-booking-fields label { display:flex; flex-direction:column; gap:6px; }
 .tfr-booking-fields span { font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--tfr-muted); font-weight:600; }

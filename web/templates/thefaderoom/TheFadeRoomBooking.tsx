@@ -6,12 +6,14 @@ import {
   Clock, Heart, CalendarCheck, Image as ImageIcon, Loader2, X,
 } from 'lucide-react'
 import { getPublicAvailability, createPublicAppointment, uploadBookingAnswerImage } from '@/lib/api'
+import { customerMe, type CustomerProfile } from '@/lib/customerApi'
 import type {
   AvailableSlot, PaymentChoice, PublicBookingPayload, Service,
   AvailabilityData, PublicPaymentSettings,
   ServiceAddon, PublicStaffMember, ServiceCategory,
   BookingQuestion, BookingQuestionAnswerInput,
 } from '@/lib/types'
+import { UserCircle } from 'lucide-react'
 
 // Sentinel used as the "category id" for the auto-generated bucket that
 // collects services without a category assignment. Real category ids are
@@ -140,6 +142,33 @@ export default function TheFadeRoomBooking({
   const [questionAnswers, setQuestionAnswers] = useState<Record<number, { value?: string | boolean; image_url?: string }>>({})
   const [uploadingFor,    setUploadingFor]    = useState<number | null>(null)
   const [uploadErrFor,    setUploadErrFor]    = useState<number | null>(null)
+  // Customer-account awareness. customerMe() probes the central session
+  // cookie on api.bkrdy.me (host-only there, but credentials: 'include'
+  // sends it from any *.bkrdy.me origin under our CORS policy). If we
+  // find a logged-in customer, auto-fill identity fields. The backend
+  // already force-overrides these to the authed user's values inside
+  // PublicBookingController so manual edits here are harmless either way.
+  const [authedUser,  setAuthedUser]  = useState<CustomerProfile | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    customerMe()
+      .then(u => {
+        if (cancelled) return
+        setAuthedUser(u)
+        setAuthChecked(true)
+        // Functional updates so we read the LATEST state — if the user
+        // typed something before customerMe() resolved, don't clobber it.
+        setName(prev  => prev || u.name)
+        setEmail(prev => prev || u.email)
+        setPhone(prev => prev || (u.phone ?? ''))
+      })
+      .catch(() => {
+        if (cancelled) return
+        setAuthChecked(true)
+      })
+    return () => { cancelled = true }
+  }, [])
   // Phase 8 — pre-Service category pick. null means "not picked yet" (which
   // shows the category tiles); UNCATEGORIZED is the "Other" bucket for
   // services that have no category_id assigned.
@@ -1017,6 +1046,41 @@ export default function TheFadeRoomBooking({
 
         {/* ── Step 4: Details ── */}
         <div className={`tfr-booking-slide${step === 4 ? ' is-active' : ''}`}>
+          {/* Account-aware banner. Only rendered after the auth probe
+              resolves so we don't flash "Sign in" then yank it once we
+              discover the visitor is already logged in. */}
+          {authChecked && authedUser && (
+            <div className="tfr-booking-auth tfr-booking-auth--authed">
+              <UserCircle size={14} />
+              <span>
+                Booking as <strong>{authedUser.name}</strong> ({authedUser.email})
+              </span>
+              <a
+                href="https://app.bkrdy.me/account"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tfr-booking-auth-link"
+              >
+                Use different account
+              </a>
+            </div>
+          )}
+          {authChecked && !authedUser && (
+            <div className="tfr-booking-auth">
+              <UserCircle size={14} />
+              <span>Have a BookReady account?</span>
+              <a
+                href={`https://app.bkrdy.me/account/login?return_to=${encodeURIComponent(
+                  typeof window !== 'undefined' ? window.location.href : '',
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tfr-booking-auth-link"
+              >
+                Sign in to autofill →
+              </a>
+            </div>
+          )}
           <div className="tfr-booking-fields">
             <label>
               <span>Full Name *</span>

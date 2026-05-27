@@ -147,6 +147,15 @@ function LoginInner() {
           Create an account
         </Link>
       </p>
+      {/* Disambiguator — this page is for BUSINESS OWNERS. Customers
+          who Google "BookReady login" should be nudged to /account/login
+          instead of staring at a brick wall. */}
+      <p className="text-xs text-muted-text mt-2 text-center">
+        Looking to manage <em>your</em> bookings?{' '}
+        <Link href="/account/login" className="text-near-black underline underline-offset-2 hover:opacity-75">
+          Customer sign-in →
+        </Link>
+      </p>
       <div className="mt-3 flex justify-center gap-4 text-xs text-muted-text">
         <Link href="/terms" className="hover:text-near-black">Terms</Link>
         <Link href="/privacy" className="hover:text-near-black">Privacy</Link>
