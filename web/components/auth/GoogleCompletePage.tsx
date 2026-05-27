@@ -16,7 +16,6 @@ import { Loader2, AlertCircle } from 'lucide-react'
 import { setToken, setTenantId } from '@/lib/auth'
 
 interface Payload {
-  token:     string
   tenant_id: string
   user?: {
     id:        number
@@ -45,21 +44,29 @@ export default function GoogleCompletePage() {
       }
 
       try {
+        // credentials: 'include' is REQUIRED — the response sets the
+        // bookready_token httpOnly cookie via Set-Cookie, and a cross-
+        // origin response (app.bkrdy.me → api.bkrdy.me) is only allowed
+        // to store cookies when the request opts in to credentials. Without
+        // this, Google sign-in returns 200 + the user JSON, the frontend
+        // happily redirects to /editor, and the very next API call 401s
+        // because no auth cookie was ever stored.
         const res = await fetch(`${API_BASE}/auth/google/exchange`, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body:    JSON.stringify({ code }),
+          method:      'POST',
+          credentials: 'include',
+          headers:     { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body:        JSON.stringify({ code }),
         })
         const body = await res.json().catch(() => ({}))
         if (cancelled) return
 
-        if (! res.ok || ! body?.token || ! body?.tenant_id) {
+        if (! res.ok || ! body?.tenant_id) {
           setError((body && body.message) || 'Sign-in session expired. Try again.')
           return
         }
 
         const payload = body as Payload
-        setToken(payload.token)
+        setToken()
         setTenantId(payload.tenant_id)
 
         // Wipe the code from the URL before navigating away so it never
