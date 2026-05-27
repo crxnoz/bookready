@@ -31,7 +31,11 @@ class AuthController extends Controller
         // Revoke old tokens if single-session is desired
         // $user->tokens()->delete();
 
-        $token = $user->createToken('api')->plainTextToken;
+        $token = $user->createToken(
+            'api',
+            ['*'],
+            now()->addMinutes(AuthCookie::TOKEN_TTL_MIN),
+        )->plainTextToken;
 
         // Phase S6 — also set the token as an httpOnly cookie so the
         // frontend doesn't need to stash it in localStorage. The token

@@ -134,6 +134,11 @@ Route::prefix('v1')->group(function () {
             ->whereNumber('id')
             ->middleware('throttle:30,1');
 
+        // NOTE: this group intentionally omits `verified_email`. Unverified
+        // users still need to log out, hit /me (to drive the "please verify"
+        // banner from email_verified_at), and request a fresh verification
+        // mail. Gating these behind verified_email would lock them out of
+        // ever finishing verification.
         Route::middleware('auth:sanctum')->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);
             Route::get('me',      [AuthController::class, 'me']);
@@ -307,6 +312,9 @@ Route::prefix('v1')->group(function () {
 
     // ── Platform announcements — read for any authed user (every owner
     //    needs them on their dashboard) ───────────────────────────────────
+    // NOTE: `verified_email` intentionally omitted — unverified users still
+    // see the dashboard wrapper that renders the "please verify your email"
+    // banner, which itself reads platform announcements.
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('platform/announcements', [PlatformAnnouncementsController::class, 'index']);
     });

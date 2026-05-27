@@ -29,7 +29,11 @@ class RegisterController extends Controller
 
         ['tenant' => $tenant, 'owner' => $owner] = $this->provisioner->provision($data);
 
-        $token = $owner->createToken('api')->plainTextToken;
+        $token = $owner->createToken(
+            'api',
+            ['*'],
+            now()->addMinutes(AuthCookie::TOKEN_TTL_MIN),
+        )->plainTextToken;
 
         // Welcome email — best-effort, never blocks signup. PlatformMailer
         // catches and logs failures internally.

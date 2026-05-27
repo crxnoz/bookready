@@ -318,7 +318,11 @@ class GoogleAuthController extends Controller
             businessName: $businessName,
         );
 
-        $token = $owner->createToken('google-oauth-signup')->plainTextToken;
+        $token = $owner->createToken(
+            'google-oauth-signup',
+            ['*'],
+            now()->addMinutes(AuthCookie::TOKEN_TTL_MIN),
+        )->plainTextToken;
 
         // The bearer token is only sent as an httpOnly cookie.
         return response()
@@ -374,7 +378,11 @@ class GoogleAuthController extends Controller
 
     private function finishWithUser(User $user, string $tokenName): RedirectResponse
     {
-        $token = $user->createToken($tokenName)->plainTextToken;
+        $token = $user->createToken(
+            $tokenName,
+            ['*'],
+            now()->addMinutes(AuthCookie::TOKEN_TTL_MIN),
+        )->plainTextToken;
 
         $response = [
             'tenant_id' => $user->tenant_id,

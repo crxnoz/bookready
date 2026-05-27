@@ -10,6 +10,17 @@ class AuthCookie
     public const NAME    = 'bookready_token';
     public const TTL_MIN = 60 * 24 * 14; // 14 days
 
+    /**
+     * Lifetime for the underlying Sanctum personal_access_token row, in
+     * minutes. Set explicitly on every createToken() call so a token
+     * leaked outside the cookie path (e.g. via server-side compromise)
+     * cannot be replayed indefinitely. Kept slightly longer than the
+     * cookie TTL so a user with an in-flight session past 14 days
+     * fails on the cookie expiry rather than a DB-level revocation
+     * (which would produce a less obvious "unauthenticated" UX).
+     */
+    public const TOKEN_TTL_MIN = 60 * 24 * 30; // 30 days
+
     public static function make(string $plainTextToken): Cookie
     {
         return cookie(

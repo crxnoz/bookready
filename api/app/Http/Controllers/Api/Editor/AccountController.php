@@ -138,6 +138,20 @@ class AccountController extends Controller
         $user->password = Hash::make($validated['new_password']);
         $user->save();
 
+        // Phase S6 followup — revoke every other Sanctum token after a
+        // successful password change. If an attacker had stolen the old
+        // password and is currently signed in, their token survives the
+        // password rotation unless we kill it here. Preserve the current
+        // request's token so the user isn't logged out of the tab they
+        // just changed the password in.
+        $currentTokenId = $request->user()->currentAccessToken()?->id;
+        $query = $user->tokens();
+        if ($currentTokenId) {
+            $query->where('id', '!=', $currentTokenId);
+        }
+        $revoked = (int) $query->count();
+        $query->delete();
+
         // Security notice. Best-effort — don't block the response on mail failure.
         try {
             Mail::to($user->email)->send(new PasswordChangedMail(
@@ -152,7 +166,8 @@ class AccountController extends Controller
         }
 
         return response()->json([
-            'message' => 'Password updated.',
+            'message'        => 'Password updated.',
+            'revoked_count'  => $revoked,
         ]);
     }
 
