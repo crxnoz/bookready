@@ -27,7 +27,13 @@
 const PUBLIC_SITE_CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline'",
+  // fonts.googleapis.com — the FadeRoom template's TFR_CSS block uses
+  // `@import url('https://fonts.googleapis.com/...')` to load Dancing
+  // Script / DM Serif / DM Sans / Roboto. Without this entry the
+  // @import is blocked, the template falls back to system fonts, and
+  // the whole brand look breaks. The actual font files come from
+  // fonts.gstatic.com which is covered by `font-src https:` below.
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
   "connect-src 'self' https://api.bkrdy.me",
@@ -44,7 +50,14 @@ const APP_CSP = [
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
   "connect-src 'self' https://api.bkrdy.me https://api.stripe.com https://*.stripe.com https://accounts.google.com",
-  "frame-src https://js.stripe.com https://hooks.stripe.com https://accounts.google.com",
+  // frame-src — what the editor is allowed to load AS iframes. Stripe
+  // and Google for their respective widgets, plus the wildcard tenant
+  // subdomains so the website-preview iframe in /editor/website can
+  // embed https://{slug}.bkrdy.me. Without the wildcard entry Chrome
+  // shows "This content is blocked. Contact the site owner to fix the
+  // issue." on every preview load, even though the tenant response's
+  // frame-ancestors permits the editor.
+  "frame-src https://js.stripe.com https://hooks.stripe.com https://accounts.google.com https://*.bkrdy.me https://*.daysbookings.site",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self' https://api.bkrdy.me https://checkout.stripe.com",
