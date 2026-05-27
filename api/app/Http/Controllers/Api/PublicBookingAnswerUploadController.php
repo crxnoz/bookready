@@ -40,6 +40,7 @@ class PublicBookingAnswerUploadController extends Controller
 {
     private const MAX_BYTES         = 10 * 1024 * 1024;
     private const MAX_EDGE_PX       = 2000;
+    private const MAX_DECODE_EDGE_PX = 4000;
     private const WEBP_QUALITY      = 82;
     private const DAILY_FILE_CAP    = 200;            // per tenant per day
     private const DAILY_BYTE_CAP    = 100 * 1024 * 1024; // 100 MB per tenant per day
@@ -47,7 +48,13 @@ class PublicBookingAnswerUploadController extends Controller
     public function store(Request $request, string $slug): JsonResponse
     {
         $request->validate([
-            'file' => 'required|file|max:10240|mimetypes:image/jpeg,image/png,image/webp,image/heic,image/heif',
+            'file' => [
+                'required',
+                'file',
+                'max:10240',
+                'mimetypes:image/jpeg,image/png,image/webp,image/heic,image/heif',
+                'dimensions:min_width=1,min_height=1,max_width:' . self::MAX_DECODE_EDGE_PX . ',max_height:' . self::MAX_DECODE_EDGE_PX,
+            ],
         ]);
 
         // Slug → tenant via the domains table. We do NOT initialize tenancy
@@ -92,16 +99,19 @@ class PublicBookingAnswerUploadController extends Controller
         // Phase S3 — per-tenant daily quota. Counters live in Laravel cache
         // keyed by tenant + UTC date. Resets at midnight naturally because
         // we set the TTL to "end of day".
-        $today    = Carbon::now('UTC')->toDateString();
-        $fileKey  = "upload_count:{$tenant->getKey()}:{$today}";
-        $byteKey  = "upload_bytes:{$tenant->getKey()}:{$today}";
-        $fileCount = (int) (Cache::get($fileKey) ?? 0);
-        $byteCount = (int) (Cache::get($byteKey) ?? 0);
-        if ($fileCount >= self::DAILY_FILE_CAP || $byteCount >= self::DAILY_BYTE_CAP) {
+        $today      = Carbon::now('UTC')->toDateString();
+        $fileKey    = "upload_count:{$tenant->getKey()}:{$today}";
+        $byteKey    = "upload_bytes:{$tenant->getKey()}:{$today}";
+        $ttlSeconds = (int) max(60, Carbon::now('UTC')->diffInSeconds(Carbon::now('UTC')->endOfDay()));
+
+        Cache::add($fileKey, 0, $ttlSeconds);
+        Cache::add($byteKey, 0, $ttlSeconds);
+
+        if ((int) (Cache::get($byteKey) ?? 0) >= self::DAILY_BYTE_CAP) {
             Log::channel('security')->warning('upload.quota.exceeded', [
                 'tenant'  => $tenant->getKey(),
-                'files'   => $fileCount,
-                'bytes'   => $byteCount,
+                'files'   => (int) (Cache::get($fileKey) ?? 0),
+                'bytes'   => (int) (Cache::get($byteKey) ?? 0),
                 'ip'      => $request->ip(),
             ]);
             return response()->json([
@@ -117,6 +127,20 @@ class PublicBookingAnswerUploadController extends Controller
             return response()->json(['message' => 'File too large (10 MB max)'], 422);
         }
 
+        $fileCount = (int) Cache::increment($fileKey, 1);
+        if ($fileCount > self::DAILY_FILE_CAP) {
+            Cache::decrement($fileKey, 1);
+            Log::channel('security')->warning('upload.quota.exceeded', [
+                'tenant'  => $tenant->getKey(),
+                'files'   => $fileCount,
+                'bytes'   => (int) (Cache::get($byteKey) ?? 0),
+                'ip'      => $request->ip(),
+            ]);
+            return response()->json([
+                'message' => 'Daily upload limit reached. Try again tomorrow.',
+            ], 429);
+        }
+
         try {
             $manager = new ImageManager(new GdDriver());
             $image   = $manager->read($file->getRealPath());
@@ -127,21 +151,21 @@ class PublicBookingAnswerUploadController extends Controller
 
             $encoded = (string) $image->toWebp(self::WEBP_QUALITY);
         } catch (\Throwable $e) {
+            Cache::decrement($fileKey, 1);
             report($e);
             return response()->json(['message' => 'Could not process image'], 422);
         }
 
-        // Phase S5++ — re-check the byte cap AFTER encoding, BEFORE writing
-        // to R2. The pre-flight check at the top of this method uses the
-        // raw upload size which can be ~50% larger than the webp output,
-        // but it doesn't catch the case where the cumulative tenant byte
-        // count + this encoded payload would exceed cap. This is a closer
-        // approximation of the strict cap without paying a row-level lock.
-        $projectedBytes = (int) (Cache::get($byteKey) ?? 0) + strlen($encoded);
-        if ($projectedBytes > self::DAILY_BYTE_CAP) {
+        // Reserve encoded bytes atomically before writing so parallel
+        // uploads cannot all pass the same quota check.
+        $encodedBytes = strlen($encoded);
+        $byteCount    = (int) Cache::increment($byteKey, $encodedBytes);
+        if ($byteCount > self::DAILY_BYTE_CAP) {
+            Cache::decrement($byteKey, $encodedBytes);
+            Cache::decrement($fileKey, 1);
             Log::channel('security')->warning('upload.quota.exceeded.post_encode', [
                 'tenant'    => $tenant->getKey(),
-                'projected' => $projectedBytes,
+                'projected' => $byteCount,
                 'ip'        => $request->ip(),
             ]);
             return response()->json([
@@ -155,24 +179,17 @@ class PublicBookingAnswerUploadController extends Controller
             (string) Str::ulid(),
         );
 
-        Storage::disk('r2')->put($key, $encoded, [
-            'ContentType'  => 'image/webp',
-            'CacheControl' => 'public, max-age=31536000, immutable',
-        ]);
-
-        // Bump quotas AFTER the successful write so failed uploads don't
-        // chip away at the daily cap.
-        //
-        // Phase S5+ — switch from Cache::get + Cache::put to Cache::add +
-        // Cache::increment so concurrent uploads don't lose count to a
-        // last-write-wins overwrite. Cache::add seeds the key with a TTL
-        // when it doesn't exist; increment is atomic on the
-        // database/redis/memcached drivers we support.
-        $ttlSeconds = max(60, Carbon::now('UTC')->endOfDay()->diffInSeconds(Carbon::now('UTC')));
-        Cache::add($fileKey, 0, $ttlSeconds);
-        Cache::add($byteKey, 0, $ttlSeconds);
-        Cache::increment($fileKey, 1);
-        Cache::increment($byteKey, strlen($encoded));
+        try {
+            Storage::disk('r2')->put($key, $encoded, [
+                'ContentType'  => 'image/webp',
+                'CacheControl' => 'public, max-age=31536000, immutable',
+            ]);
+        } catch (\Throwable $e) {
+            Cache::decrement($byteKey, $encodedBytes);
+            Cache::decrement($fileKey, 1);
+            report($e);
+            return response()->json(['message' => 'Upload failed'], 500);
+        }
 
         $base = rtrim((string) config('filesystems.disks.r2.url'), '/');
         $url  = $base !== '' ? "{$base}/{$key}" : Storage::disk('r2')->url($key);
@@ -180,7 +197,7 @@ class PublicBookingAnswerUploadController extends Controller
         return response()->json([
             'url'   => $url,
             'key'   => $key,
-            'bytes' => strlen($encoded),
+            'bytes' => $encodedBytes,
         ], 201);
     }
 

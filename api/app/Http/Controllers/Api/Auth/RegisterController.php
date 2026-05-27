@@ -51,19 +51,21 @@ class RegisterController extends Controller
             ]);
         }
 
-        // Phase S6 — same cookie-attach as login(). Body still carries the
-        // token for backward compatibility.
+        // Same cookie-attach flow as login. The bearer token is only sent as an httpOnly cookie.
         return response()
             ->json([
-                'token'     => $token,
                 'tenant_id' => $tenant->id,
                 'domain'    => $tenant->domains()->first()?->domain,
                 'user'      => [
-                    'id'    => $owner->id,
-                    'name'  => $owner->name,
-                    'email' => $owner->email,
+                    'id'        => $owner->id,
+                    'name'      => $owner->name,
+                    'email'     => $owner->email,
+                    'tenant_id' => $owner->tenant_id,
+                    'is_owner'  => (bool) ($owner->is_owner ?? false),
+                    'is_admin'  => (bool) ($owner->is_admin ?? false),
                 ],
             ], 201)
-            ->withCookie(AuthCookie::make($token));
+            ->withCookie(AuthCookie::make($token))
+            ->withCookie(AuthCookie::forgetLegacySharedDomain());
     }
 }

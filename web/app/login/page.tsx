@@ -38,7 +38,7 @@ function LoginInner() {
     setLoading(true)
     try {
       const res = await login({ email, password })
-      setToken(res.token)
+      setToken()
       const tenantId = res.tenant_id ?? res.user.tenant_id
       setTenantId(tenantId)
       router.push('/editor/website?tab=business')

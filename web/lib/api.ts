@@ -82,28 +82,23 @@ import {
   WebsiteSectionCreatePayload,
   WebsiteSectionUpdatePayload,
 } from './types'
-import { getToken } from './auth'
 import { mockTenant } from './mockTenant'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
 
 async function request<T>(
   path: string,
-  options: RequestInit & { token?: string } = {},
+  options: RequestInit = {},
 ): Promise<T> {
-  const { token, ...init } = options
+  const init = options
   // Phase S6 — session auth now travels via the httpOnly bookready_token
-  // cookie, sent automatically when credentials: 'include' is set. We
-  // still attach an Authorization header when a legacy localStorage
-  // token is present so pre-S6 sessions don't break on the deploy.
-  const resolvedToken = token ?? getToken()
+  // Authenticated API calls use the httpOnly cookie only.
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
-    credentials: 'include',
+    credentials: init.credentials ?? 'include',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      ...(resolvedToken ? { Authorization: `Bearer ${resolvedToken}` } : {}),
       ...(init.headers ?? {}),
     },
   })
@@ -162,9 +157,6 @@ export interface UploadResponse {
 
 export async function uploadEditorImage(file: File, kind: UploadKind): Promise<UploadResponse> {
   // Phase S6 — credentials: 'include' for the cookie path; the
-  // Authorization header is still sent when a legacy localStorage
-  // token exists so transition sessions keep working.
-  const token = getToken()
   const form  = new FormData()
   form.append('file', file)
   form.append('kind', kind)
@@ -174,7 +166,6 @@ export async function uploadEditorImage(file: File, kind: UploadKind): Promise<U
     credentials: 'include',
     headers: {
       Accept: 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   })
   if (!res.ok) {
@@ -222,7 +213,7 @@ export async function getPublicSite(slug: string, unlockToken?: string | null): 
   // (the public/site route is force-dynamic but Next's fetch-level cache must
   // also be disabled to actually re-fetch from the API on every request).
   const qs = unlockToken ? `?unlock=${encodeURIComponent(unlockToken)}` : ''
-  return request<PublicSite>(`/public/sites/${slug}${qs}`, { cache: 'no-store' })
+  return request<PublicSite>(`/public/sites/${slug}${qs}`, { cache: 'no-store', credentials: 'omit' })
 }
 
 /**
@@ -819,23 +810,16 @@ export async function getConnectDashboardLink(): Promise<ConnectDashboardLinkRes
 }
 
 /**
- * Build a download URL for a Danger Zone CSV export. The endpoint requires
- * an Authorization header, so we can't just window.open it — we need to
- * fetch with the token and trigger a blob download on the client.
+ * Download a Danger Zone CSV export. The endpoint uses
+ * a cookie-authenticated fetch so the browser can save the CSV blob.
  */
 export async function downloadEditorExport(
   type: 'appointments' | 'customers',
 ): Promise<{ blob: Blob; filename: string }> {
-  // Phase S6 — cookie-based auth via credentials: 'include'. The legacy
-  // Authorization header is still sent when a localStorage token exists
-  // so transition sessions don't break. We no longer require a token to
-  // be present — a cookie session is sufficient.
-  const token = getToken()
   const res = await fetch(`${API_BASE}/editor/danger/export/${type}`, {
     credentials: 'include',
     headers: {
       Accept: 'text/csv',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   })
   if (! res.ok) {

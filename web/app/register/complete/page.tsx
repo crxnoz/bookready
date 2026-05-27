@@ -73,7 +73,7 @@ function CompleteInner() {
         handoff,
         business_name: businessName.trim(),
       })
-      setToken(res.token)
+      setToken()
       const tenantId = res.tenant_id ?? res.user.tenant_id
       setTenantId(tenantId)
       // Default to The Fade Room template — only template available right now.

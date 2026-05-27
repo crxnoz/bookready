@@ -1205,7 +1205,6 @@ export interface LoginPayload {
 }
 
 export interface AuthResponse {
-  token: string
   tenant_id?: string  // present on register, absent on login (use user.tenant_id instead)
   domain?: string
   user: AuthUser

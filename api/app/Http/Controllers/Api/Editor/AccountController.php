@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Editor;
 
+use App\Http\Controllers\Api\Auth\EmailVerificationController;
 use App\Http\Controllers\Controller;
 use App\Mail\EmailChangedMail;
 use App\Mail\PasswordChangedMail;
@@ -66,6 +67,9 @@ class AccountController extends Controller
         if (array_key_exists('email', $validated)) $user->email = $validated['email'];
 
         $emailChanged = $user->isDirty('email');
+        if ($emailChanged) {
+            $user->email_verified_at = null;
+        }
 
         if ($user->isDirty()) {
             $user->save();
@@ -99,6 +103,15 @@ class AccountController extends Controller
             } catch (\Throwable $e) {
                 Log::error('[BookReady] EmailChangedMail to new address failed', [
                     'new_email' => $user->email, 'error' => $e->getMessage(),
+                ]);
+            }
+
+            try {
+                EmailVerificationController::sendVerificationEmail($user);
+            } catch (\Throwable $e) {
+                Log::warning('verify-email send failed after email change', [
+                    'user_id' => $user->id,
+                    'error'   => $e->getMessage(),
                 ]);
             }
         }

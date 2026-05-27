@@ -31,8 +31,11 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'tenancy' => \App\Http\Middleware\InitializeTenancyBySubdomain::class,
-            'admin'   => \App\Http\Middleware\EnsureAdmin::class,
+            'tenancy'        => \App\Http\Middleware\InitializeTenancyBySubdomain::class,
+            'admin'          => \App\Http\Middleware\EnsureAdmin::class,
+            'verified_email' => \App\Http\Middleware\EnsureEmailVerified::class,
+            'tenant_owner'   => \App\Http\Middleware\EnsureTenantOwner::class,
+            'trusted_origin' => \App\Http\Middleware\EnsureTrustedBrowserOrigin::class,
         ]);
 
         // Phase S6 — disable the default "redirect guests to route('login')"

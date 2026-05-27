@@ -16,14 +16,28 @@
 //   - frame-ancestors blocks clickjacking. We never embed tenant sites.
 const PUBLIC_SITE_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
-  "connect-src 'self' https://api.bkrdy.me https://*.bkrdy.me",
+  "connect-src 'self' https://api.bkrdy.me",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self' https://api.bkrdy.me",
+  "object-src 'none'",
+].join('; ')
+
+const APP_CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://js.stripe.com https://accounts.google.com https://apis.google.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data: https:",
+  "connect-src 'self' https://api.bkrdy.me https://api.stripe.com https://*.stripe.com https://accounts.google.com",
+  "frame-src https://js.stripe.com https://hooks.stripe.com https://accounts.google.com",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self' https://api.bkrdy.me https://checkout.stripe.com",
   "object-src 'none'",
 ].join('; ')
 
@@ -47,10 +61,13 @@ const nextConfig = {
         ],
       },
       {
-        // Everything else (editor, auth pages) — common hardening
-        // headers but no CSP, so Stripe / Google / etc. keep working.
+        // Everything else (editor, auth pages) gets the app CSP with
+        // the payment and OAuth origins the product actually uses.
         source: '/:path*',
-        headers: COMMON_HEADERS,
+        headers: [
+          ...COMMON_HEADERS,
+          { key: 'Content-Security-Policy', value: APP_CSP },
+        ],
       },
     ]
   },

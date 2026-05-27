@@ -108,17 +108,17 @@ Route::prefix('v1')->group(function () {
         // Phase S5 — credential endpoints throttled to slow brute-force
         // attacks. Login is tighter than register since attackers loop
         // login attempts against known emails.
-        Route::post('register', [RegisterController::class, 'store'])->middleware('throttle:5,1');
-        Route::post('login',    [AuthController::class, 'login'])->middleware('throttle:10,1');
+        Route::post('register', [RegisterController::class, 'store'])->middleware(['trusted_origin', 'throttle:5,1']);
+        Route::post('login',    [AuthController::class, 'login'])->middleware(['trusted_origin', 'throttle:10,1']);
 
         // Google sign-in / sign-up.
         Route::get ('google/redirect',         [GoogleAuthController::class, 'redirect'])->middleware('throttle:20,1');
         Route::get ('google/callback',         [GoogleAuthController::class, 'callback'])->middleware('throttle:20,1');
-        Route::post('google/complete-signup',  [GoogleAuthController::class, 'completeSignup'])->middleware('throttle:10,1');
+        Route::post('google/complete-signup',  [GoogleAuthController::class, 'completeSignup'])->middleware(['trusted_origin', 'throttle:10,1']);
         // Phase S4 — exchange the short-lived ?code= for the real Sanctum
         // token. Throttled so a leaked code can't be brute-forced.
         Route::post('google/exchange',         [GoogleAuthController::class, 'exchange'])
-            ->middleware('throttle:30,1');
+            ->middleware(['trusted_origin', 'throttle:30,1']);
 
         // Forgot / reset password.
         Route::post('password/forgot', [PasswordResetController::class, 'forgot'])->middleware('throttle:5,1');
@@ -150,7 +150,7 @@ Route::prefix('v1')->group(function () {
     // was never implemented (every request 500'd with a method-not-found).
     // No frontend code calls it, so the route is removed rather than left
     // as a noisy honeypot. Re-add it when there's an actual implementation.
-    Route::middleware('auth:sanctum')->prefix('billing')->group(function () {
+    Route::middleware(['auth:sanctum', 'verified_email', 'tenant_owner'])->prefix('billing')->group(function () {
         Route::post('checkout',                          [BillingController::class, 'checkout']);
         Route::get('checkout-session/{sessionId}',       [BillingController::class, 'checkoutSession']);
         Route::get('portal',                             [BillingController::class, 'portal']);
@@ -158,7 +158,7 @@ Route::prefix('v1')->group(function () {
     });
 
     // ── Editor (central routes, manual tenancy init) ──────────────────────
-    Route::middleware('auth:sanctum')->prefix('editor')->group(function () {
+    Route::middleware(['auth:sanctum', 'verified_email', 'tenant_owner'])->prefix('editor')->group(function () {
         Route::get('business',  [BusinessProfileController::class, 'show']);
         Route::patch('business', [BusinessProfileController::class, 'update']);
 
@@ -295,7 +295,7 @@ Route::prefix('v1')->group(function () {
     });
 
     // ── BookReady platform admin (super-admin only) ──────────────────────
-    Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+    Route::middleware(['auth:sanctum', 'verified_email', 'admin'])->prefix('admin')->group(function () {
         Route::get   ('tenants',          [AdminTenantsController::class, 'index']);
         Route::delete('tenants/{id}',     [AdminTenantsController::class, 'destroy']);
         // Platform announcements (admin CRUD)

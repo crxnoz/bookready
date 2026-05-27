@@ -69,7 +69,7 @@ function RegisterForm() {
         password_confirmation: form.password_confirmation,
         business_name: form.business_name,
       })
-      setToken(res.token)
+      setToken()
       const tenantId = res.tenant_id ?? res.user.tenant_id
       setTenantId(tenantId)
       localStorage.setItem(TEMPLATE_KEY, templateSlug)

@@ -28,6 +28,8 @@ return [
 
     'allowed_origins' => [
         'https://app.bkrdy.me',
+        'http://app.daysbookings.site',
+        'https://app.daysbookings.site',
         'http://localhost:3000',
         'https://localhost:3000',
     ],
@@ -37,6 +39,7 @@ return [
     // origin to be allow-listed for the credentials preflight to pass.
     'allowed_origins_patterns' => [
         '#^https://[a-z0-9][a-z0-9-]*\.bkrdy\.me$#i',
+        '#^https?://[a-z0-9][a-z0-9-]*\.daysbookings\.site$#i',
     ],
 
     'allowed_headers' => ['*'],

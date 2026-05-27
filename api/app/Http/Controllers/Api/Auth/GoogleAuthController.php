@@ -320,10 +320,9 @@ class GoogleAuthController extends Controller
 
         $token = $owner->createToken('google-oauth-signup')->plainTextToken;
 
-        // Phase S6 — issue the session cookie alongside the body token.
+        // The bearer token is only sent as an httpOnly cookie.
         return response()
             ->json([
-                'token'     => $token,
                 'tenant_id' => $owner->tenant_id,
                 'user'      => [
                     'id'        => $owner->id,
@@ -334,7 +333,8 @@ class GoogleAuthController extends Controller
                     'is_admin'  => (bool) ($owner->is_admin ?? false),
                 ],
             ])
-            ->withCookie(AuthCookie::make($token));
+            ->withCookie(AuthCookie::make($token))
+            ->withCookie(AuthCookie::forgetLegacySharedDomain());
     }
 
     /**
@@ -351,7 +351,7 @@ class GoogleAuthController extends Controller
 
         $cacheKey = "google_auth_code:{$validated['code']}";
         $payload  = Cache::get($cacheKey);
-        if (! is_array($payload) || empty($payload['token'])) {
+        if (! is_array($payload) || empty($payload['token']) || empty($payload['response'])) {
             return response()->json([
                 'message' => 'Sign-in session expired or already used. Please try again.',
             ], 410);
@@ -365,8 +365,9 @@ class GoogleAuthController extends Controller
         // the httpOnly session cookie HERE so the frontend doesn't need
         // to store the token from $payload anywhere JS-readable.
         return response()
-            ->json($payload)
-            ->withCookie(AuthCookie::make((string) $payload['token']));
+            ->json($payload['response'])
+            ->withCookie(AuthCookie::make((string) $payload['token']))
+            ->withCookie(AuthCookie::forgetLegacySharedDomain());
     }
 
     // ── Shared finalization ──────────────────────────────────────────────
@@ -375,8 +376,7 @@ class GoogleAuthController extends Controller
     {
         $token = $user->createToken($tokenName)->plainTextToken;
 
-        $payload = [
-            'token'     => $token,
+        $response = [
             'tenant_id' => $user->tenant_id,
             'user'      => [
                 'id'        => $user->id,
@@ -392,7 +392,10 @@ class GoogleAuthController extends Controller
         // and redirect with ?code=. Never put the token in the URL fragment
         // (it leaks to browser history + referrer headers from any redirect).
         $code = Str::random(40);
-        Cache::put("google_auth_code:{$code}", $payload, self::CODE_TTL_SECONDS);
+        Cache::put("google_auth_code:{$code}", [
+            'token'    => $token,
+            'response' => $response,
+        ], self::CODE_TTL_SECONDS);
 
         return redirect()->away(self::APP_BASE . '/auth/google/complete?code=' . $code);
     }

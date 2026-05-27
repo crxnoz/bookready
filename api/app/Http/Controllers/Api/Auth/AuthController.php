@@ -35,19 +35,20 @@ class AuthController extends Controller
 
         // Phase S6 — also set the token as an httpOnly cookie so the
         // frontend doesn't need to stash it in localStorage. The token
-        // is still returned in the body for the transition window; the
-        // new frontend ignores the body value and relies on the cookie.
+        // is not returned in the JSON body.
         return response()
             ->json([
-                'token' => $token,
-                'user'  => [
+                'user' => [
                     'id'        => $user->id,
                     'name'      => $user->name,
                     'email'     => $user->email,
                     'tenant_id' => $user->tenant_id,
+                    'is_owner'  => (bool) ($user->is_owner ?? false),
+                    'is_admin'  => (bool) ($user->is_admin ?? false),
                 ],
             ])
-            ->withCookie(AuthCookie::make($token));
+            ->withCookie(AuthCookie::make($token))
+            ->withCookie(AuthCookie::forgetLegacySharedDomain());
     }
 
     public function logout(Request $request): JsonResponse
@@ -60,7 +61,8 @@ class AuthController extends Controller
         // with a no-longer-valid token and returning 401s.
         return response()
             ->json(['message' => 'Logged out.'])
-            ->withCookie(AuthCookie::forget());
+            ->withCookie(AuthCookie::forget())
+            ->withCookie(AuthCookie::forgetLegacySharedDomain());
     }
 
     public function me(Request $request): JsonResponse

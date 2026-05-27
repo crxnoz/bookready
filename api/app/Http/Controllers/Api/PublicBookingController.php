@@ -804,7 +804,12 @@ class PublicBookingController extends Controller
         $r2Base = rtrim((string) config('filesystems.disks.r2.url'), '/');
         if ($r2Base === '') {
             // Dev fallback when R2_PUBLIC_BASE isn't set — accept https only.
-            return preg_match('#^https://#i', $url) === 1 ? $url : null;
+            $env = strtolower((string) config('app.env'));
+            if (in_array($env, ['local', 'testing'], true)) {
+                return preg_match('#^https://#i', $url) === 1 ? $url : null;
+            }
+
+            return null;
         }
 
         // Production — must originate from our R2 CDN.

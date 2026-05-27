@@ -16,12 +16,19 @@ class UploadsController extends Controller
     private const ALLOWED_KINDS = ['gallery', 'before_after', 'header', 'logo', 'about', 'staff', 'service', 'category', 'addon', 'booking_answer'];
     private const MAX_BYTES     = 10 * 1024 * 1024;   // 10 MB
     private const MAX_EDGE_PX   = 2000;
+    private const MAX_DECODE_EDGE_PX = 4000;
     private const WEBP_QUALITY  = 82;
 
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'file' => "required|file|max:10240|mimetypes:image/jpeg,image/png,image/webp,image/heic,image/heif",
+            'file' => [
+                'required',
+                'file',
+                'max:10240',
+                'mimetypes:image/jpeg,image/png,image/webp,image/heic,image/heif',
+                'dimensions:min_width=1,min_height=1,max_width:' . self::MAX_DECODE_EDGE_PX . ',max_height:' . self::MAX_DECODE_EDGE_PX,
+            ],
             'kind' => 'required|string|in:' . implode(',', self::ALLOWED_KINDS),
         ]);
 
