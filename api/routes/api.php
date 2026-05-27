@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\Customer\AuthController                as CustomerAuthController;
 use App\Http\Controllers\Api\Customer\BookingsController            as CustomerBookingsController;
 use App\Http\Controllers\Api\Customer\ClaimController               as CustomerClaimController;
+use App\Http\Controllers\Api\Customer\DangerController              as CustomerDangerController;
 use App\Http\Controllers\Api\Customer\EmailVerificationController   as CustomerEmailVerificationController;
 use App\Http\Controllers\Api\Customer\PasswordResetController       as CustomerPasswordResetController;
 use App\Http\Controllers\Api\Customer\ProfileController             as CustomerProfileController;
@@ -403,6 +404,12 @@ Route::prefix('v1')->group(function () {
             Route::patch ('profile/email',    [CustomerProfileController::class, 'updateEmail']);
             Route::post  ('profile/password', [CustomerProfileController::class, 'changePassword'])
                 ->middleware('throttle:5,1');
+
+            // ── Danger Zone (Phase 6) — data export + account delete ────────
+            Route::get   ('danger/export',          [CustomerDangerController::class, 'export'])
+                ->middleware('throttle:3,1');
+            Route::post  ('danger/delete-account',  [CustomerDangerController::class, 'deleteAccount'])
+                ->middleware('throttle:3,1');
         });
     });
 

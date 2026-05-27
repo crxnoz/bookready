@@ -108,6 +108,28 @@ export default function TermsPage() {
         would be subjected to such laws, you may not use the Services. You may not use
         the Services in a way that would violate the Gramm-Leach-Bliley Act (GLBA).
       </p>
+      <p>
+        BookReady offers two distinct kinds of accounts:
+      </p>
+      <ul>
+        <li>
+          <strong>Business owner accounts</strong> — subscription-based;
+          owners use the editor at app.bkrdy.me to run a booking site,
+          accept payments, and manage their customers. The bulk of these
+          Legal Terms apply to owner accounts.
+        </li>
+        <li>
+          <strong>Customer accounts</strong> — free; end-clients use these
+          to manage bookings across the BookReady-powered businesses
+          they&rsquo;ve booked with, from a single sign-in at{' '}
+          <a href="https://app.bkrdy.me/account">app.bkrdy.me/account</a>.
+          Customer accounts are entirely optional — bookings can also be
+          made anonymously through any tenant booking site. Customer
+          accounts are not required to pay for the Services because the
+          Services are free for customers; only owner subscriptions
+          generate billing obligations.
+        </li>
+      </ul>
 
       <h2 id="ip">2. Intellectual property rights</h2>
 

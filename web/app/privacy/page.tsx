@@ -33,7 +33,41 @@ export default function PrivacyPage() {
           automation tools, and analytics designed for beauty and service-based
           businesses.
         </li>
+        <li>
+          Create a BookReady customer account at{' '}
+          <a href="https://app.bkrdy.me/account">app.bkrdy.me/account</a>{' '}
+          to manage bookings across multiple BookReady-powered businesses from
+          a single sign-in.
+        </li>
         <li>Engage with us in other related ways, including any marketing or events.</li>
+      </ul>
+
+      <h2>A note on two kinds of users</h2>
+      <p>
+        BookReady is used by two distinct groups, and we process their
+        information differently:
+      </p>
+      <ul>
+        <li>
+          <strong>Business owners</strong> — the salons, barbers, and other
+          beauty professionals who subscribe to BookReady to run their booking
+          site. We are the data controller for their account information
+          (email, password, profile, subscription) and the data processor for
+          the customer records they store in their workspace.
+        </li>
+        <li>
+          <strong>End-clients</strong> — the people who book appointments
+          through a business&rsquo;s public booking site. When you book without
+          creating an account, your information (name, contact details, the
+          booking itself) is held in the business&rsquo;s workspace and they
+          are the data controller — we process it on their behalf. When you
+          create a free BookReady customer account to manage your bookings
+          across multiple businesses, we additionally hold your account
+          identity (email, password hash, name, phone, optional preferences) as
+          a data controller in our own right. The two records are linked but
+          remain logically separate: each business sees their own slice of
+          your activity, never another business&rsquo;s.
+        </li>
       </ul>
       <p>
         <strong>Questions or concerns?</strong> Reading this Privacy Notice will help
@@ -944,8 +978,38 @@ export default function PrivacyPage() {
         from you, details about how we have processed it, correct inaccuracies, or
         delete your personal information. You may also have the right to withdraw your
         consent to our processing of your personal information. These rights may be
-        limited in some circumstances by applicable law. To request to review, update,
-        or delete your personal information, please email us at{' '}
+        limited in some circumstances by applicable law.
+      </p>
+      <p>
+        <strong>Customer account holders</strong> can exercise most of these
+        rights directly from{' '}
+        <a href="https://app.bkrdy.me/account/profile">app.bkrdy.me/account/profile</a>:
+      </p>
+      <ul>
+        <li>
+          <strong>Export your data.</strong> Download a complete JSON dump of
+          your profile and every booking we have linked to your account, across
+          every business you&rsquo;ve booked with through BookReady.
+        </li>
+        <li>
+          <strong>Delete your account.</strong> Wipes your BookReady account
+          (identity, password, contact details, account session tokens) and
+          unlinks the booking records held by each business you&rsquo;ve booked
+          with. The booking records themselves remain with the business
+          (they&rsquo;re the data controller for those — see &ldquo;A note on
+          two kinds of users&rdquo; above). To have specific booking history
+          deleted from a particular business&rsquo;s records, contact that
+          business directly.
+        </li>
+        <li>
+          <strong>Update profile details.</strong> Name, phone, email (with
+          re-verification), and password.
+        </li>
+      </ul>
+      <p>
+        For any request that isn&rsquo;t available through the self-serve flow,
+        or if you don&rsquo;t have an account but want to request changes to
+        booking records held by businesses on our platform, please email us at{' '}
         <a href="mailto:privacy@mybookready.com">privacy@mybookready.com</a>.
       </p>
     </LegalShell>

@@ -205,3 +205,39 @@ export async function changeCustomerPassword(payload: {
     body:   JSON.stringify(payload),
   })
 }
+
+// ── Danger Zone (Phase 6) ────────────────────────────────────────────────────
+
+/**
+ * Downloads a JSON dump of the customer's profile + bookings across
+ * every linked tenant. Uses raw fetch (not the request() helper)
+ * because we want the Blob, not a parsed JSON body — the response
+ * is also delivered as JSON but with Content-Disposition: attachment
+ * so we can save it to disk.
+ */
+export async function exportCustomerData(): Promise<{ blob: Blob; filename: string }> {
+  const res = await fetch(`${API_BASE}/customer/danger/export`, {
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }))
+    throw new Error((err && err.message) || 'Export failed')
+  }
+  const disp = res.headers.get('Content-Disposition') ?? ''
+  const match = disp.match(/filename="([^"]+)"/)
+  const filename = match?.[1] ?? `bookready-export-${new Date().toISOString().slice(0, 10)}.json`
+  const blob = await res.blob()
+  return { blob, filename }
+}
+
+export async function deleteCustomerAccount(password: string): Promise<{
+  message:          string
+  unlinked_clients: number
+  unlinked_tenants: number
+}> {
+  return request('/danger/delete-account', {
+    method: 'POST',
+    body:   JSON.stringify({ password }),
+  })
+}
