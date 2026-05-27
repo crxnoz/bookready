@@ -46,6 +46,19 @@ const COMMON_HEADERS = [
   { key: 'Referrer-Policy',        value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy',     value: 'camera=(), microphone=(), geolocation=()' },
   { key: 'X-Frame-Options',        value: 'DENY' },
+  // Cross-Origin-Opener-Policy — isolates the editor's browsing context
+  // so a popup-opener relationship can't be abused for XS-Leaks or to
+  // attack window.opener-aware features. 'same-origin' is the strictest
+  // value that still works with our Google OAuth popup flow.
+  { key: 'Cross-Origin-Opener-Policy',         value: 'same-origin' },
+  // Cross-Origin-Resource-Policy — defense-in-depth against Spectre-class
+  // leaks. 'same-site' lets api.bkrdy.me ↔ app.bkrdy.me ↔ {slug}.bkrdy.me
+  // still load each other's assets while blocking cross-site embedders.
+  { key: 'Cross-Origin-Resource-Policy',       value: 'same-site' },
+  // X-Permitted-Cross-Domain-Policies — kills any legacy Flash/Adobe
+  // crossdomain.xml lookup so a vestigial Flash client (or some bot
+  // probing for it) cannot widen our cross-origin policy.
+  { key: 'X-Permitted-Cross-Domain-Policies',  value: 'none' },
 ]
 
 const nextConfig = {
