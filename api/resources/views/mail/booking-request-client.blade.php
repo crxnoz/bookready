@@ -57,7 +57,32 @@
 @endsection
 @endif
 
+@if (! empty($appt['claim_url']))
+@section('extra')
+{{-- Phase 4 customer-accounts — quiet CTA at the bottom of the email.
+     Only rendered when the booker is anonymous AND has an email
+     (claim_url is null for authed-customer bookings). Visually
+     subordinate to the main "Manage your booking" CTA above. --}}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:18px;border:1px solid rgba(18,18,18,0.08);border-collapse:collapse;background:#F8F6F2;">
+  <tr>
+    <td style="padding:14px 16px;border-left:3px solid #C7BFE8;">
+      <p style="margin:0 0 6px;font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#3A3A3A;">
+        Save this booking
+      </p>
+      <p style="margin:0 0 10px;font-size:13px;line-height:1.55;color:#3A3A3A;">
+        Create a free BookReady account to manage this booking &mdash; and any future ones &mdash; from one place.
+      </p>
+      <a href="{{ $appt['claim_url'] }}" style="display:inline-block;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#121212;text-decoration:underline;text-underline-offset:3px;">
+        Save my booking &rarr;
+      </a>
+    </td>
+  </tr>
+</table>
 @if (! empty($customSignoff))
+<div style="margin-top:14px;">{!! nl2br(e($customSignoff)) !!}</div>
+@endif
+@endsection
+@elseif (! empty($customSignoff))
 @section('extra')
 {!! nl2br(e($customSignoff)) !!}
 @endsection

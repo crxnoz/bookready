@@ -506,6 +506,23 @@ class PublicBookingController extends Controller
         // Build a plain-array snapshot for use after tenancy ends.
         $apptToken = property_exists($row, 'manage_token') ? $row->manage_token : null;
         $manageUrl = $apptToken ? sprintf('https://%s.bkrdy.me/manage/%s', $tenant->id, $apptToken) : null;
+
+        // Phase 4 customer-accounts — mint a "Save this booking" claim
+        // token ONLY when the booker is anonymous AND we have an email
+        // to send the link to. An authed booker is already linked to a
+        // customer_users row via the customer_user_id stamp above, so
+        // showing the CTA would just confuse them. ClaimController
+        // tokens are 7-day-TTL, HMAC-signed, single-use (re-claim with
+        // the same email returns 409). The frontend lands the link at
+        // app.bkrdy.me/account/claim?token=...
+        $claimUrl = null;
+        if (! $authedCustomer && ! empty($row->customer_email)) {
+            $claimToken = \App\Http\Controllers\Api\Customer\ClaimController::mintToken(
+                (string) $row->customer_email,
+            );
+            $claimUrl = 'https://app.bkrdy.me/account/claim?token=' . urlencode($claimToken);
+        }
+
         $appt = [
             'id'               => (int) $row->id,
             'customer_name'    => $row->customer_name,
@@ -518,6 +535,7 @@ class PublicBookingController extends Controller
             'status'           => $row->status,
             'notes'            => $row->notes,
             'manage_url'       => $manageUrl,
+            'claim_url'        => $claimUrl,
             // Phase 7 extras. Empty array / null when not used so blades
             // can @if-guard cheaply.
             'staff_name'       => $staffName,
