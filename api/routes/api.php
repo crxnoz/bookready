@@ -8,6 +8,11 @@ use App\Http\Controllers\Api\Auth\EmailVerificationController;
 use App\Http\Controllers\Api\Auth\GoogleAuthController;
 use App\Http\Controllers\Api\Auth\PasswordResetController;
 use App\Http\Controllers\Api\Auth\RegisterController;
+use App\Http\Controllers\Api\Customer\AuthController                as CustomerAuthController;
+use App\Http\Controllers\Api\Customer\ClaimController               as CustomerClaimController;
+use App\Http\Controllers\Api\Customer\EmailVerificationController   as CustomerEmailVerificationController;
+use App\Http\Controllers\Api\Customer\PasswordResetController       as CustomerPasswordResetController;
+use App\Http\Controllers\Api\Customer\RegisterController            as CustomerRegisterController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\Editor\AccountController;
 use App\Http\Controllers\Api\Editor\DangerController;
@@ -317,6 +322,61 @@ Route::prefix('v1')->group(function () {
     // banner, which itself reads platform announcements.
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('platform/announcements', [PlatformAnnouncementsController::class, 'index']);
+    });
+
+    // ── Customer accounts (Phase 2) ──────────────────────────────────────
+    // Distinct surface for end-clients who book appointments via tenant
+    // public sites — NOT the business owners. The auth flow is fully
+    // separate (different cookie name, different tokenable, different
+    // mail templates) and only the path-aware AuthFromCookie middleware
+    // bridges the gap by promoting the right cookie per request.
+    //
+    // Inside the customer-session-protected block we also stack
+    // `customer_session` to defensively reject owner tokens that hit
+    // these endpoints with a Bearer header — auth:sanctum alone would
+    // happily resolve an owner token (different tokenable_type).
+    Route::prefix('customer')->group(function () {
+        // Auth — same throttle ladder as owner side.
+        Route::prefix('auth')->group(function () {
+            Route::post('register', [CustomerRegisterController::class, 'store'])
+                ->middleware(['trusted_origin', 'throttle:5,1']);
+            Route::post('login',    [CustomerAuthController::class, 'login'])
+                ->middleware(['trusted_origin', 'throttle:10,1']);
+
+            Route::post('password/forgot', [CustomerPasswordResetController::class, 'forgot'])
+                ->middleware('throttle:5,1');
+            Route::post('password/reset',  [CustomerPasswordResetController::class, 'reset'])
+                ->middleware('throttle:10,1');
+
+            // Verify-email click — GET because it lands from a mail
+            // client (top-level browser navigation). Throttled even
+            // though the HMAC space is infeasible to brute-force.
+            Route::get('verify-email/{id}', [CustomerEmailVerificationController::class, 'verify'])
+                ->whereNumber('id')
+                ->middleware('throttle:30,1');
+
+            // Authed surface — logout, /me, resend verification.
+            // NOTE: `customer_verified_email` intentionally omitted
+            // here. Unverified customers must still be able to log out,
+            // see their own profile (to drive the "please verify"
+            // banner), and request a fresh verification email.
+            Route::middleware(['auth:sanctum', 'customer_session'])->group(function () {
+                Route::post('logout', [CustomerAuthController::class, 'logout']);
+                Route::get('me',      [CustomerAuthController::class, 'me']);
+                Route::post('verify-email/resend', [CustomerEmailVerificationController::class, 'resend'])
+                    ->middleware('throttle:3,60');
+            });
+        });
+
+        // Claim flow — public preview + public claim POST. Both
+        // gated by the HMAC token in the body/path, so no Sanctum
+        // auth needed. trusted_origin so an attacker page can't
+        // POST a captured token from a malicious origin.
+        Route::get ('claim/preview/{token}', [CustomerClaimController::class, 'preview'])
+            ->where('token', '[A-Za-z0-9_\-]+')
+            ->middleware('throttle:30,1');
+        Route::post('claim',                 [CustomerClaimController::class, 'claim'])
+            ->middleware(['trusted_origin', 'throttle:5,1']);
     });
 
     // ── Stripe webhook (no auth, no CSRF) ────────────────────────────────
