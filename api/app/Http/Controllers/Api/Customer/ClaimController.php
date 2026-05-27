@@ -235,6 +235,10 @@ class ClaimController extends Controller
     {
         $email = $user->email;   // already lowercased by the mutator
         $total = 0;
+        // Tenants where we linked at least one clients row — these get
+        // the customer_user_tenants pivot upsert after the scan so the
+        // /customer/bookings listing immediately sees this history.
+        $tenantsLinked = [];
 
         foreach (Tenant::all() as $tenant) {
             try {
@@ -249,6 +253,10 @@ class ClaimController extends Controller
                     ->whereNull('customer_user_id')
                     ->update(['customer_user_id' => $user->id, 'updated_at' => now()]);
 
+                if ($affected > 0) {
+                    $tenantsLinked[] = $tenant->getKey();
+                }
+
                 $total += $affected;
             } catch (\Throwable $e) {
                 Log::warning('claim.link_clients failed for tenant', [
@@ -258,6 +266,31 @@ class ClaimController extends Controller
                 ]);
             } finally {
                 try { tenancy()->end(); } catch (\Throwable) {}
+            }
+        }
+
+        // Phase 3 — populate the central pivot so the cross-tenant
+        // booking-list query can scope to "tenants this customer has
+        // touched" rather than walking the whole platform. Done after
+        // all tenancy()->end()s so we're firmly back on the central
+        // connection. Idempotent updateOrInsert means re-runs are safe.
+        foreach ($tenantsLinked as $tid) {
+            try {
+                DB::table('customer_user_tenants')->updateOrInsert(
+                    ['customer_user_id' => $user->id, 'tenant_id' => $tid],
+                    [
+                        'first_booked_at' => DB::raw('COALESCE(first_booked_at, NOW())'),
+                        'last_booked_at'  => now(),
+                        'updated_at'      => now(),
+                        'created_at'      => DB::raw('COALESCE(created_at, NOW())'),
+                    ],
+                );
+            } catch (\Throwable $e) {
+                Log::warning('claim.pivot_upsert failed', [
+                    'user_id'   => $user->id,
+                    'tenant_id' => $tid,
+                    'error'     => $e->getMessage(),
+                ]);
             }
         }
 

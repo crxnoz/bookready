@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\CustomerUser;
 use App\Models\Tenant;
 use App\Services\AppointmentMailer;
 use App\Exceptions\StripeConnectNotReadyException;
@@ -37,6 +38,23 @@ class PublicBookingController extends Controller
         $tenant = Tenant::find($slug);
         if (! $tenant) {
             return response()->json(['message' => 'Site not found'], 404);
+        }
+
+        // Phase 3 customer-accounts — if the visitor is signed into a
+        // BookReady customer account, override the identity fields on the
+        // request input BEFORE validation runs. This both removes the
+        // "fill name/email" friction for repeat customers and prevents
+        // an authed customer from booking under a different identity by
+        // editing the form. Phone falls through to whatever they typed
+        // if their saved profile doesn't include one. Anonymous flow is
+        // untouched ($authedCustomer stays null).
+        $authedCustomer = ($u = $request->user()) instanceof CustomerUser ? $u : null;
+        if ($authedCustomer) {
+            $request->merge([
+                'customer_name'  => $authedCustomer->name,
+                'customer_email' => $authedCustomer->email,
+                'customer_phone' => $authedCustomer->phone ?: $request->input('customer_phone'),
+            ]);
         }
 
         $validated = $request->validate([
@@ -248,6 +266,19 @@ class PublicBookingController extends Controller
             $validated['customer_email'] ?? null,
             $validated['customer_phone'] ?? null,
         );
+
+        // Phase 3 — stamp the new (or existing) clients row with the
+        // authed customer's id so the customer dashboard surfaces this
+        // booking immediately. Guarded by Schema::hasColumn so a tenant
+        // mid-deploy without the Phase 1 migration doesn't blow up.
+        if ($authedCustomer && $clientId && Schema::hasColumn('clients', 'customer_user_id')) {
+            DB::table('clients')
+                ->where('id', $clientId)
+                ->update([
+                    'customer_user_id' => $authedCustomer->id,
+                    'updated_at'       => now(),
+                ]);
+        }
 
         // ── Payment branching ────────────────────────────────────────────
         // Defaults: payments off, no charge, no special status.
@@ -562,6 +593,32 @@ class PublicBookingController extends Controller
             ->count() === 1;
 
         tenancy()->end();
+
+        // Phase 3 — pivot upsert MUST happen after tenancy()->end()
+        // because customer_user_tenants lives in the central DB.
+        // Idempotent: re-booking at the same tenant just bumps
+        // last_booked_at. Best-effort wrap because losing the pivot
+        // row is annoying (booking won't appear in /customer/bookings)
+        // but not severe enough to fail the whole booking response.
+        if ($authedCustomer) {
+            try {
+                DB::table('customer_user_tenants')->updateOrInsert(
+                    ['customer_user_id' => $authedCustomer->id, 'tenant_id' => $tenant->id],
+                    [
+                        'first_booked_at' => DB::raw('COALESCE(first_booked_at, NOW())'),
+                        'last_booked_at'  => now(),
+                        'updated_at'      => now(),
+                        'created_at'      => DB::raw('COALESCE(created_at, NOW())'),
+                    ],
+                );
+            } catch (\Throwable $e) {
+                Log::warning('customer_user_tenants upsert failed', [
+                    'customer_user_id' => $authedCustomer->id,
+                    'tenant_id'        => $tenant->id,
+                    'error'            => $e->getMessage(),
+                ]);
+            }
+        }
 
         // ── Email behavior ───────────────────────────────────────────────
         // When payment is required, hold off on the booking-request emails

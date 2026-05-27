@@ -9,9 +9,11 @@ use App\Http\Controllers\Api\Auth\GoogleAuthController;
 use App\Http\Controllers\Api\Auth\PasswordResetController;
 use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\Customer\AuthController                as CustomerAuthController;
+use App\Http\Controllers\Api\Customer\BookingsController            as CustomerBookingsController;
 use App\Http\Controllers\Api\Customer\ClaimController               as CustomerClaimController;
 use App\Http\Controllers\Api\Customer\EmailVerificationController   as CustomerEmailVerificationController;
 use App\Http\Controllers\Api\Customer\PasswordResetController       as CustomerPasswordResetController;
+use App\Http\Controllers\Api\Customer\ProfileController             as CustomerProfileController;
 use App\Http\Controllers\Api\Customer\RegisterController            as CustomerRegisterController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\Editor\AccountController;
@@ -377,6 +379,31 @@ Route::prefix('v1')->group(function () {
             ->middleware('throttle:30,1');
         Route::post('claim',                 [CustomerClaimController::class, 'claim'])
             ->middleware(['trusted_origin', 'throttle:5,1']);
+
+        // Phase 3 — authed customer surface. Stack:
+        //   - auth:sanctum          (resolve the cookie/Bearer token)
+        //   - customer_session      (reject owner tokens — defense in depth)
+        //   - customer_verified_email (gate on email_verified_at)
+        Route::middleware(['auth:sanctum', 'customer_session', 'customer_verified_email'])->group(function () {
+            // Bookings — cross-tenant index, per-booking detail/cancel/reschedule.
+            Route::get   ('bookings',                                       [CustomerBookingsController::class, 'index']);
+            Route::get   ('bookings/{tenant_slug}/{id}',                    [CustomerBookingsController::class, 'show'])
+                ->whereNumber('id')->where('tenant_slug', '[a-z0-9]+');
+            Route::post  ('bookings/{tenant_slug}/{id}/cancel',             [CustomerBookingsController::class, 'cancel'])
+                ->whereNumber('id')->where('tenant_slug', '[a-z0-9]+')
+                ->middleware('throttle:10,1');
+            Route::post  ('bookings/{tenant_slug}/{id}/reschedule',         [CustomerBookingsController::class, 'reschedule'])
+                ->whereNumber('id')->where('tenant_slug', '[a-z0-9]+')
+                ->middleware('throttle:10,1');
+
+            // Profile — identity + contact only. Per-business preferences
+            // stay owner-controlled in the tenant clients table.
+            Route::get   ('profile',          [CustomerProfileController::class, 'show']);
+            Route::patch ('profile',          [CustomerProfileController::class, 'update']);
+            Route::patch ('profile/email',    [CustomerProfileController::class, 'updateEmail']);
+            Route::post  ('profile/password', [CustomerProfileController::class, 'changePassword'])
+                ->middleware('throttle:5,1');
+        });
     });
 
     // ── Stripe webhook (no auth, no CSRF) ────────────────────────────────
