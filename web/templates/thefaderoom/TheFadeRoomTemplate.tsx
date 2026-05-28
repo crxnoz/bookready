@@ -1387,139 +1387,193 @@ const TFR_CSS = `
   width:100%; min-height:100vh; background:var(--tfr-bg);
   overflow:hidden; position:relative;
 }
-/* Customer-account widget: absolutely positioned top-right of the
-   header. Frosted-white pill so it reads on any cover image. Hidden
-   inside the .tfr-template scope so it never affects the editor UI.
-   The base class is shared between an <a> (authed link) and a
-   <button> (unauthed "Sign in" → opens TfrAuthModal). */
+/* ── Customer-account widget (BookReady house style) ──
+   Absolutely positioned top-right of the FadeRoom header. Sharp
+   rectangular pill — NO border-radius, hairline border, system font,
+   uppercase 10px label with wide tracking. White by default, flips
+   to near-black on hover so it reads BookReady not template-y on
+   whatever cover image is behind it. Same base class is shared
+   between an <a> (authed link) and a <button> (unauthed → opens
+   TfrAuthModal). */
 .tfr-account-widget {
   position:absolute; top:14px; right:14px; z-index:6;
-  display:inline-flex; align-items:center; gap:6px;
-  padding:7px 12px; border-radius:999px;
-  background:rgba(255,255,255,0.92);
-  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
-  border:1px solid rgba(0,0,0,0.08);
-  color:var(--tfr-text); font-family:var(--tfr-ui);
-  font-size:12px; font-weight:500; line-height:1; text-decoration:none;
-  box-shadow:0 1px 3px rgba(0,0,0,0.06);
-  transition:background .18s ease,border-color .18s ease;
+  display:inline-flex; align-items:center; gap:7px;
+  padding:8px 12px; border-radius:0;
+  background:#FFFFFF; color:#121212;
+  border:1px solid rgba(18,18,18,0.15);
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  font-size:10px; font-weight:700; line-height:1;
+  letter-spacing:0.16em; text-transform:uppercase;
+  text-decoration:none;
+  box-shadow:0 1px 3px rgba(0,0,0,0.08);
+  transition:background .15s ease,color .15s ease,border-color .15s ease;
   cursor:pointer; -webkit-appearance:none; appearance:none;
 }
 @media (hover:hover) and (pointer:fine) {
-  .tfr-account-widget:hover { background:#fff; border-color:rgba(0,0,0,0.15); }
+  .tfr-account-widget:hover {
+    background:#121212; color:#FFFFFF; border-color:#121212;
+  }
 }
 .tfr-account-widget--authed { padding:0; gap:0; overflow:hidden; }
 .tfr-account-widget-link {
-  display:inline-flex; align-items:center; gap:6px;
-  padding:7px 12px; color:inherit; text-decoration:none;
+  display:inline-flex; align-items:center; gap:7px;
+  padding:8px 12px; color:inherit; text-decoration:none;
+  font-size:10px; font-weight:700;
+  letter-spacing:0.16em; text-transform:uppercase;
 }
 .tfr-account-widget-signout {
   display:inline-flex; align-items:center; justify-content:center;
-  width:30px; height:30px; padding:0;
-  border:none; border-left:1px solid rgba(0,0,0,0.08);
-  background:transparent; color:var(--tfr-text); cursor:pointer;
+  width:32px; height:32px; padding:0;
+  border:none; border-left:1px solid rgba(18,18,18,0.15);
+  background:transparent; color:inherit; cursor:pointer;
+  transition:background .15s ease,color .15s ease;
 }
 @media (hover:hover) and (pointer:fine) {
-  .tfr-account-widget-signout:hover { background:rgba(0,0,0,0.04); }
+  .tfr-account-widget-signout:hover {
+    background:rgba(0,0,0,0.06);
+  }
+  .tfr-account-widget--authed:hover .tfr-account-widget-signout {
+    border-left-color:rgba(255,255,255,0.20);
+  }
+  .tfr-account-widget--authed:hover .tfr-account-widget-signout:hover {
+    background:rgba(255,255,255,0.10);
+  }
 }
 
 /* ── Customer-auth modal (TfrCustomerAuth) ──
-   Mounted at template root by TfrCustomerAuthProvider. Bottom-sheet
-   on small screens, centered card on tablet+. White card with dark
-   text — palette-locked because it overlays whatever the tenant has
-   set as their cover image / accents. */
+   Mounted at template root by TfrCustomerAuthProvider. BookReady
+   house style: sharp corners (no border-radius anywhere), dark brand
+   bar across the top, system font, near-black solids. Mirrors the
+   AuthShell pattern used on /login and /account/login so customers
+   know they're authenticating into BookReady, not the salon. */
 .tfr-auth-modal-backdrop {
   position:fixed; inset:0; z-index:9999;
-  background:rgba(18,18,18,0.55);
-  -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px);
+  background:rgba(14,17,17,0.65);
+  -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
   display:flex; align-items:center; justify-content:center;
   padding:16px;
-  animation:tfrAuthFade .18s ease both;
+  animation:tfrAuthFade .15s ease both;
 }
 @keyframes tfrAuthFade { from{opacity:0} to{opacity:1} }
 .tfr-auth-modal {
-  position:relative; width:100%; max-width:420px;
-  background:#FFFFFF; color:#0E1111;
-  border-radius:14px; overflow:hidden;
-  box-shadow:0 20px 50px rgba(0,0,0,0.25);
-  font-family:var(--tfr-ui);
-  animation:tfrAuthRise .22s ease both;
+  position:relative; width:100%; max-width:440px;
+  background:#FFFFFF; color:#121212;
+  border-radius:0;
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  box-shadow:0 24px 60px rgba(0,0,0,0.35);
+  animation:tfrAuthRise .2s ease both;
 }
-@keyframes tfrAuthRise { from{transform:translateY(12px);opacity:0} to{transform:none;opacity:1} }
+@keyframes tfrAuthRise { from{transform:translateY(10px);opacity:0} to{transform:none;opacity:1} }
+
+/* Dark brand bar across the top — sharp, full-bleed, BookReady wordmark
+   on the left, close button on the right. */
+.tfr-auth-modal-brand {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 22px;
+  background:#121212; color:#FFFFFF;
+}
+.tfr-auth-modal-wordmark {
+  font-size:10px; font-weight:700;
+  letter-spacing:0.24em; text-transform:uppercase;
+}
 .tfr-auth-modal-close {
-  position:absolute; top:10px; right:10px;
-  width:32px; height:32px; padding:0; border:none;
-  background:transparent; color:#6B7280; cursor:pointer;
   display:inline-flex; align-items:center; justify-content:center;
-  border-radius:8px;
+  width:24px; height:24px; padding:0;
+  border:none; background:transparent;
+  color:rgba(255,255,255,0.65); cursor:pointer;
+  margin:-4px -6px -4px 0;
+  transition:color .15s ease;
 }
-.tfr-auth-modal-close:hover { background:rgba(0,0,0,0.05); color:#0E1111; }
+.tfr-auth-modal-close:hover { color:#FFFFFF; }
+
+/* Tab strip — same 2-col grid with bg-near-black-on-active treatment
+   that the editor app auth pages use. */
 .tfr-auth-modal-tabs {
   display:grid; grid-template-columns:1fr 1fr;
-  border-bottom:1px solid rgba(0,0,0,0.08);
+  border-bottom:1px solid rgba(18,18,18,0.12);
 }
 .tfr-auth-modal-tab {
-  padding:14px 12px; border:none; background:transparent; cursor:pointer;
+  padding:14px 12px;
+  border:none; background:transparent;
   font:inherit; font-size:11px; font-weight:700;
-  letter-spacing:0.08em; text-transform:uppercase;
-  color:#6B7280;
-  border-bottom:2px solid transparent;
-  transition:color .18s ease,border-color .18s ease;
+  letter-spacing:0.18em; text-transform:uppercase;
+  color:#6B7280; cursor:pointer;
+  transition:color .15s ease, background .15s ease;
 }
-.tfr-auth-modal-tab.is-active { color:#0E1111; border-bottom-color:#0E1111; }
-.tfr-auth-modal-tab:hover:not(.is-active) { color:#0E1111; }
-.tfr-auth-modal-body { padding:24px; }
+.tfr-auth-modal-tab.is-active {
+  background:#121212; color:#FFFFFF;
+}
+.tfr-auth-modal-tab:not(.is-active):hover { color:#121212; }
+
+.tfr-auth-modal-body { padding:28px 26px 24px; }
+.tfr-auth-modal-eyebrow {
+  display:block;
+  font-size:10px; font-weight:700;
+  letter-spacing:0.18em; text-transform:uppercase;
+  color:#6B7280;
+  margin:0 0 6px;
+}
 .tfr-auth-modal-title {
-  font-family:var(--tfr-serif); font-size:22px; font-weight:600;
-  margin:0 0 6px; color:#0E1111;
+  font-family:inherit;
+  font-size:26px; font-weight:700;
+  letter-spacing:-0.01em; line-height:1.1;
+  margin:0 0 6px; color:#121212;
 }
 .tfr-auth-modal-tag {
-  font-size:13px; color:#6B7280; line-height:1.4; margin:0 0 16px;
+  font-size:13px; color:#6B7280; line-height:1.5;
+  margin:0 0 20px;
 }
 .tfr-auth-modal-error {
-  margin-bottom:12px; padding:10px 12px;
-  background:#FEF2F2; border:1px solid #FECACA; border-radius:8px;
+  margin-bottom:14px; padding:10px 12px;
+  background:#FEF2F2; border:1px solid #FECACA; border-radius:0;
   font-size:12px; color:#B91C1C;
 }
-.tfr-auth-modal-form { display:grid; gap:10px; }
+.tfr-auth-modal-form { display:grid; gap:14px; }
+.tfr-auth-modal-field { display:flex; flex-direction:column; gap:5px; }
+.tfr-auth-modal-field > span {
+  font-size:10px; font-weight:700;
+  letter-spacing:0.18em; text-transform:uppercase;
+  color:#6B7280;
+}
 .tfr-auth-modal-form input {
   width:100%; padding:12px 14px;
-  background:#FFFFFF; color:#0E1111;
-  border:1px solid rgba(0,0,0,0.15); border-radius:10px;
+  background:#FFFFFF; color:#121212;
+  border:1px solid rgba(18,18,18,0.15); border-radius:0;
   font:inherit; font-size:14px; line-height:1.2;
   -webkit-appearance:none; appearance:none;
+  transition:border-color .15s ease;
 }
-.tfr-auth-modal-form input:focus { outline:none; border-color:#0E1111; }
-.tfr-auth-modal-form input::placeholder { color:#9CA3AF; }
+.tfr-auth-modal-form input:focus { outline:none; border-color:#121212; }
+.tfr-auth-modal-form input::placeholder { color:#c4bcb6; }
 .tfr-auth-modal-submit {
-  width:100%; padding:13px 14px;
-  background:#0E1111; color:#FFFFFF;
-  border:none; border-radius:10px;
-  font:inherit; font-size:12px; font-weight:700;
-  letter-spacing:0.10em; text-transform:uppercase;
-  cursor:pointer;
+  width:100%; padding:14px;
+  background:#121212; color:#FFFFFF;
+  border:none; border-radius:0;
+  font:inherit; font-size:11px; font-weight:700;
+  letter-spacing:0.18em; text-transform:uppercase;
+  cursor:pointer; margin-top:4px;
   display:inline-flex; align-items:center; justify-content:center;
-  transition:background .18s ease;
+  transition:background .15s ease;
 }
 .tfr-auth-modal-submit:hover:not(:disabled) { background:#2a2a2a; }
 .tfr-auth-modal-submit:disabled { opacity:0.6; cursor:default; }
 .tfr-auth-modal-foot {
-  margin:14px 0 0; text-align:center;
+  margin:16px 0 0; text-align:center;
   font-size:12px; color:#6B7280;
 }
 .tfr-auth-modal-foot a {
-  color:#0E1111; text-decoration:underline; text-underline-offset:2px;
+  color:#121212; text-decoration:underline; text-underline-offset:2px;
 }
-.tfr-auth-modal-fineprint { font-size:11px; line-height:1.4; }
+.tfr-auth-modal-fineprint { font-size:11px; line-height:1.45; }
 .tfr-spin { animation:tfrAuthSpin .9s linear infinite; }
 @keyframes tfrAuthSpin { to { transform:rotate(360deg); } }
 @media (max-width:480px) {
   .tfr-auth-modal-backdrop { align-items:flex-end; padding:0; }
   .tfr-auth-modal {
-    max-width:100%; border-radius:14px 14px 0 0;
-    box-shadow:0 -10px 40px rgba(0,0,0,0.25);
+    max-width:100%;
+    box-shadow:0 -12px 40px rgba(0,0,0,0.30);
   }
-  .tfr-auth-modal-body { padding:20px; }
+  .tfr-auth-modal-body { padding:24px 20px 22px; }
 }
 .tfr-header-cover {
   width:100%; height:42vh; min-height:320px; position:relative;
@@ -1945,30 +1999,36 @@ const TFR_CSS = `
 .tfr-slot-error { color:#ff6b6b; }
 
 /* Details step */
-/* Customer-account banner above the Details step inputs. Two states:
-   the default "Have an account?" prompt and the --authed "Booking as
-   {name}" confirmation. Sign-in link opens in a new tab so the user
-   doesn't lose booking state to the auth round-trip. */
+/* Customer-account banner above the Details step inputs (BookReady
+   house style). Sharp white card with a hairline border that
+   deliberately reads as a BookReady inset, not a template element.
+   Same class handles --authed (cream tint) and the default (white).
+   Sign-in button opens the TfrAuthModal in-page; the link variant
+   navigates to /account in a new tab. */
 .tfr-booking-auth {
-  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-  padding:10px 14px; margin-bottom:14px;
-  background:rgba(255,255,255,0.04);
-  border:1px solid rgba(255,255,255,0.10);
-  border-radius:10px;
-  font-size:13px; line-height:1.3;
-  color:var(--tfr-text);
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  padding:11px 14px; margin-bottom:14px;
+  background:#FFFFFF;
+  border:1px solid rgba(18,18,18,0.10);
+  border-radius:0;
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  font-size:12px; line-height:1.3;
+  color:#121212;
 }
-.tfr-booking-auth--authed {
-  background:rgba(var(--tfr-pink-rgb),0.10);
-  border-color:rgba(var(--tfr-pink-rgb),0.30);
-}
-.tfr-booking-auth strong { font-weight:600; }
+.tfr-booking-auth--authed { background:#F8F6F2; }
+.tfr-booking-auth strong { font-weight:700; }
 .tfr-booking-auth-link {
-  margin-left:auto; color:inherit; text-decoration:underline;
-  text-underline-offset:2px; font-weight:500; font-size:12px; white-space:nowrap;
+  margin-left:auto; color:#121212;
+  text-decoration:underline; text-underline-offset:2px;
+  font-weight:700; font-size:10px;
+  letter-spacing:0.14em; text-transform:uppercase;
+  white-space:nowrap;
   /* Button reset so the same class works on <a> and <button>. */
   background:transparent; border:none; padding:0;
   font-family:inherit; cursor:pointer;
+}
+@media (hover:hover) and (pointer:fine) {
+  .tfr-booking-auth-link:hover { color:#6B7280; }
 }
 @media (hover:hover) and (pointer:fine) {
   .tfr-booking-auth-link:hover { opacity:0.75; }

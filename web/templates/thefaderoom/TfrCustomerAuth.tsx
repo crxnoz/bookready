@@ -175,18 +175,28 @@ function TfrAuthModal({
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label={mode === 'signin' ? 'Sign in' : 'Create account'}
+      aria-label={mode === 'signin' ? 'Sign in to BookReady' : 'Create a BookReady account'}
     >
       <div className="tfr-auth-modal" onClick={e => e.stopPropagation()}>
-        <button
-          type="button"
-          className="tfr-auth-modal-close"
-          onClick={onClose}
-          aria-label="Close"
-        >
-          <X size={18} />
-        </button>
 
+        {/* BookReady brand bar — makes it unambiguous what the user is
+            authenticating INTO. Sharp dark strip across the top with
+            the wordmark and a close button. */}
+        <div className="tfr-auth-modal-brand">
+          <span className="tfr-auth-modal-wordmark">BookReady</span>
+          <button
+            type="button"
+            className="tfr-auth-modal-close"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Sign in / Sign up tab strip — mirrors the AuthShell tabs on
+            /login and /account/login: 2-col grid, active = bg-near-black
+            text-white, no border-radius. */}
         <div className="tfr-auth-modal-tabs">
           <button
             type="button"
@@ -205,13 +215,16 @@ function TfrAuthModal({
         </div>
 
         <div className="tfr-auth-modal-body">
+          <p className="tfr-auth-modal-eyebrow">
+            {mode === 'signin' ? 'Your bookings' : 'Create account'}
+          </p>
           <h2 className="tfr-auth-modal-title">
-            {mode === 'signin' ? 'Welcome back' : 'Save this booking'}
+            {mode === 'signin' ? 'Welcome back.' : 'One login. Every booking.'}
           </h2>
           <p className="tfr-auth-modal-tag">
             {mode === 'signin'
-              ? 'Sign in to autofill your details and manage your bookings.'
-              : 'One account works across every BookReady business.'}
+              ? 'Sign in to autofill your details and manage your bookings across every BookReady business.'
+              : 'Sign up once to see every booking you make on BookReady in one place.'}
           </p>
 
           {error && (
@@ -220,33 +233,43 @@ function TfrAuthModal({
 
           <form onSubmit={handleSubmit} className="tfr-auth-modal-form">
             {mode === 'signup' && (
-              <input
-                type="text"
-                placeholder="Your name"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                required
-                autoComplete="name"
-              />
+              <label className="tfr-auth-modal-field">
+                <span>Name</span>
+                <input
+                  type="text"
+                  placeholder="Your name"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  required
+                  autoComplete="name"
+                  autoFocus
+                />
+              </label>
             )}
-            <input
-              type="email"
-              placeholder="Email address"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              autoFocus={mode === 'signin'}
-            />
-            <input
-              type="password"
-              placeholder={mode === 'signin' ? 'Password' : 'Password (8+ characters)'}
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              minLength={mode === 'signup' ? 8 : undefined}
-              autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-            />
+            <label className="tfr-auth-modal-field">
+              <span>Email address</span>
+              <input
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                autoFocus={mode === 'signin'}
+              />
+            </label>
+            <label className="tfr-auth-modal-field">
+              <span>Password</span>
+              <input
+                type="password"
+                placeholder={mode === 'signin' ? '••••••••' : 'At least 8 characters'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                minLength={mode === 'signup' ? 8 : undefined}
+                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+              />
+            </label>
             <button
               type="submit"
               disabled={loading}
@@ -273,7 +296,7 @@ function TfrAuthModal({
               By continuing you agree to our{' '}
               <a href="https://app.bkrdy.me/terms" target="_blank" rel="noopener noreferrer">Terms</a>
               {' '}and{' '}
-              <a href="https://app.bkrdy.me/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+              <a href="https://app.bkrdy.me/privacy" target="_blank" rel="noopener noreferrer">Privacy</a>.
             </p>
           )}
         </div>
