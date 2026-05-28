@@ -45,15 +45,33 @@ class PublicBookingController extends Controller
         // request input BEFORE validation runs. This both removes the
         // "fill name/email" friction for repeat customers and prevents
         // an authed customer from booking under a different identity by
-        // editing the form. Phone falls through to whatever they typed
-        // if their saved profile doesn't include one. Anonymous flow is
-        // untouched ($authedCustomer stays null).
+        // editing the form. Anonymous flow is untouched.
+        //
+        // Phone has a softer rule: if the customer's profile phone is
+        // empty AND they typed one into the booking form, back-sync it
+        // to the customer_users row first, then use it on the booking.
+        // This handles the common case where someone signed up with
+        // just name+email via the in-page modal (which intentionally
+        // doesn't ask for phone to stay short) and adds their number
+        // during their first booking. We never OVERWRITE an existing
+        // phone — that's a profile-management action they make
+        // explicitly from /account/profile.
         $authedCustomer = ($u = $request->user()) instanceof CustomerUser ? $u : null;
         if ($authedCustomer) {
+            $providedPhone = trim((string) $request->input('customer_phone', ''));
+
+            if (empty($authedCustomer->phone) && $providedPhone !== '') {
+                $authedCustomer->phone = $providedPhone;
+                $authedCustomer->save();
+            }
+
             $request->merge([
                 'customer_name'  => $authedCustomer->name,
                 'customer_email' => $authedCustomer->email,
-                'customer_phone' => $authedCustomer->phone ?: $request->input('customer_phone'),
+                // After the save above, $authedCustomer->phone reflects
+                // the new value, so the ?: also picks up freshly-synced
+                // numbers without re-reading the request.
+                'customer_phone' => $authedCustomer->phone ?: $providedPhone,
             ]);
         }
 

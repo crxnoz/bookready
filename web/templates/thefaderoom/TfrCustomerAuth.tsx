@@ -49,6 +49,13 @@ type Ctx = {
   authChecked:  boolean
   open:         (mode?: Mode) => void
   signOut:      () => Promise<void>
+  /**
+   * Imperative setter used by TfrAuthModal after a successful
+   * login/register so we don't need a second /auth/me round-trip
+   * just to learn what we already know from the response body.
+   * Closing the modal alone wouldn't push the user into context.
+   */
+  setUserFromAuth: (u: CustomerProfile) => void
 }
 
 const CustomerAuthCtx = createContext<Ctx | null>(null)
@@ -89,9 +96,8 @@ export function TfrCustomerAuthProvider({ children }: { children: ReactNode }) {
 
   const close = useCallback(() => setModalMode(null), [])
 
-  const refresh = useCallback(async () => {
-    try { setUser(await customerMe()) }
-    catch { setUser(null) }
+  const setUserFromAuth = useCallback((u: CustomerProfile) => {
+    setUser(u)
   }, [])
 
   const signOut = useCallback(async () => {
@@ -100,13 +106,13 @@ export function TfrCustomerAuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <CustomerAuthCtx.Provider value={{ user, authChecked, open, signOut }}>
+    <CustomerAuthCtx.Provider value={{ user, authChecked, open, signOut, setUserFromAuth }}>
       {children}
       {modalMode && (
         <TfrAuthModal
           initialMode={modalMode}
           onClose={close}
-          onSuccess={async () => { await refresh(); close() }}
+          onSuccess={(u) => { setUserFromAuth(u); close() }}
         />
       )}
     </CustomerAuthCtx.Provider>
@@ -120,7 +126,14 @@ function TfrAuthModal({
 }: {
   initialMode: Mode
   onClose:     () => void
-  onSuccess:   () => Promise<void> | void
+  /**
+   * Called with the fresh CustomerProfile straight from the
+   * login/register response — NOT via a follow-up /auth/me. Eliminates
+   * a class of bugs where the cookie hadn't fully propagated by the
+   * time we re-probed, causing the modal to close but the auth state
+   * to never update.
+   */
+  onSuccess:   (user: CustomerProfile) => void
 }) {
   const [mode,     setMode]     = useState<Mode>(initialMode)
   const [name,     setName]     = useState('')
@@ -148,20 +161,23 @@ function TfrAuthModal({
     setError('')
     setLoading(true)
     try {
+      let user: CustomerProfile
       if (mode === 'signin') {
-        await customerLogin({ email, password })
+        const r = await customerLogin({ email, password })
+        user = r.user
       } else {
         // Backend requires password_confirmation; we send the same
         // value twice and skip the "re-enter password" UI to keep the
         // modal short. Same field, identical value — no UX cost.
-        await customerRegister({
+        const r = await customerRegister({
           name,
           email,
           password,
           password_confirmation: password,
         })
+        user = r.user
       }
-      await onSuccess()
+      onSuccess(user)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
     } finally {
