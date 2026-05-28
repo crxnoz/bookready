@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Calendar, Clock, X } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, ExternalLink, X } from 'lucide-react'
 import {
   cancelCustomerBooking,
   getCustomerBooking,
@@ -95,9 +95,19 @@ function Inner() {
       </Link>
 
       <div className="bg-white border border-[rgba(18,18,18,0.10)] p-6 sm:p-8">
-        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-2">
+        {/* Business name doubles as a link back to the tenant site —
+            same URL the customer would have arrived from when they
+            booked. Opens in a new tab so the in-progress dashboard
+            view isn't lost. */}
+        <a
+          href={`https://${booking.tenant_id}.bkrdy.me`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text hover:text-near-black transition-colors mb-2"
+        >
           {booking.business_name}
-        </p>
+          <ExternalLink size={10} aria-hidden />
+        </a>
         <h1 className="text-[24px] sm:text-[28px] font-bold tracking-tight text-near-black mb-1">
           {booking.service_name}
         </h1>
@@ -128,42 +138,60 @@ function Inner() {
           {booking.notes && <Detail label="Notes" wide>{booking.notes}</Detail>}
         </dl>
 
-        {booking.is_terminal ? (
+        {/* Action row — always renders the "Visit site" link.
+            Cancel/Reschedule are conditional on the booking still being
+            mutable. When the booking is terminal we show a status note
+            above the row instead of swapping the row out entirely, so
+            the customer still has a path back to the tenant site to
+            book again. */}
+        {booking.is_terminal && (
           <p className="mt-8 text-xs text-muted-text">
             This booking is {booking.status} and can no longer be changed.
           </p>
-        ) : (
-          <div className="mt-8 flex flex-wrap gap-3">
-            <button
-              disabled={!booking.can_reschedule}
-              onClick={() => { setModal('reschedule'); setActionError(null) }}
-              className={'px-4 py-2.5 text-[11px] font-bold tracking-[0.10em] uppercase border ' + (
-                booking.can_reschedule
-                  ? 'border-near-black text-near-black hover:bg-near-black hover:text-white transition-colors'
-                  : 'border-[rgba(18,18,18,0.15)] text-muted-text cursor-not-allowed'
-              )}
-              title={booking.can_reschedule
-                ? undefined
-                : `Reschedules require at least ${booking.reschedule_window_hours} hour${booking.reschedule_window_hours === 1 ? '' : 's'} notice.`}
-            >
-              Reschedule
-            </button>
-            <button
-              disabled={!booking.can_cancel}
-              onClick={() => { setModal('cancel'); setActionError(null) }}
-              className={'px-4 py-2.5 text-[11px] font-bold tracking-[0.10em] uppercase border ' + (
-                booking.can_cancel
-                  ? 'border-red-600 text-red-700 hover:bg-red-50 transition-colors'
-                  : 'border-[rgba(18,18,18,0.15)] text-muted-text cursor-not-allowed'
-              )}
-              title={booking.can_cancel
-                ? undefined
-                : `Cancellations require at least ${booking.cancellation_window_hours} hour${booking.cancellation_window_hours === 1 ? '' : 's'} notice.`}
-            >
-              Cancel booking
-            </button>
-          </div>
         )}
+        <div className="mt-6 flex flex-wrap gap-3">
+          {! booking.is_terminal && (
+            <>
+              <button
+                disabled={!booking.can_reschedule}
+                onClick={() => { setModal('reschedule'); setActionError(null) }}
+                className={'px-4 py-2.5 text-[11px] font-bold tracking-[0.10em] uppercase border ' + (
+                  booking.can_reschedule
+                    ? 'border-near-black text-near-black hover:bg-near-black hover:text-white transition-colors'
+                    : 'border-[rgba(18,18,18,0.15)] text-muted-text cursor-not-allowed'
+                )}
+                title={booking.can_reschedule
+                  ? undefined
+                  : `Reschedules require at least ${booking.reschedule_window_hours} hour${booking.reschedule_window_hours === 1 ? '' : 's'} notice.`}
+              >
+                Reschedule
+              </button>
+              <button
+                disabled={!booking.can_cancel}
+                onClick={() => { setModal('cancel'); setActionError(null) }}
+                className={'px-4 py-2.5 text-[11px] font-bold tracking-[0.10em] uppercase border ' + (
+                  booking.can_cancel
+                    ? 'border-red-600 text-red-700 hover:bg-red-50 transition-colors'
+                    : 'border-[rgba(18,18,18,0.15)] text-muted-text cursor-not-allowed'
+                )}
+                title={booking.can_cancel
+                  ? undefined
+                  : `Cancellations require at least ${booking.cancellation_window_hours} hour${booking.cancellation_window_hours === 1 ? '' : 's'} notice.`}
+              >
+                Cancel booking
+              </button>
+            </>
+          )}
+          <a
+            href={`https://${booking.tenant_id}.bkrdy.me`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-[11px] font-bold tracking-[0.10em] uppercase border border-[rgba(18,18,18,0.15)] text-near-black hover:bg-near-black hover:text-white hover:border-near-black transition-colors"
+          >
+            {booking.is_terminal ? 'Book again' : 'Visit site'}
+            <ExternalLink size={11} aria-hidden />
+          </a>
+        </div>
       </div>
 
       {/* Cancel modal */}
