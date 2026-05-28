@@ -30,6 +30,7 @@ function WhatsAppGlyph({ size = 16 }: { size?: number }) {
 }
 import TheFadeRoomBooking from './TheFadeRoomBooking'
 import TfrCustomerAccountWidget from './TfrCustomerAccountWidget'
+import { TfrCustomerAuthProvider } from './TfrCustomerAuth'
 import type { PublicSite, Service } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 
@@ -263,6 +264,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
   return (
     <>
       <style>{TFR_CSS}</style>
+      <TfrCustomerAuthProvider>
       <div className="tfr-template" style={accentVars}>
 
         {/* ── Announcement bar ── */}
@@ -641,6 +643,7 @@ export default function TheFadeRoomTemplate({ site, slug }: { site: PublicSite; 
         />
 
       </div>
+      </TfrCustomerAuthProvider>
     </>
   )
 }
@@ -1386,7 +1389,9 @@ const TFR_CSS = `
 }
 /* Customer-account widget: absolutely positioned top-right of the
    header. Frosted-white pill so it reads on any cover image. Hidden
-   inside the .tfr-template scope so it never affects the editor UI. */
+   inside the .tfr-template scope so it never affects the editor UI.
+   The base class is shared between an <a> (authed link) and a
+   <button> (unauthed "Sign in" → opens TfrAuthModal). */
 .tfr-account-widget {
   position:absolute; top:14px; right:14px; z-index:6;
   display:inline-flex; align-items:center; gap:6px;
@@ -1398,6 +1403,7 @@ const TFR_CSS = `
   font-size:12px; font-weight:500; line-height:1; text-decoration:none;
   box-shadow:0 1px 3px rgba(0,0,0,0.06);
   transition:background .18s ease,border-color .18s ease;
+  cursor:pointer; -webkit-appearance:none; appearance:none;
 }
 @media (hover:hover) and (pointer:fine) {
   .tfr-account-widget:hover { background:#fff; border-color:rgba(0,0,0,0.15); }
@@ -1415,6 +1421,105 @@ const TFR_CSS = `
 }
 @media (hover:hover) and (pointer:fine) {
   .tfr-account-widget-signout:hover { background:rgba(0,0,0,0.04); }
+}
+
+/* ── Customer-auth modal (TfrCustomerAuth) ──
+   Mounted at template root by TfrCustomerAuthProvider. Bottom-sheet
+   on small screens, centered card on tablet+. White card with dark
+   text — palette-locked because it overlays whatever the tenant has
+   set as their cover image / accents. */
+.tfr-auth-modal-backdrop {
+  position:fixed; inset:0; z-index:9999;
+  background:rgba(18,18,18,0.55);
+  -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px);
+  display:flex; align-items:center; justify-content:center;
+  padding:16px;
+  animation:tfrAuthFade .18s ease both;
+}
+@keyframes tfrAuthFade { from{opacity:0} to{opacity:1} }
+.tfr-auth-modal {
+  position:relative; width:100%; max-width:420px;
+  background:#FFFFFF; color:#0E1111;
+  border-radius:14px; overflow:hidden;
+  box-shadow:0 20px 50px rgba(0,0,0,0.25);
+  font-family:var(--tfr-ui);
+  animation:tfrAuthRise .22s ease both;
+}
+@keyframes tfrAuthRise { from{transform:translateY(12px);opacity:0} to{transform:none;opacity:1} }
+.tfr-auth-modal-close {
+  position:absolute; top:10px; right:10px;
+  width:32px; height:32px; padding:0; border:none;
+  background:transparent; color:#6B7280; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center;
+  border-radius:8px;
+}
+.tfr-auth-modal-close:hover { background:rgba(0,0,0,0.05); color:#0E1111; }
+.tfr-auth-modal-tabs {
+  display:grid; grid-template-columns:1fr 1fr;
+  border-bottom:1px solid rgba(0,0,0,0.08);
+}
+.tfr-auth-modal-tab {
+  padding:14px 12px; border:none; background:transparent; cursor:pointer;
+  font:inherit; font-size:11px; font-weight:700;
+  letter-spacing:0.08em; text-transform:uppercase;
+  color:#6B7280;
+  border-bottom:2px solid transparent;
+  transition:color .18s ease,border-color .18s ease;
+}
+.tfr-auth-modal-tab.is-active { color:#0E1111; border-bottom-color:#0E1111; }
+.tfr-auth-modal-tab:hover:not(.is-active) { color:#0E1111; }
+.tfr-auth-modal-body { padding:24px; }
+.tfr-auth-modal-title {
+  font-family:var(--tfr-serif); font-size:22px; font-weight:600;
+  margin:0 0 6px; color:#0E1111;
+}
+.tfr-auth-modal-tag {
+  font-size:13px; color:#6B7280; line-height:1.4; margin:0 0 16px;
+}
+.tfr-auth-modal-error {
+  margin-bottom:12px; padding:10px 12px;
+  background:#FEF2F2; border:1px solid #FECACA; border-radius:8px;
+  font-size:12px; color:#B91C1C;
+}
+.tfr-auth-modal-form { display:grid; gap:10px; }
+.tfr-auth-modal-form input {
+  width:100%; padding:12px 14px;
+  background:#FFFFFF; color:#0E1111;
+  border:1px solid rgba(0,0,0,0.15); border-radius:10px;
+  font:inherit; font-size:14px; line-height:1.2;
+  -webkit-appearance:none; appearance:none;
+}
+.tfr-auth-modal-form input:focus { outline:none; border-color:#0E1111; }
+.tfr-auth-modal-form input::placeholder { color:#9CA3AF; }
+.tfr-auth-modal-submit {
+  width:100%; padding:13px 14px;
+  background:#0E1111; color:#FFFFFF;
+  border:none; border-radius:10px;
+  font:inherit; font-size:12px; font-weight:700;
+  letter-spacing:0.10em; text-transform:uppercase;
+  cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center;
+  transition:background .18s ease;
+}
+.tfr-auth-modal-submit:hover:not(:disabled) { background:#2a2a2a; }
+.tfr-auth-modal-submit:disabled { opacity:0.6; cursor:default; }
+.tfr-auth-modal-foot {
+  margin:14px 0 0; text-align:center;
+  font-size:12px; color:#6B7280;
+}
+.tfr-auth-modal-foot a {
+  color:#0E1111; text-decoration:underline; text-underline-offset:2px;
+}
+.tfr-auth-modal-fineprint { font-size:11px; line-height:1.4; }
+.tfr-spin { animation:tfrAuthSpin .9s linear infinite; }
+@keyframes tfrAuthSpin { to { transform:rotate(360deg); } }
+@media (max-width:480px) {
+  .tfr-auth-modal-backdrop { align-items:flex-end; padding:0; }
+  .tfr-auth-modal {
+    max-width:100%; border-radius:14px 14px 0 0;
+    box-shadow:0 -10px 40px rgba(0,0,0,0.25);
+  }
+  .tfr-auth-modal-body { padding:20px; }
 }
 .tfr-header-cover {
   width:100%; height:42vh; min-height:320px; position:relative;
@@ -1861,6 +1966,9 @@ const TFR_CSS = `
 .tfr-booking-auth-link {
   margin-left:auto; color:inherit; text-decoration:underline;
   text-underline-offset:2px; font-weight:500; font-size:12px; white-space:nowrap;
+  /* Button reset so the same class works on <a> and <button>. */
+  background:transparent; border:none; padding:0;
+  font-family:inherit; cursor:pointer;
 }
 @media (hover:hover) and (pointer:fine) {
   .tfr-booking-auth-link:hover { opacity:0.75; }

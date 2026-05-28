@@ -6,7 +6,6 @@ import {
   Clock, Heart, CalendarCheck, Image as ImageIcon, Loader2, X,
 } from 'lucide-react'
 import { getPublicAvailability, createPublicAppointment, uploadBookingAnswerImage } from '@/lib/api'
-import { customerMe, type CustomerProfile } from '@/lib/customerApi'
 import type {
   AvailableSlot, PaymentChoice, PublicBookingPayload, Service,
   AvailabilityData, PublicPaymentSettings,
@@ -14,6 +13,7 @@ import type {
   BookingQuestion, BookingQuestionAnswerInput,
 } from '@/lib/types'
 import { UserCircle } from 'lucide-react'
+import { useTfrCustomerAuth } from './TfrCustomerAuth'
 
 // Sentinel used as the "category id" for the auto-generated bucket that
 // collects services without a category assignment. Real category ids are
@@ -142,33 +142,24 @@ export default function TheFadeRoomBooking({
   const [questionAnswers, setQuestionAnswers] = useState<Record<number, { value?: string | boolean; image_url?: string }>>({})
   const [uploadingFor,    setUploadingFor]    = useState<number | null>(null)
   const [uploadErrFor,    setUploadErrFor]    = useState<number | null>(null)
-  // Customer-account awareness. customerMe() probes the central session
-  // cookie on api.bkrdy.me (host-only there, but credentials: 'include'
-  // sends it from any *.bkrdy.me origin under our CORS policy). If we
-  // find a logged-in customer, auto-fill identity fields. The backend
-  // already force-overrides these to the authed user's values inside
-  // PublicBookingController so manual edits here are harmless either way.
-  const [authedUser,  setAuthedUser]  = useState<CustomerProfile | null>(null)
-  const [authChecked, setAuthChecked] = useState(false)
+  // Customer-account awareness. Shared with the header widget via the
+  // TfrCustomerAuthProvider mounted at the template root — one /auth/me
+  // probe per page load, not one per consumer. When the visitor signs
+  // in via the in-page modal, `authedUser` flips and the effect below
+  // auto-fills name/email/phone.
+  //
+  // The backend (PublicBookingController) force-overrides these to the
+  // authed user's values on submit anyway, so manual edits here are
+  // harmless either way — autofill is purely a UX nicety.
+  const { user: authedUser, authChecked, open: openAuth } = useTfrCustomerAuth()
   useEffect(() => {
-    let cancelled = false
-    customerMe()
-      .then(u => {
-        if (cancelled) return
-        setAuthedUser(u)
-        setAuthChecked(true)
-        // Functional updates so we read the LATEST state — if the user
-        // typed something before customerMe() resolved, don't clobber it.
-        setName(prev  => prev || u.name)
-        setEmail(prev => prev || u.email)
-        setPhone(prev => prev || (u.phone ?? ''))
-      })
-      .catch(() => {
-        if (cancelled) return
-        setAuthChecked(true)
-      })
-    return () => { cancelled = true }
-  }, [])
+    if (! authedUser) return
+    // Functional setState so a fast typer who started filling the form
+    // before the auth state arrived doesn't get their text clobbered.
+    setName(prev  => prev || authedUser.name)
+    setEmail(prev => prev || authedUser.email)
+    setPhone(prev => prev || (authedUser.phone ?? ''))
+  }, [authedUser])
   // Phase 8 — pre-Service category pick. null means "not picked yet" (which
   // shows the category tiles); UNCATEGORIZED is the "Other" bucket for
   // services that have no category_id assigned.
@@ -1061,7 +1052,7 @@ export default function TheFadeRoomBooking({
                 rel="noopener noreferrer"
                 className="tfr-booking-auth-link"
               >
-                Use different account
+                Manage bookings
               </a>
             </div>
           )}
@@ -1069,16 +1060,16 @@ export default function TheFadeRoomBooking({
             <div className="tfr-booking-auth">
               <UserCircle size={14} />
               <span>Have a BookReady account?</span>
-              <a
-                href={`https://app.bkrdy.me/account/login?return_to=${encodeURIComponent(
-                  typeof window !== 'undefined' ? window.location.href : '',
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
+              {/* Opens TfrAuthModal in-page so the visitor doesn't lose
+                  anything they've already entered in the booking flow.
+                  signin tab by default; the modal exposes a Sign-up tab. */}
+              <button
+                type="button"
                 className="tfr-booking-auth-link"
+                onClick={() => openAuth('signin')}
               >
                 Sign in to autofill →
-              </a>
+              </button>
             </div>
           )}
           <div className="tfr-booking-fields">
