@@ -94,20 +94,18 @@ export default function AccountShell({ children }: { children: React.ReactNode }
             </span>
           </Link>
 
-          {/* Tab strip — matches the auth modal aesthetic: sharp corners,
-              solid bg-near-black on active, hairline border on idle.
-              Sign out hangs off the right with a more muted treatment so
-              it doesn't compete with the primary nav. */}
-          <nav className="flex items-stretch border border-[rgba(18,18,18,0.10)] text-[10px] sm:text-[11px] font-bold tracking-[0.14em] sm:tracking-[0.16em] uppercase">
-            <NavLink href="/account"         active={isBookings}>Bookings</NavLink>
-            <NavLink href="/account/profile" active={isProfile}>Profile</NavLink>
+          {/* Borderless nav — three controls inline. Active tab uses the
+              same bg-near-black + white treatment as the auth modal tabs.
+              Idle tabs are muted text. Sign out sits at the end. */}
+          <nav className="flex items-stretch text-[10px] sm:text-[11px] font-bold tracking-[0.14em] sm:tracking-[0.16em] uppercase">
+            <NavLink href="/account"         active={isBookings}>BOOKINGS</NavLink>
+            <NavLink href="/account/profile" active={isProfile}>PROFILE</NavLink>
             <button
               type="button"
               onClick={handleSignOut}
-              className="px-3 sm:px-4 border-l border-[rgba(18,18,18,0.10)] text-muted-text hover:text-near-black hover:bg-[rgba(18,18,18,0.04)] transition-colors"
+              className="px-3 sm:px-4 text-muted-text hover:text-near-black transition-colors"
             >
-              <span className="hidden sm:inline">Sign out</span>
-              <span className="sm:hidden" aria-label="Sign out">Out</span>
+              SIGN OUT
             </button>
           </nav>
         </div>
@@ -145,10 +143,8 @@ function NavLink({ href, active, children }: { href: string; active: boolean; ch
     <Link
       href={href}
       className={
-        'inline-flex items-center px-3 sm:px-5 transition-colors ' +
-        (active
-          ? 'bg-near-black text-white'
-          : 'text-muted-text hover:text-near-black hover:bg-[rgba(18,18,18,0.04)]')
+        'inline-flex items-center px-3 sm:px-4 transition-colors ' +
+        (active ? 'text-near-black' : 'text-muted-text hover:text-near-black')
       }
     >
       {children}
