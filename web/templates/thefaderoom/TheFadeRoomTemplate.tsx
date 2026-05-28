@@ -1439,6 +1439,13 @@ const TFR_CSS = `
     background:rgba(255,255,255,0.10);
   }
 }
+/* Hide the floating top-right widget on mobile — it competes with the
+   header cover + floating hearts for limited real estate. The booking
+   form's Step 4 already has its own in-flow "Sign in to autofill"
+   prompt for visitors who need to authenticate. */
+@media (max-width:768px) {
+  .tfr-account-widget { display:none !important; }
+}
 
 /* ── Customer-auth modal (TfrCustomerAuth) ──
    Mounted at template root by TfrCustomerAuthProvider. BookReady
