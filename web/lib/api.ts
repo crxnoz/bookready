@@ -604,6 +604,21 @@ export async function deleteAdminTenant(id: string, confirmSlug: string): Promis
   })
 }
 
+export interface AdminStats {
+  tenants_count:      number
+  new_tenants_7d:     number
+  active_tenants_7d:  number
+  customers_count:    number
+  verified_customers: number
+  bookings_total:     number
+  bookings_7d:        number
+  computed_at:        string
+}
+
+export async function getAdminStats(): Promise<AdminStats> {
+  return request<AdminStats>('/admin/stats')
+}
+
 // ── Platform announcements ──────────────────────────────────────────────────
 
 /** Public-ish — any authed user can fetch active announcements for the

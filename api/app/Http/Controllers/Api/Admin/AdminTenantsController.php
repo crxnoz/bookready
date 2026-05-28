@@ -7,6 +7,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -49,6 +50,73 @@ class AdminTenantsController extends Controller
             'tenants' => $rows,
             'count'   => count($rows),
         ]);
+    }
+
+    /**
+     * GET /api/v1/admin/stats
+     *
+     * Lightweight platform-wide counters for the admin dashboard. The
+     * booking counts require walking each tenant DB (one query per
+     * tenant per metric), which would be expensive at 100+ tenants —
+     * so we cache the whole payload for 5 minutes. Admin can hit the
+     * Refresh button on the page to force a re-fetch, but the cache
+     * window keeps the cost bounded.
+     */
+    public function stats(): JsonResponse
+    {
+        $payload = Cache::remember('admin:stats:v1', 300, function () {
+            $now          = now();
+            $sevenDaysAgo = $now->copy()->subDays(7);
+
+            $tenantsCount   = Tenant::count();
+            $newTenants7d   = Tenant::where('created_at', '>=', $sevenDaysAgo)->count();
+            $customersCount = Schema::hasTable('customer_users')
+                ? DB::table('customer_users')->count()
+                : 0;
+            $verifiedCustomers = Schema::hasTable('customer_users')
+                ? DB::table('customer_users')->whereNotNull('email_verified_at')->count()
+                : 0;
+
+            // Walk every tenant DB once. Per-tenant query failures
+            // (mid-migration, broken DB, etc.) are caught so a single
+            // bad tenant doesn't blank the whole stats payload.
+            $bookingsTotal = 0;
+            $bookings7d    = 0;
+            $activeTenants = 0;  // tenants with any booking in the last 7d
+            foreach (Tenant::all() as $tenant) {
+                try {
+                    tenancy()->initialize($tenant);
+                    if (! Schema::hasTable('appointments')) continue;
+
+                    $bookingsTotal += DB::table('appointments')->count();
+                    $tenant7d = DB::table('appointments')
+                        ->where('created_at', '>=', $sevenDaysAgo)
+                        ->count();
+                    $bookings7d += $tenant7d;
+                    if ($tenant7d > 0) $activeTenants++;
+                } catch (\Throwable $e) {
+                    Log::warning('admin.stats tenant scan failed', [
+                        'tenant_id' => $tenant->id,
+                        'error'     => $e->getMessage(),
+                    ]);
+                } finally {
+                    try { tenancy()->end(); } catch (\Throwable) {}
+                }
+            }
+
+            return [
+                'tenants_count'       => $tenantsCount,
+                'new_tenants_7d'      => $newTenants7d,
+                'active_tenants_7d'   => $activeTenants,
+                'customers_count'     => $customersCount,
+                'verified_customers'  => $verifiedCustomers,
+                'bookings_total'      => $bookingsTotal,
+                'bookings_7d'         => $bookings7d,
+                'computed_at'         => $now->toIso8601String(),
+            ];
+        });
+
+        return response()->json($payload);
     }
 
     // DELETE /api/v1/admin/tenants/{id}
