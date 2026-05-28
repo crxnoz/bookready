@@ -24,22 +24,27 @@ class TrustedBrowserOrigin
             return true;
         }
 
-        // Customer routes additionally accept any tenant subdomain.
-        // Rationale: the in-page TfrAuthModal lives on {slug}.bkrdy.me
-        // and POSTs to /api/v1/customer/auth/login with Origin set to
-        // that tenant subdomain. The static allowlist only knows about
-        // app.bkrdy.me, so without this branch the modal hits a 403
-        // and the silent cookie-promotion path in AuthFromCookie also
-        // refuses to attach the customer cookie on /customer/auth/me
-        // — meaning a signed-in customer's status never surfaces on a
-        // tenant page.
+        // Customer routes AND public booking-flow routes additionally
+        // accept any tenant subdomain.
+        //
+        // - /customer/* — the in-page TfrAuthModal on a tenant site
+        //   POSTs login/register/forgot-password with Origin set to
+        //   the tenant subdomain. Without this branch the modal 403s.
+        // - /public/* — public booking POST + manage-booking + site
+        //   show are HIT BY the tenant subdomain itself (the visitor
+        //   is ON {slug}.bkrdy.me). The trust check in AuthFromCookie
+        //   gates customer-cookie promotion. Without this branch the
+        //   customer cookie is never promoted for an authed booker,
+        //   so the booking-to-account stamp silently no-ops.
         //
         // The risk window is narrow: DNS for *.bkrdy.me is controlled
         // by us, so an attacker can't simply register a subdomain to
-        // forge a trusted origin. The pattern below also forbids
-        // ports, paths, embedded credentials, and any character that
-        // isn't an alnum/hyphen.
-        if (str_starts_with($request->path(), 'api/v1/customer/')) {
+        // forge a trusted origin. The pattern in isTenantOrigin() also
+        // forbids ports, paths, embedded credentials, and any character
+        // that isn't an alnum/hyphen.
+        $path = $request->path();
+        if (str_starts_with($path, 'api/v1/customer/') ||
+            str_starts_with($path, 'api/v1/public/')) {
             return self::isTenantOrigin($normalized);
         }
 

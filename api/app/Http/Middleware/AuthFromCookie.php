@@ -28,11 +28,22 @@ class AuthFromCookie
         // Authorization set wins and the request authenticates as whichever
         // came last, which would 403 inside EnsureTenantOwner / customer-
         // session middleware in confusing ways.
-        $isCustomerRoute = str_starts_with($request->path(), 'api/v1/customer/');
-        $token = $isCustomerRoute
+        //
+        // /api/v1/public/* paths are auth-OPTIONAL: anonymous bookings
+        // continue to work, but if a customer cookie is present we
+        // promote it so PublicBookingController can stamp the booking
+        // against their account (clients.customer_user_id + the cross-
+        // tenant pivot row). Without this branch, $request->user() in
+        // the public booking controller stays null even for signed-in
+        // customers, and their bookings never surface in /account.
+        $path = $request->path();
+        $isCustomerRoute = str_starts_with($path, 'api/v1/customer/');
+        $isPublicRoute   = str_starts_with($path, 'api/v1/public/');
+        $useCustomerCookie = $isCustomerRoute || $isPublicRoute;
+        $token = $useCustomerCookie
             ? CustomerAuthCookie::read($request)
             : AuthCookie::read($request);
-        $cookieEvent = $isCustomerRoute
+        $cookieEvent = $useCustomerCookie
             ? 'auth.customer_cookie.untrusted_origin'
             : 'auth.cookie.untrusted_origin';
 
