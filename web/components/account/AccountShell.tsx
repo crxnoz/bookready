@@ -4,16 +4,21 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { customerLogout, customerMe, type CustomerProfile } from '@/lib/customerApi'
-import { clearCustomerAuth, isCustomerLoggedIn, setCustomerLoggedIn } from '@/lib/customerAuth'
+import { clearCustomerAuth, setCustomerLoggedIn } from '@/lib/customerAuth'
 
 /**
  * Phase 4 — shell wrapper for every authed /account/* page.
  *
  * Three responsibilities:
- *   1. Auth gate: if the local flag says "not signed in," redirect to
- *      /account/login immediately. If the flag is stale (cookie expired
- *      out from under us), the /auth/me round-trip catches it and
- *      bounces too.
+ *   1. Auth gate: call /customer/auth/me. If it returns 200, render
+ *      the authed shell and refresh the localStorage hint. If it 401s,
+ *      clear the hint and redirect to /account/login. The /me round-
+ *      trip is the AUTHORITATIVE check — the localStorage flag is
+ *      just a same-origin nicety, and it would falsely deny a
+ *      customer who signed in via the in-page modal on a tenant
+ *      subdomain (localStorage is per-origin, so app.bkrdy.me has no
+ *      hint about that session even though the api.bkrdy.me cookie
+ *      is valid for both origins).
  *   2. Top navigation: Bookings + Profile + Sign out, plus the persistent
  *      BookReady logo.
  *   3. "Please verify your email" banner when /auth/me returns a customer
@@ -31,20 +36,16 @@ export default function AccountShell({ children }: { children: React.ReactNode }
   const [meError, setMeError]   = useState<string | null>(null)
 
   useEffect(() => {
-    if (!isCustomerLoggedIn()) {
-      router.replace('/account/login')
-      return
-    }
     let cancelled = false
     customerMe()
       .then(p => {
         if (cancelled) return
         setProfile(p)
-        setCustomerLoggedIn() // refresh the flag whenever /me confirms it
+        setCustomerLoggedIn() // refresh the hint whenever /me confirms it
       })
       .catch(() => {
         if (cancelled) return
-        // Either 401 (cookie expired) or network error — bounce to login.
+        // Either 401 (no cookie / expired) or network error — bounce to login.
         clearCustomerAuth()
         router.replace('/account/login')
       })

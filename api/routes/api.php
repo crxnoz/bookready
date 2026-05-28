@@ -381,12 +381,21 @@ Route::prefix('v1')->group(function () {
         Route::post('claim',                 [CustomerClaimController::class, 'claim'])
             ->middleware(['trusted_origin', 'throttle:5,1']);
 
-        // Phase 3 — authed customer surface. Stack:
+        // Phase 3 — authed customer surface.
+        //
+        // Base stack on everything:
         //   - auth:sanctum          (resolve the cookie/Bearer token)
         //   - customer_session      (reject owner tokens — defense in depth)
-        //   - customer_verified_email (gate on email_verified_at)
-        Route::middleware(['auth:sanctum', 'customer_session', 'customer_verified_email'])->group(function () {
-            // Bookings — cross-tenant index, per-booking detail/cancel/reschedule.
+        //
+        // The customer_verified_email gate is applied SELECTIVELY below.
+        // We deliberately do NOT require email verification to view or
+        // manage bookings — a customer who just signed up via the in-page
+        // modal on a tenant site should still be able to see what they
+        // booked. The verify-email banner in AccountShell nudges them
+        // without blocking the core flow.
+        Route::middleware(['auth:sanctum', 'customer_session'])->group(function () {
+            // Bookings — cross-tenant index, per-booking detail/cancel/
+            // reschedule. NO email verification required.
             Route::get   ('bookings',                                       [CustomerBookingsController::class, 'index']);
             Route::get   ('bookings/{tenant_slug}/{id}',                    [CustomerBookingsController::class, 'show'])
                 ->whereNumber('id')->where('tenant_slug', '[a-z0-9]+');
@@ -397,19 +406,26 @@ Route::prefix('v1')->group(function () {
                 ->whereNumber('id')->where('tenant_slug', '[a-z0-9]+')
                 ->middleware('throttle:10,1');
 
-            // Profile — identity + contact only. Per-business preferences
-            // stay owner-controlled in the tenant clients table.
-            Route::get   ('profile',          [CustomerProfileController::class, 'show']);
-            Route::patch ('profile',          [CustomerProfileController::class, 'update']);
-            Route::patch ('profile/email',    [CustomerProfileController::class, 'updateEmail']);
-            Route::post  ('profile/password', [CustomerProfileController::class, 'changePassword'])
-                ->middleware('throttle:5,1');
+            // Profile + Danger Zone DO require a verified email. Both
+            // can change identity or perform irreversible operations —
+            // we need confirmation that the email on file actually
+            // reaches the human who's clicking these buttons.
+            Route::middleware('customer_verified_email')->group(function () {
+                // Profile — identity + contact only. Per-business
+                // preferences stay owner-controlled in the tenant
+                // clients table.
+                Route::get   ('profile',          [CustomerProfileController::class, 'show']);
+                Route::patch ('profile',          [CustomerProfileController::class, 'update']);
+                Route::patch ('profile/email',    [CustomerProfileController::class, 'updateEmail']);
+                Route::post  ('profile/password', [CustomerProfileController::class, 'changePassword'])
+                    ->middleware('throttle:5,1');
 
-            // ── Danger Zone (Phase 6) — data export + account delete ────────
-            Route::get   ('danger/export',          [CustomerDangerController::class, 'export'])
-                ->middleware('throttle:3,1');
-            Route::post  ('danger/delete-account',  [CustomerDangerController::class, 'deleteAccount'])
-                ->middleware('throttle:3,1');
+                // ── Danger Zone (Phase 6) — data export + account delete ──
+                Route::get   ('danger/export',          [CustomerDangerController::class, 'export'])
+                    ->middleware('throttle:3,1');
+                Route::post  ('danger/delete-account',  [CustomerDangerController::class, 'deleteAccount'])
+                    ->middleware('throttle:3,1');
+            });
         });
     });
 
