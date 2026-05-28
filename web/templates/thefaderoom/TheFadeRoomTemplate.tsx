@@ -1567,12 +1567,12 @@ const TFR_CSS = `
 .tfr-auth-modal-fineprint { font-size:11px; line-height:1.45; }
 .tfr-spin { animation:tfrAuthSpin .9s linear infinite; }
 @keyframes tfrAuthSpin { to { transform:rotate(360deg); } }
+/* Mobile: stay centered (no bottom-sheet). Backdrop already has
+   padding:16px so the modal gets breathing room on the sides; just
+   tighten the internal padding so the form isn't cramped. */
 @media (max-width:480px) {
-  .tfr-auth-modal-backdrop { align-items:flex-end; padding:0; }
-  .tfr-auth-modal {
-    max-width:100%;
-    box-shadow:0 -12px 40px rgba(0,0,0,0.30);
-  }
+  .tfr-auth-modal { max-width:380px; }
+  .tfr-auth-modal-brand { padding:13px 18px; }
   .tfr-auth-modal-body { padding:24px 20px 22px; }
 }
 .tfr-header-cover {
