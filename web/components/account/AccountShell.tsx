@@ -72,38 +72,54 @@ export default function AccountShell({ children }: { children: React.ReactNode }
     )
   }
 
+  // "Bookings" stays active when the user is anywhere under /account
+  // (dashboard + /account/bookings/[tenant]/[id] detail). /account/profile
+  // is the only other top-level surface.
+  const isBookings = pathname === '/account' || pathname.startsWith('/account/bookings')
+  const isProfile  = pathname.startsWith('/account/profile')
+
   // Page-level shell.
   return (
     <div className="min-h-screen bg-cream text-near-black">
       <header className="border-b border-[rgba(18,18,18,0.10)] bg-cream">
-        <div className="max-w-[1024px] mx-auto px-6 sm:px-8 py-4 flex items-center justify-between">
-          <Link href="/account" className="flex items-center gap-2.5 group">
-            <div className="w-7 h-7 bg-near-black flex items-center justify-center flex-shrink-0">
+        <div className="max-w-[1024px] mx-auto px-4 sm:px-8 h-14 sm:h-16 flex items-center justify-between gap-3">
+          {/* Logo + wordmark. Wordmark hides on phones to give the
+              nav row room — the dark logo tile alone is recognizable. */}
+          <Link href="/account" className="flex items-center gap-2.5 flex-shrink-0 hover:opacity-75 transition-opacity">
+            <div className="w-7 h-7 bg-near-black flex items-center justify-center">
               <img src="/logo.svg" alt="" className="w-4 h-4 invert" />
             </div>
-            <span className="text-sm font-bold tracking-tight group-hover:opacity-75 transition-opacity">
+            <span className="hidden sm:inline text-[11px] font-bold tracking-[0.20em] uppercase text-near-black">
               BookReady
             </span>
           </Link>
 
-          <nav className="flex items-center gap-1 sm:gap-2 text-[11px] font-bold tracking-[0.10em] uppercase">
-            <NavLink href="/account"         active={pathname === '/account'}>Bookings</NavLink>
-            <NavLink href="/account/profile" active={pathname.startsWith('/account/profile')}>Profile</NavLink>
+          {/* Tab strip — matches the auth modal aesthetic: sharp corners,
+              solid bg-near-black on active, hairline border on idle.
+              Sign out hangs off the right with a more muted treatment so
+              it doesn't compete with the primary nav. */}
+          <nav className="flex items-stretch border border-[rgba(18,18,18,0.10)] text-[10px] sm:text-[11px] font-bold tracking-[0.14em] sm:tracking-[0.16em] uppercase">
+            <NavLink href="/account"         active={isBookings}>Bookings</NavLink>
+            <NavLink href="/account/profile" active={isProfile}>Profile</NavLink>
             <button
+              type="button"
               onClick={handleSignOut}
-              className="px-2.5 sm:px-3 py-2 text-muted-text hover:text-near-black transition-colors"
+              className="px-3 sm:px-4 border-l border-[rgba(18,18,18,0.10)] text-muted-text hover:text-near-black hover:bg-[rgba(18,18,18,0.04)] transition-colors"
             >
-              Sign out
+              <span className="hidden sm:inline">Sign out</span>
+              <span className="sm:hidden" aria-label="Sign out">Out</span>
             </button>
           </nav>
         </div>
 
-        {/* Email verification banner */}
+        {/* Email verification banner — compact strip with consistent
+            inline action. */}
         {profile && !profile.email_verified_at && (
           <div className="bg-blush border-t border-[rgba(18,18,18,0.10)]">
-            <div className="max-w-[1024px] mx-auto px-6 sm:px-8 py-2.5 text-xs text-near-black flex items-center justify-between gap-4">
-              <span>
-                Verify your email to make sure you receive booking updates.
+            <div className="max-w-[1024px] mx-auto px-4 sm:px-8 py-2 text-[11px] sm:text-xs text-near-black flex items-center justify-between gap-3">
+              <span className="leading-tight">
+                <span className="hidden sm:inline">Verify your email to make sure you receive booking updates.</span>
+                <span className="sm:hidden">Verify your email for booking updates.</span>
               </span>
               <ResendLink />
             </div>
@@ -111,13 +127,13 @@ export default function AccountShell({ children }: { children: React.ReactNode }
         )}
 
         {meError && (
-          <div className="bg-red-50 border-t border-red-200 px-6 sm:px-8 py-2 text-xs text-red-700 text-center">
+          <div className="bg-red-50 border-t border-red-200 px-4 sm:px-8 py-2 text-xs text-red-700 text-center">
             {meError}
           </div>
         )}
       </header>
 
-      <main className="max-w-[1024px] mx-auto px-6 sm:px-8 py-8">
+      <main className="max-w-[1024px] mx-auto px-4 sm:px-8 py-8">
         {children}
       </main>
     </div>
@@ -129,8 +145,10 @@ function NavLink({ href, active, children }: { href: string; active: boolean; ch
     <Link
       href={href}
       className={
-        'px-2.5 sm:px-3 py-2 transition-colors ' +
-        (active ? 'text-near-black underline underline-offset-4' : 'text-muted-text hover:text-near-black')
+        'inline-flex items-center px-3 sm:px-5 transition-colors ' +
+        (active
+          ? 'bg-near-black text-white'
+          : 'text-muted-text hover:text-near-black hover:bg-[rgba(18,18,18,0.04)]')
       }
     >
       {children}
