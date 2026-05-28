@@ -16,6 +16,7 @@ use App\Services\StripeConnectService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -56,7 +57,13 @@ class PublicBookingController extends Controller
         // during their first booking. We never OVERWRITE an existing
         // phone — that's a profile-management action they make
         // explicitly from /account/profile.
-        $authedCustomer = ($u = $request->user()) instanceof CustomerUser ? $u : null;
+        // Use the Sanctum guard explicitly. The public booking route has
+        // no auth middleware (anonymous bookings still work), which means
+        // $request->user() doesn't fire the Sanctum guard's resolver and
+        // returns null even when AuthFromCookie set the Bearer header.
+        // Auth::guard('sanctum')->user() walks the header directly.
+        $sanctumUser = Auth::guard('sanctum')->user();
+        $authedCustomer = $sanctumUser instanceof CustomerUser ? $sanctumUser : null;
         if ($authedCustomer) {
             $providedPhone = trim((string) $request->input('customer_phone', ''));
 

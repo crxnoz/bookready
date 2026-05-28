@@ -57,23 +57,32 @@ class BookingsController extends Controller
     {
         $customer = $request->user();
 
-        // Look up only the tenants this customer has actually booked in.
-        $tenantIds = DB::table('customer_user_tenants')
+        // Build the set of tenants we'll scan. Start with the pivot
+        // (fast path — these are tenants the customer is known to have
+        // booked at) and then UNION every tenant so we catch bookings
+        // made anonymously under the same email/phone before they had
+        // an account, or made by a misconfigured client where the
+        // customer_user_id stamp never landed. Self-healing: whenever
+        // we find a match by email/phone in a tenant not yet in the
+        // pivot, we stamp clients.customer_user_id + upsert the pivot
+        // row, so the NEXT request takes the fast path.
+        $pivotTenantIds = DB::table('customer_user_tenants')
             ->where('customer_user_id', $customer->id)
             ->pluck('tenant_id')
             ->all();
+        $allTenants = Tenant::all();
 
-        if (empty($tenantIds)) {
-            return response()->json([]);
-        }
+        $email = $customer->email
+            ? strtolower(trim((string) $customer->email))
+            : null;
+        $phone = $customer->phone
+            ? trim((string) $customer->phone)
+            : null;
 
-        $tenants  = Tenant::whereIn('id', $tenantIds)->get()->keyBy('id');
-        $bookings = [];
+        $bookings        = [];
+        $newPivotInserts = [];
 
-        foreach ($tenantIds as $tid) {
-            $tenant = $tenants->get($tid);
-            if (! $tenant) continue;
-
+        foreach ($allTenants as $tenant) {
             try {
                 tenancy()->initialize($tenant);
 
@@ -81,19 +90,41 @@ class BookingsController extends Controller
                     continue;
                 }
 
-                // Pull the customer's clients-row ids in this tenant
-                // (might be one, might be merged into multiple if the
-                // customer once booked under different formatting of
-                // the same email — claim flow links them all).
-                $clientIds = DB::table('clients')
-                    ->where('customer_user_id', $customer->id)
+                // Pull every clients row that COULD belong to this
+                // customer: stamped already, or matches their email or
+                // phone. Email comparison is case-insensitive (Eloquent
+                // LOWER() on both sides).
+                $query = DB::table('clients')->where(function ($q) use ($customer, $email, $phone) {
+                    $q->where('customer_user_id', $customer->id);
+                    if ($email !== null) {
+                        $q->orWhereRaw('LOWER(email) = ?', [$email]);
+                    }
+                    if ($phone !== null && $phone !== '') {
+                        $q->orWhere('phone', $phone);
+                    }
+                });
+                $matchedClients = $query->get(['id', 'customer_user_id']);
+
+                if ($matchedClients->isEmpty()) continue;
+
+                // Self-heal: stamp any unstamped matches with the
+                // customer's id. Doing it here means the OWNER's
+                // /editor/customers Account badge also lights up on
+                // the first dashboard visit by the customer.
+                $unstampedIds = $matchedClients
+                    ->where('customer_user_id', null)
                     ->pluck('id')
                     ->all();
+                if (! empty($unstampedIds)) {
+                    DB::table('clients')
+                        ->whereIn('id', $unstampedIds)
+                        ->update([
+                            'customer_user_id' => $customer->id,
+                            'updated_at'       => now(),
+                        ]);
+                }
 
-                if (empty($clientIds)) continue;
-
-                // Pull this tenant's display name once for the listing,
-                // along with the appointment rows.
+                $clientIds    = $matchedClients->pluck('id')->all();
                 $businessName = (string) (
                     DB::table('business_profiles')->value('business_name')
                     ?: $tenant->id
@@ -109,10 +140,17 @@ class BookingsController extends Controller
                 foreach ($rows as $row) {
                     $bookings[] = $this->formatBookingRow($row, $tenant->id, $businessName);
                 }
+
+                // Mark this tenant for a deferred pivot upsert (we
+                // can't write to the central DB while tenancy is
+                // initialized — connections are pinned mid-loop).
+                if (! in_array($tenant->id, $pivotTenantIds, true)) {
+                    $newPivotInserts[] = $tenant->id;
+                }
             } catch (\Throwable $e) {
                 Log::warning('customer.bookings.index tenant scan failed', [
                     'customer_user_id' => $customer->id,
-                    'tenant_id'        => $tid,
+                    'tenant_id'        => $tenant->id,
                     'error'            => $e->getMessage(),
                 ]);
             } finally {
@@ -120,9 +158,28 @@ class BookingsController extends Controller
             }
         }
 
-        // Final sort across all tenants combined — the per-tenant
-        // sort got us the rows in order per tenant, but the merge
-        // can interleave them out of order. Sort by date+time desc.
+        // Deferred pivot upserts (back on the central connection).
+        foreach ($newPivotInserts as $tid) {
+            try {
+                DB::table('customer_user_tenants')->updateOrInsert(
+                    ['customer_user_id' => $customer->id, 'tenant_id' => $tid],
+                    [
+                        'first_booked_at' => DB::raw('COALESCE(first_booked_at, NOW())'),
+                        'last_booked_at'  => now(),
+                        'updated_at'      => now(),
+                        'created_at'      => DB::raw('COALESCE(created_at, NOW())'),
+                    ],
+                );
+            } catch (\Throwable $e) {
+                Log::warning('customer.bookings.index pivot upsert failed', [
+                    'customer_user_id' => $customer->id,
+                    'tenant_id'        => $tid,
+                    'error'            => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Final sort across all tenants combined.
         usort($bookings, fn($a, $b) => strcmp(
             $b['appointment_date'] . ' ' . $b['start_time'],
             $a['appointment_date'] . ' ' . $a['start_time'],
@@ -341,16 +398,47 @@ class BookingsController extends Controller
             return response()->json(['message' => 'Booking not found'], 404);
         }
 
-        // IDOR check — the appointment's client must be linked to
-        // this customer's account. Without this an authed customer
-        // could enumerate other customers' booking IDs.
-        $clientOwner = DB::table('clients')
+        // IDOR check — the appointment's client row must belong to
+        // this customer, either by direct customer_user_id stamp OR
+        // (matching the broader index match) by email or phone.
+        // Without this an authed customer could enumerate other
+        // customers' booking IDs.
+        //
+        // When we match by email/phone we ALSO self-heal the stamp
+        // so subsequent requests can take the fast path AND so the
+        // owner-side /editor/customers Account badge lights up.
+        $client = DB::table('clients')
             ->where('id', $row->client_id)
-            ->value('customer_user_id');
+            ->first(['id', 'customer_user_id', 'email', 'phone']);
 
-        if ((int) $clientOwner !== (int) $customer->id) {
+        if (! $client) {
             tenancy()->end();
             return response()->json(['message' => 'Booking not found'], 404);
+        }
+
+        $email = $customer->email ? strtolower(trim((string) $customer->email)) : null;
+        $phone = $customer->phone ? trim((string) $customer->phone) : null;
+        $clientEmail = $client->email ? strtolower(trim((string) $client->email)) : null;
+        $clientPhone = $client->phone ? trim((string) $client->phone) : null;
+
+        $belongs =
+            ((int) $client->customer_user_id === (int) $customer->id) ||
+            ($email !== null && $clientEmail === $email) ||
+            ($phone !== null && $phone !== '' && $clientPhone === $phone);
+
+        if (! $belongs) {
+            tenancy()->end();
+            return response()->json(['message' => 'Booking not found'], 404);
+        }
+
+        // Self-heal the stamp when we matched by email/phone.
+        if ($client->customer_user_id === null) {
+            DB::table('clients')
+                ->where('id', $client->id)
+                ->update([
+                    'customer_user_id' => $customer->id,
+                    'updated_at'       => now(),
+                ]);
         }
 
         $bookingSettings = Schema::hasTable('booking_settings')
