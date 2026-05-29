@@ -1242,10 +1242,12 @@ export default function TheFadeRoomBooking({
             </label>
 
             {/* Opt-in account creation — shown only when the visitor
-                isn't already signed in. Bold heading + a couple lines
-                explaining the benefit, then a password field that
-                reveals on check. Unchecked by default so the booking
-                still works as a one-shot anonymous purchase. */}
+                isn't already signed in. Checkbox + bold title sit on
+                a single row; the benefits paragraph spans full width
+                below so it doesn't fight the checkbox alignment.
+                Password field reveals on check. Unchecked by default
+                so the booking still works as a one-shot anonymous
+                purchase. */}
             {authChecked && ! authedUser && (
               <div className="tfr-booking-create-account">
                 <label className="tfr-booking-create-account-row">
@@ -1254,15 +1256,13 @@ export default function TheFadeRoomBooking({
                     checked={createAccount}
                     onChange={e => setCreateAccount(e.target.checked)}
                   />
-                  <span className="tfr-booking-create-account-text">
-                    <strong>Create a BookReady account</strong>
-                    <span>
-                      Save your details, view this booking from any device, and
-                      manage every booking you make across BookReady businesses
-                      from one dashboard.
-                    </span>
-                  </span>
+                  <strong>Create a BookReady account</strong>
                 </label>
+                <p className="tfr-booking-create-account-blurb">
+                  Save your details, view this booking from any device, and
+                  manage every booking you make across BookReady businesses
+                  from one dashboard.
+                </p>
                 {createAccount && (
                   <label className="tfr-booking-create-account-pw">
                     <span>Choose a password</span>

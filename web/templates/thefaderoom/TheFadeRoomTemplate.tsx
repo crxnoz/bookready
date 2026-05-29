@@ -2040,9 +2040,9 @@ const TFR_CSS = `
 
 /* Persistent thin sign-in row below the booking title. Centered,
    muted, single line — visible on every step without competing for
-   attention. */
+   attention. Bottom margin keeps it off the progress dots beneath. */
 .tfr-booking-auth-thin {
-  margin:6px 0 0;
+  margin:6px 0 20px;
   font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   font-size:12px; line-height:1.4;
   color:var(--tfr-muted);
@@ -2119,18 +2119,20 @@ const TFR_CSS = `
   color:#121212;
 }
 .tfr-booking-create-account-row {
-  display:flex; align-items:flex-start; gap:10px;
+  display:flex; align-items:center; gap:10px;
   cursor:pointer; user-select:none;
 }
 .tfr-booking-create-account-row > input[type="checkbox"] {
-  width:16px; height:16px; margin-top:3px; flex-shrink:0;
+  width:16px; height:16px; flex-shrink:0;
   accent-color:#121212; cursor:pointer;
 }
-.tfr-booking-create-account-text { display:flex; flex-direction:column; gap:4px; flex:1; }
-.tfr-booking-create-account-text > strong {
+.tfr-booking-create-account-row > strong {
   font-size:14px; font-weight:700; letter-spacing:-0.005em;
 }
-.tfr-booking-create-account-text > span {
+/* Benefits paragraph sits below the row at full width — no leading
+   indent that would compete with the checkbox alignment above. */
+.tfr-booking-create-account-blurb {
+  margin:8px 0 0;
   font-size:12px; line-height:1.45; color:#6B7280;
 }
 .tfr-booking-create-account-pw {
@@ -2143,15 +2145,23 @@ const TFR_CSS = `
   letter-spacing:0.18em; text-transform:uppercase;
   color:#6B7280;
 }
-.tfr-booking-create-account-pw input {
+/* Password input — the higher-specificity selector (with [type] and
+   the create-account scope) wins over .tfr-booking-fields input which
+   would otherwise paint white text on a near-transparent background.
+   Also using stronger border + a visible placeholder color. */
+.tfr-booking-create-account .tfr-booking-create-account-pw input[type="password"] {
   width:100%; padding:11px 13px;
   background:#FFFFFF; color:#121212;
-  border:1px solid rgba(18,18,18,0.15); border-radius:0;
+  border:1px solid rgba(18,18,18,0.25); border-radius:0;
   font:inherit; font-size:14px; line-height:1.2;
   -webkit-appearance:none; appearance:none;
+  box-shadow:none;
 }
-.tfr-booking-create-account-pw input:focus {
+.tfr-booking-create-account .tfr-booking-create-account-pw input[type="password"]:focus {
   outline:none; border-color:#121212;
+}
+.tfr-booking-create-account .tfr-booking-create-account-pw input[type="password"]::placeholder {
+  color:#c4bcb6;
 }
 .tfr-booking-create-account-fineprint {
   font-size:11px; line-height:1.45; color:#6B7280;
