@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminTenantsController;
+use App\Http\Controllers\Api\TelnyxWebhookController;
 use App\Http\Controllers\Api\PlatformAnnouncementsController;
 use App\Http\Controllers\Api\AppointmentPaymentWebhookController;
 use App\Http\Controllers\Api\Auth\AuthController;
@@ -438,4 +439,15 @@ Route::prefix('v1')->group(function () {
     // INTENTIONALLY a separate endpoint + secret from the SaaS webhook above.
     // Signature verified manually with STRIPE_APPOINTMENT_WEBHOOK_SECRET.
     Route::post('webhooks/stripe/appointments', [AppointmentPaymentWebhookController::class, 'handle']);
+
+    // ── Telnyx SMS webhooks (no auth — Ed25519-signed) ───────────────────
+    // Two endpoints: delivery status callbacks (queued -> sent/delivered/
+    // failed) and inbound replies (STOP/START/HELP keyword handling plus
+    // generic reply logging). Both verify Telnyx-Signature-Ed25519
+    // against TELNYX_PUBLIC_KEY inside the controller. Throttled
+    // defensively even though signature is the real gate.
+    Route::post('webhooks/telnyx/status',  [TelnyxWebhookController::class, 'status'])
+        ->middleware('throttle:120,1');
+    Route::post('webhooks/telnyx/inbound', [TelnyxWebhookController::class, 'inbound'])
+        ->middleware('throttle:120,1');
 });
