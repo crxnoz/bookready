@@ -65,11 +65,11 @@ import { cn } from '@/lib/cn'
 
 type SettingsTab =
   | 'overview' | 'business' | 'preferences' | 'booking' | 'payments'
-  | 'notifications' | 'account' | 'integrations' | 'danger'
+  | 'notifications' | 'account' | 'danger'
 
 const VALID_TABS: SettingsTab[] = [
   'overview', 'business', 'preferences', 'booking', 'payments',
-  'notifications', 'account', 'integrations', 'danger',
+  'notifications', 'account', 'danger',
 ]
 
 interface GroupDef {
@@ -88,7 +88,6 @@ const GROUPS: GroupDef[] = [
   { tab: 'payments',      label: 'Payment Settings',   hint: 'Customer payments, deposits, currency',          icon: CreditCard,   status: 'ready' },
   { tab: 'notifications', label: 'Notifications',      hint: 'Toggle booking emails, reply-to, sender',        icon: Bell,         status: 'ready' },
   { tab: 'account',       label: 'Account',            hint: 'Owner profile, password, sign-out everywhere',   icon: UserCircle,   status: 'ready' },
-  { tab: 'integrations',  label: 'Integrations',       hint: 'Stripe, calendar, SMS, webhooks',                icon: Plug,         status: 'ready' },
   { tab: 'danger',        label: 'Danger Zone',        hint: 'Pause bookings, export data, delete account',    icon: AlertTriangle, status: 'ready', tone: 'danger' },
 ]
 
@@ -99,11 +98,21 @@ function hrefFor(tab: SettingsTab): string {
 // ── Root ─────────────────────────────────────────────────────────────────────
 
 export default function SettingsHub() {
+  const router = useRouter()
   const sp     = useSearchParams()
   const raw    = sp?.get('tab') ?? 'overview'
   const tab: SettingsTab = VALID_TABS.includes(raw as SettingsTab)
     ? (raw as SettingsTab)
     : 'overview'
+
+  // Bookmark continuity: the old Integrations sub-tab moved to a
+  // dedicated /editor/integrations page. Redirect anyone landing here
+  // with ?tab=integrations so old links keep working.
+  useEffect(() => {
+    if (raw === 'integrations') {
+      router.replace('/editor/integrations')
+    }
+  }, [raw, router])
 
   useScrollResetOnTab(tab)
 
@@ -116,7 +125,6 @@ export default function SettingsHub() {
       {tab === 'booking'       && <BookingSettingsPanel />}
       {tab === 'notifications' && <NotificationSettingsPanel />}
       {tab === 'account'       && <AccountSettingsPanel />}
-      {tab === 'integrations'  && <IntegrationsSettingsPanel />}
       {tab === 'danger'        && <DangerSettingsPanel />}
     </div>
   )
@@ -2330,160 +2338,6 @@ function stripPrefs(b: BusinessProfile): Partial<BusinessProfile> {
   }
 }
 
-// ── Integrations Settings panel ─────────────────────────────────────────────
-
-interface IntegrationCard {
-  icon:       React.ElementType
-  name:       string
-  description:string
-  status:     'connected' | 'available' | 'coming_soon'
-  statusLabel?: string
-  action?:    { label: string; href: string; external?: boolean }
-}
-
-function IntegrationsSettingsPanel() {
-  const [stripeStatus, setStripeStatus] = useState<StripeConnectStatus | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    let cancelled = false
-    getStripeConnectStatus()
-      .then(r => { if (!cancelled) setStripeStatus(r.stripe_connect_status) })
-      .catch(() => { if (!cancelled) setStripeStatus('not_connected') })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
-  }, [])
-
-  const stripeConnected = stripeStatus === 'active'
-  const stripeOnboarding = stripeStatus && stripeStatus !== 'not_connected' && stripeStatus !== 'active'
-
-  const cards: IntegrationCard[] = [
-    {
-      icon: CreditCard,
-      name: 'Stripe',
-      description: 'Accept deposits, full payments, balance charges, tips, and late fees from clients.',
-      status: stripeConnected ? 'connected' : (stripeOnboarding ? 'available' : 'available'),
-      statusLabel: loading ? 'Checking…' : (stripeConnected ? 'Connected' : (stripeOnboarding ? 'In progress' : 'Not connected')),
-      action: {
-        label: stripeConnected ? 'Manage in Payment Settings' : 'Set up Stripe',
-        href:  '/editor/settings?tab=payments',
-      },
-    },
-    {
-      icon: CalendarClock,
-      name: 'Google Calendar',
-      description: 'Two-way sync your appointments to a Google Calendar so your bookings show up everywhere.',
-      status: 'coming_soon',
-    },
-    {
-      icon: MessageSquare,
-      name: 'SMS notifications',
-      description: 'Send appointment confirmations and reminders via text message (Twilio).',
-      status: 'coming_soon',
-    },
-    {
-      icon: Send,
-      name: 'Mailchimp',
-      description: 'Push your client list to Mailchimp for marketing campaigns and newsletters.',
-      status: 'coming_soon',
-    },
-    {
-      icon: Sparkles,
-      name: 'Instagram booking link',
-      description: 'Auto-update your IG bio link with your latest booking-now URL.',
-      status: 'coming_soon',
-    },
-    {
-      icon: Webhook,
-      name: 'Webhooks',
-      description: 'Get notified at a URL of your choice when bookings, cancellations, or payments happen.',
-      status: 'coming_soon',
-    },
-  ]
-
-  return (
-    <div className="space-y-3">
-      <Link
-        href={hrefFor('overview')}
-        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
-      >
-        ← Back to Settings
-      </Link>
-
-      <header className="px-1">
-        <h1 className="text-base font-bold text-near-black">Integrations</h1>
-        <p className="text-xs text-muted-text mt-0.5">
-          Connect BookReady to the tools you already use. More integrations rolling out soon.
-        </p>
-      </header>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {cards.map(c => (
-          <IntegrationCardView key={c.name} card={c} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function IntegrationCardView({ card }: { card: IntegrationCard }) {
-  const Icon = card.icon
-  const isConnected   = card.status === 'connected'
-  const isComingSoon  = card.status === 'coming_soon'
-
-  return (
-    <div className={cn(
-      'bg-white border p-3.5 flex flex-col gap-3',
-      isComingSoon
-        ? 'border-[rgba(18,18,18,0.06)]'
-        : 'border-[rgba(18,18,18,0.10)]',
-    )}>
-      <div className="flex items-start gap-3">
-        <span className={cn(
-          'w-9 h-9 flex items-center justify-center flex-shrink-0 border',
-          isConnected
-            ? 'bg-[rgba(20,140,80,0.08)] border-[rgba(20,140,80,0.35)] text-[#0f6f3d]'
-            : isComingSoon
-              ? 'bg-cream border-[rgba(18,18,18,0.08)] text-muted-text'
-              : 'bg-cream border-[rgba(18,18,18,0.08)] text-near-black',
-        )}>
-          <Icon size={15} strokeWidth={1.8} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className={cn('text-[13px] font-semibold', isComingSoon ? 'text-muted-text' : 'text-near-black')}>
-              {card.name}
-            </p>
-            {card.statusLabel && (
-              <span className={cn(
-                'text-[9px] font-bold tracking-[0.06em] uppercase px-2 py-0.5 border whitespace-nowrap',
-                isConnected
-                  ? 'bg-white border-[rgba(20,140,80,0.40)] text-[#0f6f3d]'
-                  : 'bg-white border-[rgba(180,120,0,0.35)] text-[#8a5a00]',
-              )}>
-                {card.statusLabel}
-              </span>
-            )}
-            {isComingSoon && (
-              <span className="text-[9px] font-bold tracking-[0.06em] uppercase px-2 py-0.5 bg-white border border-[rgba(18,18,18,0.15)] text-muted-text">
-                Soon
-              </span>
-            )}
-          </div>
-          <p className="text-[11px] text-muted-text mt-1 leading-snug">{card.description}</p>
-        </div>
-      </div>
-      {card.action && (
-        <Link
-          href={card.action.href}
-          className="self-start text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.20)] bg-white px-3 py-1.5 hover:border-near-black transition-colors"
-        >
-          {card.action.label} →
-        </Link>
-      )}
-    </div>
-  )
-}
 
 // ── Shared sub-components for the new panels ────────────────────────────────
 
