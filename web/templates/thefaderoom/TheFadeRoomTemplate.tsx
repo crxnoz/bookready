@@ -2222,8 +2222,18 @@ const TFR_CSS = `
 }
 
 .tfr-booking-fields { display:grid; gap:14px; }
-.tfr-booking-fields label { display:flex; flex-direction:column; gap:6px; }
-.tfr-booking-fields span { font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--tfr-muted); font-weight:600; }
+
+/* One standard identity field row (Name / Email / Phone / Notes).
+   Scoped class instead of `.tfr-booking-fields label` so nested labels
+   inside the create-account block (the checkbox row, the password
+   input, the fineprint) don't inherit this layout — and so the four
+   standard fields can be styled independently (e.g. flex-direction:
+   row) without disturbing the create-account UI. */
+.tfr-booking-field { display:flex; flex-direction:column; gap:6px; }
+.tfr-booking-field > span {
+  font-size:10px; letter-spacing:0.18em; text-transform:uppercase;
+  color:var(--tfr-muted); font-weight:600;
+}
 .tfr-booking-fields input,
 .tfr-booking-textarea {
   background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1);

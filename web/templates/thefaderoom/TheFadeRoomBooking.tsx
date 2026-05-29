@@ -1261,7 +1261,10 @@ export default function TheFadeRoomBooking({
             </a>
           )}
           <div className="tfr-booking-fields">
-            <label>
+            {/* The four standard identity inputs use .tfr-booking-field so
+                styling can be tweaked (e.g. flex-direction:row) without
+                bleeding into the nested account-creation block below. */}
+            <label className="tfr-booking-field">
               <span>Full Name *</span>
               <input
                 type="text"
@@ -1271,7 +1274,7 @@ export default function TheFadeRoomBooking({
                 autoComplete="name"
               />
             </label>
-            <label>
+            <label className="tfr-booking-field">
               <span>Email</span>
               <input
                 type="email"
@@ -1281,7 +1284,7 @@ export default function TheFadeRoomBooking({
                 autoComplete="email"
               />
             </label>
-            <label>
+            <label className="tfr-booking-field">
               <span>Phone</span>
               <input
                 type="tel"
@@ -1291,7 +1294,7 @@ export default function TheFadeRoomBooking({
                 autoComplete="tel"
               />
             </label>
-            <label>
+            <label className="tfr-booking-field">
               <span>Notes</span>
               <textarea
                 placeholder="Any special requests or notes…"
