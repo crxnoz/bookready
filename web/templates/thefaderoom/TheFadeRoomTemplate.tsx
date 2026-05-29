@@ -2224,7 +2224,7 @@ const TFR_CSS = `
 .tfr-booking-fields { display:grid; gap:14px; }
 
 /* One standard identity field row (Name / Email / Phone / Notes).
-   Scoped class instead of `.tfr-booking-fields label` so nested labels
+   Scoped class instead of .tfr-booking-fields label so nested labels
    inside the create-account block (the checkbox row, the password
    input, the fineprint) don't inherit this layout — and so the four
    standard fields can be styled independently (e.g. flex-direction:
