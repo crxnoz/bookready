@@ -154,11 +154,18 @@ export default function TheFadeRoomBooking({
   const { user: authedUser, authChecked, open: openAuth, signOut: signOutAuth } = useTfrCustomerAuth()
   useEffect(() => {
     if (! authedUser) return
-    // Functional setState so a fast typer who started filling the form
-    // before the auth state arrived doesn't get their text clobbered.
-    setName(prev  => prev || authedUser.name)
-    setEmail(prev => prev || authedUser.email)
-    setPhone(prev => prev || (authedUser.phone ?? ''))
+    // Force-fill identity from the authed user whenever the identity
+    // changes (initial probe completing OR a fresh sign-in via modal).
+    // Previously this used `prev || authedUser.x` to protect a fast
+    // typer from being clobbered on initial load — but that meant a
+    // visitor who typed random@gmail.com and THEN signed in as
+    // carreno@gmail.com still saw random@gmail.com in the field.
+    // Deliberate sign-in should overwrite. The backend overrides
+    // identity to the authed user's stored values on submit anyway,
+    // so syncing the form keeps the visible state honest.
+    setName(authedUser.name)
+    setEmail(authedUser.email)
+    setPhone(authedUser.phone ?? '')
   }, [authedUser])
 
   // Opt-in account-creation state for Step 4. Visible only when NOT
