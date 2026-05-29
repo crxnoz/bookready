@@ -3111,14 +3111,22 @@ function EmailTemplateCard({
           </label>
 
           <div className="pt-1 border-t border-[rgba(18,18,18,0.06)] space-y-2">
-            <p className={cn(
-              'text-[11px]',
-              sendMsg?.kind === 'err' ? 'text-[#b42828]' : 'text-muted-text',
-            )}>
-              {sendMsg
-                ? sendMsg.text
-                : 'Send a test to verify deliverability + saved content. Leave the address blank to use your account email.'}
-            </p>
+            {/* Status row — error gets red treatment, success gets a
+                clearly-visible green confirmation strip with a check
+                icon so it reads as "yes, sent" at a glance. Defaults
+                back to muted helper copy when neither has fired. */}
+            {sendMsg?.kind === 'ok' ? (
+              <div className="flex items-center gap-2 px-2.5 py-1.5 bg-green-50 border border-green-200 text-[11px] text-green-800">
+                <Check size={12} className="flex-shrink-0" />
+                <span className="font-semibold">{sendMsg.text}</span>
+              </div>
+            ) : sendMsg?.kind === 'err' ? (
+              <p className="text-[11px] text-[#b42828]">{sendMsg.text}</p>
+            ) : (
+              <p className="text-[11px] text-muted-text">
+                Send a test to verify deliverability + saved content. Leave the address blank to use your account email.
+              </p>
+            )}
             <div className="flex items-stretch gap-2">
               <input
                 type="email"
@@ -3135,7 +3143,9 @@ function EmailTemplateCard({
               >
                 {sending
                   ? <><Loader2 size={11} className="animate-spin" /> Sending</>
-                  : <><Send size={11} /> Test send</>}
+                  : sendMsg?.kind === 'ok'
+                    ? <><Check size={11} /> Sent</>
+                    : <><Send size={11} /> Test send</>}
               </button>
             </div>
           </div>

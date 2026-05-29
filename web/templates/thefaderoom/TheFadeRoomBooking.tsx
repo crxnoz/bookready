@@ -173,17 +173,21 @@ export default function TheFadeRoomBooking({
   // and the "go to dashboard" CTA.
   const [customerAccountCreated, setCustomerAccountCreated] = useState(false)
 
-  // Stripe-redirect-return banner. The Stripe checkout success_url is
-  // configured to include &account=new when the booking ALSO created
-  // a customer account; detecting it here lets us surface the same
-  // verify-email + dashboard prompt after the user returns from the
-  // hosted checkout page.
-  const [showStripeAccountBanner, setShowStripeAccountBanner] = useState(false)
+  // Stripe-redirect-return banner. Two flavors:
+  //   - "account=new" — booking ALSO created a customer account; show
+  //     the verify-email + dashboard prompt.
+  //   - Authed return (no account=new) — they were already signed in;
+  //     surface a "booking confirmed → go to dashboard" banner so the
+  //     visitor has a path to manage what they just paid for.
+  const [showStripeAccountBanner,  setShowStripeAccountBanner]  = useState(false)
+  const [showStripeConfirmedBanner, setShowStripeConfirmedBanner] = useState(false)
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     if (params.get('booking') === 'success' && params.get('account') === 'new') {
       setShowStripeAccountBanner(true)
+    } else if (params.get('booking') === 'success') {
+      setShowStripeConfirmedBanner(true)
     }
   }, [])
 
@@ -638,6 +642,34 @@ export default function TheFadeRoomBooking({
             </div>
           </div>
         )}
+
+        {/* Already-authed in-page success (no new account, no payment
+            redirect): point them at /account so they can manage what
+            they just booked. */}
+        {! customerAccountCreated && authedUser && (
+          <div className="tfr-booking-account-followup tfr-booking-account-followup--success">
+            <div className="tfr-booking-account-followup-icon" aria-hidden="true">
+              <BookmarkCheck size={18} />
+            </div>
+            <div className="tfr-booking-account-followup-body">
+              <p className="tfr-booking-account-followup-eyebrow">Your BookReady account</p>
+              <p className="tfr-booking-account-followup-title">
+                Manage from your dashboard.
+              </p>
+              <p className="tfr-booking-account-followup-sub">
+                Reschedule, cancel, or see every booking across BookReady businesses in one place.
+              </p>
+              <a
+                href="https://app.bkrdy.me/account"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tfr-booking-account-followup-cta"
+              >
+                Go to dashboard <ExternalLink size={12} aria-hidden />
+              </a>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -730,6 +762,35 @@ export default function TheFadeRoomBooking({
               <p className="tfr-booking-account-followup-sub">
                 Your appointment and payment are confirmed regardless. Verifying
                 your email lets you manage and reschedule from any device.
+              </p>
+              <a
+                href="https://app.bkrdy.me/account"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tfr-booking-account-followup-cta"
+              >
+                Go to dashboard <ExternalLink size={12} aria-hidden />
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Same shape but for visitors who were ALREADY signed in when
+            they paid — they don't need verify-email copy, just a
+            confirmation + a path back to /account so they can manage
+            what they just booked. */}
+        {showStripeConfirmedBanner && (
+          <div className="tfr-booking-account-followup">
+            <div className="tfr-booking-account-followup-icon" aria-hidden="true">
+              <BookmarkCheck size={18} />
+            </div>
+            <div className="tfr-booking-account-followup-body">
+              <p className="tfr-booking-account-followup-eyebrow">All set</p>
+              <p className="tfr-booking-account-followup-title">
+                Your booking is confirmed.
+              </p>
+              <p className="tfr-booking-account-followup-sub">
+                Manage, reschedule, or cancel from your BookReady dashboard.
               </p>
               <a
                 href="https://app.bkrdy.me/account"
