@@ -12,7 +12,7 @@ import type {
   ServiceAddon, PublicStaffMember, ServiceCategory,
   BookingQuestion, BookingQuestionAnswerInput,
 } from '@/lib/types'
-import { UserCircle } from 'lucide-react'
+import { UserCircle, BookmarkCheck, LogOut, Mail, ExternalLink } from 'lucide-react'
 import { useTfrCustomerAuth } from './TfrCustomerAuth'
 
 // Sentinel used as the "category id" for the auto-generated bucket that
@@ -151,7 +151,7 @@ export default function TheFadeRoomBooking({
   // The backend (PublicBookingController) force-overrides these to the
   // authed user's values on submit anyway, so manual edits here are
   // harmless either way — autofill is purely a UX nicety.
-  const { user: authedUser, authChecked, open: openAuth } = useTfrCustomerAuth()
+  const { user: authedUser, authChecked, open: openAuth, signOut: signOutAuth } = useTfrCustomerAuth()
   useEffect(() => {
     if (! authedUser) return
     // Functional setState so a fast typer who started filling the form
@@ -160,6 +160,40 @@ export default function TheFadeRoomBooking({
     setEmail(prev => prev || authedUser.email)
     setPhone(prev => prev || (authedUser.phone ?? ''))
   }, [authedUser])
+
+  // Opt-in account-creation state for Step 4. Visible only when NOT
+  // authed. The password field reveals when the checkbox is checked.
+  // Default unchecked so we never imply consent — the checkbox is a
+  // conversion nudge, not a default.
+  const [createAccount,   setCreateAccount]   = useState(false)
+  const [accountPassword, setAccountPassword] = useState('')
+
+  // Flips true when the backend confirms it minted a new customer_users
+  // row for this booking — drives the post-success verify-email card
+  // and the "go to dashboard" CTA.
+  const [customerAccountCreated, setCustomerAccountCreated] = useState(false)
+
+  // Stripe-redirect-return banner. The Stripe checkout success_url is
+  // configured to include &account=new when the booking ALSO created
+  // a customer account; detecting it here lets us surface the same
+  // verify-email + dashboard prompt after the user returns from the
+  // hosted checkout page.
+  const [showStripeAccountBanner, setShowStripeAccountBanner] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('booking') === 'success' && params.get('account') === 'new') {
+      setShowStripeAccountBanner(true)
+    }
+  }, [])
+
+  async function handleSignOutThin() {
+    try { await signOutAuth() } catch { /* fail open */ }
+    // Wipe the auto-filled identity fields so the form doesn't keep
+    // showing the signed-out person's info.
+    setName(''); setEmail(''); setPhone('')
+    setCreateAccount(false); setAccountPassword('')
+  }
   // Phase 8 — pre-Service category pick. null means "not picked yet" (which
   // shows the category tiles); UNCATEGORIZED is the "Other" bucket for
   // services that have no category_id assigned.
@@ -489,10 +523,24 @@ export default function TheFadeRoomBooking({
         })
         payload.question_answers = answers
       }
+      // Opt-in account creation, surfaced via the Step 4 checkbox. Only
+      // sent when the visitor explicitly ticked the box AND filled in
+      // both an email and an >=8 char password. Backend re-validates +
+      // falls through to anonymous booking on any mismatch (e.g. email
+      // already taken) so a checkbox glitch never blocks the booking.
+      if (! authedUser && createAccount && email.trim() && accountPassword.length >= 8) {
+        payload.create_account   = true
+        payload.account_password = accountPassword
+      }
       const res = await createPublicAppointment(slug, payload)
+      if (res.customer_account_created) {
+        setCustomerAccountCreated(true)
+      }
       if (res.checkout_url) {
         // Hand control off to Stripe — webhook will finalize the booking
-        // once payment completes.
+        // once payment completes. The success_url includes &account=new
+        // when the booking also created an account, so the post-redirect
+        // banner picks up from there.
         window.location.href = res.checkout_url
         return
       }
@@ -559,6 +607,37 @@ export default function TheFadeRoomBooking({
         <p className="tfr-booking-success-note">
           No payment required — payment is handled at the appointment.
         </p>
+
+        {/* New-account follow-up. Reassures the visitor that the
+            booking itself is locked in, then asks them to verify so
+            their account is fully active. Same copy as the Stripe-
+            return banner so the messaging is consistent regardless of
+            whether the tenant takes payment. */}
+        {customerAccountCreated && (
+          <div className="tfr-booking-account-followup tfr-booking-account-followup--success">
+            <div className="tfr-booking-account-followup-icon" aria-hidden="true">
+              <Mail size={18} />
+            </div>
+            <div className="tfr-booking-account-followup-body">
+              <p className="tfr-booking-account-followup-eyebrow">Your BookReady account</p>
+              <p className="tfr-booking-account-followup-title">
+                Check your inbox to verify your email.
+              </p>
+              <p className="tfr-booking-account-followup-sub">
+                Your appointment is confirmed regardless. Verifying lets you
+                manage and reschedule from any device.
+              </p>
+              <a
+                href="https://app.bkrdy.me/account"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tfr-booking-account-followup-cta"
+              >
+                Go to dashboard <ExternalLink size={12} aria-hidden />
+              </a>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -608,6 +687,62 @@ export default function TheFadeRoomBooking({
       <div className="tfr-booking-head">
         <span className="tfr-booking-eyebrow">Book Online</span>
         <h2>Reserve Your Appointment</h2>
+
+        {/* Persistent thin sign-in indicator — visible from every step.
+            Deliberately subtle (no card, no border) so it doesn't
+            compete with the form. The action is the same as the modal
+            elsewhere: open the in-page TfrAuthModal. When the visitor
+            is already signed in we surface their name + a sign-out
+            link in the same slot so they can switch identities mid-
+            flow if they need to. */}
+        {authChecked && ! authedUser && (
+          <p className="tfr-booking-auth-thin">
+            Have a BookReady account?{' '}
+            <button type="button" onClick={() => openAuth('signin')}>
+              Sign in
+            </button>
+          </p>
+        )}
+        {authChecked && authedUser && (
+          <p className="tfr-booking-auth-thin">
+            Signed in as <strong>{authedUser.name}</strong>
+            {' · '}
+            <button type="button" onClick={handleSignOutThin}>
+              Sign out
+            </button>
+          </p>
+        )}
+
+        {/* Stripe-return banner: shown when the user came back from
+            hosted checkout AND the original booking POST also created
+            their account. The welcome+verify email has already gone
+            out — we just need to point them at their inbox. */}
+        {showStripeAccountBanner && (
+          <div className="tfr-booking-account-followup">
+            <div className="tfr-booking-account-followup-icon" aria-hidden="true">
+              <Mail size={18} />
+            </div>
+            <div className="tfr-booking-account-followup-body">
+              <p className="tfr-booking-account-followup-eyebrow">Almost done</p>
+              <p className="tfr-booking-account-followup-title">
+                Check your inbox to verify your BookReady account.
+              </p>
+              <p className="tfr-booking-account-followup-sub">
+                Your appointment and payment are confirmed regardless. Verifying
+                your email lets you manage and reschedule from any device.
+              </p>
+              <a
+                href="https://app.bkrdy.me/account"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tfr-booking-account-followup-cta"
+              >
+                Go to dashboard <ExternalLink size={12} aria-hidden />
+              </a>
+            </div>
+          </div>
+        )}
+
         {/* Phase 8 — compact dot timeline. Labels are sr-only on the
             individual buttons; the caption below the track shows the
             currently-active step's name so we don't lose context. */}
@@ -1037,40 +1172,32 @@ export default function TheFadeRoomBooking({
 
         {/* ── Step 4: Details ── */}
         <div className={`tfr-booking-slide${step === 4 ? ' is-active' : ''}`}>
-          {/* Account-aware banner. Only rendered after the auth probe
-              resolves so we don't flash "Sign in" then yank it once we
-              discover the visitor is already logged in. */}
+          {/* Already-authed: a prominent "View your bookings" card right
+              above the form. Repeat customers care about jumping to
+              their dashboard; we lean into that affordance instead of
+              the previous subtle inline link. The persistent thin row
+              above the progress already handles sign-out. */}
           {authChecked && authedUser && (
-            <div className="tfr-booking-auth tfr-booking-auth--authed">
-              <UserCircle size={14} />
-              <span>
-                Booking as <strong>{authedUser.name}</strong> ({authedUser.email})
+            <a
+              href="https://app.bkrdy.me/account"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="tfr-booking-account-cta"
+            >
+              <span className="tfr-booking-account-cta-icon" aria-hidden="true">
+                <BookmarkCheck size={18} />
               </span>
-              <a
-                href="https://app.bkrdy.me/account"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="tfr-booking-auth-link"
-              >
-                Manage bookings
-              </a>
-            </div>
-          )}
-          {authChecked && !authedUser && (
-            <div className="tfr-booking-auth">
-              <UserCircle size={14} />
-              <span>Have a BookReady account?</span>
-              {/* Opens TfrAuthModal in-page so the visitor doesn't lose
-                  anything they've already entered in the booking flow.
-                  signin tab by default; the modal exposes a Sign-up tab. */}
-              <button
-                type="button"
-                className="tfr-booking-auth-link"
-                onClick={() => openAuth('signin')}
-              >
-                Sign in to autofill →
-              </button>
-            </div>
+              <span className="tfr-booking-account-cta-body">
+                <span className="tfr-booking-account-cta-eyebrow">Your BookReady account</span>
+                <span className="tfr-booking-account-cta-title">View your bookings</span>
+                <span className="tfr-booking-account-cta-sub">
+                  See and manage every booking across BookReady.
+                </span>
+              </span>
+              <span className="tfr-booking-account-cta-arrow" aria-hidden="true">
+                <ExternalLink size={14} />
+              </span>
+            </a>
           )}
           <div className="tfr-booking-fields">
             <label>
@@ -1113,6 +1240,48 @@ export default function TheFadeRoomBooking({
                 className="tfr-booking-textarea"
               />
             </label>
+
+            {/* Opt-in account creation — shown only when the visitor
+                isn't already signed in. Bold heading + a couple lines
+                explaining the benefit, then a password field that
+                reveals on check. Unchecked by default so the booking
+                still works as a one-shot anonymous purchase. */}
+            {authChecked && ! authedUser && (
+              <div className="tfr-booking-create-account">
+                <label className="tfr-booking-create-account-row">
+                  <input
+                    type="checkbox"
+                    checked={createAccount}
+                    onChange={e => setCreateAccount(e.target.checked)}
+                  />
+                  <span className="tfr-booking-create-account-text">
+                    <strong>Create a BookReady account</strong>
+                    <span>
+                      Save your details, view this booking from any device, and
+                      manage every booking you make across BookReady businesses
+                      from one dashboard.
+                    </span>
+                  </span>
+                </label>
+                {createAccount && (
+                  <label className="tfr-booking-create-account-pw">
+                    <span>Choose a password</span>
+                    <input
+                      type="password"
+                      value={accountPassword}
+                      onChange={e => setAccountPassword(e.target.value)}
+                      autoComplete="new-password"
+                      minLength={8}
+                      placeholder="At least 8 characters"
+                    />
+                    <span className="tfr-booking-create-account-fineprint">
+                      We&rsquo;ll email a verification link. Your appointment is
+                      confirmed either way — verifying is just for your account.
+                    </span>
+                  </label>
+                )}
+              </div>
+            )}
 
             {/* Phase 16 — custom owner-defined questions */}
             {applicableQuestions.length > 0 && (

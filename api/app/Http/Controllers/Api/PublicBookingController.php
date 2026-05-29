@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\Customer\EmailVerificationController;
+use App\Mail\CustomerWelcomeMail;
 use App\Models\CustomerUser;
 use App\Models\Tenant;
 use App\Services\AppointmentMailer;
@@ -13,12 +15,14 @@ use App\Services\PlatformMailer;
 use App\Services\SitePrivacyService;
 use App\Services\SlotGenerator;
 use App\Services\StripeConnectService;
+use App\Support\CustomerAuthCookie;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -64,6 +68,88 @@ class PublicBookingController extends Controller
         // Auth::guard('sanctum')->user() walks the header directly.
         $sanctumUser = Auth::guard('sanctum')->user();
         $authedCustomer = $sanctumUser instanceof CustomerUser ? $sanctumUser : null;
+
+        // Opt-in account creation alongside booking. When the visitor
+        // ticked "Create a BookReady account" in Step 4 we register them
+        // BEFORE the rest of the booking flow runs, so the downstream
+        // stamping logic (clients.customer_user_id + pivot upsert) treats
+        // them as authed and the link is in place by the time the email
+        // confirmation goes out.
+        //
+        // The mint-token-and-attach-cookie variable is held here and
+        // chained onto the final success response (Stripe-redirect path
+        // included). Failure to create the account (email already taken,
+        // mailer down, etc.) is non-fatal — the booking still goes
+        // through anonymously and the existing claim CTA in the email
+        // handles "save this booking" later.
+        $newCustomerCookie       = null;
+        $customerAccountCreated  = false;
+        if (! $authedCustomer && filter_var($request->input('create_account', false), FILTER_VALIDATE_BOOLEAN)) {
+            $signupEmail = strtolower(trim((string) $request->input('customer_email', '')));
+            $signupPassword = (string) $request->input('account_password', '');
+            $signupName  = trim((string) $request->input('customer_name', ''));
+            $signupPhone = trim((string) $request->input('customer_phone', ''));
+
+            // Soft validation — empty email or password just falls
+            // through to anonymous. Real form validation runs below in
+            // the existing $request->validate() block and catches
+            // anything malformed before the booking is created.
+            if ($signupEmail !== '' && strlen($signupPassword) >= 8 && $signupName !== '') {
+                $emailTaken = CustomerUser::where('email', $signupEmail)->exists();
+                if (! $emailTaken) {
+                    try {
+                        $newUser = CustomerUser::create([
+                            'name'     => $signupName,
+                            'email'    => $signupEmail,
+                            'password' => $signupPassword,
+                            'phone'    => $signupPhone !== '' ? $signupPhone : null,
+                        ]);
+                        $newUser->last_login_at = now();
+                        $newUser->save();
+
+                        // Welcome mail — best effort.
+                        try {
+                            Mail::to($newUser->email)->send(new CustomerWelcomeMail(
+                                customerName: $newUser->name,
+                                accountUrl:   'https://app.bkrdy.me/account',
+                            ));
+                        } catch (\Throwable $e) {
+                            Log::warning('CustomerWelcomeMail failed (booking signup)', [
+                                'user_id' => $newUser->id,
+                                'error'   => $e->getMessage(),
+                            ]);
+                        }
+                        // Verify-email link — best effort. Customer can
+                        // resend later from /account.
+                        try {
+                            EmailVerificationController::sendVerificationEmail($newUser);
+                        } catch (\Throwable $e) {
+                            Log::warning('CustomerVerifyEmailMail failed (booking signup)', [
+                                'user_id' => $newUser->id,
+                                'error'   => $e->getMessage(),
+                            ]);
+                        }
+
+                        $token = $newUser->createToken(
+                            'customer-booking-signup',
+                            ['*'],
+                            now()->addMinutes(CustomerAuthCookie::TOKEN_TTL_MIN),
+                        )->plainTextToken;
+
+                        $newCustomerCookie      = CustomerAuthCookie::make($token);
+                        $authedCustomer         = $newUser;
+                        $customerAccountCreated = true;
+                    } catch (\Throwable $e) {
+                        Log::warning('booking.signup creation failed', [
+                            'email' => $signupEmail,
+                            'error' => $e->getMessage(),
+                        ]);
+                        // Fall through to anonymous booking.
+                    }
+                }
+            }
+        }
+
         if ($authedCustomer) {
             $providedPhone = trim((string) $request->input('customer_phone', ''));
 
@@ -108,6 +194,13 @@ class PublicBookingController extends Controller
             'question_answers.*.image_url'     => 'sometimes|nullable|string|max:2000',
             // Phase S1 — unlock token for private sites
             'unlock'           => 'sometimes|nullable|string|max:500',
+            // Opt-in account-creation alongside booking. Soft-validated
+            // above (any failure falls through to anonymous booking); we
+            // still declare them here so the request input arrays stay
+            // tidy and so a malformed password is rejected cleanly if
+            // the visitor explicitly opted in.
+            'create_account'   => 'sometimes|boolean',
+            'account_password' => 'required_if:create_account,true|string|min:8|max:255',
         ]);
 
         $serviceId = (int)    $validated['service_id'];
@@ -589,8 +682,9 @@ class PublicBookingController extends Controller
                     'collect_tax'               => (bool) ($payment['collect_tax']          ?? false),
                     'save_cards_for_reuse'      => (bool) ($payment['save_cards_for_reuse'] ?? false),
                     'success_url'    => sprintf(
-                        'https://%s.bkrdy.me/?booking=success&appointment=%d&session_id={CHECKOUT_SESSION_ID}',
+                        'https://%s.bkrdy.me/?booking=success&appointment=%d&session_id={CHECKOUT_SESSION_ID}%s',
                         $tenant->id, $appt['id'],
+                        $customerAccountCreated ? '&account=new' : '',
                     ),
                     'cancel_url'     => sprintf(
                         'https://%s.bkrdy.me/?booking=cancelled&appointment=%d',
@@ -703,7 +797,18 @@ class PublicBookingController extends Controller
             $response['checkout_url']     = $checkoutUrl;
         }
 
-        return response()->json($response, 201);
+        if ($customerAccountCreated) {
+            $response['customer_account_created'] = true;
+        }
+
+        $resp = response()->json($response, 201);
+        // Attach the customer auth cookie when we minted one — the
+        // visitor is logged in by the time they see the success state.
+        if ($newCustomerCookie !== null) {
+            $resp = $resp->withCookie($newCustomerCookie);
+        }
+
+        return $resp;
     }
 
     /**

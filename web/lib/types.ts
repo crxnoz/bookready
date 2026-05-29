@@ -1158,6 +1158,13 @@ export interface PublicBookingPayload {
   /** Phase 16: custom booking-question answers. Backend snapshots into
    *  appointments.question_answers; required ones are enforced server-side. */
   question_answers?: BookingQuestionAnswerInput[]
+  /** Opt-in account creation alongside booking. When true the backend
+   *  also creates a customer_users row from name/email + account_password,
+   *  mints the customer auth cookie, and sends welcome + verify-email
+   *  mail. Falls through to anonymous booking if the email already has
+   *  an account (the user can sign in to claim it via the email CTA). */
+  create_account?:   boolean
+  account_password?: string
 }
 
 export interface PublicBookingResponse {
@@ -1180,6 +1187,11 @@ export interface PublicBookingResponse {
   deposit_amount?:   number
   currency?:         string
   checkout_url?:     string
+  /** True when the booking POST also created a customer_users row
+   *  (the visitor ticked the "Create a BookReady account" checkbox).
+   *  The frontend uses this to show the verify-email prompt + dashboard
+   *  CTA on the success state. */
+  customer_account_created?: boolean
 }
 
 // Auth

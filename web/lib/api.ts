@@ -283,6 +283,13 @@ export async function createPublicAppointment(
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(body),
+    // credentials:'include' so an authed customer's bookready_customer_token
+    // cookie is sent. The booking route is auth-OPTIONAL — anonymous bookers
+    // still work because the cookie is just absent. When present, the
+    // backend stamps clients.customer_user_id + the pivot row so the
+    // booking shows up in /account. Without this line, even a signed-in
+    // visitor would book "anonymously" from the backend's perspective.
+    credentials: 'include',
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }))

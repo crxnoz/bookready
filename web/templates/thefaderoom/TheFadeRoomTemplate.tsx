@@ -2037,6 +2037,176 @@ const TFR_CSS = `
 @media (hover:hover) and (pointer:fine) {
   .tfr-booking-auth-link:hover { color:#6B7280; }
 }
+
+/* Persistent thin sign-in row below the booking title. Centered,
+   muted, single line — visible on every step without competing for
+   attention. */
+.tfr-booking-auth-thin {
+  margin:6px 0 0;
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  font-size:12px; line-height:1.4;
+  color:var(--tfr-muted);
+  text-align:center;
+}
+.tfr-booking-auth-thin strong { font-weight:600; color:var(--tfr-text); }
+.tfr-booking-auth-thin button {
+  background:transparent; border:none; padding:0;
+  font:inherit; color:var(--tfr-text);
+  text-decoration:underline; text-underline-offset:2px;
+  cursor:pointer;
+}
+@media (hover:hover) and (pointer:fine) {
+  .tfr-booking-auth-thin button:hover { opacity:0.7; }
+}
+
+/* Prominent "View your bookings" CTA for already-authed visitors at
+   Step 4. Sharp BookReady house style — full-width card that reads
+   as a button. Replaces the previous subtle inline "Manage bookings"
+   link. */
+.tfr-booking-account-cta {
+  display:flex; align-items:center; gap:14px;
+  padding:14px 16px; margin-bottom:18px;
+  background:#FFFFFF; color:#121212;
+  border:1px solid rgba(18,18,18,0.12);
+  border-radius:0;
+  text-decoration:none;
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  transition:background .15s ease, color .15s ease, border-color .15s ease;
+}
+@media (hover:hover) and (pointer:fine) {
+  .tfr-booking-account-cta:hover {
+    background:#121212; color:#FFFFFF; border-color:#121212;
+  }
+}
+.tfr-booking-account-cta-icon {
+  width:36px; height:36px;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:rgba(18,18,18,0.06); flex-shrink:0;
+  transition:background .15s ease;
+}
+.tfr-booking-account-cta:hover .tfr-booking-account-cta-icon {
+  background:rgba(255,255,255,0.12);
+}
+.tfr-booking-account-cta-body { display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; }
+.tfr-booking-account-cta-eyebrow {
+  font-size:9px; font-weight:700;
+  letter-spacing:0.18em; text-transform:uppercase;
+  opacity:0.6;
+}
+.tfr-booking-account-cta-title {
+  font-size:15px; font-weight:700;
+  letter-spacing:-0.005em;
+}
+.tfr-booking-account-cta-sub {
+  font-size:12px; opacity:0.7; line-height:1.3;
+}
+.tfr-booking-account-cta-arrow {
+  width:32px; height:32px;
+  display:inline-flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+
+/* Opt-in "Create a BookReady account" block in Step 4 (unauthed).
+   Sits inside the form flow, bordered to read as a related-but-
+   optional choice. Password field reveals when checkbox is checked. */
+.tfr-booking-create-account {
+  margin-top:6px;
+  padding:14px 16px;
+  background:#FFFFFF;
+  border:1px solid rgba(18,18,18,0.12);
+  border-radius:0;
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  color:#121212;
+}
+.tfr-booking-create-account-row {
+  display:flex; align-items:flex-start; gap:10px;
+  cursor:pointer; user-select:none;
+}
+.tfr-booking-create-account-row > input[type="checkbox"] {
+  width:16px; height:16px; margin-top:3px; flex-shrink:0;
+  accent-color:#121212; cursor:pointer;
+}
+.tfr-booking-create-account-text { display:flex; flex-direction:column; gap:4px; flex:1; }
+.tfr-booking-create-account-text > strong {
+  font-size:14px; font-weight:700; letter-spacing:-0.005em;
+}
+.tfr-booking-create-account-text > span {
+  font-size:12px; line-height:1.45; color:#6B7280;
+}
+.tfr-booking-create-account-pw {
+  display:flex; flex-direction:column; gap:6px;
+  margin-top:12px; padding-top:12px;
+  border-top:1px solid rgba(18,18,18,0.10);
+}
+.tfr-booking-create-account-pw > span:first-child {
+  font-size:10px; font-weight:700;
+  letter-spacing:0.18em; text-transform:uppercase;
+  color:#6B7280;
+}
+.tfr-booking-create-account-pw input {
+  width:100%; padding:11px 13px;
+  background:#FFFFFF; color:#121212;
+  border:1px solid rgba(18,18,18,0.15); border-radius:0;
+  font:inherit; font-size:14px; line-height:1.2;
+  -webkit-appearance:none; appearance:none;
+}
+.tfr-booking-create-account-pw input:focus {
+  outline:none; border-color:#121212;
+}
+.tfr-booking-create-account-fineprint {
+  font-size:11px; line-height:1.45; color:#6B7280;
+}
+
+/* Account-follow-up card. Used twice: at the top of the booking form
+   when returning from Stripe with &account=new, and inside the
+   success state when a non-payment booking just minted an account.
+   Cream tint + Mail icon makes it visually distinct from the form. */
+.tfr-booking-account-followup {
+  display:flex; gap:14px;
+  padding:16px;
+  margin:12px 0 0;
+  background:#F8F6F2; color:#121212;
+  border:1px solid rgba(18,18,18,0.10);
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  text-align:left;
+}
+.tfr-booking-account-followup--success {
+  margin:20px auto 0; max-width:520px;
+}
+.tfr-booking-account-followup-icon {
+  width:36px; height:36px; flex-shrink:0;
+  display:inline-flex; align-items:center; justify-content:center;
+  background:#FFFFFF; border:1px solid rgba(18,18,18,0.12);
+}
+.tfr-booking-account-followup-body { display:flex; flex-direction:column; gap:4px; flex:1; min-width:0; }
+.tfr-booking-account-followup-eyebrow {
+  margin:0;
+  font-size:9px; font-weight:700;
+  letter-spacing:0.18em; text-transform:uppercase;
+  color:#6B7280;
+}
+.tfr-booking-account-followup-title {
+  margin:0;
+  font-size:14px; font-weight:700; line-height:1.25;
+}
+.tfr-booking-account-followup-sub {
+  margin:0;
+  font-size:12px; line-height:1.45; color:#6B7280;
+}
+.tfr-booking-account-followup-cta {
+  display:inline-flex; align-items:center; gap:6px;
+  margin-top:6px; align-self:flex-start;
+  padding:7px 11px;
+  background:#121212; color:#FFFFFF;
+  border:1px solid #121212;
+  font-size:10px; font-weight:700;
+  letter-spacing:0.14em; text-transform:uppercase;
+  text-decoration:none;
+  transition:background .15s ease,color .15s ease;
+}
+@media (hover:hover) and (pointer:fine) {
+  .tfr-booking-account-followup-cta:hover { background:#2a2a2a; }
+}
 @media (hover:hover) and (pointer:fine) {
   .tfr-booking-auth-link:hover { opacity:0.75; }
 }
