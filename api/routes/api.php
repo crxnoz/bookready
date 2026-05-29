@@ -441,13 +441,25 @@ Route::prefix('v1')->group(function () {
     Route::post('webhooks/stripe/appointments', [AppointmentPaymentWebhookController::class, 'handle']);
 
     // ── Telnyx SMS webhooks (no auth — Ed25519-signed) ───────────────────
-    // Two endpoints: delivery status callbacks (queued -> sent/delivered/
-    // failed) and inbound replies (STOP/START/HELP keyword handling plus
-    // generic reply logging). Both verify Telnyx-Signature-Ed25519
-    // against TELNYX_PUBLIC_KEY inside the controller. Throttled
-    // defensively even though signature is the real gate.
-    Route::post('webhooks/telnyx/status',  [TelnyxWebhookController::class, 'status'])
+    // Telnyx's Messaging Profile only takes ONE primary webhook URL +
+    // ONE failover URL, and it sends ALL events (status updates AND
+    // inbound replies) to both. /sms and /sms-failover are Telnyx's
+    // own default path convention — both call the unified handler
+    // which routes by event_type.
+    //
+    // /status and /inbound are kept as separate optional URLs in case
+    // a future tenant wants to split inbound from delivery callbacks
+    // (e.g. for shorter retention on one or the other).
+    //
+    // All four verify Telnyx-Signature-Ed25519 against TELNYX_PUBLIC_KEY
+    // before doing anything. Throttled defensively even though signature
+    // verification is the real gate.
+    Route::post('webhooks/telnyx/sms',           [TelnyxWebhookController::class, 'handle'])
         ->middleware('throttle:120,1');
-    Route::post('webhooks/telnyx/inbound', [TelnyxWebhookController::class, 'inbound'])
+    Route::post('webhooks/telnyx/sms-failover',  [TelnyxWebhookController::class, 'handle'])
+        ->middleware('throttle:120,1');
+    Route::post('webhooks/telnyx/status',        [TelnyxWebhookController::class, 'status'])
+        ->middleware('throttle:120,1');
+    Route::post('webhooks/telnyx/inbound',       [TelnyxWebhookController::class, 'inbound'])
         ->middleware('throttle:120,1');
 });

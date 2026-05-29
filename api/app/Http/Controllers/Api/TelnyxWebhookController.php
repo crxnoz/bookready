@@ -43,22 +43,70 @@ use Illuminate\Support\Facades\Log;
 class TelnyxWebhookController extends Controller
 {
     /**
-     * Delivery / status updates. Flip the notification_send_log row's
-     * status based on the event type and stamp terminal_at when the
-     * lifecycle finishes.
+     * Unified webhook handler. Telnyx's Messaging Profile config has
+     * ONE primary Webhook URL + ONE failover URL, and sends every
+     * event type (message.sent, message.delivered, message.received,
+     * message.delivery_failed, etc.) to BOTH urls. This method
+     * routes by event_type into either the status or inbound flow.
+     *
+     * Wire BOTH `/sms` AND `/sms-failover` to this same method so
+     * Telnyx's redundancy doesn't change behavior — we just dedupe
+     * by provider_id at the log level (NotificationSendLog
+     * updateOrInsert keeps the row idempotent).
      */
-    public function status(Request $request): JsonResponse
+    public function handle(Request $request): JsonResponse
     {
         $body = $request->getContent();
-
         if (! $this->verifySignature($request, $body)) {
             Log::warning('telnyx.webhook.invalid_signature', [
-                'path' => 'status',
+                'path' => $request->path(),
                 'ip'   => $request->ip(),
             ]);
             return response()->json(['message' => 'Invalid signature'], 403);
         }
 
+        $event = (string) $request->json('data.event_type', '');
+
+        // Status / delivery events.
+        if (in_array($event, [
+            'message.sent',
+            'message.delivered',
+            'message.delivery_failed',
+            'message.finalized',
+        ], true)) {
+            return $this->handleStatusEvent($request);
+        }
+
+        // Inbound replies.
+        if ($event === 'message.received') {
+            return $this->handleInboundEvent($request);
+        }
+
+        // Unknown event types — accept and move on so Telnyx doesn't
+        // retry forever.
+        return response()->json(['message' => 'OK'], 200);
+    }
+
+    /**
+     * Legacy delivery-receipt route. Signature-verifies, then defers
+     * to the shared inner handler so this URL behaves identically to
+     * the unified /sms endpoint.
+     */
+    public function status(Request $request): JsonResponse
+    {
+        if (! $this->verifySignature($request, $request->getContent())) {
+            Log::warning('telnyx.webhook.invalid_signature', ['path' => 'status', 'ip' => $request->ip()]);
+            return response()->json(['message' => 'Invalid signature'], 403);
+        }
+        return $this->handleStatusEvent($request);
+    }
+
+    /**
+     * Internal: status flip from a verified Telnyx delivery event.
+     * Caller must have already verified the signature.
+     */
+    private function handleStatusEvent(Request $request): JsonResponse
+    {
         $data    = (array) ($request->json('data') ?? []);
         $event   = (string) ($data['event_type'] ?? '');
         $payload = (array) ($data['payload'] ?? []);
@@ -121,24 +169,26 @@ class TelnyxWebhookController extends Controller
      */
     public function inbound(Request $request): JsonResponse
     {
-        $body = $request->getContent();
-
-        if (! $this->verifySignature($request, $body)) {
-            Log::warning('telnyx.webhook.invalid_signature', [
-                'path' => 'inbound',
-                'ip'   => $request->ip(),
-            ]);
+        if (! $this->verifySignature($request, $request->getContent())) {
+            Log::warning('telnyx.webhook.invalid_signature', ['path' => 'inbound', 'ip' => $request->ip()]);
             return response()->json(['message' => 'Invalid signature'], 403);
         }
 
-        $payload = (array) $request->json('data.payload', []);
-        $event   = (string) $request->json('data.event_type', '');
-
-        // Only care about message.received for inbound. Status events
-        // hit the other endpoint.
+        $event = (string) $request->json('data.event_type', '');
         if ($event !== 'message.received') {
             return response()->json(['message' => 'OK'], 200);
         }
+
+        return $this->handleInboundEvent($request);
+    }
+
+    /**
+     * Internal: inbound keyword routing. Caller must have already
+     * verified the signature AND checked event_type === message.received.
+     */
+    private function handleInboundEvent(Request $request): JsonResponse
+    {
+        $payload = (array) $request->json('data.payload', []);
 
         $fromPhone = (string) ($payload['from']['phone_number'] ?? '');
         $text      = trim((string) ($payload['text'] ?? ''));
