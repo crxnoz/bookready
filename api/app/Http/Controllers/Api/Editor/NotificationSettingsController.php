@@ -204,6 +204,25 @@ class NotificationSettingsController extends Controller
                 'appointment_rescheduled'  => new AppointmentRescheduledClientMail($appt, $oldAppt, $businessName, 'owner', $custom),
                 'appointment_reminder'     => new AppointmentReminderClientMail($appt, $businessName, $custom, $notify['reminder_hours_before'] ?? 24),
             };
+
+            // Apply the tenant's sender_name + reply_to_email override
+            // so the test preview matches what a real client would see.
+            $senderName = isset($notify['sender_name']) && is_string($notify['sender_name'])
+                ? trim($notify['sender_name'])
+                : '';
+            $replyTo = isset($notify['reply_to_email']) && is_string($notify['reply_to_email'])
+                ? trim($notify['reply_to_email'])
+                : '';
+            if ($senderName !== '') {
+                $fromAddress = (string) config('mail.from.address');
+                if ($fromAddress !== '') {
+                    $mailable->from($fromAddress, $senderName);
+                }
+            }
+            if ($replyTo !== '') {
+                $mailable->replyTo($replyTo, $senderName !== '' ? $senderName : null);
+            }
+
             Mail::to($to)->send($mailable);
         } catch (\Throwable $e) {
             Log::error('[BookReady] Email test-send failed', [

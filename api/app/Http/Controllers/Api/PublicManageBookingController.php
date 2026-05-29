@@ -174,7 +174,7 @@ class PublicManageBookingController extends Controller
 
         // Owner ALWAYS gets a heads-up when a client cancels — this is an
         // ops event, not a marketing email, so it ignores the toggle.
-        AppointmentMailer::sendClientCancelledToOwner($appt, $businessName, $ownerEmail);
+        AppointmentMailer::sendClientCancelledToOwner($appt, $businessName, $ownerEmail, $notify);
 
         return response()->json([
             'message' => 'Your booking has been cancelled.',
@@ -367,7 +367,7 @@ class PublicManageBookingController extends Controller
 
         // Owner ALWAYS gets a heads-up when a client reschedules.
         AppointmentMailer::sendClientRescheduledToOwner(
-            $apptForMail, $oldApptSnap, $businessName, $ownerEmail,
+            $apptForMail, $oldApptSnap, $businessName, $ownerEmail, $notify,
         );
 
         // Client gets a receipt for the new time (gated by the

@@ -262,7 +262,7 @@ class BookingsController extends Controller
         // (gated by their notification preferences), owner ALWAYS gets
         // the heads-up regardless of toggles (operational event).
         AppointmentMailer::sendCancelled($appt, $businessName, $notify);
-        AppointmentMailer::sendClientCancelledToOwner($appt, $businessName, $ownerEmail);
+        AppointmentMailer::sendClientCancelledToOwner($appt, $businessName, $ownerEmail, $notify);
 
         return response()->json([
             'message' => 'Your booking has been cancelled.',
@@ -346,10 +346,19 @@ class BookingsController extends Controller
         $notify     = NotificationSettingsService::load();
         $ownerEmail = $tenant->owner?->email;
 
+        // "Before" snapshot for the from→to email layout. The customer
+        // self-serve reschedule path embeds previous_* fields inside
+        // $appt but the mailers want a parallel $oldAppt array.
+        $oldAppt = array_merge($appt, [
+            'appointment_date' => $row->appointment_date,
+            'start_time'       => substr($row->start_time, 0, 5),
+            'end_time'         => substr($row->end_time,   0, 5),
+        ]);
+
         tenancy()->end();
 
-        AppointmentMailer::sendRescheduled($appt, $businessName, $notify);
-        AppointmentMailer::sendClientRescheduledToOwner($appt, $businessName, $ownerEmail);
+        AppointmentMailer::sendRescheduled($appt, $oldAppt, $businessName, 'client', $notify);
+        AppointmentMailer::sendClientRescheduledToOwner($appt, $oldAppt, $businessName, $ownerEmail, $notify);
 
         return response()->json([
             'message'          => 'Your booking has been rescheduled.',

@@ -10,6 +10,7 @@ use App\Mail\BookingRequestClientMail;
 use App\Mail\BookingRequestOwnerMail;
 use App\Mail\ClientCancelledOwnerMail;
 use App\Mail\ClientRescheduledOwnerMail;
+use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -17,6 +18,45 @@ use Illuminate\Support\Facades\Schema;
 
 class AppointmentMailer
 {
+    /**
+     * Apply the tenant's saved sender_name + reply_to_email to a Mailable
+     * before it goes out. The mailers themselves only set the subject
+     * via envelope(); from + replyTo are layered on here so a single
+     * notification_settings UI change actually shows up on every email
+     * type (client + owner) without having to touch each Mailable's
+     * constructor signature.
+     *
+     * Quietly no-ops when $notify is null OR when the relevant fields
+     * are empty — falling back to config('mail.from.{address,name}'),
+     * which is the previous behavior.
+     */
+    private static function brand(Mailable $m, ?array $notify): Mailable
+    {
+        if (! $notify) return $m;
+
+        $senderName = isset($notify['sender_name']) && is_string($notify['sender_name'])
+            ? trim($notify['sender_name'])
+            : '';
+        $replyTo = isset($notify['reply_to_email']) && is_string($notify['reply_to_email'])
+            ? trim($notify['reply_to_email'])
+            : '';
+
+        if ($senderName !== '') {
+            $fromAddress = (string) config('mail.from.address');
+            if ($fromAddress !== '') {
+                $m->from($fromAddress, $senderName);
+            }
+        }
+        if ($replyTo !== '') {
+            // Use the sender name as the reply-to display name when set,
+            // so the recipient's reply window labels the destination
+            // recognizably ("Reply to ACME Studio <hi@studio.com>").
+            $m->replyTo($replyTo, $senderName !== '' ? $senderName : null);
+        }
+
+        return $m;
+    }
+
     /**
      * Phase 7 — pull the staff name + appointment_addons snapshot for an
      * appointment, formatted to drop straight into a $appt mailer array.
@@ -74,7 +114,7 @@ class AppointmentMailer
     ): void {
         if ($ownerEmail && NotificationSettingsService::shouldSendOwnerBookingEmail($notify)) {
             try {
-                Mail::to($ownerEmail)->send(new BookingRequestOwnerMail($appt, $businessName));
+                Mail::to($ownerEmail)->send(self::brand(new BookingRequestOwnerMail($appt, $businessName), $notify));
             } catch (\Throwable $e) {
                 Log::error('[BookReady] BookingRequestOwnerMail failed', [
                     'appointment_id' => $appt['id'] ?? null,
@@ -87,7 +127,7 @@ class AppointmentMailer
         if (! empty($appt['customer_email']) && NotificationSettingsService::shouldSendClientBookingEmail($notify)) {
             try {
                 $custom = NotificationSettingsService::templateCustomization($notify, 'booking_request_client');
-                Mail::to($appt['customer_email'])->send(new BookingRequestClientMail($appt, $businessName, $custom));
+                Mail::to($appt['customer_email'])->send(self::brand(new BookingRequestClientMail($appt, $businessName, $custom), $notify));
             } catch (\Throwable $e) {
                 Log::error('[BookReady] BookingRequestClientMail failed', [
                     'appointment_id' => $appt['id'] ?? null,
@@ -112,7 +152,7 @@ class AppointmentMailer
 
         try {
             $custom = NotificationSettingsService::templateCustomization($notify, 'appointment_confirmed');
-            Mail::to($appt['customer_email'])->send(new AppointmentConfirmedClientMail($appt, $businessName, $custom));
+            Mail::to($appt['customer_email'])->send(self::brand(new AppointmentConfirmedClientMail($appt, $businessName, $custom), $notify));
         } catch (\Throwable $e) {
             Log::error('[BookReady] AppointmentConfirmedClientMail failed', [
                 'appointment_id' => $appt['id'] ?? null,
@@ -132,10 +172,11 @@ class AppointmentMailer
         array   $appt,
         string  $businessName,
         ?string $ownerEmail,
+        ?array  $notify = null,
     ): void {
         if (! $ownerEmail) return;
         try {
-            Mail::to($ownerEmail)->send(new ClientCancelledOwnerMail($appt, $businessName));
+            Mail::to($ownerEmail)->send(self::brand(new ClientCancelledOwnerMail($appt, $businessName), $notify));
         } catch (\Throwable $e) {
             Log::error('[BookReady] ClientCancelledOwnerMail failed', [
                 'appointment_id' => $appt['id'] ?? null,
@@ -154,10 +195,11 @@ class AppointmentMailer
         array   $oldAppt,
         string  $businessName,
         ?string $ownerEmail,
+        ?array  $notify = null,
     ): void {
         if (! $ownerEmail) return;
         try {
-            Mail::to($ownerEmail)->send(new ClientRescheduledOwnerMail($appt, $oldAppt, $businessName));
+            Mail::to($ownerEmail)->send(self::brand(new ClientRescheduledOwnerMail($appt, $oldAppt, $businessName), $notify));
         } catch (\Throwable $e) {
             Log::error('[BookReady] ClientRescheduledOwnerMail failed', [
                 'appointment_id' => $appt['id'] ?? null,
@@ -187,9 +229,10 @@ class AppointmentMailer
 
         try {
             $custom = NotificationSettingsService::templateCustomization($notify, 'appointment_rescheduled');
-            Mail::to($appt['customer_email'])->send(
+            Mail::to($appt['customer_email'])->send(self::brand(
                 new AppointmentRescheduledClientMail($appt, $oldAppt, $businessName, $initiatedBy, $custom),
-            );
+                $notify,
+            ));
         } catch (\Throwable $e) {
             Log::error('[BookReady] AppointmentRescheduledClientMail failed', [
                 'appointment_id' => $appt['id'] ?? null,
@@ -210,9 +253,10 @@ class AppointmentMailer
         if (empty($appt['customer_email'])) return;
         try {
             $custom = NotificationSettingsService::templateCustomization($notify, 'appointment_reminder');
-            Mail::to($appt['customer_email'])->send(
+            Mail::to($appt['customer_email'])->send(self::brand(
                 new AppointmentReminderClientMail($appt, $businessName, $custom, $hoursBefore),
-            );
+                $notify,
+            ));
         } catch (\Throwable $e) {
             Log::error('[BookReady] AppointmentReminderClientMail failed', [
                 'appointment_id' => $appt['id'] ?? null,
@@ -236,7 +280,7 @@ class AppointmentMailer
 
         try {
             $custom = NotificationSettingsService::templateCustomization($notify, 'appointment_cancelled');
-            Mail::to($appt['customer_email'])->send(new AppointmentCancelledClientMail($appt, $businessName, $custom));
+            Mail::to($appt['customer_email'])->send(self::brand(new AppointmentCancelledClientMail($appt, $businessName, $custom), $notify));
         } catch (\Throwable $e) {
             Log::error('[BookReady] AppointmentCancelledClientMail failed', [
                 'appointment_id' => $appt['id'] ?? null,
