@@ -676,13 +676,20 @@ export async function updateEditorNotificationSettings(
   })
 }
 
-/** Phase 17 — send a test email of the chosen template to the owner. */
+/** Phase 17 — send a test email of the chosen template.
+ *
+ *  Defaults to the owner's account email when `to` is omitted; pass
+ *  `to` (an arbitrary address) to preview how the email lands in a
+ *  real client's inbox. Backend validates as a real email. */
 export async function sendNotificationTestEmail(
   template: EmailTemplateKey,
+  to?: string,
 ): Promise<{ message: string; sent_to: string }> {
+  const payload: { template: EmailTemplateKey; to?: string } = { template }
+  if (to && to.trim() !== '') payload.to = to.trim()
   return request<{ message: string; sent_to: string }>('/editor/settings/notifications/test-send', {
     method: 'POST',
-    body:   JSON.stringify({ template }),
+    body:   JSON.stringify(payload),
   })
 }
 

@@ -150,7 +150,12 @@ class NotificationSettingsController extends Controller
     }
 
     /**
-     * Phase 17 — send a test email of the chosen template to the owner.
+     * Phase 17 — send a test email of the chosen template.
+     *
+     * Defaults to the owner's account email when `to` is omitted; pass
+     * `to` to deliver to an arbitrary address (useful for previewing how
+     * the email will land in a real client's inbox).
+     *
      * Uses fake-but-realistic $appt data so the layout reflects what a
      * client would see, plus the tenant's saved customizations.
      */
@@ -158,6 +163,7 @@ class NotificationSettingsController extends Controller
     {
         $validated = $request->validate([
             'template' => 'required|string|in:' . implode(',', NotificationSettingsService::CUSTOMIZABLE_TEMPLATES),
+            'to'       => 'sometimes|nullable|email|max:255',
         ]);
         $key = $validated['template'];
 
@@ -165,12 +171,16 @@ class NotificationSettingsController extends Controller
         $tenant = Tenant::findOrFail($user->tenant_id);
         tenancy()->initialize($tenant);
 
-        $businessName = (string) (DB::table('business_profile')->value('business_name') ?? $tenant->id);
+        // Table is `business_profiles` (plural) — previous singular form
+        // matched no table and threw SQLSTATE[42S02] on test send.
+        $businessName = (string) (DB::table('business_profiles')->value('business_name') ?? $tenant->id);
         $notify       = NotificationSettingsService::load();
 
         tenancy()->end();
 
-        $to = $user->email;
+        // Custom `to` takes precedence; otherwise fall back to the
+        // signed-in owner's address.
+        $to = ! empty($validated['to']) ? trim($validated['to']) : $user->email;
         if (! $to) return response()->json(['message' => 'Your account has no email address.'], 422);
 
         $custom = NotificationSettingsService::templateCustomization($notify, $key);

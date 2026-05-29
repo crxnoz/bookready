@@ -3031,13 +3031,17 @@ function EmailTemplateCard({
   const [open, setOpen] = useState(false)
   const [sending, setSending] = useState(false)
   const [sendMsg, setSendMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+  // Optional override for the test-send recipient. Empty = owner's
+  // account email (backend default). Lets the owner preview the email
+  // exactly as it will land in a real client inbox.
+  const [testTo, setTestTo] = useState('')
 
   const hasOverride = !! (value.subject || value.intro || value.signoff)
 
   async function testSend() {
     setSending(true); setSendMsg(null)
     try {
-      const r = await sendNotificationTestEmail(meta.key)
+      const r = await sendNotificationTestEmail(meta.key, testTo)
       setSendMsg({ kind: 'ok', text: r.message })
     } catch (e) {
       setSendMsg({ kind: 'err', text: e instanceof Error ? e.message : 'Test send failed' })
@@ -3106,25 +3110,34 @@ function EmailTemplateCard({
             />
           </label>
 
-          <div className="flex items-center justify-between gap-3 pt-1 border-t border-[rgba(18,18,18,0.06)]">
+          <div className="pt-1 border-t border-[rgba(18,18,18,0.06)] space-y-2">
             <p className={cn(
-              'text-[11px] flex-1 min-w-0',
+              'text-[11px]',
               sendMsg?.kind === 'err' ? 'text-[#b42828]' : 'text-muted-text',
             )}>
               {sendMsg
                 ? sendMsg.text
-                : 'Send a test to your account email to verify deliverability + saved content.'}
+                : 'Send a test to verify deliverability + saved content. Leave the address blank to use your account email.'}
             </p>
-            <button
-              type="button"
-              onClick={testSend}
-              disabled={sending}
-              className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.10em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2.5 py-1.5 hover:border-near-black disabled:opacity-50 whitespace-nowrap"
-            >
-              {sending
-                ? <><Loader2 size={11} className="animate-spin" /> Sending</>
-                : <><Send size={11} /> Test send</>}
-            </button>
+            <div className="flex items-stretch gap-2">
+              <input
+                type="email"
+                value={testTo}
+                onChange={e => setTestTo(e.target.value)}
+                placeholder="Send to… (defaults to your account email)"
+                className="flex-1 min-w-0 bg-white border border-[rgba(18,18,18,0.15)] px-3 py-1.5 text-[12px] text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black"
+              />
+              <button
+                type="button"
+                onClick={testSend}
+                disabled={sending}
+                className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.10em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2.5 py-1.5 hover:border-near-black disabled:opacity-50 whitespace-nowrap"
+              >
+                {sending
+                  ? <><Loader2 size={11} className="animate-spin" /> Sending</>
+                  : <><Send size={11} /> Test send</>}
+              </button>
+            </div>
           </div>
         </div>
       )}
