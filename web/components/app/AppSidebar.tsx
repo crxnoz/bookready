@@ -8,6 +8,7 @@ import {
   Calendar,
   Users,
   CreditCard,
+  Plug,
   Settings,
   Eye,
   Copy,
@@ -35,12 +36,13 @@ const BOOKINGS_PATHS = [
 ]
 
 const MAIN_NAV = [
-  { href: '/editor',          label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { href: '/editor/website',  label: 'Website',   icon: Globe,           matchPaths: WEBSITE_PATHS },
-  { href: '/editor/bookings', label: 'Bookings',  icon: Calendar,        matchPaths: BOOKINGS_PATHS },
-  { href: '/editor/customers', label: 'Customers', icon: Users },
-  { href: '/editor/payments', label: 'Payments',  icon: CreditCard },
-  { href: '/editor/settings', label: 'Settings',  icon: Settings },
+  { href: '/editor',              label: 'Dashboard',    icon: LayoutDashboard, exact: true },
+  { href: '/editor/website',      label: 'Website',      icon: Globe,           matchPaths: WEBSITE_PATHS },
+  { href: '/editor/bookings',     label: 'Bookings',     icon: Calendar,        matchPaths: BOOKINGS_PATHS },
+  { href: '/editor/customers',    label: 'Customers',    icon: Users },
+  { href: '/editor/payments',     label: 'Payments',     icon: CreditCard },
+  { href: '/editor/integrations', label: 'Integrations', icon: Plug },
+  { href: '/editor/settings',     label: 'Settings',     icon: Settings },
 ] as const
 
 interface Props {
