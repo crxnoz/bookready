@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import {
-  Heart, Phone, Mail, MapPin, Dot, CalendarCheck, Sparkles,
+  Heart, Phone, Mail, MapPin, Dot, CalendarCheck,
 } from 'lucide-react'
 
 // Brand glyphs that lucide doesn't ship.
@@ -77,6 +77,24 @@ function FacebookSolid({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M24 12.07C24 5.44 18.63.07 12 .07S0 5.44 0 12.07c0 5.99 4.39 10.95 10.13 11.85v-8.39H7.08v-3.47h3.05V9.43c0-3.01 1.79-4.67 4.53-4.67 1.31 0 2.69.23 2.69.23v2.96H15.83c-1.49 0-1.96.93-1.96 1.87v2.25h3.33l-.53 3.47h-2.8v8.39C19.62 23.02 24 18.06 24 12.07z"/>
+    </svg>
+  )
+}
+// Solid versions of the info-row icons (filled, no outline). Used in
+// the hero's location + service-menu rows.
+function MapPinSolid({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" clipRule="evenodd" d="M12 2C7.86 2 4.5 5.36 4.5 9.5c0 5.65 6.69 11.95 7.02 12.26.27.27.69.27.96 0 .33-.3 7.02-6.61 7.02-12.26C19.5 5.36 16.14 2 12 2zm0 10.25a2.75 2.75 0 1 1 0-5.5 2.75 2.75 0 0 1 0 5.5z"/>
+    </svg>
+  )
+}
+function SparklesSolid({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 1.5 13.85 7.15a2 2 0 0 0 1.27 1.27L20.5 10.5l-5.38 2.08a2 2 0 0 0-1.27 1.27L12 19.5l-1.85-5.65a2 2 0 0 0-1.27-1.27L3.5 10.5l5.38-2.08a2 2 0 0 0 1.27-1.27L12 1.5z"/>
+      <circle cx="19.5" cy="4.5" r="1.5"/>
+      <circle cx="4.5" cy="19.5" r="1.25"/>
     </svg>
   )
 }
@@ -383,13 +401,13 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 <div className="lush-header-info">
                   {locationText && (
                     <div className="lush-header-info-row">
-                      <MapPin size={16} aria-hidden="true" />
+                      <MapPinSolid size={22} />
                       <span>{locationText}</span>
                     </div>
                   )}
                   {servicesText && (
                     <div className="lush-header-info-row">
-                      <Sparkles size={16} aria-hidden="true" />
+                      <SparklesSolid size={22} />
                       <span>{servicesText}</span>
                     </div>
                   )}
@@ -950,8 +968,8 @@ function ResultsPanel({
     return (
       <section className="lush-before-after-section">
         <div className="lush-results-heading">
-          <div className="lush-results-backdrop">RESULTS</div>
           <h2>Amazing</h2>
+          <div className="lush-results-backdrop">results</div>
         </div>
         {buckets.map(b => {
           const block = (
@@ -1405,7 +1423,7 @@ function Footer({
 // ── Scoped CSS ────────────────────────────────────────────────────────────────
 
 const LUSH_CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=DM+Serif+Text:ital@0;1&family=DM+Sans:opsz,wght@9..40,300..700&family=Roboto:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cookie&family=Molle:ital@1&family=DM+Serif+Text:ital@0;1&family=DM+Sans:opsz,wght@9..40,300..700&family=Roboto:wght@400;500;700&display=swap');
 
 /* ── Tokens scoped to template root ── */
 .lush-template {
@@ -1433,7 +1451,12 @@ const LUSH_CSS = `
      "no shadow". */
   --lush-glow:        none;
   --lush-text-glow:   none;
-  --lush-script:      "Dancing Script", cursive;
+  /* Cookie — clean handwritten script for decorative headings.
+     Molle — italic display script used for the highlight-color
+     Before/After block; defined here so it propagates to any future
+     use (the section pulls var(--lush-molle) directly). */
+  --lush-script:      "Cookie", cursive;
+  --lush-molle:       "Molle", cursive;
   --lush-serif:       "DM Serif Text", serif;
   --lush-sans:        "DM Sans", sans-serif;
   --lush-ui:          "Roboto", sans-serif;
@@ -1724,20 +1747,23 @@ const LUSH_CSS = `
 }
 .lush-header-subtype {
   margin:10px 0 0;
-  font-family:var(--lush-ui); /* Roboto */
-  font-size:14px; font-weight:600;
+  font-family:var(--lush-ui); /* Roboto bold */
+  font-size:14px; font-weight:700;
   letter-spacing:0.16em; text-transform:uppercase;
-  color:var(--lush-muted);
+  color:rgba(14,17,17,0.55);
 }
 .lush-header-info {
-  display:flex; flex-direction:column; align-items:flex-start; gap:8px;
+  display:flex; flex-direction:column; align-items:flex-start; gap:10px;
   margin:18px 0 0;
 }
+/* Location + service-menu rows. Bold body text at lower opacity so
+   the lines still read clearly without competing with the business
+   name. Solid filled icons in highlight color, scaled to match. */
 .lush-header-info-row {
-  display:inline-flex; align-items:center; gap:10px;
-  font-family:var(--lush-ui); /* Roboto */
-  font-size:16px; line-height:1.3; font-weight:400;
-  color:var(--lush-text);
+  display:inline-flex; align-items:center; gap:12px;
+  font-family:var(--lush-ui); /* Roboto bold */
+  font-size:16px; line-height:1.3; font-weight:700;
+  color:rgba(14,17,17,0.65);
 }
 .lush-header-info-row > svg {
   color:var(--lush-pink); flex-shrink:0;
@@ -2511,10 +2537,30 @@ const LUSH_CSS = `
 }
 
 /* ── Before & After ── */
-.lush-before-after-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:22px 0 70px; }
-.lush-results-heading { position:relative; height:105px; text-align:center; overflow:hidden; }
-.lush-results-backdrop { color:rgba(14,17,17,0.08); font-size:76px; font-family:var(--lush-serif); font-weight:400; line-height:1; letter-spacing:-0.04em; }
-.lush-results-heading h2 { margin:-50px 0 0; color:var(--lush-text); font-size:32px; font-family:var(--lush-serif); font-weight:400; line-height:1.05; letter-spacing:-0.02em; }
+.lush-before-after-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:32px 0 70px; }
+/* "Amazing" + "results" headings are both Molle italic in highlight
+   color with a hard sharp shadow (no blur). The two lines sit one
+   ABOVE the other — they used to overlap with negative margin, but
+   now they're a normal column flow so both read independently. */
+.lush-results-heading {
+  position:relative; text-align:center;
+  display:flex; flex-direction:column; align-items:center;
+  gap:6px; padding:0 16px 12px;
+}
+.lush-results-heading h2 {
+  margin:0;
+  font-family:var(--lush-molle); font-style:italic; font-weight:400;
+  font-size:46px; line-height:1;
+  color:var(--lush-pink);
+  text-shadow:3px 3px 0 rgba(14,17,17,0.18);
+}
+.lush-results-backdrop {
+  margin:0;
+  font-family:var(--lush-molle); font-style:italic; font-weight:400;
+  font-size:84px; line-height:1; letter-spacing:-0.01em;
+  color:var(--lush-pink);
+  text-shadow:5px 5px 0 rgba(14,17,17,0.18);
+}
 .lush-ba-stack { display:grid; gap:24px; padding:8px 0 0; }
 .lush-ba-bucket+.lush-ba-bucket { margin-top:36px; }
 .lush-ba-bucket-heading {
@@ -2724,9 +2770,9 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
   .lush-gallery-img--tall { aspect-ratio:1/1.25; }
   .lush-gallery-img--wide { grid-column:span 2; aspect-ratio:2/1; }
   .lush-before-after-section { padding:74px 40px 110px; }
-  .lush-results-heading { height:170px; text-align:left; }
-  .lush-results-backdrop { font-size:clamp(110px,10vw,160px); }
-  .lush-results-heading h2 { font-size:72px; margin-top:-80px; }
+  .lush-results-heading { gap:10px; padding:0 0 24px; }
+  .lush-results-backdrop { font-size:clamp(120px,11vw,160px); text-shadow:7px 7px 0 rgba(14,17,17,0.18); }
+  .lush-results-heading h2 { font-size:clamp(56px,5vw,72px); text-shadow:5px 5px 0 rgba(14,17,17,0.18); }
   .lush-ba-stack { grid-template-columns:repeat(3,minmax(0,1fr)); gap:36px; padding:30px 0 0; }
   .lush-ba-pair { max-width:380px; height:340px; }
   .lush-ba-label { font-size:38px; }
