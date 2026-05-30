@@ -1396,9 +1396,9 @@ function Footer({
         {showQuickBook && (
           <div className="lush-footer-col">
             <span className="lush-footer-label">Quick Book</span>
-            <button className="lush-header-btn lush-header-btn-book" onClick={onBook}
-              style={{ minHeight: 44, borderRadius: 10, fontSize: 13 }}>
-              <CalendarCheck size={16} /><span>Book Now</span>
+            <button className="lush-footer-book" onClick={onBook}>
+              <CalendarCheck size={18} fill="currentColor" strokeWidth={1.5} />
+              <span>Book Now</span>
             </button>
           </div>
         )}
@@ -2867,7 +2867,7 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 .lush-footer-inner { position:relative; width:100%; max-width:1180px; margin:0 auto; padding:56px 24px 32px; display:grid; grid-template-columns:1fr; gap:36px; }
 .lush-footer-brand { display:flex; flex-direction:column; gap:10px; }
 .lush-footer-mark { font-family:var(--lush-serif); font-size:36px; line-height:1; letter-spacing:-0.03em; margin:0; }
-.lush-footer-tag { margin:0; font-family:var(--lush-serif); font-style:italic; font-size:18px; color:var(--lush-pink); }
+.lush-footer-tag { margin:0; font-family:var(--lush-script); font-style:normal; font-size:32px; line-height:1; color:var(--lush-pink); }
 .lush-footer-blurb { margin:0; color:var(--lush-muted); font-family:var(--lush-ui); font-size:13px; line-height:1.55; }
 .lush-footer-col { display:flex; flex-direction:column; gap:10px; }
 .lush-footer-label { font-family:var(--lush-ui); font-size:10px; letter-spacing:0.22em; text-transform:uppercase; color:var(--lush-pink); font-weight:600; margin-bottom:4px; }
@@ -2879,6 +2879,26 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 .lush-footer-bottom { position:relative; border-top:1px solid var(--lush-dark-border); padding:18px 24px; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:10px; font-family:var(--lush-ui); font-size:11px; letter-spacing:0.08em; color:var(--lush-muted); }
 .lush-footer-bottom strong { color:var(--lush-pink); font-weight:600; }
 .lush-footer-dot { color:var(--lush-pink); opacity:0.5; font-size:6px; }
+
+/* Footer Quick Book — full-width sage pill, identical pattern to the
+   FadeRoom footer CTA. Distinct class so it doesn't inherit the
+   header's 50 px circle styling. */
+.lush-footer-book {
+  width:100%;
+  display:inline-flex; align-items:center; justify-content:center; gap:10px;
+  padding:14px 22px;
+  background:var(--lush-pink); color:#FFFFFF;
+  border:none; border-radius:14px;
+  font-family:var(--lush-ui); font-size:14px; font-weight:700;
+  letter-spacing:0.04em; line-height:1;
+  cursor:pointer;
+  transition:filter .15s ease, transform .15s ease;
+}
+.lush-footer-book svg { color:#FFFFFF; fill:#FFFFFF; }
+@media (hover:hover) and (pointer:fine) {
+  .lush-footer-book:hover { filter:brightness(1.06); transform:translateY(-1px); }
+}
+.lush-footer-book:active { transform:translateY(0); }
 
 /* ── Desktop ── */
 @media (min-width:1025px) {

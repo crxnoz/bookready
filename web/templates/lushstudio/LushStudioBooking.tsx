@@ -1082,17 +1082,17 @@ export default function LushStudioBooking({
                     type="button"
                     onClick={() => setStaffId(null)}
                     style={{
-                      padding: '10px 12px',
+                      padding: '12px 14px',
                       textAlign: 'left',
-                      border: '1px solid ' + (staffId == null ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.15)'),
-                      background: staffId == null ? 'rgba(255,255,255,0.06)' : 'transparent',
-                      color: 'inherit',
+                      border: '1.5px solid ' + (staffId == null ? '#7FAF9A' : 'rgba(14,17,17,0.12)'),
+                      background: staffId == null ? 'rgba(127,175,154,0.10)' : '#FFFFFF',
+                      color: '#0E1111',
                       cursor: 'pointer',
-                      borderRadius: 0,
+                      borderRadius: 12,
                     }}
                   >
                     <div style={{ fontSize: 13, fontWeight: 600 }}>Any available staff</div>
-                    <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>
+                    <div style={{ fontSize: 11, opacity: 0.65, marginTop: 2 }}>
                       We&apos;ll match you with whoever&apos;s free at your chosen time.
                     </div>
                   </button>
@@ -1102,13 +1102,13 @@ export default function LushStudioBooking({
                       type="button"
                       onClick={() => setStaffId(s.id)}
                       style={{
-                        padding: '10px 12px',
+                        padding: '12px 14px',
                         textAlign: 'left',
-                        border: '1px solid ' + (staffId === s.id ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.15)'),
-                        background: staffId === s.id ? 'rgba(255,255,255,0.06)' : 'transparent',
-                        color: 'inherit',
+                        border: '1.5px solid ' + (staffId === s.id ? '#7FAF9A' : 'rgba(14,17,17,0.12)'),
+                        background: staffId === s.id ? 'rgba(127,175,154,0.10)' : '#FFFFFF',
+                        color: '#0E1111',
                         cursor: 'pointer',
-                        borderRadius: 0,
+                        borderRadius: 12,
                         display: 'flex',
                         gap: 12,
                         alignItems: 'center',
@@ -1560,21 +1560,21 @@ export default function LushStudioBooking({
                       type="button"
                       onClick={() => setPaymentChoice('deposit')}
                       style={{
-                        padding: '10px 12px',
+                        padding: '12px 14px',
                         textAlign: 'left',
-                        border: '1px solid ' + (paymentChoice === 'deposit' ? '#fff' : 'rgba(255,255,255,0.15)'),
-                        background: paymentChoice === 'deposit' ? 'rgba(255,255,255,0.08)' : 'transparent',
-                        color: '#fff',
+                        border: '1.5px solid ' + (paymentChoice === 'deposit' ? '#7FAF9A' : 'rgba(14,17,17,0.12)'),
+                        background: paymentChoice === 'deposit' ? 'rgba(127,175,154,0.10)' : '#FFFFFF',
+                        color: '#0E1111',
                         cursor: 'pointer',
-                        borderRadius: 0,
+                        borderRadius: 12,
                       }}
                     >
-                      <div style={{ fontSize: 10, opacity: 0.7, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 2 }}>
+                      <div style={{ fontSize: 10, opacity: 0.65, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
                         Pay Deposit
                       </div>
                       <div style={{ fontSize: 16, fontWeight: 700 }}>${depositPreview!.toFixed(2)}</div>
                       {selectedService && selectedService.price > depositPreview! && (
-                        <div style={{ fontSize: 11, opacity: 0.6, marginTop: 2 }}>
+                        <div style={{ fontSize: 11, opacity: 0.65, marginTop: 2 }}>
                           ${(selectedService.price - depositPreview!).toFixed(2)} balance later
                         </div>
                       )}
@@ -1583,20 +1583,20 @@ export default function LushStudioBooking({
                       type="button"
                       onClick={() => setPaymentChoice('full')}
                       style={{
-                        padding: '10px 12px',
+                        padding: '12px 14px',
                         textAlign: 'left',
-                        border: '1px solid ' + (paymentChoice === 'full' ? '#fff' : 'rgba(255,255,255,0.15)'),
-                        background: paymentChoice === 'full' ? 'rgba(255,255,255,0.08)' : 'transparent',
-                        color: '#fff',
+                        border: '1.5px solid ' + (paymentChoice === 'full' ? '#7FAF9A' : 'rgba(14,17,17,0.12)'),
+                        background: paymentChoice === 'full' ? 'rgba(127,175,154,0.10)' : '#FFFFFF',
+                        color: '#0E1111',
                         cursor: 'pointer',
-                        borderRadius: 0,
+                        borderRadius: 12,
                       }}
                     >
-                      <div style={{ fontSize: 10, opacity: 0.7, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 2 }}>
+                      <div style={{ fontSize: 10, opacity: 0.65, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
                         Pay In Full
                       </div>
                       <div style={{ fontSize: 16, fontWeight: 700 }}>${fullPreview!.toFixed(2)}</div>
-                      <div style={{ fontSize: 11, opacity: 0.6, marginTop: 2 }}>
+                      <div style={{ fontSize: 11, opacity: 0.65, marginTop: 2 }}>
                         Nothing owed at appointment
                       </div>
                     </button>
