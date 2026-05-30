@@ -968,8 +968,8 @@ function ResultsPanel({
     return (
       <section className="lush-before-after-section">
         <div className="lush-results-heading">
-          <div className="lush-results-backdrop">results</div>
           <h2>Amazing</h2>
+          <div className="lush-results-backdrop">results</div>
         </div>
         {buckets.map(b => {
           const block = (
@@ -1067,43 +1067,35 @@ function AboutPanel({
 }) {
   // Strip leading articles ("The Fade Room" → "Fade") so the headline
   // signature word is meaningful, not just "The".
-  const businessWord = signatureWord(displayName).toUpperCase()
+  const businessWord = signatureWord(displayName)
 
   // Saved values win; fall back to the previous default styling.
   const heading      = about?.heading?.trim()    || `The ${signatureWord(displayName)} Experience`
-  // Eyebrow drives the large backdrop word behind the heading. Fall back
-  // to the business word so brand-new tenants still see something.
-  const backdropText = (about?.eyebrow?.trim() || businessWord).toUpperCase()
+  // Eyebrow drives the small descriptor under the big headline. Title
+  // case (no .toUpperCase) so the spa Molle italic reads naturally.
+  const backdropText = about?.eyebrow?.trim() || businessWord
   const bodyOverride = about?.body?.trim()       || ''
   const highlights   = about?.highlights?.filter(h => h.title?.trim() || h.body?.trim()) ?? []
   const useHighlights = highlights.length > 0
-  // 3 image slots above the heading. Null entries render the gradient
-  // placeholder (the previous static look).
-  const images: (string | null)[] = [
-    about?.images?.[0] ?? null,
-    about?.images?.[1] ?? null,
-    about?.images?.[2] ?? null,
-  ]
 
   return (
     <section className="lush-about-section">
-      <div className="lush-about-images">
-        {images.map((url, i) => {
-          const slot = i === 0 ? 'one' : i === 1 ? 'two' : 'three'
-          return (
-            <div key={i} className={`lush-about-img lush-about-img--${slot}`}>
-              {url
-                ? <img src={url} alt="" />
-                : <div className="lush-gallery-placeholder" />}
-            </div>
-          )
-        })}
-      </div>
-      <div>
+      {/* Hero: a rounded 4-point star backdrop with the heading
+          overlaid on top. Replaces the original 3-image collage so the
+          spa direction reads cleaner. The heading sits in front of
+          the star with white text + dark shadow for legibility. */}
+      <div className="lush-about-hero">
+        <div className="lush-about-star" aria-hidden="true">
+          <svg viewBox="0 0 100 100" fill="currentColor">
+            <path d="M50 6 C55 38 62 45 94 50 C62 55 55 62 50 94 C45 62 38 55 6 50 C38 45 45 38 50 6 Z" />
+          </svg>
+        </div>
         <div className="lush-about-heading-wrap">
           <div className="lush-about-backdrop">{backdropText}</div>
           <h2>{heading}</h2>
         </div>
+      </div>
+      <div>
         <div className="lush-about-copy">
           <p>
             {bodyOverride
@@ -2569,24 +2561,24 @@ const LUSH_CSS = `
 
 /* ── Before & After ── */
 .lush-before-after-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:32px 0 70px; }
-/* "results" + "Amazing" are both Molle italic in highlight-color sage
-   with a hard sharp shadow (no blur). Big word on TOP (~72px), small
-   word below (~40px) translated up so they sit close — almost
-   stacked but not overlapping. Same treatment shared with About +
-   Policy via .lush-molle-heading (see below). */
+/* "Amazing" + "results" are both Molle italic in highlight-color sage
+   with a hard sharp shadow (no blur). Big word on TOP (h2 = "Amazing"),
+   small word BELOW (backdrop = "results") translated up so they sit
+   close. About + Policy share the same pattern with their own
+   ordering. */
 .lush-results-heading {
   position:relative; text-align:center;
   display:flex; flex-direction:column; align-items:center;
   padding:0 16px 12px;
 }
-.lush-results-backdrop {
+.lush-results-heading h2 {
   margin:0;
   font-family:var(--lush-molle); font-style:italic; font-weight:400;
   font-size:clamp(60px,15vw,80px); line-height:1; letter-spacing:-0.01em;
   color:var(--lush-pink);
   text-shadow:5px 5px 0 rgba(14,17,17,0.18);
 }
-.lush-results-heading h2 {
+.lush-results-backdrop {
   margin:-14px 0 0;
   font-family:var(--lush-molle); font-style:italic; font-weight:400;
   font-size:clamp(28px,7vw,40px); line-height:1;
@@ -2630,36 +2622,52 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 .lush-ba-card--after.is-revealed span { display:none; }
 
 /* ── About ── */
-.lush-about-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:23px 20px 58px; }
-.lush-about-images { width:100%; height:264px; position:relative; margin-bottom:24px; }
-.lush-about-img { width:113px; height:246px; position:absolute; overflow:hidden; border-radius:6px; border:1px solid var(--lush-dark-border); }
-.lush-about-img--one   { left:6px; top:8px; }
-.lush-about-img--two   { left:124px; top:18px; border-color:var(--lush-pink); }
-.lush-about-img--three { left:242px; top:0; }
-.lush-about-img .lush-gallery-placeholder { height:100%; }
-.lush-about-img img { display:block; width:100%; height:100%; object-fit:cover; }
-/* About heading uses the same Molle twin-line treatment as Before/
-   After: big eyebrow word on top, the longer heading sentence
-   underneath in the smaller size. Translated up so the two lines
-   read as a single unit. */
+.lush-about-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:32px 20px 58px; }
+
+/* About hero: a single rounded 4-point sage star backdrop with the
+   heading overlaid on top. Replaces the previous 3-image collage.
+   The heading is centered on the star — white Molle italic with a
+   dark shadow so it reads cleanly against the sage fill. */
+.lush-about-hero {
+  position:relative;
+  display:flex; align-items:center; justify-content:center;
+  padding:32px 16px 24px;
+  min-height:340px;
+  margin-bottom:28px;
+}
+.lush-about-star {
+  position:absolute; inset:0; z-index:1;
+  display:flex; align-items:center; justify-content:center;
+  pointer-events:none;
+}
+.lush-about-star svg {
+  width:min(86vw, 320px); height:auto;
+  color:var(--lush-pink);
+  transform:rotate(14deg);
+  filter:drop-shadow(0 10px 22px rgba(14,17,17,0.14));
+}
 .lush-about-heading-wrap {
-  position:relative; text-align:center;
+  position:relative; z-index:2; text-align:center;
   display:flex; flex-direction:column; align-items:center;
-  margin-bottom:32px;
+  /* Pull the heading up slightly so it visibly sits ON the star
+     rather than perfectly centered — gives the "layered on top of
+     it" feel the design called for. */
+  transform:translateY(-12px);
+  max-width:min(80vw, 280px);
 }
 .lush-about-backdrop {
-  margin:0;
+  margin:-12px 0 0; order:2;
   font-family:var(--lush-molle); font-style:italic; font-weight:400;
-  font-size:clamp(60px,15vw,80px); line-height:1; letter-spacing:-0.01em;
-  color:var(--lush-pink);
-  text-shadow:5px 5px 0 rgba(14,17,17,0.18);
+  font-size:clamp(24px,6vw,36px); line-height:1.05;
+  color:#FFFFFF;
+  text-shadow:2px 2px 0 rgba(14,17,17,0.32);
 }
 .lush-about-heading-wrap h2 {
-  margin:-14px 0 0;
+  margin:0; order:1;
   font-family:var(--lush-molle); font-style:italic; font-weight:400;
-  font-size:clamp(28px,7vw,40px); line-height:1.05;
-  color:var(--lush-pink);
-  text-shadow:3px 3px 0 rgba(14,17,17,0.18);
+  font-size:clamp(44px,12vw,64px); line-height:1; letter-spacing:-0.01em;
+  color:#FFFFFF;
+  text-shadow:3px 3px 0 rgba(14,17,17,0.32);
 }
 .lush-about-copy { width:min(100%,344px); margin:0 auto; color:var(--lush-text); font-family:var(--lush-ui); font-size:15px; line-height:1.55; }
 .lush-about-copy p { margin:0 0 22px; padding:16px 0 0; border-top:1px solid var(--lush-dark-border); }
@@ -2713,10 +2721,10 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
   color:var(--lush-text); text-align:center;
 }
 .lush-policy-card {
-  position:relative; width:100%; min-height:160px; padding:22px 18px;
+  position:relative; width:100%; min-height:160px; padding:22px 22px;
   background:var(--lush-card);
-  border:1px solid var(--lush-dark-border); border-left:2px solid var(--lush-pink);
-  border-radius:4px; overflow:hidden;
+  border:1px solid var(--lush-dark-border);
+  border-radius:24px; overflow:hidden;
 }
 .lush-policy-card h3 { margin:0 0 14px; color:var(--lush-text); font-size:22px; font-family:var(--lush-serif); font-weight:400; line-height:1.05; letter-spacing:-0.02em; }
 .lush-policy-copy { color:var(--lush-text); font-size:13px; font-family:var(--lush-ui); font-weight:400; line-height:1.55; }
@@ -2724,16 +2732,39 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 /* ── Before appointment / Aftercare ── */
 .lush-before-appointment-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:28px 16px 60px; }
 .lush-before-appointment-section h2 { margin:0 0 38px; color:var(--lush-text); text-align:center; font-size:clamp(40px,9vw,52px); font-family:var(--lush-script); font-weight:400; line-height:1; letter-spacing:0; }
-.lush-before-timeline { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:22px; position:relative; }
+.lush-before-timeline { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:26px; position:relative; }
+/* Dashed sage timeline line — softer than a solid stroke, matches the
+   spa direction. Anchored to the node column so it sits between
+   circles. */
 .lush-before-timeline::before {
-  content:""; position:absolute; left:22px; top:14px; bottom:14px; width:1px;
-  background:var(--lush-dark-border);
+  content:""; position:absolute; left:25px; top:18px; bottom:18px; width:0;
+  border-left:2px dashed rgba(var(--lush-pink-rgb),0.55);
 }
-.lush-before-step { display:grid; grid-template-columns:46px 1fr; gap:14px; align-items:flex-start; }
-.lush-before-node { width:46px; height:46px; display:flex; align-items:center; justify-content:center; border-radius:999px; background:var(--lush-bg); border:1px solid var(--lush-pink); flex-shrink:0; }
-.lush-before-node-num { color:var(--lush-pink); font-family:var(--lush-ui); font-weight:600; font-size:14px; letter-spacing:0.08em; }
-.lush-before-step-body { padding:4px 4px 10px 6px; border-bottom:1px solid var(--lush-dark-border); }
-.lush-before-step-body h3 { margin:0 0 8px; color:var(--lush-text); font-family:var(--lush-serif); font-weight:400; font-size:22px; line-height:1.05; letter-spacing:-0.02em; }
+.lush-before-step { display:grid; grid-template-columns:52px 1fr; gap:14px; align-items:flex-start; }
+/* Alternating nodes echo the Steps section: odd = solid sage with
+   white numeral; even = outlined sage with sage numeral. */
+.lush-before-node {
+  width:52px; height:52px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:999px;
+  border:2px solid var(--lush-pink); background:var(--lush-bg);
+  flex-shrink:0;
+}
+.lush-before-step:nth-child(odd) .lush-before-node {
+  background:var(--lush-pink); border-color:var(--lush-pink);
+}
+.lush-before-node-num { font-family:var(--lush-ui); font-weight:700; font-size:16px; letter-spacing:0.04em; color:var(--lush-pink); }
+.lush-before-step:nth-child(odd) .lush-before-node-num { color:#FFFFFF; }
+.lush-before-step-body { padding:4px 4px 14px 6px; border-bottom:1px dashed var(--lush-dark-border); }
+/* Spa-themed accent: a sage 4-point sparkle (Unicode ✦) before each
+   title, scaled smaller than the title so it reads as decoration. */
+.lush-before-step-body h3 { margin:0 0 8px; color:var(--lush-text); font-family:var(--lush-serif); font-weight:400; font-size:22px; line-height:1.1; letter-spacing:-0.02em; }
+.lush-before-step-body h3::before {
+  content:"\\2726";
+  display:inline-block; margin-right:8px;
+  color:var(--lush-pink); font-size:0.65em;
+  vertical-align:0.1em;
+}
 .lush-before-step-body p { margin:0; color:var(--lush-muted); font-family:var(--lush-ui); font-size:13px; font-weight:400; line-height:1.55; }
 .lush-before-step-kicker {
   display:block; margin-bottom:4px;
@@ -2744,12 +2775,38 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 .lush-aftercare-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:28px 14px 60px; }
 .lush-aftercare-section h2 { margin:0 0 30px; color:var(--lush-text); text-align:center; font-size:clamp(42px,10vw,56px); font-family:var(--lush-script); font-weight:400; line-height:1; letter-spacing:0; }
 .lush-aftercare-list { display:grid; gap:18px; }
-.lush-aftercare-card { position:relative; background:var(--lush-card); border:1px solid var(--lush-dark-border); border-left:2px solid var(--lush-pink); padding:16px 16px 18px; overflow:hidden; border-radius:4px; }
+/* Alternating cards: odd children are solid sage with white text;
+   even children are transparent with a sage border + sage text.
+   Both share the same big rounded shape so the alternation reads as
+   a rhythm, not as different card types. */
+.lush-aftercare-card {
+  position:relative;
+  padding:22px 22px 24px;
+  overflow:hidden;
+  border-radius:24px;
+  border:2px solid var(--lush-pink);
+  background:transparent;
+}
+.lush-aftercare-card:nth-child(odd) {
+  background:var(--lush-pink);
+  border-color:var(--lush-pink);
+}
 .lush-aftercare-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
 .lush-aftercare-dot { width:7px; height:7px; border-radius:999px; background:var(--lush-pink); display:inline-block; flex-shrink:0; }
-.lush-aftercare-index { color:var(--lush-pink); font-family:var(--lush-ui); font-size:11px; font-weight:600; letter-spacing:0.18em; text-transform:uppercase; }
-.lush-aftercare-card h3 { margin:0 0 8px; color:var(--lush-text); font-family:var(--lush-serif); font-weight:400; font-size:22px; line-height:1.05; letter-spacing:-0.02em; }
-.lush-aftercare-card p { margin:0; color:var(--lush-muted); font-family:var(--lush-ui); font-size:13px; font-weight:400; line-height:1.55; }
+.lush-aftercare-index { font-family:var(--lush-ui); font-size:11px; font-weight:600; letter-spacing:0.18em; text-transform:uppercase; }
+.lush-aftercare-card h3 { margin:0 0 8px; font-family:var(--lush-serif); font-weight:400; font-size:22px; line-height:1.05; letter-spacing:-0.02em; }
+.lush-aftercare-card p { margin:0; font-family:var(--lush-ui); font-size:13px; font-weight:400; line-height:1.55; }
+/* Even cards: sage text + sage dot/index. */
+.lush-aftercare-card:nth-child(even) h3,
+.lush-aftercare-card:nth-child(even) p,
+.lush-aftercare-card:nth-child(even) .lush-aftercare-index { color:var(--lush-pink); }
+.lush-aftercare-card:nth-child(even) .lush-aftercare-dot { background:var(--lush-pink); }
+/* Odd cards (sage fill): everything goes white so it sits cleanly on
+   the highlight color. */
+.lush-aftercare-card:nth-child(odd) h3,
+.lush-aftercare-card:nth-child(odd) p,
+.lush-aftercare-card:nth-child(odd) .lush-aftercare-index { color:#FFFFFF; }
+.lush-aftercare-card:nth-child(odd) .lush-aftercare-dot { background:#FFFFFF; }
 
 /* ── Contact cards ── */
 .lush-contact-card {
@@ -2792,9 +2849,9 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 .lush-thanks-section { position:relative; width:100%; background:var(--lush-bg); padding:80px 22px 88px; border-top:1px solid var(--lush-dark-border); }
 .lush-thanks-inner { max-width:720px; margin:0 auto; text-align:center; color:var(--lush-text); display:flex; flex-direction:column; align-items:center; gap:24px; }
 .lush-thanks-eyebrow { display:inline-block; font-family:var(--lush-ui); font-size:11px; font-weight:600; letter-spacing:0.24em; text-transform:uppercase; color:var(--lush-pink); }
-.lush-thanks-inner h2 { font-family:var(--lush-serif); font-size:clamp(34px,6vw,56px); font-weight:400; line-height:1.05; letter-spacing:-0.02em; margin:0; }
-.lush-thanks-inner em { font-family:var(--lush-serif); font-style:italic; color:var(--lush-pink); font-size:1em; }
-.lush-thanks-sig { display:inline-flex; align-items:center; gap:16px; font-family:var(--lush-serif); font-size:20px; color:var(--lush-pink); }
+.lush-thanks-inner h2 { font-family:var(--lush-script); font-size:clamp(48px,10vw,72px); font-weight:400; line-height:1; letter-spacing:0; margin:0; color:var(--lush-text); }
+.lush-thanks-inner em { font-family:var(--lush-script); font-style:normal; color:var(--lush-pink); font-size:1em; }
+.lush-thanks-sig { display:inline-flex; align-items:center; gap:16px; font-family:var(--lush-script); font-size:28px; color:var(--lush-pink); }
 .lush-thanks-sig em { font-style:italic; }
 .lush-thanks-line { width:56px; height:1px; background:var(--lush-pink); opacity:0.5; }
 
@@ -2842,8 +2899,8 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
   .lush-gallery-img--wide > img { aspect-ratio:2/1; }
   .lush-before-after-section { padding:74px 40px 110px; }
   .lush-results-heading { padding:0 0 32px; }
-  .lush-results-backdrop { font-size:clamp(96px,10vw,140px); text-shadow:7px 7px 0 rgba(14,17,17,0.18); }
-  .lush-results-heading h2 { font-size:clamp(48px,5vw,68px); text-shadow:5px 5px 0 rgba(14,17,17,0.18); margin-top:-20px; }
+  .lush-results-heading h2 { font-size:clamp(96px,10vw,140px); text-shadow:7px 7px 0 rgba(14,17,17,0.18); }
+  .lush-results-backdrop { font-size:clamp(48px,5vw,68px); text-shadow:5px 5px 0 rgba(14,17,17,0.18); margin-top:-20px; }
   .lush-ba-stack { grid-template-columns:repeat(3,minmax(0,1fr)); gap:36px; padding:30px 0 0; }
   .lush-ba-pair { max-width:380px; height:340px; }
   .lush-ba-label { font-size:38px; }
@@ -2851,14 +2908,11 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
   .lush-ba-card--before { left:0; top:64px; }
   .lush-ba-card--after  { right:0; top:128px; left:auto; }
   .lush-about-section { min-height:auto; padding:80px 40px 110px; display:grid; grid-template-columns:0.95fr 1.05fr; gap:64px; align-items:center; }
-  .lush-about-images { height:560px; margin-bottom:0; }
-  .lush-about-img { width:31%; height:520px; }
-  .lush-about-img--one   { left:0; top:20px; }
-  .lush-about-img--two   { left:34.5%; top:44px; }
-  .lush-about-img--three { left:69%; top:0; }
-  .lush-about-heading-wrap { margin-bottom:34px; align-items:center; }
-  .lush-about-backdrop { font-size:clamp(96px,10vw,140px); text-shadow:7px 7px 0 rgba(14,17,17,0.18); }
-  .lush-about-heading-wrap h2 { font-size:clamp(48px,5vw,68px); text-shadow:5px 5px 0 rgba(14,17,17,0.18); margin-top:-20px; }
+  .lush-about-hero { min-height:520px; padding:40px 24px; margin-bottom:0; }
+  .lush-about-star svg { width:min(38vw, 440px); }
+  .lush-about-heading-wrap { max-width:min(36vw, 380px); }
+  .lush-about-heading-wrap h2 { font-size:clamp(72px,7vw,108px); text-shadow:5px 5px 0 rgba(14,17,17,0.32); }
+  .lush-about-backdrop { font-size:clamp(32px,3.5vw,56px); text-shadow:3px 3px 0 rgba(14,17,17,0.32); }
   .lush-about-copy { max-width:none; font-size:18px; line-height:1.55; }
   .lush-policy-section { padding:70px 40px 110px; }
   .lush-policy-heading { align-items:center; margin-bottom:34px; }
@@ -2916,11 +2970,6 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
   .lush-booking-day { flex:1 1 64px; min-width:60px; padding:10px 6px; }
   .lush-booking-times { grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:6px; }
   .lush-gallery-group { padding-left:18px; padding-right:18px; }
-  .lush-about-images { height:220px; }
-  .lush-about-img { width:30%; height:200px; }
-  .lush-about-img--one   { left:0; top:8px; }
-  .lush-about-img--two   { left:33%; top:14px; }
-  .lush-about-img--three { left:66%; top:0; }
   /* progress pills already use a sr-only label; no mobile override needed */
 }
 `
