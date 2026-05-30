@@ -1084,20 +1084,42 @@ function AboutPanel({
 
   return (
     <section className="lush-about-section">
-      {/* Hero: a rounded 4-point star backdrop with the heading
-          overlaid on top. Replaces the original 3-image collage so the
-          spa direction reads cleaner. The heading sits in front of
-          the star with white text + dark shadow for legibility. */}
+      {/* Hero: rounded 4-point star window that masks the tenant
+          about-image (about.images[0]) into the spark shape. The
+          heading wrap sits BELOW the star (with a slight negative
+          margin-top so it gently overlaps the star's bottom edge).
+          Tagline below the heading is rendered in DM Mono all caps
+          as a small typographic accent. */}
       <div className="lush-about-hero">
         <div className="lush-about-star" aria-hidden="true">
-          <svg viewBox="0 0 100 100" fill="currentColor">
-            <path d="M50 6 C55 38 62 45 94 50 C62 55 55 62 50 94 C45 62 38 55 6 50 C38 45 45 38 50 6 Z" />
+          <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <clipPath id="lush-about-star-clip" transform="rotate(35 50 50)">
+                <path d="M50 6 C55 38 62 45 94 50 C62 55 55 62 50 94 C45 62 38 55 6 50 C38 45 45 38 50 6 Z" />
+              </clipPath>
+            </defs>
+            {about?.images?.[0] ? (
+              <image
+                href={about.images[0]}
+                x="0" y="0" width="100" height="100"
+                preserveAspectRatio="xMidYMid slice"
+                clipPath="url(#lush-about-star-clip)"
+              />
+            ) : (
+              <path
+                d="M50 6 C55 38 62 45 94 50 C62 55 55 62 50 94 C45 62 38 55 6 50 C38 45 45 38 50 6 Z"
+                fill="currentColor"
+                transform="rotate(35 50 50)"
+              />
+            )}
           </svg>
         </div>
-        {/* Small eyebrow kicker on top, big heading underneath. */}
         <div className="lush-about-heading-wrap">
           <div className="lush-about-backdrop">{backdropText}</div>
           <h2>{heading}</h2>
+          {p?.tagline && (
+            <p className="lush-about-tagline">{p.tagline}</p>
+          )}
         </div>
       </div>
       <div>
@@ -1420,7 +1442,7 @@ function Footer({
 // ── Scoped CSS ────────────────────────────────────────────────────────────────
 
 const LUSH_CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Cookie&family=Molle:ital@1&family=DM+Serif+Text:ital@0;1&family=DM+Sans:opsz,wght@9..40,300..700&family=Roboto:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cookie&family=DM+Mono:wght@400;500&family=Molle:ital@1&family=DM+Serif+Text:ital@0;1&family=DM+Sans:opsz,wght@9..40,300..700&family=Roboto:wght@400;500;700&display=swap');
 
 /* ── Tokens scoped to template root ── */
 .lush-template {
@@ -2629,51 +2651,60 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 /* ── About ── */
 .lush-about-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:32px 20px 58px; }
 
-/* About hero: a single rounded 4-point sage star backdrop with the
-   heading overlaid on top. Replaces the previous 3-image collage.
-   The heading is centered on the star — white Molle italic with a
-   dark shadow so it reads cleanly against the sage fill. */
+/* About hero: a rounded 4-point star window that masks the about
+   image into the spark shape, with the heading wrap stacked BELOW
+   the star (heading-wrap pulled up slightly so it gently overlaps
+   the star's bottom edge). When no about image is set, the star
+   falls back to a solid sage fill (rendered server-side). */
 .lush-about-hero {
-  position:relative;
-  display:flex; align-items:center; justify-content:center;
-  padding:32px 16px 24px;
-  min-height:340px;
-  margin-bottom:28px;
+  display:flex; flex-direction:column; align-items:center;
+  padding:24px 16px 28px;
+  margin-bottom:24px;
 }
 .lush-about-star {
-  position:absolute; inset:0; z-index:1;
-  display:flex; align-items:center; justify-content:center;
-  pointer-events:none;
-}
-.lush-about-star svg {
-  width:min(86vw, 320px); height:auto;
+  width:min(86vw, 280px);
+  aspect-ratio:1;
   color:var(--lush-pink);
-  transform:rotate(14deg);
   filter:drop-shadow(0 10px 22px rgba(14,17,17,0.14));
+  flex-shrink:0;
 }
+.lush-about-star svg { width:100%; height:100%; display:block; }
 .lush-about-heading-wrap {
-  position:relative; z-index:2; text-align:center;
+  position:relative; z-index:2;
+  text-align:center;
   display:flex; flex-direction:column; align-items:center;
-  /* Pull the wrap up slightly so the headline visibly sits ON the
-     star rather than perfectly centered. */
-  transform:translateY(-12px);
-  max-width:min(80vw, 300px);
+  /* Slight negative margin so the headline overlaps the bottom of
+     the star — gives the "heading sits on top of it" depth the
+     design called for, even though the heading itself is below. */
+  margin-top:-22px;
+  max-width:min(86vw, 320px);
 }
-/* Eyebrow kicker on top, heading underneath (translated up). DOM
-   order matches visual order — no flex order overrides here. */
+/* Small eyebrow kicker on top, big heading underneath. */
 .lush-about-backdrop {
   margin:0;
   font-family:var(--lush-molle); font-style:italic; font-weight:400;
   font-size:clamp(24px,6vw,36px); line-height:1.05;
-  color:#FFFFFF;
-  text-shadow:2px 2px 0 rgba(14,17,17,0.32);
+  color:var(--lush-pink);
+  text-shadow:2px 2px 0 rgba(14,17,17,0.18);
 }
 .lush-about-heading-wrap h2 {
   margin:-12px 0 0;
   font-family:var(--lush-molle); font-style:italic; font-weight:400;
   font-size:clamp(44px,12vw,64px); line-height:1; letter-spacing:-0.01em;
-  color:#FFFFFF;
-  text-shadow:3px 3px 0 rgba(14,17,17,0.32);
+  color:var(--lush-pink);
+  text-shadow:3px 3px 0 rgba(14,17,17,0.18);
+}
+/* Tagline in DM Mono all caps — small typographic accent below the
+   heading. Sits at full opacity sage so it reads as a tight
+   secondary line, not a body-text muted afterthought. */
+.lush-about-tagline {
+  margin:14px 0 0;
+  font-family:var(--lush-mono);
+  font-size:11px; font-weight:500;
+  letter-spacing:0.18em; text-transform:uppercase;
+  color:var(--lush-pink);
+  line-height:1.4;
+  max-width:280px;
 }
 .lush-about-copy { width:min(100%,344px); margin:0 auto; color:var(--lush-text); font-family:var(--lush-ui); font-size:15px; line-height:1.55; }
 .lush-about-copy p { margin:0 0 22px; padding:16px 0 0; border-top:1px solid var(--lush-dark-border); }
@@ -2931,11 +2962,12 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
   .lush-ba-card--before { left:0; top:64px; }
   .lush-ba-card--after  { right:0; top:128px; left:auto; }
   .lush-about-section { min-height:auto; padding:80px 40px 110px; display:grid; grid-template-columns:0.95fr 1.05fr; gap:64px; align-items:center; }
-  .lush-about-hero { min-height:520px; padding:40px 24px; margin-bottom:0; }
-  .lush-about-star svg { width:min(38vw, 440px); }
-  .lush-about-heading-wrap { max-width:min(36vw, 380px); }
-  .lush-about-backdrop { font-size:clamp(32px,3.5vw,56px); text-shadow:3px 3px 0 rgba(14,17,17,0.32); }
-  .lush-about-heading-wrap h2 { font-size:clamp(72px,7vw,108px); text-shadow:5px 5px 0 rgba(14,17,17,0.32); margin-top:-20px; }
+  .lush-about-hero { padding:0; margin-bottom:0; }
+  .lush-about-star { width:min(40vw, 480px); }
+  .lush-about-heading-wrap { max-width:380px; margin-top:-30px; }
+  .lush-about-backdrop { font-size:clamp(32px,3.5vw,56px); text-shadow:3px 3px 0 rgba(14,17,17,0.18); }
+  .lush-about-heading-wrap h2 { font-size:clamp(72px,7vw,108px); text-shadow:5px 5px 0 rgba(14,17,17,0.18); margin-top:-20px; }
+  .lush-about-tagline { font-size:13px; margin-top:18px; }
   .lush-about-copy { max-width:none; font-size:18px; line-height:1.55; }
   .lush-policy-section { padding:70px 40px 110px; }
   .lush-policy-heading { align-items:center; margin-bottom:34px; }
