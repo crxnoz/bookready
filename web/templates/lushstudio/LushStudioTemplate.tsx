@@ -2,8 +2,7 @@
 
 import { useState, useRef } from 'react'
 import {
-  Heart, Phone, Mail, Instagram, MapPin, Dot, CalendarCheck,
-  MessageSquare, Youtube, Facebook, Sparkles, Navigation,
+  Heart, Phone, Mail, MapPin, Dot, CalendarCheck, Sparkles,
 } from 'lucide-react'
 
 // Brand glyphs that lucide doesn't ship.
@@ -25,6 +24,59 @@ function WhatsAppGlyph({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M17.47 14.38c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.47-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.47.13-.62.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51l-.57-.01c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.49 0 1.47 1.07 2.88 1.22 3.08.15.2 2.1 3.2 5.07 4.49.71.31 1.27.49 1.7.62.71.23 1.36.2 1.87.12.57-.08 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.13-.27-.2-.57-.35zM12.04 2C6.5 2 2 6.5 2 12.04c0 1.94.55 3.74 1.5 5.27L2 22l4.84-1.46a10.05 10.05 0 0 0 5.2 1.46c5.54 0 10.04-4.5 10.04-10.04S17.58 2 12.04 2zm0 18.13a8.07 8.07 0 0 1-4.4-1.27l-.31-.19-2.87.87.86-2.8-.2-.32a8.07 8.07 0 0 1-1.27-4.38c0-4.47 3.63-8.1 8.1-8.1s8.1 3.63 8.1 8.1-3.63 8.09-8.09 8.09z"/>
+    </svg>
+  )
+}
+
+// Filled / solid versions of the contact + social icons so they render as
+// "filled" not "hollow outline" inside the small header circles. Single
+// paths fill cleanly with currentColor; sized via the width/height props.
+function PhoneSolid({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57a1 1 0 0 0-1.02.24l-2.2 2.2a15.05 15.05 0 0 1-6.59-6.58l2.2-2.21a.96.96 0 0 0 .25-1A11.36 11.36 0 0 1 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1z"/>
+    </svg>
+  )
+}
+function MailSolid({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"/>
+    </svg>
+  )
+}
+function MessageSolid({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+    </svg>
+  )
+}
+function NavigationSolid({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 2 4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
+    </svg>
+  )
+}
+function InstagramSolid({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" clipRule="evenodd" d="M7 2C4.24 2 2 4.24 2 7v10c0 2.76 2.24 5 5 5h10c2.76 0 5-2.24 5-5V7c0-2.76-2.24-5-5-5H7zm10 2H7c-1.66 0-3 1.34-3 3v10c0 1.66 1.34 3 3 3h10c1.66 0 3-1.34 3-3V7c0-1.66-1.34-3-3-3zm-5 3a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm4.5-3.5a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5z"/>
+    </svg>
+  )
+}
+function YoutubeSolid({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" clipRule="evenodd" d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.5 3.55 12 3.55 12 3.55s-7.5 0-9.38.5A3.02 3.02 0 0 0 .5 6.2C0 8.07 0 12 0 12s0 3.93.5 5.81a3.02 3.02 0 0 0 2.12 2.14c1.88.5 9.38.5 9.38.5s7.5 0 9.38-.5a3.02 3.02 0 0 0 2.12-2.14c.5-1.88.5-5.81.5-5.81s0-3.93-.5-5.81zM9.55 15.57V8.43L15.82 12l-6.27 3.57z"/>
+    </svg>
+  )
+}
+function FacebookSolid({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M24 12.07C24 5.44 18.63.07 12 .07S0 5.44 0 12.07c0 5.99 4.39 10.95 10.13 11.85v-8.39H7.08v-3.47h3.05V9.43c0-3.01 1.79-4.67 4.53-4.67 1.31 0 2.69.23 2.69.23v2.96H15.83c-1.49 0-1.96.93-1.96 1.87v2.25h3.33l-.53 3.47h-2.8v8.39C19.62 23.02 24 18.06 24 12.07z"/>
     </svg>
   )
 }
@@ -346,13 +398,13 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 if (url) {
                   return (
                     <a className="lush-header-btn lush-header-btn-book" href={url} target="_blank" rel="noopener noreferrer">
-                      <Heart size={16} fill="currentColor" /><span>Book</span>
+                      <CalendarCheck size={18} fill="currentColor" strokeWidth={1.5} /><span>Book</span>
                     </a>
                   )
                 }
                 return (
                   <button className="lush-header-btn lush-header-btn-book" onClick={goBook}>
-                    <Heart size={16} fill="currentColor" /><span>Book</span>
+                    <CalendarCheck size={18} fill="currentColor" strokeWidth={1.5} /><span>Book</span>
                   </button>
                 )
               })()}
@@ -363,7 +415,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 const href = override ?? (p?.public_phone ? `tel:${p.public_phone.replace(/[^\d+]/g, '')}` : null)
                 return (
                   <a className="lush-header-btn lush-header-btn-call lush-header-btn-mobile-only" href={href ?? '#'} aria-disabled={!href || undefined}>
-                    <Phone size={16} /><span>Call</span>
+                    <PhoneSolid size={18} /><span>Call</span>
                   </a>
                 )
               })()}
@@ -373,7 +425,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 const href = override ?? (p?.public_email ? `mailto:${p.public_email}` : null)
                 return (
                   <a className="lush-header-btn lush-header-btn-chat lush-header-btn-mobile-only" href={href ?? '#'} aria-disabled={!href || undefined}>
-                    <Mail size={16} /><span>Email</span>
+                    <MailSolid size={18} /><span>Email</span>
                   </a>
                 )
               })()}
@@ -385,7 +437,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 const isWeb = !!href && /^https?:/i.test(href)
                 return (
                   <a className={`lush-header-btn lush-header-btn-message${isWeb ? '' : ' lush-header-btn-mobile-only'}`} href={href ?? '#'} target={isWeb ? '_blank' : undefined} rel={isWeb ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
-                    <MessageSquare size={16} /><span>Message</span>
+                    <MessageSolid size={18} /><span>Message</span>
                   </a>
                 )
               })()}
@@ -396,7 +448,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 const href = override ?? (address ? `https://maps.google.com/?q=${encodeURIComponent(address)}` : null)
                 return (
                   <a className="lush-header-btn lush-header-btn-directions" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
-                    <MapPin size={16} /><span>Directions</span>
+                    <NavigationSolid size={18} /><span>Directions</span>
                   </a>
                 )
               })()}
@@ -404,7 +456,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 const href = safeHref(header.instagram_button_url) ?? safeHref(p?.instagram_url) ?? null
                 return (
                   <a className="lush-header-btn lush-header-btn-instagram" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
-                    <Instagram size={16} /><span>Instagram</span>
+                    <InstagramSolid size={18} /><span>Instagram</span>
                   </a>
                 )
               })()}
@@ -412,7 +464,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 const href = safeHref(header.tiktok_button_url) ?? null
                 return (
                   <a className="lush-header-btn lush-header-btn-tiktok" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
-                    <TikTokGlyph size={16} /><span>TikTok</span>
+                    <TikTokGlyph size={18} /><span>TikTok</span>
                   </a>
                 )
               })()}
@@ -420,7 +472,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 const href = safeHref(header.youtube_button_url) ?? null
                 return (
                   <a className="lush-header-btn lush-header-btn-youtube" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
-                    <Youtube size={16} /><span>YouTube</span>
+                    <YoutubeSolid size={18} /><span>YouTube</span>
                   </a>
                 )
               })()}
@@ -428,7 +480,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 const href = safeHref(header.facebook_button_url) ?? null
                 return (
                   <a className="lush-header-btn lush-header-btn-facebook" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
-                    <Facebook size={16} /><span>Facebook</span>
+                    <FacebookSolid size={18} /><span>Facebook</span>
                   </a>
                 )
               })()}
@@ -436,7 +488,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 const href = safeHref(header.pinterest_button_url) ?? null
                 return (
                   <a className="lush-header-btn lush-header-btn-pinterest" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
-                    <PinterestGlyph size={16} /><span>Pinterest</span>
+                    <PinterestGlyph size={18} /><span>Pinterest</span>
                   </a>
                 )
               })()}
@@ -444,7 +496,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 const href = safeHref(header.whatsapp_button_url) ?? null
                 return (
                   <a className="lush-header-btn lush-header-btn-whatsapp" href={href ?? '#'} target={href ? '_blank' : undefined} rel={href ? 'noopener noreferrer' : undefined} aria-disabled={!href || undefined}>
-                    <WhatsAppGlyph size={16} /><span>WhatsApp</span>
+                    <WhatsAppGlyph size={18} /><span>WhatsApp</span>
                   </a>
                 )
               })()}
@@ -625,8 +677,8 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
               }
               {site.template?.settings.additionals?.thank_you_body && (
                 <p style={{
-                  fontFamily: 'var(--lush-serif)', fontSize: 16,
-                  lineHeight: 1.55, color: 'rgba(255,255,255,0.78)',
+                  fontFamily: 'var(--lush-ui)', fontSize: 15,
+                  lineHeight: 1.55, color: 'var(--lush-muted)',
                   maxWidth: 540, margin: 0,
                 }}>
                   {site.template.settings.additionals.thank_you_body}
@@ -1610,94 +1662,72 @@ const LUSH_CSS = `
   .lush-auth-modal-brand { padding:13px 18px; }
   .lush-auth-modal-body { padding:24px 20px 22px; }
 }
-/* Lush Studio header cover — taller on mobile so the content card
-   has room to overlap it with the rounded top corners + soft depth.
-   No veil / dark overlay / pulsing heart — those were FadeRoom's
-   busy-on-photo aesthetic; spa direction stays calm. */
+/* ── Header cover ──
+   Taller backdrop image; flat soft-spa direction (no veil / pulsing
+   heart). A gradient floor + drop-shadow give the cover real depth
+   so the content card visibly sits ON TOP of it instead of touching. */
 .lush-header-cover {
-  width:100%; height:54vh; min-height:380px; position:relative;
+  width:100%; height:62vh; min-height:460px; position:relative;
   background:#F6F3EE;
   overflow:hidden;
 }
 .lush-header-cover > img {
   width:100%; height:100%; object-fit:cover; display:block;
 }
-/* Veil + heart legacy elements — kept null so any residual JSX from
-   future refactors doesn't crash, but invisible. */
-.lush-cover-veil, .lush-cover-heart { display:none; }
-.lush-header-avatar {
-  width:clamp(165px,16vw,250px); height:clamp(165px,16vw,250px);
-  position:absolute;
-  top:calc(42vh - clamp(82px,8vw,125px));
-  left:50%; transform:translateX(-50%);
-  border-radius:999px;
-  border:clamp(5px,0.7vw,10px) solid var(--lush-bg);
-  overflow:visible; z-index:2;
-  box-shadow:0 0 0 2px rgba(var(--lush-pink-rgb),0.55),0 0 24px rgba(var(--lush-pink-rgb),0.45),0 0 60px rgba(var(--lush-pink-rgb),0.25);
+/* Bottom-edge gradient on the cover photo for depth. Subtle — the
+   real shadow comes from the content card's top edge below. */
+.lush-header-cover::after {
+  content:""; position:absolute; left:0; right:0; bottom:0; height:160px;
+  background:linear-gradient(to bottom, transparent 0%, rgba(14,17,17,0.22) 100%);
+  pointer-events:none; z-index:1;
 }
-.lush-header-avatar > img {
-  width:100%; height:100%; display:block; object-fit:cover;
-  border-radius:999px;
+/* Legacy elements — hidden so any residual markup is invisible. */
+.lush-cover-veil, .lush-cover-heart,
+.lush-header-avatar, .lush-avatar-ring, .lush-avatar-heart, .lush-avatar-initials {
+  display:none !important;
 }
-.lush-avatar-ring {
-  position:absolute; inset:-10px; border-radius:999px;
-  border:1px dashed rgba(var(--lush-pink-rgb),0.55); pointer-events:none;
-  animation:tfrSpin 22s linear infinite;
-}
-.lush-avatar-heart {
-  position:absolute; top:-4px; right:-2px;
-  width:36px; height:36px; border-radius:999px;
-  background:#0E0B10; color:var(--lush-pink); font-size:14px;
-  border:1px solid rgba(var(--lush-pink-rgb),0.6);
-  box-shadow:0 0 14px rgba(var(--lush-pink-rgb),0.7); z-index:3;
-  display:inline-flex; align-items:center; justify-content:center;
-  animation:tfrHeartPulse 2.4s ease-in-out infinite;
-}
-.lush-avatar-initials {
-  width:100%; height:100%; border-radius:999px;
-  background:linear-gradient(135deg,#2a0a1e,#1a0a14);
-  display:flex; align-items:center; justify-content:center;
-  font-family:var(--lush-serif); font-size:clamp(40px,6vw,72px);
-  color:var(--lush-pink); text-shadow:var(--lush-text-glow);
-  user-select:none;
-}
-@keyframes tfrSpin { to{transform:rotate(360deg)} }
+/* Floating hearts: hide everywhere — spa stays calm. */
+.lush-floating-heart { display:none; }
 @keyframes tfrHeartPulse {
-  0%,100% { transform:scale(1); filter:drop-shadow(0 0 6px rgba(var(--lush-pink-rgb),0.7)); }
-  50%      { transform:scale(1.12); filter:drop-shadow(0 0 14px rgba(var(--lush-pink-rgb),0.95)); }
+  0%,100% { transform:scale(1); }
+  50%      { transform:scale(1.12); }
 }
-/* Header content card — sits on top of the cover photo with the
-   top corners rounded + translated up so the cover peeks above it.
-   Soft top-edge shadow gives depth without being neon. Solid cream
-   bg so the content reads cleanly on whatever cover image is below. */
+
+/* ── Header content card ──
+   Sits on top of the cover photo with the top corners rounded + translated
+   up so the cover peeks above it. Strong top-edge shadow gives the
+   "floating panel" depth. Solid cream bg so content reads cleanly on
+   whatever cover image is below. Text is LEFT-aligned with generous
+   top/left padding (editorial spa feel). */
 .lush-header-content {
   position:relative; z-index:2;
   width:100%; margin:0 auto;
   padding:36px 24px 40px;
-  text-align:center;
+  text-align:left;
   background:var(--lush-bg);
   border-radius:24px 24px 0 0;
-  margin-top:-32px;
-  box-shadow:0 -6px 24px rgba(14,17,17,0.06);
+  margin-top:-44px;
+  box-shadow:0 -14px 36px rgba(14,17,17,0.14);
 }
 .lush-header-content h1 {
   margin:0; color:var(--lush-text); font-family:var(--lush-serif);
-  font-size:clamp(32px,7vw,52px); line-height:1.05; font-weight:400; letter-spacing:-0.02em;
+  font-size:clamp(34px,8vw,56px); line-height:1.05;
+  font-weight:400; letter-spacing:-0.02em;
 }
 .lush-header-subtype {
   margin:8px 0 0;
-  font-family:var(--lush-sans);
+  font-family:var(--lush-ui); /* Roboto */
   font-size:11px; font-weight:600;
   letter-spacing:0.18em; text-transform:uppercase;
   color:var(--lush-muted);
 }
 .lush-header-info {
-  display:flex; flex-direction:column; align-items:center; gap:6px;
+  display:flex; flex-direction:column; align-items:flex-start; gap:6px;
   margin:14px 0 0;
 }
 .lush-header-info-row {
   display:inline-flex; align-items:center; gap:8px;
-  font-family:var(--lush-sans);
+  font-family:var(--lush-ui); /* Roboto */
   font-size:13px; line-height:1.3;
   color:var(--lush-muted);
 }
@@ -1705,26 +1735,29 @@ const LUSH_CSS = `
   color:var(--lush-pink); flex-shrink:0;
 }
 
+/* ── Header buttons ──
+   Grid: 5 columns of 44px circles. Every button is the same shape
+   (including Book), so the visual rhythm is consistent. Wraps to a
+   second row if more than 5 are enabled. Justify-start anchors the
+   group to the left edge of the content card. */
 .lush-header-buttons {
-  width:min(100%,880px); margin:0 auto;
-  display:flex; flex-wrap:wrap; justify-content:center; gap:10px;
-  align-items:stretch;
+  display:grid;
+  grid-template-columns:repeat(5, 44px);
+  gap:12px;
+  margin-top:24px;
+  justify-content:flex-start;
 }
-/* Header buttons row. Centered, wraps as needed. Book is a pill
-   (CTA) — the rest are circular icon-only chips. */
-.lush-header-buttons {
-  display:flex; flex-wrap:wrap; justify-content:center; align-items:center;
-  gap:12px; margin-top:22px;
-}
-.lush-header-content h1 + .lush-header-buttons { margin-top:22px; }
 
-/* Base button reset. The .lush-header-btn:not(.lush-header-btn-book)
-   override below turns the non-Book ones into circles. */
+/* Base button: 44px solid circle. The text label inside (a <span>)
+   is hidden for sighted users but kept in the DOM for screen readers. */
 .lush-header-btn {
-  display:inline-flex; align-items:center; justify-content:center; gap:8px;
-  color:var(--lush-on-pink);
+  position:relative;
+  display:inline-flex; align-items:center; justify-content:center;
+  width:44px; height:44px; padding:0;
+  border-radius:50%;
+  color:#FFFFFF;
   border:none; cursor:pointer; text-decoration:none;
-  font-family:var(--lush-sans); font-size:14px; font-weight:600; line-height:1;
+  font-size:0; line-height:1;
   transition:transform .15s ease, filter .15s ease;
   -webkit-tap-highlight-color:transparent; touch-action:manipulation;
 }
@@ -1733,33 +1766,17 @@ const LUSH_CSS = `
 }
 .lush-header-btn:active { transform:translateY(0); filter:brightness(1.0); }
 .lush-header-btn[aria-disabled] { opacity:0.5; cursor:default; transform:none !important; }
-
-/* Book is the sole pill CTA — sage bg, white text + icon, sharp-ish
-   radius for spa polish. No glow, no shadow (soft-spa flat rule). */
-.lush-header-btn-book {
-  background:var(--lush-pink); color:var(--lush-on-pink);
-  padding:14px 26px; border-radius:999px;
-  font-size:14px; letter-spacing:0.04em;
-}
-.lush-header-btn-book svg { color:#FFFFFF; }
-
-/* Every non-Book button = perfect icon circle. The text label inside
-   each (a <span>) is hidden but kept in the DOM for accessibility. */
-.lush-header-btn:not(.lush-header-btn-book) {
-  width:48px; height:48px; padding:0;
-  border-radius:50%;
-  gap:0;
-}
-.lush-header-btn:not(.lush-header-btn-book) > span {
+.lush-header-btn > span {
   position:absolute; width:1px; height:1px; padding:0; margin:-1px;
   overflow:hidden; clip:rect(0 0 0 0); border:0;
 }
-.lush-header-btn:not(.lush-header-btn-book) svg {
-  color:#FFFFFF !important; stroke:#FFFFFF;
+.lush-header-btn svg {
+  color:#FFFFFF !important; stroke:#FFFFFF; fill:#FFFFFF;
 }
 
-/* Call / Email / Message: flat sage solids (highlight color),
+/* Book + Call + Email + Message → flat sage solids (highlight color),
    replacing the FadeRoom multi-color gradients. */
+.lush-header-btn-book,
 .lush-header-btn-call,
 .lush-header-btn-chat,
 .lush-header-btn-message {
@@ -1767,8 +1784,7 @@ const LUSH_CSS = `
 }
 
 /* The remaining contact + social buttons keep their brand gradients
-   per the brief — Directions and the platform-recognizable IG / TikTok
-   / YT / FB / Pinterest / WhatsApp colors stay. */
+   so the platform colors are recognizable at a glance. */
 .lush-header-btn-directions { background:linear-gradient(45deg,#34D399 0%,#60A5FA 100%); }
 .lush-header-btn-tiktok     { background:linear-gradient(45deg,#EA5F96 36%,#2FC2BF 100%); }
 .lush-header-btn-youtube    { background:linear-gradient(45deg,#FB3354 49%,#FE879C 100%); }
@@ -1777,21 +1793,14 @@ const LUSH_CSS = `
 .lush-header-btn-pinterest  { background:linear-gradient(45deg,#E60023 0%,#FF6E80 100%); }
 .lush-header-btn-whatsapp   { background:linear-gradient(45deg,#25D366 0%,#A4F4C5 100%); }
 
-/* Show the call/email/message buttons on every screen size — the
-   FadeRoom rule that hides them on hover-capable pointers doesn't
-   apply for the spa direction. */
 .lush-header-btn-mobile-only { display:inline-flex !important; }
-
-/* Floating hearts: hide everywhere for the spa direction. They were
-   FadeRoom-era playful decoration; spa stays calm. */
-.lush-floating-heart { display:none; }
-@keyframes tfrFloat { 0%,100% { transform:translateY(0) rotate(-6deg); } 50% { transform:translateY(-10px) rotate(6deg); } }
 
 /* ── Tabs ── */
 .lush-tabbed-section { width:100%; background:var(--lush-bg); overflow:hidden; }
 .lush-tab-rail {
   width:100%; background:var(--lush-bg); position:sticky; top:0; z-index:20;
-  border-top:1px solid rgba(255,255,255,0.05); border-bottom:1px solid rgba(255,255,255,0.05);
+  border-top:1px solid var(--lush-dark-border);
+  border-bottom:1px solid var(--lush-dark-border);
   -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 28px,#000 calc(100% - 28px),transparent 100%);
           mask-image:linear-gradient(90deg,transparent 0,#000 28px,#000 calc(100% - 28px),transparent 100%);
 }
@@ -1805,7 +1814,7 @@ const LUSH_CSS = `
   position:relative; flex:0 0 auto;
   display:inline-flex; align-items:center; justify-content:center;
   padding:16px 14px; background:transparent; border:0;
-  color:rgba(255,255,255,0.5);
+  color:var(--lush-muted);
   font-family:var(--lush-ui); font-size:11px; font-weight:600;
   letter-spacing:0.16em; text-transform:uppercase; line-height:1;
   cursor:pointer; white-space:nowrap; scroll-snap-align:center;
@@ -1815,11 +1824,11 @@ const LUSH_CSS = `
   content:""; position:absolute; left:14px; right:14px; bottom:0;
   height:2px; background:var(--lush-pink); border-radius:2px;
   transform:scaleX(0); transform-origin:center;
-  transition:transform .28s cubic-bezier(.4,0,.2,1),box-shadow .28s ease;
+  transition:transform .28s cubic-bezier(.4,0,.2,1);
 }
-.lush-tab-pill:hover { color:rgba(255,255,255,0.85); }
-.lush-tab-pill.is-active { color:#fff; }
-.lush-tab-pill.is-active::after { transform:scaleX(1); box-shadow:0 0 12px rgba(var(--lush-pink-rgb),0.6),0 0 22px rgba(var(--lush-pink-rgb),0.35); }
+.lush-tab-pill:hover { color:var(--lush-text); }
+.lush-tab-pill.is-active { color:var(--lush-text); }
+.lush-tab-pill.is-active::after { transform:scaleX(1); }
 .lush-tab-panel { display:none; }
 .lush-tab-panel.is-active { display:block; }
 
@@ -1827,19 +1836,16 @@ const LUSH_CSS = `
 .lush-booking-section { padding:36px 22px 64px; max-width:860px; margin:0 auto; color:var(--lush-text); }
 .lush-booking-head { text-align:center; margin-bottom:28px; }
 .lush-booking-eyebrow {
-  display:inline-block; font-family:var(--lush-sans); font-size:11px;
+  display:inline-block; font-family:var(--lush-ui); font-size:11px;
   font-weight:600; letter-spacing:0.22em; text-transform:uppercase;
-  color:var(--lush-pink); text-shadow:0 0 12px rgba(var(--lush-pink-rgb),0.5); margin-bottom:8px;
+  color:var(--lush-pink); margin-bottom:8px;
 }
 .lush-booking-head h2 {
-  font-family:var(--lush-script); font-size:clamp(36px,6vw,56px);
-  font-weight:400; line-height:1; margin:0 0 22px; text-shadow:var(--lush-text-glow);
+  font-family:var(--lush-serif); font-size:clamp(32px,6vw,52px);
+  font-weight:400; line-height:1.05; letter-spacing:-0.02em; margin:0 0 22px;
 }
-/* Phase 8 — compact dot-timeline. Old design used inline pills with
-   text labels alongside each circle, which started wrapping at 5 steps.
-   Now: small numbered circles connected by thin lines, with a single
-   caption underneath ("Step 3 of 5 · Date & Time"). Fits any width
-   without wrapping and reads more like an editorial timeline. */
+/* Compact dot-timeline: small numbered circles connected by thin lines
+   with a single caption underneath ("Step 3 of 5 · Date & Time"). */
 .lush-booking-progress {
   display:flex; flex-direction:column; align-items:center;
   gap:12px; margin-bottom:6px;
@@ -1858,79 +1864,67 @@ const LUSH_CSS = `
   width:28px; height:28px;
   display:inline-flex; align-items:center; justify-content:center;
   font-size:11px; font-weight:600; letter-spacing:0.02em;
-  border:1px solid rgba(255,255,255,0.18); border-radius:999px;
-  color:rgba(255,255,255,0.45); background:transparent;
+  border:1px solid var(--lush-dark-border); border-radius:999px;
+  color:var(--lush-muted); background:transparent;
   transition:all .25s ease;
 }
 .lush-booking-step + .lush-booking-step::before {
   content:""; flex:1 1 auto; height:1px; min-width:14px;
-  background:rgba(255,255,255,0.15); margin:0 4px;
+  background:var(--lush-dark-border); margin:0 4px;
   transition:background .25s ease;
 }
-/* Lines after a done step get the pink-tinted treatment, so progress
-   visually "fills up" toward the active circle. */
 .lush-booking-step.is-done + .lush-booking-step::before {
-  background:rgba(var(--lush-pink-rgb),0.45);
+  background:var(--lush-pink);
 }
 .lush-booking-step.is-active { transform:scale(1.05); }
 .lush-booking-step.is-active .lush-booking-step-num {
   background:var(--lush-pink); border-color:var(--lush-pink);
   color:var(--lush-on-pink);
-  box-shadow:0 0 12px rgba(var(--lush-pink-rgb),0.65);
 }
 .lush-booking-step.is-done .lush-booking-step-num {
-  border-color:rgba(var(--lush-pink-rgb),0.65);
+  border-color:var(--lush-pink);
   color:var(--lush-pink);
-  background:rgba(var(--lush-pink-rgb),0.06);
+  background:transparent;
 }
 .lush-booking-step:hover:not(.is-active) .lush-booking-step-num {
-  border-color:rgba(var(--lush-pink-rgb),0.45);
+  border-color:var(--lush-pink);
 }
-/* Old inline label — kept in markup for screen-reader fallback via
-   aria-label on the button, but visually hidden everywhere now since
-   the caption below carries the label. */
 .lush-booking-step-label {
   position:absolute; width:1px; height:1px; padding:0; margin:-1px;
   overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
 }
 .lush-booking-progress-caption {
-  margin:0; font-family:var(--lush-sans);
+  margin:0; font-family:var(--lush-ui);
   font-size:10px; letter-spacing:0.18em; text-transform:uppercase;
   color:var(--lush-muted); font-weight:600;
 }
 .lush-booking-progress-caption strong {
   color:var(--lush-pink); font-weight:600;
-  text-shadow:0 0 8px rgba(var(--lush-pink-rgb),0.4);
   margin-left:4px;
 }
-/* Phase 8 — add-on cards. Replaces the inline-styled native checkbox
-   with a tactile pink-glow card: hidden native input drives state,
-   the visible indicator fills pink + glows when checked. Required
-   links keep the indicator filled but ditch the hover affordance,
-   and a pink-outlined "Required" chip surfaces the constraint. */
+/* Add-on cards: hidden native checkbox + visible card with flat sage
+   active state. No glow — flat soft-spa direction. */
 .lush-addon-card {
   display:flex; align-items:flex-start; gap:12px;
   padding:14px 16px;
-  background:rgba(255,255,255,0.02);
-  border:1px solid rgba(255,255,255,0.12);
+  background:var(--lush-card);
+  border:1px solid var(--lush-dark-border);
   cursor:pointer;
-  transition:border-color .2s ease, background .2s ease, box-shadow .2s ease;
+  transition:border-color .2s ease, background .2s ease;
 }
 .lush-addon-card:hover:not(.is-locked) {
-  border-color:rgba(var(--lush-pink-rgb),0.4);
-  background:rgba(var(--lush-pink-rgb),0.04);
+  border-color:var(--lush-pink);
 }
 .lush-addon-card.is-checked {
-  border-color:rgba(var(--lush-pink-rgb),0.6);
-  background:linear-gradient(180deg,rgba(var(--lush-pink-rgb),0.08),rgba(255,255,255,0.02));
-  box-shadow:0 0 16px rgba(var(--lush-pink-rgb),0.18),inset 0 0 0 1px rgba(var(--lush-pink-rgb),0.1);
+  border-color:var(--lush-pink);
+  background:rgba(var(--lush-pink-rgb),0.06);
 }
 .lush-addon-card.is-locked { cursor:not-allowed; }
 .lush-addon-input { position:absolute; opacity:0; pointer-events:none; }
 .lush-addon-indicator {
   flex-shrink:0; width:22px; height:22px;
   display:inline-flex; align-items:center; justify-content:center;
-  border:1.5px solid rgba(255,255,255,0.28);
+  border:1.5px solid var(--lush-dark-border);
   background:transparent;
   color:var(--lush-on-pink);
   margin-top:1px;
@@ -1939,7 +1933,6 @@ const LUSH_CSS = `
 .lush-addon-card.is-checked .lush-addon-indicator {
   border-color:var(--lush-pink);
   background:var(--lush-pink);
-  box-shadow:0 0 10px rgba(var(--lush-pink-rgb),0.7);
 }
 .lush-addon-body { flex:1; min-width:0; }
 .lush-addon-head {
@@ -1947,7 +1940,7 @@ const LUSH_CSS = `
   margin-bottom:2px;
 }
 .lush-addon-name {
-  font-family:var(--lush-sans); font-size:13px; font-weight:600;
+  font-family:var(--lush-ui); font-size:13px; font-weight:600;
   color:var(--lush-text); letter-spacing:0.01em;
 }
 .lush-addon-required {
@@ -1955,19 +1948,19 @@ const LUSH_CSS = `
   text-transform:uppercase;
   padding:2px 8px;
   color:var(--lush-pink);
-  border:1px solid rgba(var(--lush-pink-rgb),0.45);
+  border:1px solid var(--lush-pink);
   background:rgba(var(--lush-pink-rgb),0.08);
 }
 .lush-addon-desc {
   font-size:11px; line-height:1.45;
-  color:rgba(255,255,255,0.7);
+  color:var(--lush-muted);
   margin:2px 0 6px;
 }
 .lush-addon-meta {
   display:inline-flex; gap:8px; align-items:center;
-  font-family:var(--lush-sans); font-size:11px; font-weight:600;
+  font-family:var(--lush-ui); font-size:11px; font-weight:600;
   letter-spacing:0.06em;
-  color:var(--lush-pink-soft);
+  color:var(--lush-pink);
 }
 .lush-addon-meta-dot { opacity:0.45; }
 
@@ -1979,28 +1972,32 @@ const LUSH_CSS = `
 /* Services in booking */
 .lush-booking-services { display:grid; gap:12px; }
 .lush-booking-service-card {
-  background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01));
-  border:1px solid rgba(255,255,255,0.08); border-left:2px solid var(--lush-pink);
+  background:var(--lush-card);
+  border:1px solid var(--lush-dark-border);
+  border-left:2px solid var(--lush-pink);
   border-radius:6px; padding:18px 18px 16px;
   display:flex; flex-direction:column; gap:8px;
-  transition:border-color .2s ease,box-shadow .25s ease;
+  transition:border-color .2s ease;
 }
-.lush-booking-service-card:hover { border-color:rgba(var(--lush-pink-rgb),0.45); box-shadow:0 6px 24px rgba(var(--lush-pink-rgb),0.16); }
-.lush-booking-service-card.is-selected { border-color:var(--lush-pink); box-shadow:0 6px 24px rgba(var(--lush-pink-rgb),0.25); background:linear-gradient(180deg,rgba(var(--lush-pink-rgb),0.06),rgba(255,255,255,0.01)); }
+.lush-booking-service-card:hover { border-color:var(--lush-pink); }
+.lush-booking-service-card.is-selected {
+  border-color:var(--lush-pink);
+  background:rgba(var(--lush-pink-rgb),0.06);
+}
 .lush-booking-service-top { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
-.lush-booking-service-card h3 { margin:0; font-family:var(--lush-sans); font-size:16px; font-weight:600; letter-spacing:0.02em; color:var(--lush-text); }
-.lush-booking-price { font-family:var(--lush-mono); font-size:15px; color:var(--lush-pink); text-shadow:0 0 10px rgba(var(--lush-pink-rgb),0.45); white-space:nowrap; }
+.lush-booking-service-card h3 { margin:0; font-family:var(--lush-ui); font-size:16px; font-weight:600; letter-spacing:0.02em; color:var(--lush-text); }
+.lush-booking-price { font-family:var(--lush-ui); font-size:15px; font-weight:600; color:var(--lush-pink); white-space:nowrap; }
 .lush-booking-desc { margin:0; font-size:13px; color:var(--lush-muted); line-height:1.5; }
 .lush-booking-meta { margin:0; font-size:12px; color:var(--lush-muted); display:inline-flex; gap:6px; align-items:center; }
 .lush-booking-pick {
   align-self:flex-start; margin-top:4px; background:transparent;
-  border:1px solid rgba(var(--lush-pink-rgb),0.4); color:var(--lush-text);
+  border:1px solid var(--lush-pink); color:var(--lush-text);
   border-radius:999px; padding:8px 14px;
   font-size:11px; letter-spacing:0.16em; text-transform:uppercase; font-weight:600;
   cursor:pointer; display:inline-flex; gap:8px; align-items:center;
-  transition:background .2s ease,box-shadow .25s ease;
+  transition:background .2s ease;
 }
-.lush-booking-pick:hover { background:rgba(var(--lush-pink-rgb),0.12); box-shadow:0 0 14px rgba(var(--lush-pink-rgb),0.35); }
+.lush-booking-pick:hover { background:rgba(var(--lush-pink-rgb),0.10); }
 
 /* Date & time */
 .lush-booking-datetime { display:flex; flex-direction:column; gap:22px; }
@@ -2012,42 +2009,48 @@ const LUSH_CSS = `
 .lush-booking-days { display:flex; flex-wrap:wrap; gap:8px; }
 .lush-booking-day {
   flex:1 1 72px; min-width:68px; max-width:100px;
-  background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.1);
+  background:var(--lush-card);
+  border:1px solid var(--lush-dark-border);
   border-radius:8px; padding:12px 8px;
   display:flex; flex-direction:column; align-items:center; gap:3px;
   color:var(--lush-text); cursor:pointer; transition:all .2s ease;
 }
 .lush-booking-day span { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--lush-muted); }
-.lush-booking-day strong { font-family:var(--lush-mono); font-size:18px; font-weight:500; }
-.lush-booking-day:hover { border-color:rgba(var(--lush-pink-rgb),0.4); }
-.lush-booking-day.is-selected { border-color:var(--lush-pink); background:rgba(var(--lush-pink-rgb),0.1); box-shadow:0 0 14px rgba(var(--lush-pink-rgb),0.35); }
-.lush-booking-day.is-selected span, .lush-booking-day.is-selected strong { color:#fff; }
+.lush-booking-day strong { font-family:var(--lush-ui); font-size:18px; font-weight:600; }
+.lush-booking-day:hover { border-color:var(--lush-pink); }
+.lush-booking-day.is-selected {
+  border-color:var(--lush-pink);
+  background:var(--lush-pink);
+  color:var(--lush-on-pink);
+}
+.lush-booking-day.is-selected span,
+.lush-booking-day.is-selected strong { color:var(--lush-on-pink); }
 
 /* ── Calendar ── */
 .lush-booking-calendar {
-  background:linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.005));
-  border:1px solid rgba(255,255,255,0.08); border-radius:10px;
+  background:var(--lush-card);
+  border:1px solid var(--lush-dark-border); border-radius:10px;
   padding:14px; display:flex; flex-direction:column; gap:10px;
 }
 .lush-calendar-head {
   display:flex; align-items:center; justify-content:space-between; gap:8px;
 }
 .lush-calendar-title {
-  font-family:var(--lush-sans); font-size:14px; font-weight:600;
+  font-family:var(--lush-ui); font-size:14px; font-weight:600;
   letter-spacing:0.08em; color:var(--lush-text); text-transform:uppercase;
 }
 .lush-calendar-nav {
-  background:transparent; border:1px solid rgba(255,255,255,0.12);
+  background:transparent; border:1px solid var(--lush-dark-border);
   color:var(--lush-text); width:34px; height:34px; border-radius:999px;
   display:inline-flex; align-items:center; justify-content:center;
   cursor:pointer; transition:all .2s ease;
 }
-.lush-calendar-nav:hover { border-color:var(--lush-pink); color:var(--lush-pink); box-shadow:0 0 12px rgba(var(--lush-pink-rgb),0.4); }
+.lush-calendar-nav:hover { border-color:var(--lush-pink); color:var(--lush-pink); }
 .lush-calendar-nav:disabled { opacity:0.3; cursor:not-allowed; }
-.lush-calendar-nav:disabled:hover { border-color:rgba(255,255,255,0.12); color:var(--lush-text); box-shadow:none; }
+.lush-calendar-nav:disabled:hover { border-color:var(--lush-dark-border); color:var(--lush-text); }
 .lush-calendar-dow {
   display:grid; grid-template-columns:repeat(7,1fr); gap:4px;
-  font-family:var(--lush-sans); font-size:10px; font-weight:600;
+  font-family:var(--lush-ui); font-size:10px; font-weight:600;
   letter-spacing:0.1em; text-transform:uppercase; color:var(--lush-muted);
   text-align:center; padding:0 2px;
 }
@@ -2057,24 +2060,24 @@ const LUSH_CSS = `
 }
 .lush-calendar-day {
   aspect-ratio:1/1; min-height:36px;
-  background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08);
+  background:var(--lush-card);
+  border:1px solid var(--lush-dark-border);
   border-radius:6px; color:var(--lush-text);
-  font-family:var(--lush-mono); font-size:13px; font-weight:500;
+  font-family:var(--lush-ui); font-size:13px; font-weight:500;
   display:inline-flex; align-items:center; justify-content:center;
   cursor:pointer; transition:all .15s ease; padding:0;
 }
-.lush-calendar-day:hover:not(:disabled) { border-color:rgba(var(--lush-pink-rgb),0.5); transform:translateY(-1px); }
+.lush-calendar-day:hover:not(:disabled) { border-color:var(--lush-pink); transform:translateY(-1px); }
 .lush-calendar-day--today {
-  border-color:rgba(255,255,255,0.35); color:#fff;
+  border-color:var(--lush-pink); color:var(--lush-text);
 }
 .lush-calendar-day--blocked {
-  background:transparent; border-color:rgba(255,255,255,0.04);
-  color:rgba(255,255,255,0.18); cursor:not-allowed;
+  background:transparent; border-color:rgba(14,17,17,0.04);
+  color:rgba(14,17,17,0.25); cursor:not-allowed;
 }
 .lush-calendar-day--blocked:hover { transform:none; }
 .lush-calendar-day--selected {
   background:var(--lush-pink); border-color:var(--lush-pink); color:var(--lush-on-pink);
-  box-shadow:0 0 16px rgba(var(--lush-pink-rgb),0.55), inset 0 0 0 1px rgba(255,255,255,0.2);
 }
 .lush-calendar-day--selected.lush-calendar-day--today { color:var(--lush-on-pink); }
 .lush-calendar-day--empty {
@@ -2082,14 +2085,18 @@ const LUSH_CSS = `
 }
 .lush-booking-times { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:8px; }
 .lush-booking-time {
-  background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.1);
+  background:var(--lush-card); border:1px solid var(--lush-dark-border);
   border-radius:999px; padding:12px 10px; color:var(--lush-text);
-  font-family:var(--lush-mono); font-size:13px; cursor:pointer; transition:all .2s ease; text-align:center;
+  font-family:var(--lush-ui); font-size:13px; cursor:pointer; transition:all .2s ease; text-align:center;
 }
-.lush-booking-time:hover { border-color:rgba(var(--lush-pink-rgb),0.4); }
-.lush-booking-time.is-selected { border-color:var(--lush-pink); background:rgba(var(--lush-pink-rgb),0.12); color:var(--lush-text); box-shadow:0 0 14px rgba(var(--lush-pink-rgb),0.35); }
+.lush-booking-time:hover { border-color:var(--lush-pink); }
+.lush-booking-time.is-selected {
+  border-color:var(--lush-pink);
+  background:var(--lush-pink);
+  color:var(--lush-on-pink);
+}
 .lush-slot-msg { font-size:13px; color:var(--lush-muted); padding:16px 0; }
-.lush-slot-error { color:#ff6b6b; }
+.lush-slot-error { color:#B91C1C; }
 
 /* Details step */
 /* Customer-account banner above the Details step inputs (BookReady
@@ -2339,32 +2346,32 @@ const LUSH_CSS = `
 }
 .lush-booking-fields input,
 .lush-booking-textarea {
-  background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1);
+  background:var(--lush-card); border:1px solid var(--lush-dark-border);
   border-radius:6px; padding:12px 14px; color:var(--lush-text);
-  font-family:var(--lush-sans); font-size:14px; width:100%;
-  transition:border-color .2s ease,box-shadow .2s ease;
+  font-family:var(--lush-ui); font-size:14px; width:100%;
+  transition:border-color .2s ease;
 }
 .lush-booking-fields input::placeholder,
 .lush-booking-textarea::placeholder { color:var(--lush-muted); }
 .lush-booking-fields input:focus,
-.lush-booking-textarea:focus { outline:0; border-color:var(--lush-pink); box-shadow:0 0 0 3px rgba(var(--lush-pink-rgb),0.18); }
+.lush-booking-textarea:focus { outline:0; border-color:var(--lush-pink); }
 .lush-booking-textarea { resize:vertical; }
 
 /* Phase 16 — custom questions on the Details step */
 .lush-booking-questions {
   display:grid; gap:14px;
   padding-top:14px; margin-top:6px;
-  border-top:1px solid rgba(255,255,255,0.08);
+  border-top:1px solid var(--lush-dark-border);
 }
 .lush-booking-question { display:flex; flex-direction:column; gap:4px; }
 .lush-booking-question > label { display:flex; flex-direction:column; gap:6px; }
 .lush-booking-question select {
   width:100%; padding:12px 14px;
-  background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.10);
-  color:var(--lush-text); font-family:var(--lush-sans); font-size:14px;
+  background:var(--lush-card); border:1px solid var(--lush-dark-border);
+  color:var(--lush-text); font-family:var(--lush-ui); font-size:14px;
   border-radius:6px;
 }
-.lush-booking-question select:focus { outline:0; border-color:var(--lush-pink); box-shadow:0 0 0 3px rgba(var(--lush-pink-rgb),0.18); }
+.lush-booking-question select:focus { outline:0; border-color:var(--lush-pink); }
 .lush-booking-question-hint { font-size:11px; color:var(--lush-muted); margin:0; }
 .lush-booking-checkbox-row {
   display:flex; align-items:center; gap:10px;
@@ -2377,7 +2384,7 @@ const LUSH_CSS = `
 .lush-booking-image-pick {
   display:inline-flex; align-items:center; gap:8px;
   align-self:flex-start; padding:10px 16px; border-radius:6px;
-  background:rgba(255,255,255,0.04); border:1px dashed rgba(255,255,255,0.20);
+  background:var(--lush-card); border:1px dashed var(--lush-dark-border);
   color:var(--lush-text); font-size:12px; cursor:pointer;
   transition:border-color .2s ease;
   letter-spacing:normal !important; text-transform:none !important; font-weight:500 !important;
@@ -2388,16 +2395,16 @@ const LUSH_CSS = `
 }
 .lush-booking-image-preview img {
   width:100%; height:auto; max-height:180px; object-fit:cover;
-  border-radius:6px; border:1px solid rgba(255,255,255,0.10);
+  border-radius:6px; border:1px solid var(--lush-dark-border);
 }
 .lush-booking-image-remove {
   position:absolute; top:6px; right:6px;
   width:24px; height:24px; border-radius:50%;
-  background:rgba(0,0,0,0.65); border:1px solid rgba(255,255,255,0.20);
+  background:rgba(14,17,17,0.85); border:1px solid var(--lush-dark-border);
   color:#fff; display:inline-flex; align-items:center; justify-content:center;
   cursor:pointer;
 }
-.lush-booking-image-err { font-size:11px; color:#ff8888; }
+.lush-booking-image-err { font-size:11px; color:#B91C1C; }
 .lush-spin { animation: lush-spin 1s linear infinite; }
 @keyframes lush-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
@@ -2406,58 +2413,57 @@ const LUSH_CSS = `
 .lush-booking-back,
 .lush-booking-next,
 .lush-booking-confirm-btn {
-  background:transparent; border:1px solid rgba(255,255,255,0.15);
+  background:transparent; border:1px solid var(--lush-dark-border);
   color:var(--lush-text); padding:13px 20px; border-radius:999px;
   font-size:11px; letter-spacing:0.16em; text-transform:uppercase;
   font-weight:600; cursor:pointer;
   display:inline-flex; gap:8px; align-items:center;
-  transition:all .25s ease; font-family:var(--lush-sans);
+  transition:all .25s ease; font-family:var(--lush-ui);
 }
-.lush-booking-back:hover { border-color:rgba(255,255,255,0.4); }
+.lush-booking-back:hover { border-color:var(--lush-text); }
 .lush-booking-next,
 .lush-booking-confirm-btn {
   background:var(--lush-pink); border-color:var(--lush-pink);
   color:var(--lush-on-pink);
-  box-shadow:0 0 18px rgba(var(--lush-pink-rgb),0.45);
 }
 .lush-booking-next:hover,
-.lush-booking-confirm-btn:hover { box-shadow:0 0 28px rgba(var(--lush-pink-rgb),0.65); transform:translateY(-1px); }
+.lush-booking-confirm-btn:hover { filter:brightness(1.06); transform:translateY(-1px); }
 .lush-booking-next:disabled,
 .lush-booking-confirm-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
 
 /* Confirm step */
 .lush-booking-confirm { display:flex; flex-direction:column; gap:18px; }
 .lush-booking-summary {
-  background:linear-gradient(180deg,rgba(var(--lush-pink-rgb),0.06),rgba(255,255,255,0.01));
-  border:1px solid rgba(var(--lush-pink-rgb),0.2); border-radius:8px; padding:18px;
+  background:var(--lush-card);
+  border:1px solid var(--lush-dark-border); border-radius:8px; padding:18px;
 }
 .lush-booking-summary dl { margin:0; display:flex; flex-direction:column; gap:8px; margin-top:12px; }
 .lush-booking-summary div {
   display:flex; justify-content:space-between; align-items:baseline; gap:12px;
-  padding-bottom:8px; border-bottom:1px dashed rgba(255,255,255,0.08);
+  padding-bottom:8px; border-bottom:1px dashed var(--lush-dark-border);
 }
 .lush-booking-summary div:last-child { border-bottom:0; padding-bottom:0; }
 .lush-booking-summary dt { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--lush-muted); margin:0; font-weight:600; }
-.lush-booking-summary dd { margin:0; font-family:var(--lush-sans); font-size:14px; color:var(--lush-text); text-align:right; }
-.lush-booking-total dt, .lush-booking-total dd { color:var(--lush-pink) !important; font-size:16px !important; text-shadow:0 0 10px rgba(var(--lush-pink-rgb),0.45); }
-.lush-booking-error { background:rgba(255,100,100,0.08); border:1px solid rgba(255,100,100,0.25); border-radius:6px; padding:12px 16px; font-size:13px; color:#ff8888; }
-.lush-booking-disclaimer { text-align:center; font-size:11px; color:rgba(255,255,255,0.35); margin-top:4px; }
+.lush-booking-summary dd { margin:0; font-family:var(--lush-ui); font-size:14px; color:var(--lush-text); text-align:right; }
+.lush-booking-total dt, .lush-booking-total dd { color:var(--lush-pink) !important; font-size:16px !important; }
+.lush-booking-error { background:#FEF2F2; border:1px solid #FECACA; border-radius:6px; padding:12px 16px; font-size:13px; color:#B91C1C; }
+.lush-booking-disclaimer { text-align:center; font-size:11px; color:var(--lush-muted); margin-top:4px; }
 
 /* Success */
 .lush-booking-success {
   text-align:center; padding:48px 24px; display:flex; flex-direction:column;
   align-items:center; gap:12px; max-width:500px; margin:0 auto;
 }
-.lush-booking-success-icon { font-size:48px; color:var(--lush-pink); text-shadow:var(--lush-glow); animation:tfrHeartPulse 2s ease-in-out infinite; }
-.lush-booking-success h3 { font-family:var(--lush-script); font-size:40px; font-weight:400; margin:0; text-shadow:var(--lush-text-glow); }
+.lush-booking-success-icon { font-size:48px; color:var(--lush-pink); }
+.lush-booking-success h3 { font-family:var(--lush-serif); font-size:clamp(28px,5vw,40px); font-weight:400; letter-spacing:-0.02em; margin:0; }
 .lush-booking-success-copy { font-size:15px; color:var(--lush-muted); line-height:1.55; margin:0; }
 .lush-booking-success-summary {
   display:flex; flex-wrap:wrap; justify-content:center; gap:8px;
-  background:rgba(var(--lush-pink-rgb),0.07); border:1px solid rgba(var(--lush-pink-rgb),0.2);
+  background:rgba(var(--lush-pink-rgb),0.07); border:1px solid var(--lush-dark-border);
   border-radius:8px; padding:12px 18px; font-size:14px; color:var(--lush-text);
 }
 .lush-booking-success-dot { color:var(--lush-pink); }
-.lush-booking-success-note { font-size:12px; color:rgba(255,255,255,0.35); margin:0; }
+.lush-booking-success-note { font-size:12px; color:var(--lush-muted); margin:0; }
 
 /* ── Gallery ── */
 .lush-gallery-section { width:100%; padding:0 0 clamp(64px,8vw,110px); background:var(--lush-bg); overflow:hidden; }
@@ -2465,73 +2471,72 @@ const LUSH_CSS = `
 .lush-gallery-group+.lush-gallery-group { padding-top:30px; }
 .lush-gallery-group h2 {
   margin:0 0 18px; color:var(--lush-text); text-align:center;
-  font-family:var(--lush-script); font-size:26px; line-height:1.1;
-  font-weight:400; text-shadow:var(--lush-text-glow);
+  font-family:var(--lush-serif); font-size:28px; line-height:1.05;
+  font-weight:400; letter-spacing:-0.02em;
   display:inline-flex; align-items:center; gap:12px; width:100%; justify-content:center;
 }
 .lush-gallery-group h2::before,.lush-gallery-group h2::after {
   content:""; flex:1; height:1px; max-width:60px;
-  background:linear-gradient(90deg,rgba(var(--lush-pink-rgb),0) 0%,rgba(var(--lush-pink-rgb),0.5) 50%,rgba(var(--lush-pink-rgb),0) 100%);
+  background:var(--lush-dark-border);
 }
 .lush-gallery-grid { display:grid; grid-template-columns:repeat(2,1fr); grid-auto-flow:dense; gap:12px; }
 .lush-gallery-img {
   position:relative; overflow:hidden; border-radius:10px;
-  border:1px solid rgba(255,255,255,0.06);
-  transition:border-color .25s ease,box-shadow .25s ease;
+  border:1px solid var(--lush-dark-border);
+  transition:border-color .25s ease;
 }
-.lush-gallery-img:hover { border-color:rgba(var(--lush-pink-rgb),0.4); box-shadow:0 6px 22px rgba(var(--lush-pink-rgb),0.18); }
+.lush-gallery-img:hover { border-color:var(--lush-pink); }
 .lush-gallery-img > img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .35s ease, filter .35s ease; }
-.lush-gallery-img:hover > img { transform:scale(1.04); filter:brightness(1.05); }
+.lush-gallery-img:hover > img { transform:scale(1.04); filter:brightness(1.03); }
 .lush-gallery-img--square { aspect-ratio:1/1; }
 .lush-gallery-img--tall   { aspect-ratio:160/200; }
 .lush-gallery-img--wide   { grid-column:1/-1; aspect-ratio:331/160; }
 .lush-gallery-placeholder {
   width:100%; height:100%; min-height:inherit;
-  background:linear-gradient(135deg,#1a1020 0%,#120d1a 50%,#1e1025 100%);
+  background:#ECE7DD;
   display:flex; align-items:center; justify-content:center;
 }
 .lush-gallery-placeholder span {
-  font-family:var(--lush-sans); font-size:11px; font-weight:600;
+  font-family:var(--lush-ui); font-size:11px; font-weight:600;
   letter-spacing:0.18em; text-transform:uppercase;
-  color:rgba(255,255,255,0.25);
+  color:var(--lush-muted);
 }
 
 /* ── Before & After ── */
 .lush-before-after-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:22px 0 70px; }
 .lush-results-heading { position:relative; height:105px; text-align:center; overflow:hidden; }
-.lush-results-backdrop { color:rgba(255,255,255,0.2); font-size:76px; font-family:var(--lush-serif); font-weight:400; line-height:1; letter-spacing:-0.04em; }
-.lush-results-heading h2 { margin:-50px 0 0; color:var(--lush-text); font-size:26px; font-family:var(--lush-script); font-weight:400; line-height:1.1; text-shadow:var(--lush-text-glow); }
+.lush-results-backdrop { color:rgba(14,17,17,0.08); font-size:76px; font-family:var(--lush-serif); font-weight:400; line-height:1; letter-spacing:-0.04em; }
+.lush-results-heading h2 { margin:-50px 0 0; color:var(--lush-text); font-size:32px; font-family:var(--lush-serif); font-weight:400; line-height:1.05; letter-spacing:-0.02em; }
 .lush-ba-stack { display:grid; gap:24px; padding:8px 0 0; }
 .lush-ba-bucket+.lush-ba-bucket { margin-top:36px; }
 .lush-ba-bucket-heading {
-  margin:18px 0 4px; font-family:var(--lush-display); font-size:32px; font-weight:800;
-  letter-spacing:-0.02em; color:var(--lush-fg); text-align:center; text-transform:uppercase;
+  margin:18px 0 4px; font-family:var(--lush-serif); font-size:28px; font-weight:400;
+  letter-spacing:-0.02em; color:var(--lush-text); text-align:center;
 }
 .lush-ba-pair { width:min(100%,350px); height:230px; margin:0 auto; position:relative; }
-.lush-ba-label { position:absolute; z-index:5; color:var(--lush-text); font-size:26px; font-family:var(--lush-script); font-weight:400; line-height:1.1; text-shadow:var(--lush-text-glow); pointer-events:none; }
+.lush-ba-label { position:absolute; z-index:5; color:var(--lush-text); font-size:22px; font-family:var(--lush-serif); font-weight:400; line-height:1.05; letter-spacing:-0.02em; pointer-events:none; }
 .lush-ba-label--before { left:58px; top:0; }
 .lush-ba-label--after  { right:50px; top:70px; }
 .lush-ba-card {
   width:162px; height:162px; position:absolute;
-  background:#1a1020; border:1px solid rgba(255,255,255,0.08);
+  background:#ECE7DD; border:1px solid var(--lush-dark-border);
   overflow:hidden; border-radius:8px;
-  transition:box-shadow .25s ease,border-color .25s ease,transform .35s ease;
+  transition:border-color .25s ease,transform .35s ease;
 }
-.lush-ba-card--before { left:22px; top:48px; transform:rotate(-6deg); z-index:1; border-color:rgba(255,255,255,0.18); }
+.lush-ba-card--before { left:22px; top:48px; transform:rotate(-6deg); z-index:1; border-color:var(--lush-dark-border); }
 .lush-ba-card--after {
   right:22px; top:92px; transform:rotate(9deg); z-index:2;
-  border-color:rgba(var(--lush-pink-rgb),0.45);
-  box-shadow:0 8px 26px rgba(var(--lush-pink-rgb),0.2),0 4px 12px rgba(0,0,0,0.4);
+  border-color:var(--lush-pink);
   appearance:none;
 }
-.lush-ba-card--after:hover { box-shadow:0 10px 32px rgba(var(--lush-pink-rgb),0.32),0 4px 12px rgba(0,0,0,0.4); }
-.lush-ba-placeholder { width:100%; height:100%; background:linear-gradient(135deg,#1a1020 0%,#2a0a1e 50%,#1a0a14 100%); }
+.lush-ba-card--after:hover { border-color:var(--lush-pink); }
+.lush-ba-placeholder { width:100%; height:100%; background:#ECE7DD; }
 .lush-ba-card > img { width:100%; height:100%; object-fit:cover; display:block; }
 img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filter .35s ease,transform .35s ease; }
 .lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filter .35s ease,transform .35s ease; }
 .lush-ba-card--after span {
   position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-  color:#fff; font-size:11px; font-family:var(--lush-sans); font-weight:600;
+  color:#fff; font-size:11px; font-family:var(--lush-ui); font-weight:600;
   letter-spacing:0.16em; text-transform:uppercase; text-align:center;
   background:rgba(14,17,17,0.35); z-index:3; pointer-events:none;
 }
@@ -2541,174 +2546,164 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 /* ── About ── */
 .lush-about-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:23px 20px 58px; }
 .lush-about-images { width:100%; height:264px; position:relative; margin-bottom:24px; }
-.lush-about-img { width:113px; height:246px; position:absolute; overflow:hidden; border-radius:6px; border:1px solid rgba(255,255,255,0.08); }
+.lush-about-img { width:113px; height:246px; position:absolute; overflow:hidden; border-radius:6px; border:1px solid var(--lush-dark-border); }
 .lush-about-img--one   { left:6px; top:8px; }
-.lush-about-img--two   { left:124px; top:18px; border-color:rgba(var(--lush-pink-rgb),0.35); box-shadow:0 6px 24px rgba(var(--lush-pink-rgb),0.2); }
+.lush-about-img--two   { left:124px; top:18px; border-color:var(--lush-pink); }
 .lush-about-img--three { left:242px; top:0; }
 .lush-about-img .lush-gallery-placeholder { height:100%; }
 .lush-about-img img { display:block; width:100%; height:100%; object-fit:cover; }
 .lush-about-heading-wrap { position:relative; text-align:center; margin-bottom:32px; }
-.lush-about-backdrop { color:rgba(255,255,255,0.18); font-size:80px; font-family:var(--lush-serif); font-weight:400; line-height:1; letter-spacing:-0.04em; }
-.lush-about-heading-wrap h2 { margin:-50px 0 0; color:var(--lush-text); font-size:26px; font-family:var(--lush-script); font-weight:400; line-height:1.1; text-shadow:var(--lush-text-glow); }
-.lush-about-copy { width:min(100%,344px); margin:0 auto; color:var(--lush-text); font-family:var(--lush-serif); font-size:16px; line-height:1.45; }
-.lush-about-copy p { margin:0 0 22px; padding:16px 0 0; border-top:1px solid rgba(var(--lush-pink-rgb),0.18); }
+.lush-about-backdrop { color:rgba(14,17,17,0.08); font-size:80px; font-family:var(--lush-serif); font-weight:400; line-height:1; letter-spacing:-0.04em; }
+.lush-about-heading-wrap h2 { margin:-50px 0 0; color:var(--lush-text); font-size:32px; font-family:var(--lush-serif); font-weight:400; line-height:1.05; letter-spacing:-0.02em; }
+.lush-about-copy { width:min(100%,344px); margin:0 auto; color:var(--lush-text); font-family:var(--lush-ui); font-size:15px; line-height:1.55; }
+.lush-about-copy p { margin:0 0 22px; padding:16px 0 0; border-top:1px solid var(--lush-dark-border); }
 .lush-about-copy p:first-of-type { border-top:0; padding-top:0; }
 .lush-about-copy span {
   display:inline-flex; align-items:center; gap:8px; color:var(--lush-pink);
-  font-family:var(--lush-sans); font-size:11px; font-weight:600;
+  font-family:var(--lush-ui); font-size:11px; font-weight:600;
   letter-spacing:0.22em; text-transform:uppercase; margin-bottom:12px;
 }
 .lush-about-copy span::before { content:""; width:18px; height:1px; background:var(--lush-pink); display:inline-block; }
-.lush-about-list { margin:0 0 22px; padding:16px 0 0; border-top:1px solid rgba(var(--lush-pink-rgb),0.18); }
+.lush-about-list { margin:0 0 22px; padding:16px 0 0; border-top:1px solid var(--lush-dark-border); }
 .lush-about-list span {
   display:inline-flex; align-items:center; gap:8px; color:var(--lush-pink);
-  font-family:var(--lush-sans); font-size:11px; font-weight:600;
+  font-family:var(--lush-ui); font-size:11px; font-weight:600;
   letter-spacing:0.22em; text-transform:uppercase; margin-bottom:12px;
 }
 .lush-about-list span::before { content:""; width:18px; height:1px; background:var(--lush-pink); display:inline-block; }
 .lush-about-list ul { margin:0; padding-left:0; list-style:none; }
-.lush-about-list li { position:relative; margin:0 0 12px; padding-left:22px; font-family:var(--lush-serif); font-size:15px; line-height:1.45; color:var(--lush-text); }
-.lush-about-list li::before { content:""; position:absolute; left:0; top:12px; width:12px; height:1px; background:var(--lush-pink); }
-.lush-about-list strong { display:block; color:var(--lush-text); font-weight:400; font-family:var(--lush-script); font-size:22px; line-height:1.1; margin-bottom:2px; text-shadow:0 0 6px rgba(var(--lush-pink-rgb),0.4); }
+.lush-about-list li { position:relative; margin:0 0 12px; padding-left:22px; font-family:var(--lush-ui); font-size:14px; line-height:1.55; color:var(--lush-text); }
+.lush-about-list li::before { content:""; position:absolute; left:0; top:10px; width:12px; height:1px; background:var(--lush-pink); }
+.lush-about-list strong { display:block; color:var(--lush-text); font-weight:400; font-family:var(--lush-serif); font-size:18px; line-height:1.1; letter-spacing:-0.02em; margin-bottom:2px; }
 
 /* ── Policy ── */
 .lush-policy-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:12px 14px 64px; }
 .lush-policy-heading { margin:0 0 20px; display:flex; align-items:flex-end; justify-content:center; gap:8px; }
-.lush-policy-heading span { color:var(--lush-text); font-size:26px; font-family:var(--lush-script); font-weight:400; line-height:1.6; text-shadow:var(--lush-text-glow); }
-.lush-policy-heading h2 { margin:0; color:var(--lush-text); font-size:clamp(58px,18vw,70px); font-family:var(--lush-serif); font-weight:400; line-height:0.95; letter-spacing:-0.055em; }
+.lush-policy-heading span { color:var(--lush-text); font-size:22px; font-family:var(--lush-serif); font-weight:400; line-height:1.2; letter-spacing:-0.02em; }
+.lush-policy-heading h2 { margin:0; color:var(--lush-text); font-size:clamp(48px,15vw,64px); font-family:var(--lush-serif); font-weight:400; line-height:0.95; letter-spacing:-0.04em; }
 .lush-policy-list { display:grid; gap:12px; }
 .lush-policy-custom-group { margin-top:36px; }
-/* Match the main policy h2's typography — DM Serif Text, no bold-display
-   weirdness, no all-caps. Smaller than the page-level h2 since it's a
-   sub-heading inside the section. */
 .lush-policy-custom-heading {
   margin:0 0 16px; font-family:var(--lush-serif); font-weight:400;
-  font-size:34px; letter-spacing:-0.03em; line-height:1.05;
+  font-size:28px; letter-spacing:-0.02em; line-height:1.05;
   color:var(--lush-text); text-align:center;
 }
 .lush-policy-card {
   position:relative; width:100%; min-height:160px; padding:22px 18px;
-  background:linear-gradient(180deg,rgba(255,255,255,0.025) 0%,rgba(255,255,255,0.01) 100%);
-  border:1px solid rgba(255,255,255,0.08); border-left:2px solid var(--lush-pink);
+  background:var(--lush-card);
+  border:1px solid var(--lush-dark-border); border-left:2px solid var(--lush-pink);
   border-radius:4px; overflow:hidden;
 }
-.lush-policy-card::before { content:""; position:absolute; left:0; top:0; right:0; height:1px; background:linear-gradient(90deg,rgba(var(--lush-pink-rgb),0.55),rgba(var(--lush-pink-rgb),0) 70%); }
-.lush-policy-card h3 { margin:0 0 14px; color:var(--lush-text); font-size:26px; font-family:var(--lush-script); font-weight:400; line-height:1.1; text-shadow:var(--lush-text-glow); }
-.lush-policy-copy { color:rgba(246,245,243,0.82); font-size:12.5px; font-family:var(--lush-sans); font-weight:400; line-height:1.55; }
+.lush-policy-card h3 { margin:0 0 14px; color:var(--lush-text); font-size:22px; font-family:var(--lush-serif); font-weight:400; line-height:1.05; letter-spacing:-0.02em; }
+.lush-policy-copy { color:var(--lush-text); font-size:13px; font-family:var(--lush-ui); font-weight:400; line-height:1.55; }
 
 /* ── Before appointment / Aftercare ── */
 .lush-before-appointment-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:28px 16px 60px; }
-.lush-before-appointment-section h2 { margin:0 0 38px; color:var(--lush-text); text-align:center; font-size:32px; font-family:var(--lush-script); font-weight:400; line-height:1.1; text-shadow:var(--lush-text-glow); }
+.lush-before-appointment-section h2 { margin:0 0 38px; color:var(--lush-text); text-align:center; font-size:32px; font-family:var(--lush-serif); font-weight:400; line-height:1.05; letter-spacing:-0.02em; }
 .lush-before-timeline { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:22px; position:relative; }
 .lush-before-timeline::before {
   content:""; position:absolute; left:22px; top:14px; bottom:14px; width:1px;
-  background:linear-gradient(180deg,rgba(var(--lush-pink-rgb),0) 0%,rgba(var(--lush-pink-rgb),0.55) 15%,rgba(var(--lush-pink-rgb),0.55) 85%,rgba(var(--lush-pink-rgb),0) 100%);
+  background:var(--lush-dark-border);
 }
 .lush-before-step { display:grid; grid-template-columns:46px 1fr; gap:14px; align-items:flex-start; }
-.lush-before-node { width:46px; height:46px; display:flex; align-items:center; justify-content:center; border-radius:999px; background:var(--lush-bg); border:1px solid rgba(var(--lush-pink-rgb),0.55); flex-shrink:0; }
-.lush-before-node-num { color:var(--lush-pink); font-family:var(--lush-sans); font-weight:600; font-size:14px; letter-spacing:0.08em; }
-.lush-before-step-body { padding:4px 4px 10px 6px; border-bottom:1px solid rgba(255,255,255,0.06); }
-.lush-before-step-body h3 { margin:0 0 8px; color:var(--lush-text); font-family:var(--lush-script); font-weight:400; font-size:26px; line-height:1.1; text-shadow:var(--lush-text-glow); }
-.lush-before-step-body p { margin:0; color:rgba(246,245,243,0.78); font-family:var(--lush-sans); font-size:12.5px; font-weight:400; line-height:1.5; }
-/* Phase 8 — optional shared kicker above each step's title. Same
-   typographic treatment as the aftercare card kicker so the two
-   sub-sections feel like siblings. */
+.lush-before-node { width:46px; height:46px; display:flex; align-items:center; justify-content:center; border-radius:999px; background:var(--lush-bg); border:1px solid var(--lush-pink); flex-shrink:0; }
+.lush-before-node-num { color:var(--lush-pink); font-family:var(--lush-ui); font-weight:600; font-size:14px; letter-spacing:0.08em; }
+.lush-before-step-body { padding:4px 4px 10px 6px; border-bottom:1px solid var(--lush-dark-border); }
+.lush-before-step-body h3 { margin:0 0 8px; color:var(--lush-text); font-family:var(--lush-serif); font-weight:400; font-size:22px; line-height:1.05; letter-spacing:-0.02em; }
+.lush-before-step-body p { margin:0; color:var(--lush-muted); font-family:var(--lush-ui); font-size:13px; font-weight:400; line-height:1.55; }
 .lush-before-step-kicker {
   display:block; margin-bottom:4px;
-  color:var(--lush-pink); font-family:var(--lush-sans);
+  color:var(--lush-pink); font-family:var(--lush-ui);
   font-size:10px; font-weight:600; letter-spacing:0.18em; text-transform:uppercase;
 }
 
 .lush-aftercare-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:28px 14px 60px; }
-.lush-aftercare-section h2 { margin:0 0 30px; color:var(--lush-text); text-align:center; font-size:32px; font-family:var(--lush-script); font-weight:400; line-height:1.1; text-shadow:var(--lush-text-glow); }
+.lush-aftercare-section h2 { margin:0 0 30px; color:var(--lush-text); text-align:center; font-size:32px; font-family:var(--lush-serif); font-weight:400; line-height:1.05; letter-spacing:-0.02em; }
 .lush-aftercare-list { display:grid; gap:18px; }
-.lush-aftercare-card { position:relative; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-left:2px solid var(--lush-pink); padding:16px 16px 18px; overflow:hidden; border-radius:4px; }
-.lush-aftercare-card::before { content:""; position:absolute; left:0; top:0; right:0; height:1px; background:linear-gradient(90deg,rgba(var(--lush-pink-rgb),0.6),rgba(var(--lush-pink-rgb),0) 70%); }
+.lush-aftercare-card { position:relative; background:var(--lush-card); border:1px solid var(--lush-dark-border); border-left:2px solid var(--lush-pink); padding:16px 16px 18px; overflow:hidden; border-radius:4px; }
 .lush-aftercare-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
 .lush-aftercare-dot { width:7px; height:7px; border-radius:999px; background:var(--lush-pink); display:inline-block; flex-shrink:0; }
-.lush-aftercare-index { color:var(--lush-pink); font-family:var(--lush-sans); font-size:11px; font-weight:600; letter-spacing:0.18em; text-transform:uppercase; }
-.lush-aftercare-card h3 { margin:0 0 8px; color:var(--lush-text); font-family:var(--lush-script); font-weight:400; font-size:26px; line-height:1.1; text-shadow:var(--lush-text-glow); }
-.lush-aftercare-card p { margin:0; color:rgba(246,245,243,0.78); font-family:var(--lush-sans); font-size:12.5px; font-weight:400; line-height:1.5; }
+.lush-aftercare-index { color:var(--lush-pink); font-family:var(--lush-ui); font-size:11px; font-weight:600; letter-spacing:0.18em; text-transform:uppercase; }
+.lush-aftercare-card h3 { margin:0 0 8px; color:var(--lush-text); font-family:var(--lush-serif); font-weight:400; font-size:22px; line-height:1.05; letter-spacing:-0.02em; }
+.lush-aftercare-card p { margin:0; color:var(--lush-muted); font-family:var(--lush-ui); font-size:13px; font-weight:400; line-height:1.55; }
 
 /* ── Contact cards ── */
 .lush-contact-card {
   display:flex; align-items:center; gap:14px; padding:16px 18px;
-  background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.07);
+  background:var(--lush-card); border:1px solid var(--lush-dark-border);
   border-left:2px solid var(--lush-pink); border-radius:4px;
-  text-decoration:none; color:var(--lush-text); transition:border-color .2s ease,box-shadow .2s ease;
+  text-decoration:none; color:var(--lush-text); transition:border-color .2s ease;
 }
-.lush-contact-card:hover { border-color:rgba(var(--lush-pink-rgb),0.45); box-shadow:0 4px 16px rgba(var(--lush-pink-rgb),0.15); }
+.lush-contact-card:hover { border-color:var(--lush-pink); }
 .lush-contact-icon { font-size:20px; flex-shrink:0; }
 .lush-contact-card div { display:flex; flex-direction:column; gap:3px; }
 .lush-contact-label { font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--lush-pink); font-weight:600; }
 .lush-contact-value { font-size:14px; color:var(--lush-text); }
 
-/* ── Thanks ── */
-/* FAQ — collapsible Q&A list */
+/* ── FAQ — collapsible Q&A list ── */
 .lush-faq-section { position:relative; width:100%; background:var(--lush-bg); padding:64px 22px 16px; }
 .lush-faq-inner { max-width:720px; margin:0 auto; color:var(--lush-text); }
-.lush-faq-heading { font-family:var(--lush-serif); font-size:clamp(32px,5vw,52px); font-weight:400; line-height:1.05; margin:0 0 24px; text-align:center; }
+.lush-faq-heading { font-family:var(--lush-serif); font-size:clamp(28px,5vw,40px); font-weight:400; line-height:1.05; letter-spacing:-0.02em; margin:0 0 24px; text-align:center; }
 .lush-faq-list { display:flex; flex-direction:column; gap:10px; }
-.lush-faq-item { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); padding:14px 18px; border-radius:6px; }
-.lush-faq-item > summary { cursor:pointer; font-family:var(--lush-sans); font-size:14px; font-weight:600; color:var(--lush-text); list-style:none; outline:none; }
+.lush-faq-item { background:var(--lush-card); border:1px solid var(--lush-dark-border); padding:14px 18px; border-radius:6px; }
+.lush-faq-item > summary { cursor:pointer; font-family:var(--lush-ui); font-size:14px; font-weight:600; color:var(--lush-text); list-style:none; outline:none; }
 .lush-faq-item > summary::-webkit-details-marker { display:none; }
 .lush-faq-item > summary::after { content:'+'; float:right; font-size:18px; line-height:1; color:var(--lush-pink); transition:transform 0.15s; }
 .lush-faq-item[open] > summary::after { content:'−'; }
-.lush-faq-item > p { margin:10px 0 0; font-family:var(--lush-sans); font-size:13px; line-height:1.6; color:rgba(255,255,255,0.78); }
+.lush-faq-item > p { margin:10px 0 0; font-family:var(--lush-ui); font-size:13px; line-height:1.6; color:var(--lush-muted); }
 
 /* Reviews — testimonial grid */
 .lush-reviews-section { position:relative; width:100%; background:var(--lush-bg); padding:48px 22px 24px; }
 .lush-reviews-inner { max-width:1080px; margin:0 auto; color:var(--lush-text); }
-.lush-reviews-heading { font-family:var(--lush-serif); font-size:clamp(32px,5vw,52px); font-weight:400; line-height:1.05; margin:0 0 24px; text-align:center; }
+.lush-reviews-heading { font-family:var(--lush-serif); font-size:clamp(28px,5vw,40px); font-weight:400; line-height:1.05; letter-spacing:-0.02em; margin:0 0 24px; text-align:center; }
 .lush-reviews-grid { display:grid; grid-template-columns:1fr; gap:14px; }
 @media (min-width:720px) { .lush-reviews-grid { grid-template-columns:repeat(2,1fr); } }
 @media (min-width:1080px) { .lush-reviews-grid { grid-template-columns:repeat(3,1fr); } }
-.lush-review-card { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); padding:18px; border-radius:6px; display:flex; flex-direction:column; gap:10px; }
-.lush-review-stars { color:var(--lush-pink); font-size:13px; letter-spacing:2px; text-shadow:0 0 8px rgba(var(--lush-pink-rgb),0.45); }
+.lush-review-card { background:var(--lush-card); border:1px solid var(--lush-dark-border); padding:18px; border-radius:6px; display:flex; flex-direction:column; gap:10px; }
+.lush-review-stars { color:var(--lush-pink); font-size:13px; letter-spacing:2px; }
 .lush-review-body { margin:0; font-family:var(--lush-serif); font-size:15px; line-height:1.55; color:var(--lush-text); font-style:italic; }
-.lush-review-author { margin:auto 0 0; font-family:var(--lush-sans); font-size:12px; font-weight:600; color:rgba(255,255,255,0.7); }
-.lush-review-loc { font-weight:400; color:rgba(255,255,255,0.5); }
+.lush-review-author { margin:auto 0 0; font-family:var(--lush-ui); font-size:12px; font-weight:600; color:var(--lush-muted); }
+.lush-review-loc { font-weight:400; color:var(--lush-muted); opacity:0.75; }
 
-.lush-thanks-section { position:relative; width:100%; background:var(--lush-bg); padding:80px 22px 88px; border-top:1px solid rgba(255,255,255,0.05); }
+.lush-thanks-section { position:relative; width:100%; background:var(--lush-bg); padding:80px 22px 88px; border-top:1px solid var(--lush-dark-border); }
 .lush-thanks-inner { max-width:720px; margin:0 auto; text-align:center; color:var(--lush-text); display:flex; flex-direction:column; align-items:center; gap:24px; }
-.lush-thanks-eyebrow { display:inline-block; font-family:var(--lush-sans); font-size:11px; font-weight:600; letter-spacing:0.24em; text-transform:uppercase; color:var(--lush-pink); text-shadow:0 0 12px rgba(var(--lush-pink-rgb),0.55); }
-.lush-thanks-inner h2 { font-family:var(--lush-serif); font-size:clamp(38px,6vw,72px); font-weight:400; line-height:1.05; margin:0; }
-.lush-thanks-inner em { font-family:var(--lush-script); font-style:normal; color:var(--lush-pink); font-size:1.15em; text-shadow:var(--lush-text-glow); }
-.lush-thanks-sig { display:inline-flex; align-items:center; gap:16px; font-family:var(--lush-script); font-size:28px; color:var(--lush-pink); text-shadow:var(--lush-text-glow); }
-.lush-thanks-sig em { font-style:normal; }
-.lush-thanks-line { width:56px; height:1px; background:linear-gradient(90deg,transparent,var(--lush-pink),transparent); box-shadow:0 0 8px rgba(var(--lush-pink-rgb),0.5); }
+.lush-thanks-eyebrow { display:inline-block; font-family:var(--lush-ui); font-size:11px; font-weight:600; letter-spacing:0.24em; text-transform:uppercase; color:var(--lush-pink); }
+.lush-thanks-inner h2 { font-family:var(--lush-serif); font-size:clamp(34px,6vw,56px); font-weight:400; line-height:1.05; letter-spacing:-0.02em; margin:0; }
+.lush-thanks-inner em { font-family:var(--lush-serif); font-style:italic; color:var(--lush-pink); font-size:1em; }
+.lush-thanks-sig { display:inline-flex; align-items:center; gap:16px; font-family:var(--lush-serif); font-size:20px; color:var(--lush-pink); }
+.lush-thanks-sig em { font-style:italic; }
+.lush-thanks-line { width:56px; height:1px; background:var(--lush-pink); opacity:0.5; }
 
 /* ── Footer ── */
-/* Footer: flat cream to match the page; hairline border for division.
-   Text color flips from white to the standard text color (near-black)
-   because we're now on a light bg. */
-.lush-footer { position:relative; width:100%; background:#F6F3EE; color:var(--lush-text); overflow:hidden; border-top:1px solid rgba(14,17,17,0.10); }
-.lush-footer-glow { position:absolute; top:-120px; left:50%; transform:translateX(-50%); width:520px; height:240px; background:radial-gradient(ellipse at center,rgba(var(--lush-pink-rgb),0.22),transparent 70%); pointer-events:none; }
+/* Footer: flat cream to match the page; hairline dark border for
+   division. All text is the standard near-black so it reads cleanly
+   on the cream bg (the FadeRoom #fff/#whites are invisible here). */
+.lush-footer { position:relative; width:100%; background:var(--lush-bg); color:var(--lush-text); overflow:hidden; border-top:1px solid var(--lush-dark-border); }
+.lush-footer-glow { display:none; }
 .lush-footer-inner { position:relative; width:100%; max-width:1180px; margin:0 auto; padding:56px 24px 32px; display:grid; grid-template-columns:1fr; gap:36px; }
 .lush-footer-brand { display:flex; flex-direction:column; gap:10px; }
 .lush-footer-mark { font-family:var(--lush-serif); font-size:36px; line-height:1; letter-spacing:-0.03em; margin:0; }
-.lush-footer-tag { margin:0; font-family:var(--lush-script); font-size:22px; color:var(--lush-pink); text-shadow:var(--lush-text-glow); }
-.lush-footer-blurb { margin:0; color:var(--lush-muted); font-family:var(--lush-sans); font-size:13px; line-height:1.55; }
+.lush-footer-tag { margin:0; font-family:var(--lush-serif); font-style:italic; font-size:18px; color:var(--lush-pink); }
+.lush-footer-blurb { margin:0; color:var(--lush-muted); font-family:var(--lush-ui); font-size:13px; line-height:1.55; }
 .lush-footer-col { display:flex; flex-direction:column; gap:10px; }
-.lush-footer-label { font-family:var(--lush-sans); font-size:10px; letter-spacing:0.22em; text-transform:uppercase; color:var(--lush-pink); font-weight:600; text-shadow:0 0 10px rgba(var(--lush-pink-rgb),0.4); margin-bottom:4px; }
-.lush-footer-item { display:inline-flex; align-items:center; gap:10px; color:#fff; font-family:var(--lush-sans); font-size:13px; line-height:1.4; transition:color .2s ease; }
-.lush-footer-item:hover { color:var(--lush-pink-soft); }
-.lush-footer-hour { display:flex; justify-content:space-between; gap:16px; font-family:var(--lush-sans); font-size:12px; color:#fff; padding-bottom:6px; border-bottom:1px dashed rgba(255,255,255,0.08); }
+.lush-footer-label { font-family:var(--lush-ui); font-size:10px; letter-spacing:0.22em; text-transform:uppercase; color:var(--lush-pink); font-weight:600; margin-bottom:4px; }
+.lush-footer-item { display:inline-flex; align-items:center; gap:10px; color:var(--lush-text); font-family:var(--lush-ui); font-size:13px; line-height:1.4; transition:color .2s ease; }
+.lush-footer-item:hover { color:var(--lush-pink); }
+.lush-footer-hour { display:flex; justify-content:space-between; gap:16px; font-family:var(--lush-ui); font-size:12px; color:var(--lush-text); padding-bottom:6px; border-bottom:1px dashed var(--lush-dark-border); }
 .lush-footer-hour:last-of-type { border-bottom:0; }
-.lush-footer-hour span:last-child { color:var(--lush-muted); font-family:var(--lush-mono); font-size:11px; }
-.lush-footer-bottom { position:relative; border-top:1px solid rgba(255,255,255,0.06); padding:18px 24px; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:10px; font-family:var(--lush-sans); font-size:11px; letter-spacing:0.08em; color:var(--lush-muted); }
+.lush-footer-hour span:last-child { color:var(--lush-muted); font-family:var(--lush-ui); font-size:11px; }
+.lush-footer-bottom { position:relative; border-top:1px solid var(--lush-dark-border); padding:18px 24px; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:10px; font-family:var(--lush-ui); font-size:11px; letter-spacing:0.08em; color:var(--lush-muted); }
 .lush-footer-bottom strong { color:var(--lush-pink); font-weight:600; }
 .lush-footer-dot { color:var(--lush-pink); opacity:0.5; font-size:6px; }
 
 /* ── Desktop ── */
 @media (min-width:1025px) {
-  .lush-header-section { min-height:auto; display:grid; grid-template-columns:1.05fr 1fr; align-items:stretch; padding:0; position:relative; }
-  .lush-header-cover { height:auto; min-height:640px; order:1; }
-  .lush-header-avatar { position:absolute; top:56px; left:56px; width:140px; height:140px; border-width:6px; box-shadow:none; transform:none; z-index:3; }
-  .lush-header-content { order:2; max-width:none; margin:0; padding:90px 72px 72px; text-align:left; display:flex; flex-direction:column; justify-content:center; }
-  .lush-header-buttons { width:100%; max-width:520px; margin:0; gap:12px; }
-  .lush-header-buttons > .lush-header-btn { flex:0 0 calc((100% - 12px) / 2); }
-  .lush-header-btn { min-height:62px; font-size:16px; border-radius:14px; }
+  /* Header at desktop: deferred to a future pass; mobile-first design
+     applies. Just give the cover a taller min-height so the photo
+     gets room to breathe on wider viewports. Content card stays
+     full-width and overlaps the cover (same as mobile). */
+  .lush-header-cover { min-height:560px; }
+  .lush-header-content { max-width:1180px; padding:48px 56px 56px; }
   .lush-tab-slider { justify-content:center; padding:8px 40px; gap:12px; }
   .lush-tab-pill { padding:22px 18px; font-size:12px; letter-spacing:0.2em; }
   .lush-tab-pill::after { left:18px; right:18px; height:2px; }
@@ -2769,13 +2764,11 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 
 /* ── Tablet ── */
 @media (min-width:641px) and (max-width:1024px) {
-  .lush-header-section { min-height:auto; }
-  .lush-header-cover { height:320px; min-height:320px; }
-  .lush-header-avatar { top:calc(320px - 95px); width:190px; height:190px; border-width:7px; box-shadow:none; }
-  .lush-header-content { padding:115px 40px 64px; max-width:720px; }
-  .lush-header-buttons { width:min(100%,560px); gap:10px; }
-  .lush-header-buttons > .lush-header-btn { flex:0 0 calc((100% - 20px) / 3); }
-  .lush-header-btn { min-height:54px; font-size:15px; }
+  /* Header at tablet: same mobile-first design, just slightly more
+     generous container padding. Buttons grid + circle sizing stays
+     uniform across breakpoints (5 × 44 px circles). */
+  .lush-header-cover { min-height:480px; }
+  .lush-header-content { padding:40px 40px 48px; max-width:760px; }
   .lush-tab-slider { padding:6px 28px; justify-content:center; gap:8px; }
   .lush-gallery-group, .lush-before-after-section, .lush-about-section, .lush-policy-section, .lush-before-appointment-section, .lush-aftercare-section { width:min(100%,720px); }
   .lush-gallery-grid { grid-template-columns:repeat(3,1fr); gap:14px; }
@@ -2787,16 +2780,12 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 
 /* ── Mobile ── */
 @media (max-width:640px) {
-  .lush-header-section { min-height:auto; position:static; display:flex; flex-direction:column; align-items:center; }
-  .lush-header-cover { height:205px; min-height:205px; order:1; width:100%; }
-  .lush-header-avatar { position:static; transform:translateY(-82px); width:165px; height:165px; border-width:5px; order:2; margin-bottom:-50px; box-shadow:none; }
-  .lush-avatar-initials { font-size:38px; }
-  .lush-header-content { order:3; padding:8px 22px 52px; text-align:center; width:100%; }
-  .lush-header-content h1 { font-size:clamp(28px,7vw,48px); }
-  .lush-header-content p { font-size:clamp(24px,6vw,38px); margin:4px 0 32px; }
-  .lush-header-buttons { width:min(100%,348px); max-width:none; gap:6px; margin:0 auto; }
-  .lush-header-buttons > .lush-header-btn { flex:0 0 calc((100% - 6px) / 2); }
-  .lush-header-btn { min-height:48px; height:48px; border-radius:10px; font-size:13px; padding-inline:8px; }
+  /* Mobile owns the canonical design. Header stays at 62vh cover +
+     overlapping content card defined above. No avatar overrides — the
+     avatar is gone from the JSX. Buttons are the same 5 × 44 px grid
+     defined in the base. */
+  .lush-header-section { min-height:auto; }
+  .lush-header-cover { min-height:420px; }
   .lush-tab-pill { padding:14px 12px; font-size:10px; letter-spacing:0.12em; }
   .lush-tab-pill::after { left:12px; right:12px; }
   .lush-booking-section { padding:28px 16px 56px; }
