@@ -175,6 +175,12 @@ export default function TheFadeRoomBooking({
   const [createAccount,   setCreateAccount]   = useState(false)
   const [accountPassword, setAccountPassword] = useState('')
 
+  // TCR-compliant SMS consent state for Step 4. Default unchecked —
+  // TCR requires explicit consent, never an implied one. The
+  // checkbox is hidden when the phone field is empty since there's
+  // nothing to consent to (no SMS can go out without a number).
+  const [smsConsent, setSmsConsent] = useState(false)
+
   // Flips true when the backend confirms it minted a new customer_users
   // row for this booking — drives the post-success verify-email card
   // and the "go to dashboard" CTA.
@@ -542,6 +548,13 @@ export default function TheFadeRoomBooking({
       if (! authedUser && createAccount && email.trim() && accountPassword.length >= 8) {
         payload.create_account   = true
         payload.account_password = accountPassword
+      }
+
+      // SMS consent — backend ignores the field when phone is empty,
+      // but we only set it client-side to match (avoids a "consented
+      // but no phone given" log row that's irrelevant for compliance).
+      if (smsConsent && phone.trim() !== '') {
+        payload.sms_consent = true
       }
       const res = await createPublicAppointment(slug, payload)
       if (res.customer_account_created) {
@@ -1301,6 +1314,25 @@ export default function TheFadeRoomBooking({
                 autoComplete="tel"
               />
             </label>
+
+            {/* SMS consent — only shown when a phone is provided.
+                Unchecked by default. Required for TCR compliance:
+                outbound appointment SMS only goes to customers who
+                have explicitly opted in PER booking. Consent is
+                never a condition of completing the booking. */}
+            {phone.trim() !== '' && (
+              <label className="tfr-booking-sms-consent">
+                <input
+                  type="checkbox"
+                  checked={smsConsent}
+                  onChange={e => setSmsConsent(e.target.checked)}
+                />
+                <span>
+                  Send me SMS reminders about my appointment. Msg &amp; data
+                  rates may apply. Reply STOP to unsubscribe.
+                </span>
+              </label>
+            )}
             <label className="tfr-booking-field">
               <span>Notes</span>
               <textarea

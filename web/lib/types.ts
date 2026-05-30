@@ -1165,6 +1165,13 @@ export interface PublicBookingPayload {
    *  an account (the user can sign in to claim it via the email CTA). */
   create_account?:   boolean
   account_password?: string
+
+  /** TCR-compliant SMS consent. When true AND customer_phone is set,
+   *  the backend stamps sms_consent_at + sms_consent_ip on the
+   *  appointment, and the SmsService gates outbound SMS for this
+   *  booking behind that consent. Consent is never required to
+   *  complete the booking — the box stays optional. */
+  sms_consent?:      boolean
 }
 
 export interface PublicBookingResponse {

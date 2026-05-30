@@ -201,6 +201,15 @@ class PublicBookingController extends Controller
             // the visitor explicitly opted in.
             'create_account'   => 'sometimes|boolean',
             'account_password' => 'required_if:create_account,true|string|min:8|max:255',
+            // TCR-compliant SMS consent. When true AND a phone was
+            // provided, we stamp sms_consent_at + sms_consent_ip on
+            // the appointment row so the SmsService can later gate
+            // outbound SMS to this appointment behind explicit
+            // per-booking consent (in addition to the global
+            // sms_optouts check). When false/absent, no SMS goes out
+            // for this booking. Consent is never a condition of
+            // booking — the booking itself goes through regardless.
+            'sms_consent'      => 'sometimes|boolean',
         ]);
 
         $serviceId = (int)    $validated['service_id'];
@@ -566,6 +575,21 @@ class PublicBookingController extends Controller
         }
         if ($questionAnswersJson !== null && Schema::hasColumn('appointments', 'question_answers')) {
             $insertData['question_answers'] = $questionAnswersJson;
+        }
+
+        // TCR-compliant SMS consent capture. Only stamp when the
+        // customer explicitly ticked the checkbox AND a phone was
+        // captured (an opted-in customer with no phone is no use).
+        // Guarded by Schema::hasColumn so a tenant whose DB hasn't
+        // received the consent migration yet still books cleanly.
+        $smsConsent = filter_var($validated['sms_consent'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        if ($smsConsent && ! empty($validated['customer_phone'])
+            && Schema::hasColumn('appointments', 'sms_consent_at')
+        ) {
+            $insertData['sms_consent_at'] = now();
+            if (Schema::hasColumn('appointments', 'sms_consent_ip')) {
+                $insertData['sms_consent_ip'] = $request->ip();
+            }
         }
 
         if ($appointmentsHasPaymentCols) {

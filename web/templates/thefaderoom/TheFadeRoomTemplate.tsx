@@ -2223,6 +2223,23 @@ const TFR_CSS = `
 
 .tfr-booking-fields { display:grid; gap:14px; }
 
+/* SMS consent row — small inline checkbox that sits below the Phone
+   field when populated. Smaller and less prominent than the account-
+   creation block above; this is regulatory plumbing, not a feature
+   nudge. Same .tfr-booking-field-defying scoping (no .tfr-booking-
+   field class) so the wrapper's column rule doesn't grab it. */
+.tfr-booking-sms-consent {
+  display:flex; align-items:flex-start; gap:9px;
+  margin-top:-4px; padding:8px 0;
+  cursor:pointer; user-select:none;
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  font-size:11px; line-height:1.45; color:#6B7280;
+}
+.tfr-booking-sms-consent > input[type="checkbox"] {
+  width:14px; height:14px; margin-top:2px; flex-shrink:0;
+  accent-color:#121212; cursor:pointer;
+}
+
 /* One standard identity field row (Name / Email / Phone / Notes).
    Scoped class instead of .tfr-booking-fields label so nested labels
    inside the create-account block (the checkbox row, the password
