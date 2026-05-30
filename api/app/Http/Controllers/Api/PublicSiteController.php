@@ -531,7 +531,21 @@ class PublicSiteController extends Controller
         }
 
         // ── Template settings + sections (graceful fallback if migrations not yet run) ──
+        //
+        // Read the actual stored slug — the previous code hardcoded the
+        // default and used it as a filter, so every tenant rendered the
+        // same template regardless of what was in their DB. We expect
+        // one template_settings row per tenant; if there are stragglers
+        // we take the most recently updated one as the source of truth.
         $templateSlug = TemplateDefaults::DEFAULT_TEMPLATE_SLUG;
+        if (Schema::hasTable('template_settings')) {
+            $storedSlug = DB::table('template_settings')
+                ->orderByDesc('updated_at')
+                ->value('template_slug');
+            if (! empty($storedSlug)) {
+                $templateSlug = (string) $storedSlug;
+            }
+        }
         $templateSettings = TemplateDefaults::settingsFor($templateSlug);
         $templateSections = [];
 
