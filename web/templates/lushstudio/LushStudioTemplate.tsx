@@ -1094,13 +1094,15 @@ function AboutPanel({
         <div className="lush-about-star" aria-hidden="true">
           <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
             <defs>
+              {/* Rounded 4-point spark — each tip has horizontal /
+                  vertical tangents on both sides (both control points
+                  share the tip's coordinate axis), so the four tips
+                  are SMOOTH ARCS instead of sharp points. The lobes
+                  between tips bulge convexly outward, leaving the
+                  masked image with plenty of room to show. Rotated
+                  35° so the points sit diagonally. */}
               <clipPath id="lush-about-star-clip" transform="rotate(35 50 50)">
-                {/* Wider, rounder 4-lobe spark — control points pushed
-                    OUTSIDE the line between cardinal tips (x+y > 100)
-                    so the curves bulge outward instead of dipping in
-                    toward center. Lobes fill more of the viewBox so
-                    the masked image actually shows through. */}
-                <path d="M50 6 C70 12 82 30 94 50 C82 70 70 88 50 94 C30 88 18 70 6 50 C18 30 30 12 50 6 Z" />
+                <path d="M50 10 C60 10 95 40 95 50 C95 60 60 90 50 90 C40 90 5 60 5 50 C5 40 40 10 50 10 Z" />
               </clipPath>
             </defs>
             {about?.images?.[0] ? (
@@ -1112,7 +1114,7 @@ function AboutPanel({
               />
             ) : (
               <path
-                d="M50 6 C70 12 82 30 94 50 C82 70 70 88 50 94 C30 88 18 70 6 50 C18 30 30 12 50 6 Z"
+                d="M50 10 C60 10 95 40 95 50 C95 60 60 90 50 90 C40 90 5 60 5 50 C5 40 40 10 50 10 Z"
                 fill="currentColor"
                 transform="rotate(35 50 50)"
               />
@@ -2733,7 +2735,7 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 .lush-about-list strong { display:block; color:var(--lush-text); font-weight:400; font-family:var(--lush-serif); font-size:18px; line-height:1.1; letter-spacing:-0.02em; margin-bottom:2px; }
 
 /* ── Policy ── */
-.lush-policy-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:12px 14px 64px; }
+.lush-policy-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:48px 14px 64px; }
 /* Policy heading is a Molle twin-line kicker pattern:
    small "Booking" kicker on top, big "Policies" heading underneath
    (translated up to close the gap). */
