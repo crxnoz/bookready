@@ -101,6 +101,9 @@
             <p style="margin:6px 0 0;font-size:11px;color:#9AA0A6;">
               Reply to this email if you need anything &mdash; we read every reply.
             </p>
+            <p style="margin:14px 0 0;font-size:10px;color:#9AA0A6;">
+              &copy; {{ date('Y') }} BookReady. Operated by DaysGraphic LLC.
+            </p>
           </td>
         </tr>
 

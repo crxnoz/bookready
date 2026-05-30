@@ -231,6 +231,9 @@ function CheckoutForm() {
               <p className="text-[10px] text-muted-text text-center mt-3">
                 Secure payment via Stripe · No setup fees
               </p>
+              <p className="text-[10px] text-muted-text text-center mt-1.5">
+                Subscription payments are processed by DaysGraphic LLC.
+              </p>
             </section>
 
             {/* Trust strip */}

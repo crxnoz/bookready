@@ -193,7 +193,7 @@ function RegisterForm() {
         </button>
 
         <p className="text-[10px] text-center text-muted-text">
-          By continuing, you agree to our{' '}
+          By creating an account, you agree to the{' '}
           <Link href="/terms" className="underline underline-offset-2 hover:text-near-black">
             Terms of Service
           </Link>{' '}
@@ -201,7 +201,7 @@ function RegisterForm() {
           <Link href="/privacy" className="underline underline-offset-2 hover:text-near-black">
             Privacy Policy
           </Link>
-          .
+          {' '}of DaysGraphic LLC.
         </p>
       </form>
 

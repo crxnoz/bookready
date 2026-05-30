@@ -241,7 +241,7 @@ function SiteFooter() {
           <div className="w-5 h-5 bg-near-black flex items-center justify-center flex-shrink-0">
             <img src="/logo.svg" alt="" className="w-3 h-3 invert" />
           </div>
-          <span>&copy; {new Date().getFullYear()} BookReady</span>
+          <span>&copy; {new Date().getFullYear()} BookReady. Operated by DaysGraphic LLC.</span>
         </div>
         <div className="flex flex-wrap gap-5">
           <Link href="/privacy" className="hover:text-near-black transition-colors">Privacy</Link>
