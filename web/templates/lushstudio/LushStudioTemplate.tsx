@@ -360,28 +360,36 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
               <p className="lush-header-subtype">{p?.business_type ?? p?.tagline}</p>
             )}
 
-            {/* Compact info rows: location + services. Each row is icon
-                + value; either is omitted gracefully if the data isn't
-                set so the layout doesn't break for sparse profiles. */}
+            {/* Compact info rows: location + services. The services row
+                prefers tenant-defined service_categories (a curated
+                short list); when none are set, it falls back to the
+                first few active service names so the row still has
+                useful content. Either row is omitted gracefully if
+                the data isn't set so sparse profiles don't break. */}
             {(() => {
               const locationText = [p?.city, p?.state].filter(Boolean).join(', ')
               const categoryNames = (site.service_categories ?? [])
                 .map(c => c?.name)
                 .filter((n): n is string => typeof n === 'string' && n.trim() !== '')
                 .slice(0, 4)
-              const servicesText = categoryNames.join(' • ')
+              const fallbackServiceNames = services
+                .map(s => s?.name)
+                .filter((n): n is string => typeof n === 'string' && n.trim() !== '')
+                .slice(0, 4)
+              const menuItems = categoryNames.length > 0 ? categoryNames : fallbackServiceNames
+              const servicesText = menuItems.join(' • ')
               if (! locationText && ! servicesText) return null
               return (
                 <div className="lush-header-info">
                   {locationText && (
                     <div className="lush-header-info-row">
-                      <MapPin size={13} aria-hidden="true" />
+                      <MapPin size={16} aria-hidden="true" />
                       <span>{locationText}</span>
                     </div>
                   )}
                   {servicesText && (
                     <div className="lush-header-info-row">
-                      <Sparkles size={13} aria-hidden="true" />
+                      <Sparkles size={16} aria-hidden="true" />
                       <span>{servicesText}</span>
                     </div>
                   )}
@@ -1663,11 +1671,11 @@ const LUSH_CSS = `
   .lush-auth-modal-body { padding:24px 20px 22px; }
 }
 /* ── Header cover ──
-   Taller backdrop image; flat soft-spa direction (no veil / pulsing
+   Compact backdrop image; flat soft-spa direction (no veil / pulsing
    heart). A gradient floor + drop-shadow give the cover real depth
    so the content card visibly sits ON TOP of it instead of touching. */
 .lush-header-cover {
-  width:100%; height:62vh; min-height:460px; position:relative;
+  width:100%; height:31vh; min-height:230px; position:relative;
   background:#F6F3EE;
   overflow:hidden;
 }
@@ -1677,7 +1685,7 @@ const LUSH_CSS = `
 /* Bottom-edge gradient on the cover photo for depth. Subtle — the
    real shadow comes from the content card's top edge below. */
 .lush-header-cover::after {
-  content:""; position:absolute; left:0; right:0; bottom:0; height:160px;
+  content:""; position:absolute; left:0; right:0; bottom:0; height:120px;
   background:linear-gradient(to bottom, transparent 0%, rgba(14,17,17,0.22) 100%);
   pointer-events:none; z-index:1;
 }
@@ -1702,11 +1710,11 @@ const LUSH_CSS = `
 .lush-header-content {
   position:relative; z-index:2;
   width:100%; margin:0 auto;
-  padding:36px 24px 40px;
+  padding:44px 30px 48px;
   text-align:left;
   background:var(--lush-bg);
-  border-radius:24px 24px 0 0;
-  margin-top:-44px;
+  border-radius:36px 36px 0 0;
+  margin-top:-48px;
   box-shadow:0 -14px 36px rgba(14,17,17,0.14);
 }
 .lush-header-content h1 {
@@ -1715,45 +1723,45 @@ const LUSH_CSS = `
   font-weight:400; letter-spacing:-0.02em;
 }
 .lush-header-subtype {
-  margin:8px 0 0;
+  margin:10px 0 0;
   font-family:var(--lush-ui); /* Roboto */
-  font-size:11px; font-weight:600;
-  letter-spacing:0.18em; text-transform:uppercase;
+  font-size:14px; font-weight:600;
+  letter-spacing:0.16em; text-transform:uppercase;
   color:var(--lush-muted);
 }
 .lush-header-info {
-  display:flex; flex-direction:column; align-items:flex-start; gap:6px;
-  margin:14px 0 0;
+  display:flex; flex-direction:column; align-items:flex-start; gap:8px;
+  margin:18px 0 0;
 }
 .lush-header-info-row {
-  display:inline-flex; align-items:center; gap:8px;
+  display:inline-flex; align-items:center; gap:10px;
   font-family:var(--lush-ui); /* Roboto */
-  font-size:13px; line-height:1.3;
-  color:var(--lush-muted);
+  font-size:16px; line-height:1.3; font-weight:400;
+  color:var(--lush-text);
 }
 .lush-header-info-row > svg {
   color:var(--lush-pink); flex-shrink:0;
 }
 
 /* ── Header buttons ──
-   Grid: 5 columns of 44px circles. Every button is the same shape
-   (including Book), so the visual rhythm is consistent. Wraps to a
-   second row if more than 5 are enabled. Justify-start anchors the
-   group to the left edge of the content card. */
+   Grid: 5 columns of 50px circles. Every button is the same shape
+   (including Book), so the visual rhythm is consistent. Centered
+   under the info rows. Wraps to a second row if more than 5 are
+   enabled. */
 .lush-header-buttons {
   display:grid;
-  grid-template-columns:repeat(5, 44px);
-  gap:12px;
-  margin-top:24px;
-  justify-content:flex-start;
+  grid-template-columns:repeat(5, 50px);
+  gap:14px;
+  margin-top:28px;
+  justify-content:center;
 }
 
-/* Base button: 44px solid circle. The text label inside (a <span>)
+/* Base button: 50px solid circle. The text label inside (a <span>)
    is hidden for sighted users but kept in the DOM for screen readers. */
 .lush-header-btn {
   position:relative;
   display:inline-flex; align-items:center; justify-content:center;
-  width:44px; height:44px; padding:0;
+  width:50px; height:50px; padding:0;
   border-radius:50%;
   color:#FFFFFF;
   border:none; cursor:pointer; text-decoration:none;
@@ -2699,11 +2707,11 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 /* ── Desktop ── */
 @media (min-width:1025px) {
   /* Header at desktop: deferred to a future pass; mobile-first design
-     applies. Just give the cover a taller min-height so the photo
-     gets room to breathe on wider viewports. Content card stays
-     full-width and overlaps the cover (same as mobile). */
-  .lush-header-cover { min-height:560px; }
-  .lush-header-content { max-width:1180px; padding:48px 56px 56px; }
+     applies. Slightly taller cover so the photo gets room to breathe
+     on wider viewports. Content card stays full-width and overlaps
+     the cover (same as mobile). */
+  .lush-header-cover { min-height:300px; }
+  .lush-header-content { max-width:1180px; padding:56px 64px 64px; }
   .lush-tab-slider { justify-content:center; padding:8px 40px; gap:12px; }
   .lush-tab-pill { padding:22px 18px; font-size:12px; letter-spacing:0.2em; }
   .lush-tab-pill::after { left:18px; right:18px; height:2px; }
@@ -2766,9 +2774,9 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 @media (min-width:641px) and (max-width:1024px) {
   /* Header at tablet: same mobile-first design, just slightly more
      generous container padding. Buttons grid + circle sizing stays
-     uniform across breakpoints (5 × 44 px circles). */
-  .lush-header-cover { min-height:480px; }
-  .lush-header-content { padding:40px 40px 48px; max-width:760px; }
+     uniform across breakpoints (5 × 50 px circles). */
+  .lush-header-cover { min-height:260px; }
+  .lush-header-content { padding:48px 44px 52px; max-width:760px; }
   .lush-tab-slider { padding:6px 28px; justify-content:center; gap:8px; }
   .lush-gallery-group, .lush-before-after-section, .lush-about-section, .lush-policy-section, .lush-before-appointment-section, .lush-aftercare-section { width:min(100%,720px); }
   .lush-gallery-grid { grid-template-columns:repeat(3,1fr); gap:14px; }
@@ -2780,12 +2788,10 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 
 /* ── Mobile ── */
 @media (max-width:640px) {
-  /* Mobile owns the canonical design. Header stays at 62vh cover +
-     overlapping content card defined above. No avatar overrides — the
-     avatar is gone from the JSX. Buttons are the same 5 × 44 px grid
-     defined in the base. */
+  /* Mobile owns the canonical design. Header is a compact 31vh / 230px
+     cover with the overlapping content card defined above. Buttons
+     are the same centered 5 × 50 px grid defined in the base. */
   .lush-header-section { min-height:auto; }
-  .lush-header-cover { min-height:420px; }
   .lush-tab-pill { padding:14px 12px; font-size:10px; letter-spacing:0.12em; }
   .lush-tab-pill::after { left:12px; right:12px; }
   .lush-booking-section { padding:28px 16px 56px; }
