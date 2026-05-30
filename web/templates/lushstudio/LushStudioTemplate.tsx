@@ -968,8 +968,8 @@ function ResultsPanel({
     return (
       <section className="lush-before-after-section">
         <div className="lush-results-heading">
-          <h2>Amazing</h2>
           <div className="lush-results-backdrop">results</div>
+          <h2>Amazing</h2>
         </div>
         {buckets.map(b => {
           const block = (
@@ -1177,8 +1177,8 @@ function PoliciesPanel({ policies }: { policies: PublicSite['policies'] }) {
   return (
     <section className="lush-policy-section">
       <div className="lush-policy-heading">
-        <span>Booking</span>
         <h2>Policies</h2>
+        <span>Booking</span>
       </div>
       <div className="lush-policy-list">
         {activeReal.length > 0
@@ -1875,8 +1875,9 @@ const LUSH_CSS = `
   color:var(--lush-pink); margin-bottom:8px;
 }
 .lush-booking-head h2 {
-  font-family:var(--lush-serif); font-size:clamp(32px,6vw,52px);
-  font-weight:400; line-height:1.05; letter-spacing:-0.02em; margin:0 0 22px;
+  font-family:var(--lush-script); font-size:clamp(48px,9vw,64px);
+  font-weight:400; line-height:1; letter-spacing:0; margin:0 0 22px;
+  color:var(--lush-text);
 }
 /* Compact dot-timeline: small numbered circles connected by thin lines
    with a single caption underneath ("Step 3 of 5 · Date & Time"). */
@@ -2504,32 +2505,62 @@ const LUSH_CSS = `
 .lush-gallery-group { width:min(100%,396px); margin:0 auto; padding:22px 30px 0; }
 .lush-gallery-group+.lush-gallery-group { padding-top:30px; }
 .lush-gallery-group h2 {
-  margin:0 0 18px; color:var(--lush-text); text-align:center;
-  font-family:var(--lush-serif); font-size:28px; line-height:1.05;
-  font-weight:400; letter-spacing:-0.02em;
+  margin:0 0 22px; color:var(--lush-text); text-align:center;
+  font-family:var(--lush-script); font-size:42px; line-height:1;
+  font-weight:400; letter-spacing:0;
   display:inline-flex; align-items:center; gap:12px; width:100%; justify-content:center;
 }
 .lush-gallery-group h2::before,.lush-gallery-group h2::after {
   content:""; flex:1; height:1px; max-width:60px;
   background:var(--lush-dark-border);
 }
-.lush-gallery-grid { display:grid; grid-template-columns:repeat(2,1fr); grid-auto-flow:dense; gap:12px; }
-.lush-gallery-img {
-  position:relative; overflow:hidden; border-radius:10px;
-  border:1px solid var(--lush-dark-border);
-  transition:border-color .25s ease;
+.lush-gallery-grid {
+  display:grid; grid-template-columns:repeat(2,1fr); grid-auto-flow:dense;
+  gap:28px 18px;
+  padding:10px 4px;
 }
-.lush-gallery-img:hover { border-color:var(--lush-pink); }
-.lush-gallery-img > img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .35s ease, filter .35s ease; }
-.lush-gallery-img:hover > img { transform:scale(1.04); filter:brightness(1.03); }
-.lush-gallery-img--square { aspect-ratio:1/1; }
-.lush-gallery-img--tall   { aspect-ratio:160/200; }
-.lush-gallery-img--wide   { grid-column:1/-1; aspect-ratio:331/160; }
+/* ── Polaroid gallery item ──
+   Each tile is a casually-placed polaroid: white border-frame, a
+   thicker strip at the bottom (the caption area), a soft drop
+   shadow, and a gentle rotation that alternates with nth-child so
+   the wall of prints feels hand-arranged. Hover straightens the
+   tile and lifts the shadow. Aspect-ratio lives on the inner img
+   (not the wrapper) so the polaroid hugs the image cleanly. */
+.lush-gallery-img {
+  position:relative;
+  background:#FFFFFF;
+  padding:8px 8px 30px;
+  border:none;
+  border-radius:2px;
+  box-shadow:0 6px 18px rgba(14,17,17,0.12);
+  overflow:visible;
+  transition:transform .35s ease, box-shadow .35s ease;
+}
+.lush-gallery-img:nth-child(odd)  { transform:rotate(-2.5deg); }
+.lush-gallery-img:nth-child(even) { transform:rotate(2deg); }
+.lush-gallery-img:nth-child(3n)   { transform:rotate(-1deg); }
+.lush-gallery-img:nth-child(5n)   { transform:rotate(1.5deg); }
+.lush-gallery-img:hover {
+  transform:rotate(0);
+  box-shadow:0 10px 24px rgba(14,17,17,0.18);
+  z-index:2;
+}
+.lush-gallery-img > img {
+  width:100%; display:block; object-fit:cover;
+}
+.lush-gallery-img--square > img { aspect-ratio:1/1; }
+.lush-gallery-img--tall   > img { aspect-ratio:160/200; }
+.lush-gallery-img--wide   { grid-column:1/-1; }
+.lush-gallery-img--wide   > img { aspect-ratio:331/160; }
 .lush-gallery-placeholder {
-  width:100%; height:100%; min-height:inherit;
+  width:100%;
   background:#ECE7DD;
   display:flex; align-items:center; justify-content:center;
+  min-height:auto;
 }
+.lush-gallery-img--square .lush-gallery-placeholder { aspect-ratio:1/1; }
+.lush-gallery-img--tall   .lush-gallery-placeholder { aspect-ratio:160/200; }
+.lush-gallery-img--wide   .lush-gallery-placeholder { aspect-ratio:331/160; }
 .lush-gallery-placeholder span {
   font-family:var(--lush-ui); font-size:11px; font-weight:600;
   letter-spacing:0.18em; text-transform:uppercase;
@@ -2538,34 +2569,35 @@ const LUSH_CSS = `
 
 /* ── Before & After ── */
 .lush-before-after-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:32px 0 70px; }
-/* "Amazing" + "results" headings are both Molle italic in highlight
-   color with a hard sharp shadow (no blur). The two lines sit one
-   ABOVE the other — they used to overlap with negative margin, but
-   now they're a normal column flow so both read independently. */
+/* "results" + "Amazing" are both Molle italic in highlight-color sage
+   with a hard sharp shadow (no blur). Big word on TOP (~72px), small
+   word below (~40px) translated up so they sit close — almost
+   stacked but not overlapping. Same treatment shared with About +
+   Policy via .lush-molle-heading (see below). */
 .lush-results-heading {
   position:relative; text-align:center;
   display:flex; flex-direction:column; align-items:center;
-  gap:6px; padding:0 16px 12px;
-}
-.lush-results-heading h2 {
-  margin:0;
-  font-family:var(--lush-molle); font-style:italic; font-weight:400;
-  font-size:46px; line-height:1;
-  color:var(--lush-pink);
-  text-shadow:3px 3px 0 rgba(14,17,17,0.18);
+  padding:0 16px 12px;
 }
 .lush-results-backdrop {
   margin:0;
   font-family:var(--lush-molle); font-style:italic; font-weight:400;
-  font-size:84px; line-height:1; letter-spacing:-0.01em;
+  font-size:clamp(60px,15vw,80px); line-height:1; letter-spacing:-0.01em;
   color:var(--lush-pink);
   text-shadow:5px 5px 0 rgba(14,17,17,0.18);
+}
+.lush-results-heading h2 {
+  margin:-14px 0 0;
+  font-family:var(--lush-molle); font-style:italic; font-weight:400;
+  font-size:clamp(28px,7vw,40px); line-height:1;
+  color:var(--lush-pink);
+  text-shadow:3px 3px 0 rgba(14,17,17,0.18);
 }
 .lush-ba-stack { display:grid; gap:24px; padding:8px 0 0; }
 .lush-ba-bucket+.lush-ba-bucket { margin-top:36px; }
 .lush-ba-bucket-heading {
-  margin:18px 0 4px; font-family:var(--lush-serif); font-size:28px; font-weight:400;
-  letter-spacing:-0.02em; color:var(--lush-text); text-align:center;
+  margin:18px 0 4px; font-family:var(--lush-script); font-size:42px; font-weight:400;
+  letter-spacing:0; color:var(--lush-text); text-align:center; line-height:1;
 }
 .lush-ba-pair { width:min(100%,350px); height:230px; margin:0 auto; position:relative; }
 .lush-ba-label { position:absolute; z-index:5; color:var(--lush-text); font-size:22px; font-family:var(--lush-serif); font-weight:400; line-height:1.05; letter-spacing:-0.02em; pointer-events:none; }
@@ -2606,9 +2638,29 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 .lush-about-img--three { left:242px; top:0; }
 .lush-about-img .lush-gallery-placeholder { height:100%; }
 .lush-about-img img { display:block; width:100%; height:100%; object-fit:cover; }
-.lush-about-heading-wrap { position:relative; text-align:center; margin-bottom:32px; }
-.lush-about-backdrop { color:rgba(14,17,17,0.08); font-size:80px; font-family:var(--lush-serif); font-weight:400; line-height:1; letter-spacing:-0.04em; }
-.lush-about-heading-wrap h2 { margin:-50px 0 0; color:var(--lush-text); font-size:32px; font-family:var(--lush-serif); font-weight:400; line-height:1.05; letter-spacing:-0.02em; }
+/* About heading uses the same Molle twin-line treatment as Before/
+   After: big eyebrow word on top, the longer heading sentence
+   underneath in the smaller size. Translated up so the two lines
+   read as a single unit. */
+.lush-about-heading-wrap {
+  position:relative; text-align:center;
+  display:flex; flex-direction:column; align-items:center;
+  margin-bottom:32px;
+}
+.lush-about-backdrop {
+  margin:0;
+  font-family:var(--lush-molle); font-style:italic; font-weight:400;
+  font-size:clamp(60px,15vw,80px); line-height:1; letter-spacing:-0.01em;
+  color:var(--lush-pink);
+  text-shadow:5px 5px 0 rgba(14,17,17,0.18);
+}
+.lush-about-heading-wrap h2 {
+  margin:-14px 0 0;
+  font-family:var(--lush-molle); font-style:italic; font-weight:400;
+  font-size:clamp(28px,7vw,40px); line-height:1.05;
+  color:var(--lush-pink);
+  text-shadow:3px 3px 0 rgba(14,17,17,0.18);
+}
 .lush-about-copy { width:min(100%,344px); margin:0 auto; color:var(--lush-text); font-family:var(--lush-ui); font-size:15px; line-height:1.55; }
 .lush-about-copy p { margin:0 0 22px; padding:16px 0 0; border-top:1px solid var(--lush-dark-border); }
 .lush-about-copy p:first-of-type { border-top:0; padding-top:0; }
@@ -2632,9 +2684,27 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 
 /* ── Policy ── */
 .lush-policy-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:12px 14px 64px; }
-.lush-policy-heading { margin:0 0 20px; display:flex; align-items:flex-end; justify-content:center; gap:8px; }
-.lush-policy-heading span { color:var(--lush-text); font-size:22px; font-family:var(--lush-serif); font-weight:400; line-height:1.2; letter-spacing:-0.02em; }
-.lush-policy-heading h2 { margin:0; color:var(--lush-text); font-size:clamp(48px,15vw,64px); font-family:var(--lush-serif); font-weight:400; line-height:0.95; letter-spacing:-0.04em; }
+/* Policy heading uses the same Molle twin-line treatment:
+   big "Policies" on top, small "Booking" underneath. */
+.lush-policy-heading {
+  margin:0 0 24px;
+  display:flex; flex-direction:column; align-items:center;
+  text-align:center;
+}
+.lush-policy-heading h2 {
+  margin:0;
+  font-family:var(--lush-molle); font-style:italic; font-weight:400;
+  font-size:clamp(60px,15vw,80px); line-height:1; letter-spacing:-0.01em;
+  color:var(--lush-pink);
+  text-shadow:5px 5px 0 rgba(14,17,17,0.18);
+}
+.lush-policy-heading span {
+  margin:-14px 0 0;
+  font-family:var(--lush-molle); font-style:italic; font-weight:400;
+  font-size:clamp(28px,7vw,40px); line-height:1;
+  color:var(--lush-pink);
+  text-shadow:3px 3px 0 rgba(14,17,17,0.18);
+}
 .lush-policy-list { display:grid; gap:12px; }
 .lush-policy-custom-group { margin-top:36px; }
 .lush-policy-custom-heading {
@@ -2653,7 +2723,7 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 
 /* ── Before appointment / Aftercare ── */
 .lush-before-appointment-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:28px 16px 60px; }
-.lush-before-appointment-section h2 { margin:0 0 38px; color:var(--lush-text); text-align:center; font-size:32px; font-family:var(--lush-serif); font-weight:400; line-height:1.05; letter-spacing:-0.02em; }
+.lush-before-appointment-section h2 { margin:0 0 38px; color:var(--lush-text); text-align:center; font-size:clamp(40px,9vw,52px); font-family:var(--lush-script); font-weight:400; line-height:1; letter-spacing:0; }
 .lush-before-timeline { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:22px; position:relative; }
 .lush-before-timeline::before {
   content:""; position:absolute; left:22px; top:14px; bottom:14px; width:1px;
@@ -2672,7 +2742,7 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 }
 
 .lush-aftercare-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:28px 14px 60px; }
-.lush-aftercare-section h2 { margin:0 0 30px; color:var(--lush-text); text-align:center; font-size:32px; font-family:var(--lush-serif); font-weight:400; line-height:1.05; letter-spacing:-0.02em; }
+.lush-aftercare-section h2 { margin:0 0 30px; color:var(--lush-text); text-align:center; font-size:clamp(42px,10vw,56px); font-family:var(--lush-script); font-weight:400; line-height:1; letter-spacing:0; }
 .lush-aftercare-list { display:grid; gap:18px; }
 .lush-aftercare-card { position:relative; background:var(--lush-card); border:1px solid var(--lush-dark-border); border-left:2px solid var(--lush-pink); padding:16px 16px 18px; overflow:hidden; border-radius:4px; }
 .lush-aftercare-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
@@ -2697,7 +2767,7 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 /* ── FAQ — collapsible Q&A list ── */
 .lush-faq-section { position:relative; width:100%; background:var(--lush-bg); padding:64px 22px 16px; }
 .lush-faq-inner { max-width:720px; margin:0 auto; color:var(--lush-text); }
-.lush-faq-heading { font-family:var(--lush-serif); font-size:clamp(28px,5vw,40px); font-weight:400; line-height:1.05; letter-spacing:-0.02em; margin:0 0 24px; text-align:center; }
+.lush-faq-heading { font-family:var(--lush-script); font-size:clamp(42px,8vw,56px); font-weight:400; line-height:1; letter-spacing:0; margin:0 0 24px; text-align:center; color:var(--lush-text); }
 .lush-faq-list { display:flex; flex-direction:column; gap:10px; }
 .lush-faq-item { background:var(--lush-card); border:1px solid var(--lush-dark-border); padding:14px 18px; border-radius:6px; }
 .lush-faq-item > summary { cursor:pointer; font-family:var(--lush-ui); font-size:14px; font-weight:600; color:var(--lush-text); list-style:none; outline:none; }
@@ -2709,7 +2779,7 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 /* Reviews — testimonial grid */
 .lush-reviews-section { position:relative; width:100%; background:var(--lush-bg); padding:48px 22px 24px; }
 .lush-reviews-inner { max-width:1080px; margin:0 auto; color:var(--lush-text); }
-.lush-reviews-heading { font-family:var(--lush-serif); font-size:clamp(28px,5vw,40px); font-weight:400; line-height:1.05; letter-spacing:-0.02em; margin:0 0 24px; text-align:center; }
+.lush-reviews-heading { font-family:var(--lush-script); font-size:clamp(42px,8vw,56px); font-weight:400; line-height:1; letter-spacing:0; margin:0 0 24px; text-align:center; color:var(--lush-text); }
 .lush-reviews-grid { display:grid; grid-template-columns:1fr; gap:14px; }
 @media (min-width:720px) { .lush-reviews-grid { grid-template-columns:repeat(2,1fr); } }
 @media (min-width:1080px) { .lush-reviews-grid { grid-template-columns:repeat(3,1fr); } }
@@ -2765,14 +2835,15 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
   .lush-gallery-section { padding:0 40px 96px; }
   .lush-gallery-group { padding:56px 0 0; }
   .lush-gallery-group+.lush-gallery-group { padding-top:56px; }
-  .lush-gallery-group h2 { font-size:58px; margin:0 0 34px; text-align:left; }
-  .lush-gallery-grid { grid-template-columns:repeat(4,1fr); gap:16px; }
-  .lush-gallery-img--tall { aspect-ratio:1/1.25; }
-  .lush-gallery-img--wide { grid-column:span 2; aspect-ratio:2/1; }
+  .lush-gallery-group h2 { font-size:64px; margin:0 0 34px; }
+  .lush-gallery-grid { grid-template-columns:repeat(4,1fr); gap:32px 22px; }
+  .lush-gallery-img--tall > img { aspect-ratio:1/1.25; }
+  .lush-gallery-img--wide { grid-column:span 2; }
+  .lush-gallery-img--wide > img { aspect-ratio:2/1; }
   .lush-before-after-section { padding:74px 40px 110px; }
-  .lush-results-heading { gap:10px; padding:0 0 24px; }
-  .lush-results-backdrop { font-size:clamp(120px,11vw,160px); text-shadow:7px 7px 0 rgba(14,17,17,0.18); }
-  .lush-results-heading h2 { font-size:clamp(56px,5vw,72px); text-shadow:5px 5px 0 rgba(14,17,17,0.18); }
+  .lush-results-heading { padding:0 0 32px; }
+  .lush-results-backdrop { font-size:clamp(96px,10vw,140px); text-shadow:7px 7px 0 rgba(14,17,17,0.18); }
+  .lush-results-heading h2 { font-size:clamp(48px,5vw,68px); text-shadow:5px 5px 0 rgba(14,17,17,0.18); margin-top:-20px; }
   .lush-ba-stack { grid-template-columns:repeat(3,minmax(0,1fr)); gap:36px; padding:30px 0 0; }
   .lush-ba-pair { max-width:380px; height:340px; }
   .lush-ba-label { font-size:38px; }
@@ -2785,20 +2856,20 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
   .lush-about-img--one   { left:0; top:20px; }
   .lush-about-img--two   { left:34.5%; top:44px; }
   .lush-about-img--three { left:69%; top:0; }
-  .lush-about-heading-wrap { text-align:left; margin-bottom:34px; }
-  .lush-about-backdrop { font-size:clamp(100px,9vw,150px); }
-  .lush-about-heading-wrap h2 { font-size:62px; margin-top:-60px; }
-  .lush-about-copy { max-width:none; font-size:20px; line-height:1.45; }
+  .lush-about-heading-wrap { margin-bottom:34px; align-items:center; }
+  .lush-about-backdrop { font-size:clamp(96px,10vw,140px); text-shadow:7px 7px 0 rgba(14,17,17,0.18); }
+  .lush-about-heading-wrap h2 { font-size:clamp(48px,5vw,68px); text-shadow:5px 5px 0 rgba(14,17,17,0.18); margin-top:-20px; }
+  .lush-about-copy { max-width:none; font-size:18px; line-height:1.55; }
   .lush-policy-section { padding:70px 40px 110px; }
-  .lush-policy-heading { justify-content:flex-start; gap:18px; }
-  .lush-policy-heading span { font-size:58px; line-height:1.2; }
-  .lush-policy-heading h2 { font-size:clamp(110px,10vw,160px); }
+  .lush-policy-heading { align-items:center; margin-bottom:34px; }
+  .lush-policy-heading h2 { font-size:clamp(96px,10vw,140px); text-shadow:7px 7px 0 rgba(14,17,17,0.18); }
+  .lush-policy-heading span { font-size:clamp(48px,5vw,68px); text-shadow:5px 5px 0 rgba(14,17,17,0.18); margin-top:-20px; }
   .lush-policy-list { grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; align-items:stretch; }
   .lush-policy-card { min-height:320px; padding:24px 24px 28px; display:flex; flex-direction:column; }
-  .lush-policy-card h3 { font-size:40px; margin-bottom:26px; }
+  .lush-policy-card h3 { font-size:32px; margin-bottom:18px; }
   .lush-policy-copy { font-size:15px; line-height:1.55; }
   .lush-before-appointment-section, .lush-aftercare-section { padding:74px 40px 110px; }
-  .lush-before-appointment-section h2, .lush-aftercare-section h2 { font-size:70px; margin-bottom:58px; text-align:left; }
+  .lush-before-appointment-section h2, .lush-aftercare-section h2 { font-size:84px; margin-bottom:58px; }
   .lush-before-timeline { max-width:880px; margin:0 auto; gap:36px; }
   .lush-before-timeline::before { left:33px; }
   .lush-before-step { grid-template-columns:70px 1fr; gap:28px; }
