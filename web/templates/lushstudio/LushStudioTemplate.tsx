@@ -1095,7 +1095,12 @@ function AboutPanel({
           <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
             <defs>
               <clipPath id="lush-about-star-clip" transform="rotate(35 50 50)">
-                <path d="M50 6 C55 38 62 45 94 50 C62 55 55 62 50 94 C45 62 38 55 6 50 C38 45 45 38 50 6 Z" />
+                {/* Wider, rounder 4-lobe spark — control points pushed
+                    OUTSIDE the line between cardinal tips (x+y > 100)
+                    so the curves bulge outward instead of dipping in
+                    toward center. Lobes fill more of the viewBox so
+                    the masked image actually shows through. */}
+                <path d="M50 6 C70 12 82 30 94 50 C82 70 70 88 50 94 C30 88 18 70 6 50 C18 30 30 12 50 6 Z" />
               </clipPath>
             </defs>
             {about?.images?.[0] ? (
@@ -1107,7 +1112,7 @@ function AboutPanel({
               />
             ) : (
               <path
-                d="M50 6 C55 38 62 45 94 50 C62 55 55 62 50 94 C45 62 38 55 6 50 C38 45 45 38 50 6 Z"
+                d="M50 6 C70 12 82 30 94 50 C82 70 70 88 50 94 C30 88 18 70 6 50 C18 30 30 12 50 6 Z"
                 fill="currentColor"
                 transform="rotate(35 50 50)"
               />
@@ -2649,7 +2654,7 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 .lush-ba-card--after.is-revealed span { display:none; }
 
 /* ── About ── */
-.lush-about-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:32px 20px 58px; }
+.lush-about-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:14px 20px 58px; }
 
 /* About hero: a rounded 4-point star window that masks the about
    image into the spark shape, with the heading wrap stacked BELOW
@@ -2658,7 +2663,7 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
    falls back to a solid sage fill (rendered server-side). */
 .lush-about-hero {
   display:flex; flex-direction:column; align-items:center;
-  padding:24px 16px 28px;
+  padding:6px 16px 24px;
   margin-bottom:24px;
 }
 .lush-about-star {
