@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import {
   Heart, Phone, Mail, Instagram, MapPin, Dot, CalendarCheck,
-  MessageSquare, Youtube, Facebook,
+  MessageSquare, Youtube, Facebook, Sparkles, Navigation,
 } from 'lucide-react'
 
 // Brand glyphs that lucide doesn't ship.
@@ -120,6 +120,7 @@ function safeContactHref(raw: string | null | undefined, fallback: 'tel' | 'mail
 
 interface Profile {
   business_name?: string | null
+  business_type?: string | null
   tagline?: string | null
   public_phone?: string | null
   public_email?: string | null
@@ -299,24 +300,42 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
               // eslint-disable-next-line @next/next/no-img-element
               <img src={header.cover_image_url} alt="" />
             )}
-            <div className="lush-cover-veil" aria-hidden="true" />
-            <div className="lush-cover-heart" aria-hidden="true"><Heart size={22} fill="currentColor" /></div>
-          </div>
-
-          <div className="lush-header-avatar">
-            <span className="lush-avatar-ring" aria-hidden="true" />
-            <span className="lush-avatar-heart" aria-hidden="true"><Heart size={14} fill="currentColor" /></span>
-            {header.avatar_image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={header.avatar_image_url} alt={displayName} />
-            ) : (
-              <div className="lush-avatar-initials">{initials(displayName)}</div>
-            )}
           </div>
 
           <div className="lush-header-content">
             <h1>{displayName}</h1>
-            {p?.tagline && <p>{p.tagline}</p>}
+            {(p?.business_type || p?.tagline) && (
+              <p className="lush-header-subtype">{p?.business_type ?? p?.tagline}</p>
+            )}
+
+            {/* Compact info rows: location + services. Each row is icon
+                + value; either is omitted gracefully if the data isn't
+                set so the layout doesn't break for sparse profiles. */}
+            {(() => {
+              const locationText = [p?.city, p?.state].filter(Boolean).join(', ')
+              const categoryNames = (site.service_categories ?? [])
+                .map(c => c?.name)
+                .filter((n): n is string => typeof n === 'string' && n.trim() !== '')
+                .slice(0, 4)
+              const servicesText = categoryNames.join(' • ')
+              if (! locationText && ! servicesText) return null
+              return (
+                <div className="lush-header-info">
+                  {locationText && (
+                    <div className="lush-header-info-row">
+                      <MapPin size={13} aria-hidden="true" />
+                      <span>{locationText}</span>
+                    </div>
+                  )}
+                  {servicesText && (
+                    <div className="lush-header-info-row">
+                      <Sparkles size={13} aria-hidden="true" />
+                      <span>{servicesText}</span>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             <div className="lush-header-buttons">
               {header.show_book_button && (() => {
@@ -1383,12 +1402,12 @@ const LUSH_CSS = `
 .lush-announce::after  { right:0; background:linear-gradient(-90deg,#F6F3EE,transparent); }
 .lush-announce-track {
   display:inline-flex; align-items:center; gap:20px; padding:10px 0;
-  white-space:nowrap; animation:tfrMarquee 42s linear infinite;
-  color:#fff; font-family:var(--lush-sans); font-size:11px;
+  white-space:nowrap; animation:lushMarquee 42s linear infinite;
+  color:var(--lush-text); font-family:var(--lush-sans); font-size:11px;
   letter-spacing:0.14em; text-transform:uppercase; font-weight:600;
 }
-.lush-announce-sep { color:var(--lush-pink); opacity:0.6; font-size:8px; }
-@keyframes tfrMarquee { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+.lush-announce-sep { color:var(--lush-pink); opacity:0.8; font-size:8px; }
+@keyframes lushMarquee { from{transform:translateX(0)} to{transform:translateX(-50%)} }
 @media (prefers-reduced-motion:reduce) { .lush-announce-track { animation:none; } }
 
 /* ── Header ── */
@@ -1591,23 +1610,21 @@ const LUSH_CSS = `
   .lush-auth-modal-brand { padding:13px 18px; }
   .lush-auth-modal-body { padding:24px 20px 22px; }
 }
+/* Lush Studio header cover — taller on mobile so the content card
+   has room to overlap it with the rounded top corners + soft depth.
+   No veil / dark overlay / pulsing heart — those were FadeRoom's
+   busy-on-photo aesthetic; spa direction stays calm. */
 .lush-header-cover {
-  width:100%; height:42vh; min-height:320px; position:relative;
-  /* Flat cream — flat colors only per the soft-spa direction. */
+  width:100%; height:54vh; min-height:380px; position:relative;
   background:#F6F3EE;
   overflow:hidden;
 }
-.lush-cover-veil {
-  position:absolute; inset:0; pointer-events:none;
-  background:linear-gradient(180deg,rgba(14,11,16,0) 45%,rgba(14,11,16,0.85) 100%),
-             radial-gradient(120% 80% at 50% 0%,rgba(var(--lush-pink-rgb),0.18),transparent 60%);
+.lush-header-cover > img {
+  width:100%; height:100%; object-fit:cover; display:block;
 }
-.lush-cover-heart {
-  position:absolute; top:22px; right:22px;
-  color:var(--lush-pink); display:inline-flex; align-items:center; justify-content:center;
-  filter:drop-shadow(0 0 8px rgba(var(--lush-pink-rgb),0.85)) drop-shadow(0 0 16px rgba(var(--lush-pink-rgb),0.5));
-  animation:tfrHeartPulse 2.4s ease-in-out infinite;
-}
+/* Veil + heart legacy elements — kept null so any residual JSX from
+   future refactors doesn't crash, but invisible. */
+.lush-cover-veil, .lush-cover-heart { display:none; }
 .lush-header-avatar {
   width:clamp(165px,16vw,250px); height:clamp(165px,16vw,250px);
   position:absolute;
@@ -1649,53 +1666,109 @@ const LUSH_CSS = `
   0%,100% { transform:scale(1); filter:drop-shadow(0 0 6px rgba(var(--lush-pink-rgb),0.7)); }
   50%      { transform:scale(1.12); filter:drop-shadow(0 0 14px rgba(var(--lush-pink-rgb),0.95)); }
 }
+/* Header content card — sits on top of the cover photo with the
+   top corners rounded + translated up so the cover peeks above it.
+   Soft top-edge shadow gives depth without being neon. Solid cream
+   bg so the content reads cleanly on whatever cover image is below. */
 .lush-header-content {
-  width:min(100%,1040px); margin:0 auto;
-  padding:clamp(100px,11vw,150px) 32px 72px;
+  position:relative; z-index:2;
+  width:100%; margin:0 auto;
+  padding:36px 24px 40px;
   text-align:center;
+  background:var(--lush-bg);
+  border-radius:24px 24px 0 0;
+  margin-top:-32px;
+  box-shadow:0 -6px 24px rgba(14,17,17,0.06);
 }
 .lush-header-content h1 {
   margin:0; color:var(--lush-text); font-family:var(--lush-serif);
-  font-size:clamp(48px,7vw,104px); line-height:0.95; font-weight:400; letter-spacing:-0.045em;
+  font-size:clamp(32px,7vw,52px); line-height:1.05; font-weight:400; letter-spacing:-0.02em;
 }
-.lush-header-content p {
-  margin:12px 0 clamp(24px,3vw,38px); color:var(--lush-text);
-  font-family:var(--lush-script); font-size:clamp(36px,5.5vw,72px);
-  line-height:1.0; font-weight:400; text-shadow:var(--lush-text-glow);
+.lush-header-subtype {
+  margin:8px 0 0;
+  font-family:var(--lush-sans);
+  font-size:11px; font-weight:600;
+  letter-spacing:0.18em; text-transform:uppercase;
+  color:var(--lush-muted);
 }
+.lush-header-info {
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  margin:14px 0 0;
+}
+.lush-header-info-row {
+  display:inline-flex; align-items:center; gap:8px;
+  font-family:var(--lush-sans);
+  font-size:13px; line-height:1.3;
+  color:var(--lush-muted);
+}
+.lush-header-info-row > svg {
+  color:var(--lush-pink); flex-shrink:0;
+}
+
 .lush-header-buttons {
   width:min(100%,880px); margin:0 auto;
   display:flex; flex-wrap:wrap; justify-content:center; gap:10px;
   align-items:stretch;
 }
-/* When there's no tagline <p> between the H1 and the button row, the
-   buttons sit flush against the name. Fall back to a margin equivalent
-   to the missing tagline's bottom-margin so spacing stays consistent. */
-.lush-header-content h1 + .lush-header-buttons { margin-top: clamp(24px, 3vw, 38px); }
-.lush-header-buttons > .lush-header-btn { flex:0 0 calc((100% - 40px) / 5); }
-/* Hide call button on devices with a precise pointer (desktops, laptops). */
-@media (hover:hover) and (pointer:fine) {
-  .lush-header-btn-mobile-only { display:none !important; }
+/* Header buttons row. Centered, wraps as needed. Book is a pill
+   (CTA) — the rest are circular icon-only chips. */
+.lush-header-buttons {
+  display:flex; flex-wrap:wrap; justify-content:center; align-items:center;
+  gap:12px; margin-top:22px;
 }
+.lush-header-content h1 + .lush-header-buttons { margin-top:22px; }
+
+/* Base button reset. The .lush-header-btn:not(.lush-header-btn-book)
+   override below turns the non-Book ones into circles. */
 .lush-header-btn {
-  width:100%; min-width:0; min-height:56px; padding:0 14px;
   display:inline-flex; align-items:center; justify-content:center; gap:8px;
-  color:var(--lush-text); border-radius:12px;
-  border:1px solid var(--lush-dark-border);
-  font-family:var(--lush-ui); font-size:15px; font-weight:500; line-height:1;
-  transition:transform .18s ease,filter .18s ease; cursor:pointer;
+  color:var(--lush-on-pink);
+  border:none; cursor:pointer; text-decoration:none;
+  font-family:var(--lush-sans); font-size:14px; font-weight:600; line-height:1;
+  transition:transform .15s ease, filter .15s ease;
+  -webkit-tap-highlight-color:transparent; touch-action:manipulation;
 }
 @media (hover:hover) and (pointer:fine) {
-  .lush-header-btn:hover { filter:brightness(1.1); transform:translateY(-2px); }
+  .lush-header-btn:hover { transform:translateY(-1px); filter:brightness(1.06); }
 }
-.lush-header-btn:active { filter:brightness(1.05); transform:translateY(-1px); }
-.lush-header-btn { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+.lush-header-btn:active { transform:translateY(0); filter:brightness(1.0); }
 .lush-header-btn[aria-disabled] { opacity:0.5; cursor:default; transform:none !important; }
-.lush-header-btn span:first-child { font-size:18px; }
-.lush-header-btn-book       { background:var(--lush-pink); color:var(--lush-on-pink); box-shadow:0 0 18px rgba(var(--lush-pink-rgb),0.4); }
-.lush-header-btn-call       { background:linear-gradient(45deg,#A281FF 0%,#FF9CD7 100%); }
-.lush-header-btn-chat       { background:linear-gradient(45deg,#FF987E 0%,#FF7EAC 100%); }
-.lush-header-btn-message    { background:linear-gradient(45deg,#5B6CFF 0%,#9CC3FF 100%); }
+
+/* Book is the sole pill CTA — sage bg, white text + icon, sharp-ish
+   radius for spa polish. No glow, no shadow (soft-spa flat rule). */
+.lush-header-btn-book {
+  background:var(--lush-pink); color:var(--lush-on-pink);
+  padding:14px 26px; border-radius:999px;
+  font-size:14px; letter-spacing:0.04em;
+}
+.lush-header-btn-book svg { color:#FFFFFF; }
+
+/* Every non-Book button = perfect icon circle. The text label inside
+   each (a <span>) is hidden but kept in the DOM for accessibility. */
+.lush-header-btn:not(.lush-header-btn-book) {
+  width:48px; height:48px; padding:0;
+  border-radius:50%;
+  gap:0;
+}
+.lush-header-btn:not(.lush-header-btn-book) > span {
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); border:0;
+}
+.lush-header-btn:not(.lush-header-btn-book) svg {
+  color:#FFFFFF !important; stroke:#FFFFFF;
+}
+
+/* Call / Email / Message: flat sage solids (highlight color),
+   replacing the FadeRoom multi-color gradients. */
+.lush-header-btn-call,
+.lush-header-btn-chat,
+.lush-header-btn-message {
+  background:var(--lush-pink) !important;
+}
+
+/* The remaining contact + social buttons keep their brand gradients
+   per the brief — Directions and the platform-recognizable IG / TikTok
+   / YT / FB / Pinterest / WhatsApp colors stay. */
 .lush-header-btn-directions { background:linear-gradient(45deg,#34D399 0%,#60A5FA 100%); }
 .lush-header-btn-tiktok     { background:linear-gradient(45deg,#EA5F96 36%,#2FC2BF 100%); }
 .lush-header-btn-youtube    { background:linear-gradient(45deg,#FB3354 49%,#FE879C 100%); }
@@ -1704,11 +1777,14 @@ const LUSH_CSS = `
 .lush-header-btn-pinterest  { background:linear-gradient(45deg,#E60023 0%,#FF6E80 100%); }
 .lush-header-btn-whatsapp   { background:linear-gradient(45deg,#25D366 0%,#A4F4C5 100%); }
 
-/* ── Floating hearts ── */
-.lush-floating-heart { position:absolute; color:var(--lush-pink); pointer-events:none; z-index:1; display:inline-flex; filter:drop-shadow(0 0 8px rgba(var(--lush-pink-rgb),0.85)) drop-shadow(0 0 16px rgba(var(--lush-pink-rgb),0.5)); animation:tfrFloat 6s ease-in-out infinite; }
-.lush-fh-1 { top:18%; left:6%; font-size:14px; opacity:0.85; animation-delay:-1s; }
-.lush-fh-2 { top:30%; right:8%; font-size:18px; opacity:0.9; animation-delay:-3s; }
-.lush-fh-3 { bottom:14%; left:12%; font-size:12px; opacity:0.75; animation-delay:-5s; }
+/* Show the call/email/message buttons on every screen size — the
+   FadeRoom rule that hides them on hover-capable pointers doesn't
+   apply for the spa direction. */
+.lush-header-btn-mobile-only { display:inline-flex !important; }
+
+/* Floating hearts: hide everywhere for the spa direction. They were
+   FadeRoom-era playful decoration; spa stays calm. */
+.lush-floating-heart { display:none; }
 @keyframes tfrFloat { 0%,100% { transform:translateY(0) rotate(-6deg); } 50% { transform:translateY(-10px) rotate(6deg); } }
 
 /* ── Tabs ── */
