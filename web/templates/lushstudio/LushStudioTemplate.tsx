@@ -248,7 +248,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
   // glows scale correctly. Unknown / missing → fall back to Lush's default pink.
   const accentHex = site.template?.settings.theme?.accent_color ?? null
   const accentRgb = hexToRgbTriplet(accentHex) ?? '255, 61, 190'
-  const accentHexResolved = accentHex ?? '#FF3DBE'
+  const accentHexResolved = accentHex ?? '#7FAF9A'
   // On a light accent (currently only the "white" preset), the default
   // white-on-pink button text becomes invisible. Pick a readable
   // foreground based on the perceived luminance of the chosen accent.
@@ -1330,23 +1330,30 @@ const LUSH_CSS = `
 
 /* ── Tokens scoped to template root ── */
 .lush-template {
-  --lush-bg:          #0E1111;
-  --lush-card:        #202020;
-  --lush-text:        #FFFFFF;
-  --lush-muted:       #9CA3AF;
-  --lush-pink:        #FF3DBE;
+  /* Lush Studio palette (soft spa). Cream page, near-black text,
+     muted sage accent. Var names retain "pink" for now to avoid a
+     full rename sweep — they're sage values internally. */
+  --lush-bg:          #F6F3EE;
+  --lush-card:        #FFFFFF;
+  --lush-text:        #0E1111;
+  --lush-muted:       #6B7280;
+  --lush-pink:        #7FAF9A;
   /* Comma-separated RGB triplet for the same accent. Used by every
      rgba(var(--lush-pink-rgb), opacity) glow so swapping accents
      propagates everywhere via a single override on .lush-template. */
-  --lush-pink-rgb:    255, 61, 190;
+  --lush-pink-rgb:    127, 175, 154;
   /* Foreground color rendered ON TOP of a solid --lush-pink background.
      Default is white (legible on every preset except white itself);
      the editor flips this to dark when the white accent is picked. */
   --lush-on-pink:     #FFFFFF;
-  --lush-pink-soft:   #FFA2CC;
-  --lush-dark-border: #292835;
-  --lush-glow:        0 0 10px rgba(var(--lush-pink-rgb),0.95),0 0 22px rgba(var(--lush-pink-rgb),0.55),0 0 40px rgba(var(--lush-pink-rgb),0.25);
-  --lush-text-glow:   0 0 4px rgba(var(--lush-pink-rgb),1),0 0 10px rgba(var(--lush-pink-rgb),0.95),0 0 22px rgba(var(--lush-pink-rgb),0.7),0 0 38px rgba(var(--lush-pink-rgb),0.45);
+  --lush-pink-soft:   #B3D0C2;
+  --lush-dark-border: rgba(14,17,17,0.10);
+  /* Glow effects intentionally removed for the soft-spa direction —
+     spa visual language is calm + flat, not luminous. The vars stay
+     so the existing references still resolve; they just render as
+     "no shadow". */
+  --lush-glow:        none;
+  --lush-text-glow:   none;
   --lush-script:      "Dancing Script", cursive;
   --lush-serif:       "DM Serif Text", serif;
   --lush-sans:        "DM Sans", sans-serif;
@@ -1364,14 +1371,16 @@ const LUSH_CSS = `
 /* ── Announcement bar ── */
 .lush-announce {
   width: 100%; overflow: hidden; position: relative;
-  background: linear-gradient(90deg,rgba(var(--lush-pink-rgb),0.18),rgba(14,17,17,0.95) 35%,rgba(14,17,17,0.95) 65%,rgba(var(--lush-pink-rgb),0.18));
-  border-bottom: 1px solid rgba(var(--lush-pink-rgb),0.25);
+  /* Flat sage tint on cream — flat colors only per the soft-spa
+     direction. No multi-stop gradient. */
+  background: rgba(var(--lush-pink-rgb),0.08);
+  border-bottom: 1px solid rgba(var(--lush-pink-rgb),0.20);
 }
 .lush-announce::before, .lush-announce::after {
   content:""; position:absolute; top:0; bottom:0; width:60px; z-index:2; pointer-events:none;
 }
-.lush-announce::before { left:0; background:linear-gradient(90deg,#0E1111,transparent); }
-.lush-announce::after  { right:0; background:linear-gradient(-90deg,#0E1111,transparent); }
+.lush-announce::before { left:0; background:linear-gradient(90deg,#F6F3EE,transparent); }
+.lush-announce::after  { right:0; background:linear-gradient(-90deg,#F6F3EE,transparent); }
 .lush-announce-track {
   display:inline-flex; align-items:center; gap:20px; padding:10px 0;
   white-space:nowrap; animation:tfrMarquee 42s linear infinite;
@@ -1584,7 +1593,8 @@ const LUSH_CSS = `
 }
 .lush-header-cover {
   width:100%; height:42vh; min-height:320px; position:relative;
-  background:linear-gradient(135deg,#170810 0%,#0E1111 40%,#1a0a2a 70%,#0E1111 100%);
+  /* Flat cream — flat colors only per the soft-spa direction. */
+  background:#F6F3EE;
   overflow:hidden;
 }
 .lush-cover-veil {
@@ -2593,7 +2603,10 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 .lush-thanks-line { width:56px; height:1px; background:linear-gradient(90deg,transparent,var(--lush-pink),transparent); box-shadow:0 0 8px rgba(var(--lush-pink-rgb),0.5); }
 
 /* ── Footer ── */
-.lush-footer { position:relative; width:100%; background:linear-gradient(180deg,#0E1111 0%,#170810 100%); color:#fff; overflow:hidden; border-top:1px solid rgba(var(--lush-pink-rgb),0.18); }
+/* Footer: flat cream to match the page; hairline border for division.
+   Text color flips from white to the standard text color (near-black)
+   because we're now on a light bg. */
+.lush-footer { position:relative; width:100%; background:#F6F3EE; color:var(--lush-text); overflow:hidden; border-top:1px solid rgba(14,17,17,0.10); }
 .lush-footer-glow { position:absolute; top:-120px; left:50%; transform:translateX(-50%); width:520px; height:240px; background:radial-gradient(ellipse at center,rgba(var(--lush-pink-rgb),0.22),transparent 70%); pointer-events:none; }
 .lush-footer-inner { position:relative; width:100%; max-width:1180px; margin:0 auto; padding:56px 24px 32px; display:grid; grid-template-columns:1fr; gap:36px; }
 .lush-footer-brand { display:flex; flex-direction:column; gap:10px; }
