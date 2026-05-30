@@ -318,7 +318,11 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
   // editor; we resolve it to an RGB triplet here so the rgba(var(--lush-pink-rgb),…)
   // glows scale correctly. Unknown / missing → fall back to Lush's default pink.
   const accentHex = site.template?.settings.theme?.accent_color ?? null
-  const accentRgb = hexToRgbTriplet(accentHex) ?? '255, 61, 190'
+  // Fallback triplet must match the default --lush-pink (sage). It used
+  // to be the FadeRoom hot-pink (255,61,190), which leaked through every
+  // rgba(var(--lush-pink-rgb), …) usage (announcement bar tint + border,
+  // glows, etc.) and made the page read pink-ish on the cream bg.
+  const accentRgb = hexToRgbTriplet(accentHex) ?? '127, 175, 154'
   const accentHexResolved = accentHex ?? '#7FAF9A'
   // On a light accent (currently only the "white" preset), the default
   // white-on-pink button text becomes invisible. Pick a readable
@@ -1090,6 +1094,7 @@ function AboutPanel({
             <path d="M50 6 C55 38 62 45 94 50 C62 55 55 62 50 94 C45 62 38 55 6 50 C38 45 45 38 50 6 Z" />
           </svg>
         </div>
+        {/* Small eyebrow kicker on top, big heading underneath. */}
         <div className="lush-about-heading-wrap">
           <div className="lush-about-backdrop">{backdropText}</div>
           <h2>{heading}</h2>
@@ -1169,8 +1174,8 @@ function PoliciesPanel({ policies }: { policies: PublicSite['policies'] }) {
   return (
     <section className="lush-policy-section">
       <div className="lush-policy-heading">
-        <h2>Policies</h2>
         <span>Booking</span>
+        <h2>Policies</h2>
       </div>
       <div className="lush-policy-list">
         {activeReal.length > 0
@@ -2649,21 +2654,22 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 .lush-about-heading-wrap {
   position:relative; z-index:2; text-align:center;
   display:flex; flex-direction:column; align-items:center;
-  /* Pull the heading up slightly so it visibly sits ON the star
-     rather than perfectly centered — gives the "layered on top of
-     it" feel the design called for. */
+  /* Pull the wrap up slightly so the headline visibly sits ON the
+     star rather than perfectly centered. */
   transform:translateY(-12px);
-  max-width:min(80vw, 280px);
+  max-width:min(80vw, 300px);
 }
+/* Eyebrow kicker on top, heading underneath (translated up). DOM
+   order matches visual order — no flex order overrides here. */
 .lush-about-backdrop {
-  margin:-12px 0 0; order:2;
+  margin:0;
   font-family:var(--lush-molle); font-style:italic; font-weight:400;
   font-size:clamp(24px,6vw,36px); line-height:1.05;
   color:#FFFFFF;
   text-shadow:2px 2px 0 rgba(14,17,17,0.32);
 }
 .lush-about-heading-wrap h2 {
-  margin:0; order:1;
+  margin:-12px 0 0;
   font-family:var(--lush-molle); font-style:italic; font-weight:400;
   font-size:clamp(44px,12vw,64px); line-height:1; letter-spacing:-0.01em;
   color:#FFFFFF;
@@ -2692,26 +2698,27 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 
 /* ── Policy ── */
 .lush-policy-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:12px 14px 64px; }
-/* Policy heading uses the same Molle twin-line treatment:
-   big "Policies" on top, small "Booking" underneath. */
+/* Policy heading is a Molle twin-line kicker pattern:
+   small "Booking" kicker on top, big "Policies" heading underneath
+   (translated up to close the gap). */
 .lush-policy-heading {
   margin:0 0 24px;
   display:flex; flex-direction:column; align-items:center;
   text-align:center;
 }
-.lush-policy-heading h2 {
-  margin:0;
-  font-family:var(--lush-molle); font-style:italic; font-weight:400;
-  font-size:clamp(60px,15vw,80px); line-height:1; letter-spacing:-0.01em;
-  color:var(--lush-pink);
-  text-shadow:5px 5px 0 rgba(14,17,17,0.18);
-}
 .lush-policy-heading span {
-  margin:-14px 0 0;
+  margin:0;
   font-family:var(--lush-molle); font-style:italic; font-weight:400;
   font-size:clamp(28px,7vw,40px); line-height:1;
   color:var(--lush-pink);
   text-shadow:3px 3px 0 rgba(14,17,17,0.18);
+}
+.lush-policy-heading h2 {
+  margin:-14px 0 0;
+  font-family:var(--lush-molle); font-style:italic; font-weight:400;
+  font-size:clamp(60px,15vw,80px); line-height:1; letter-spacing:-0.01em;
+  color:var(--lush-pink);
+  text-shadow:5px 5px 0 rgba(14,17,17,0.18);
 }
 .lush-policy-list { display:grid; gap:12px; }
 .lush-policy-custom-group { margin-top:36px; }
@@ -2733,13 +2740,9 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 .lush-before-appointment-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:28px 16px 60px; }
 .lush-before-appointment-section h2 { margin:0 0 38px; color:var(--lush-text); text-align:center; font-size:clamp(40px,9vw,52px); font-family:var(--lush-script); font-weight:400; line-height:1; letter-spacing:0; }
 .lush-before-timeline { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:26px; position:relative; }
-/* Dashed sage timeline line — softer than a solid stroke, matches the
-   spa direction. Anchored to the node column so it sits between
-   circles. */
-.lush-before-timeline::before {
-  content:""; position:absolute; left:25px; top:18px; bottom:18px; width:0;
-  border-left:2px dashed rgba(var(--lush-pink-rgb),0.55);
-}
+/* No connector line between steps — the alternating sage nodes carry
+   the rhythm on their own. (Previous dashed line was removed per
+   design feedback — felt too noisy on the cream bg.) */
 .lush-before-step { display:grid; grid-template-columns:52px 1fr; gap:14px; align-items:flex-start; }
 /* Alternating nodes echo the Steps section: odd = solid sage with
    white numeral; even = outlined sage with sage numeral. */
@@ -2911,13 +2914,13 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
   .lush-about-hero { min-height:520px; padding:40px 24px; margin-bottom:0; }
   .lush-about-star svg { width:min(38vw, 440px); }
   .lush-about-heading-wrap { max-width:min(36vw, 380px); }
-  .lush-about-heading-wrap h2 { font-size:clamp(72px,7vw,108px); text-shadow:5px 5px 0 rgba(14,17,17,0.32); }
   .lush-about-backdrop { font-size:clamp(32px,3.5vw,56px); text-shadow:3px 3px 0 rgba(14,17,17,0.32); }
+  .lush-about-heading-wrap h2 { font-size:clamp(72px,7vw,108px); text-shadow:5px 5px 0 rgba(14,17,17,0.32); margin-top:-20px; }
   .lush-about-copy { max-width:none; font-size:18px; line-height:1.55; }
   .lush-policy-section { padding:70px 40px 110px; }
   .lush-policy-heading { align-items:center; margin-bottom:34px; }
-  .lush-policy-heading h2 { font-size:clamp(96px,10vw,140px); text-shadow:7px 7px 0 rgba(14,17,17,0.18); }
-  .lush-policy-heading span { font-size:clamp(48px,5vw,68px); text-shadow:5px 5px 0 rgba(14,17,17,0.18); margin-top:-20px; }
+  .lush-policy-heading span { font-size:clamp(48px,5vw,68px); text-shadow:5px 5px 0 rgba(14,17,17,0.18); }
+  .lush-policy-heading h2 { font-size:clamp(96px,10vw,140px); text-shadow:7px 7px 0 rgba(14,17,17,0.18); margin-top:-20px; }
   .lush-policy-list { grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; align-items:stretch; }
   .lush-policy-card { min-height:320px; padding:24px 24px 28px; display:flex; flex-direction:column; }
   .lush-policy-card h3 { font-size:32px; margin-bottom:18px; }
