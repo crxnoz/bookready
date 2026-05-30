@@ -56,10 +56,12 @@ export default function LegalShell({ eyebrow, title, effectiveDate, children }: 
       <footer className="border-t border-[rgba(18,18,18,0.10)]">
         <div className="max-w-[760px] mx-auto px-6 sm:px-8 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-muted-text">
           <span>&copy; {new Date().getFullYear()} BookReady. Operated by DaysGraphic LLC.</span>
-          <div className="flex gap-5">
+          <div className="flex flex-wrap gap-5">
             <Link href="/privacy" className="hover:text-near-black transition-colors">Privacy</Link>
             <Link href="/terms" className="hover:text-near-black transition-colors">Terms</Link>
             <Link href="/cookies" className="hover:text-near-black transition-colors">Cookies</Link>
+            <Link href="/refund" className="hover:text-near-black transition-colors">Refunds</Link>
+            <Link href="/billing-terms" className="hover:text-near-black transition-colors">Billing</Link>
             <a href="mailto:hello@mybookready.com" className="hover:text-near-black transition-colors">
               hello@mybookready.com
             </a>

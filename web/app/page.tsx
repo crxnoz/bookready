@@ -246,6 +246,8 @@ function SiteFooter() {
         <div className="flex flex-wrap gap-5">
           <Link href="/privacy" className="hover:text-near-black transition-colors">Privacy</Link>
           <Link href="/terms" className="hover:text-near-black transition-colors">Terms</Link>
+          <Link href="/refund" className="hover:text-near-black transition-colors">Refunds</Link>
+          <Link href="/billing-terms" className="hover:text-near-black transition-colors">Billing</Link>
           <Link href="/login" className="hover:text-near-black transition-colors">Log in</Link>
           <Link href="/register" className="hover:text-near-black transition-colors">Sign up</Link>
           <a href="mailto:hello@mybookready.com" className="hover:text-near-black transition-colors">
