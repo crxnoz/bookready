@@ -480,7 +480,11 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
             && (additionals.thank_you_title || additionals.thank_you_body) && (
             <div className="vt-section vt-section-narrow vt-thanks">
               <p className="vt-eyebrow vt-thanks-eyebrow">A note</p>
-              <span className="vt-thanks-mark" aria-hidden="true">&#x2733;</span>
+              {/* U+FE0E (text variation selector) forces iOS/Android to
+                  render the asterisk as a text glyph instead of an emoji
+                  upgrade. Without it, U+2733 ✳ gets a color emoji
+                  treatment on mobile that breaks the editorial mark. */}
+              <span className="vt-thanks-mark" aria-hidden="true">&#x2733;&#xFE0E;</span>
               <h2 className="vt-thanks-title">
                 {additionals.thank_you_title ?? 'Thank you.'}
               </h2>
