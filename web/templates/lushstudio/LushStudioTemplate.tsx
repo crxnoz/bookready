@@ -3219,27 +3219,6 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
   font-family: serif;
 }
 
-/* Announcement bar — small script accent at the start of the marquee so
-   the strip reads like a "love note" instead of an ALL-CAPS notice. */
-.lush-femme .lush-announce {
-  position: relative;
-}
-.lush-femme .lush-announce::before {
-  content: 'a note ✿';
-  position: absolute;
-  left: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-family: var(--lush-script);
-  font-size: 17px;
-  color: var(--lush-text);
-  opacity: 0.7;
-  pointer-events: none;
-  z-index: 2;
-  background: linear-gradient(90deg, var(--lush-bg) 70%, transparent);
-  padding-right: 18px;
-}
-
 /* Subtle pearl-tinted glow under primary CTAs — depth without weight.
    Targets the hero book button + the booking-flow primary CTAs Lush
    shares with us. */
