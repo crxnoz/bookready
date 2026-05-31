@@ -87,6 +87,11 @@ function hrefFor(tab: SubTab): string {
 // default tweaks propagate. All others are stored verbatim and resolved
 // client-side to rgba(R,G,B,a) triplets for the glow / tint usages
 // inside each template's scoped CSS.
+//
+// Velvet Theory is special: the variants swap BACKGROUND, not accent —
+// the champagne gold accent stays constant across all six. We reuse the
+// same theme.accent_color field for storage so no migration is needed;
+// the VT template interprets it as a background hex.
 const ACCENT_PALETTES: Record<string, { hex: string; label: string }[]> = {
   thefaderoom: [
     { hex: '#FF3DBE', label: 'Pink (default)' },
@@ -105,12 +110,60 @@ const ACCENT_PALETTES: Record<string, { hex: string; label: string }[]> = {
     { hex: '#E8A6A6', label: 'Coral' },
     { hex: '#FF4FA3', label: 'Hot Pink' },
   ],
+  velvettheory: [
+    { hex: '#2D0F19', label: 'Burgundy (default)' },
+    { hex: '#0E1A2B', label: 'Midnight' },
+    { hex: '#0F2620', label: 'Emerald' },
+    { hex: '#1F1130', label: 'Plum' },
+    { hex: '#1A1A1C', label: 'Charcoal' },
+    { hex: '#F5EFE6', label: 'Bone (light)' },
+  ],
 }
 function paletteFor(slug: string) {
   return ACCENT_PALETTES[slug] ?? ACCENT_PALETTES.thefaderoom
 }
 function defaultAccentFor(slug: string): string {
   return paletteFor(slug)[0].hex
+}
+
+// Friendly display names for the template card header.
+const TEMPLATE_LABELS: Record<string, string> = {
+  thefaderoom:  'The Fade Room',
+  lushstudio:   'Lush Studio',
+  velvettheory: 'Velvet Theory',
+}
+function templateLabel(slug: string): string {
+  return TEMPLATE_LABELS[slug] ?? slug
+}
+
+// Velvet Theory uses BACKGROUND swaps, not accent. Surface the right copy
+// in the editor so the owner knows what the picker does.
+function colorPickerLabels(slug: string): { title: string; hint: string; ariaPrefix: string } {
+  if (slug === 'velvettheory') {
+    return {
+      title:      'Background variant',
+      hint:       'Changes the page background — gold accent stays',
+      ariaPrefix: 'Background',
+    }
+  }
+  return {
+    title:      'Accent color',
+    hint:       'Swaps the highlight color across the site',
+    ariaPrefix: 'Accent',
+  }
+}
+
+// Pick a readable check-mark color on top of a swatch. Light variants
+// (e.g. Bone) need a dark check; everything else gets white.
+function checkColorOn(hex: string): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  if (!m) return '#FFFFFF'
+  const n = parseInt(m[1], 16)
+  const r = ((n >> 16) & 0xff) / 255
+  const g = ((n >> 8) & 0xff) / 255
+  const b = (n & 0xff) / 255
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+  return lum > 0.6 ? '#121212' : '#FFFFFF'
 }
 
 const SECTION_LABEL_FOR_KEY: Record<string, string> = {
@@ -734,7 +787,7 @@ function OverviewPanel({
 
       {/* Template + status */}
       <Panel
-        title={templateSlug === 'thefaderoom' ? 'The Fade Room' : templateSlug}
+        title={templateLabel(templateSlug)}
         subtitle="Current template"
       >
         <div className="flex flex-wrap items-center gap-2">
@@ -751,20 +804,25 @@ function OverviewPanel({
           customers, availability, and policies. Template-specific settings may reset.
         </p>
 
-        {/* ── Accent color ── */}
+        {/* ── Accent color (or, for Velvet Theory, Background variant) ── */}
         <div className="space-y-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
-          <div className="flex items-baseline justify-between gap-2">
-            <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
-              Accent color
-            </p>
-            <p className="text-[10px] text-muted-text">
-              Swaps the highlight pink across the site
-            </p>
-          </div>
+          {(() => {
+            const { title, hint } = colorPickerLabels(templateSlug)
+            return (
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+                  {title}
+                </p>
+                <p className="text-[10px] text-muted-text">{hint}</p>
+              </div>
+            )
+          })()}
           <div className="flex items-center gap-2 flex-wrap">
             {accentPalette.map(({ hex, label }) => {
               const isActive = (accent ?? defaultAccent).toUpperCase() === hex.toUpperCase()
               const isBusy   = savingAccent === hex
+              const checkCol = checkColorOn(hex)
+              const { ariaPrefix } = colorPickerLabels(templateSlug)
               return (
                 <button
                   key={hex}
@@ -772,7 +830,7 @@ function OverviewPanel({
                   onClick={() => pickAccent(hex === defaultAccent ? null : hex)}
                   disabled={!!savingAccent}
                   title={label}
-                  aria-label={`Accent: ${label}`}
+                  aria-label={`${ariaPrefix}: ${label}`}
                   aria-pressed={isActive}
                   className={cn(
                     'relative w-8 h-8 border transition-shadow disabled:opacity-50',
@@ -789,7 +847,10 @@ function OverviewPanel({
                   )}
                   {isActive && !isBusy && (
                     <span className="absolute inset-0 flex items-center justify-center">
-                      <Check size={14} className="text-white drop-shadow-[0_0_2px_rgba(0,0,0,0.6)]" />
+                      <Check
+                        size={14}
+                        style={{ color: checkCol, filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.45))' }}
+                      />
                     </span>
                   )}
                 </button>
