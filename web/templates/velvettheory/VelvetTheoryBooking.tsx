@@ -81,25 +81,40 @@ const VT_BOOKING_FRAME_CSS = `
   margin-bottom: 20px !important;
 }
 
-/* Auth strips + summary blocks + account CTA need stronger text — the
-   bone-at-62% from the global --lush-muted override was too low-contrast
-   on burgundy. Bump these specific surfaces back up so the body reads
-   cleanly. */
+/* Auth strips + summary blocks (sit DIRECTLY on burgundy page bg) need
+   bone text at full opacity — the bone-at-62% from the global --lush-muted
+   override was too low-contrast. */
 .vt-booking-inner.lush-template .lush-account-widget,
 .vt-booking-inner.lush-template .lush-account-widget *,
 .vt-booking-inner.lush-template .lush-booking-auth-thin,
 .vt-booking-inner.lush-template .lush-booking-auth-thin *,
 .vt-booking-inner.lush-template [class*="lush-booking-summary"],
 .vt-booking-inner.lush-template [class*="lush-booking-summary"] dt,
-.vt-booking-inner.lush-template [class*="lush-booking-summary"] dd,
+.vt-booking-inner.lush-template [class*="lush-booking-summary"] dd {
+  color: var(--vt-fg) !important;
+  opacity: 1 !important;
+}
+
+/* The account-CTA is the one block that keeps a LIGHT (Lush white) surface
+   inside the booking — bone text on white is invisible. Force BURGUNDY
+   text instead, kill Lush's per-element opacity dims (eyebrow 0.6, sub
+   0.7), and give the arrow the same dark burgundy so all four spans read
+   at full strength. */
 .vt-booking-inner.lush-template .lush-booking-account-cta,
 .vt-booking-inner.lush-template .lush-booking-account-cta *,
 .vt-booking-inner.lush-template .lush-booking-account-cta-body,
 .vt-booking-inner.lush-template .lush-booking-account-cta-eyebrow,
 .vt-booking-inner.lush-template .lush-booking-account-cta-title,
-.vt-booking-inner.lush-template .lush-booking-account-cta-sub {
-  color: var(--vt-fg) !important;
+.vt-booking-inner.lush-template .lush-booking-account-cta-sub,
+.vt-booking-inner.lush-template .lush-booking-account-cta-arrow {
+  color: #2D0F19 !important;
   opacity: 1 !important;
+}
+/* On hover Lush flips the CTA to dark with white text — re-assert bone
+   text in that state too. */
+.vt-booking-inner.lush-template .lush-booking-account-cta:hover,
+.vt-booking-inner.lush-template .lush-booking-account-cta:hover * {
+  color: var(--vt-fg) !important;
 }
 
 /* Step indicators. Lush uses three states on .lush-booking-step:
