@@ -98,7 +98,10 @@ const ACCENT_PALETTES: Record<string, { hex: string; label: string }[]> = {
   ],
   lushstudio: [
     { hex: '#7FAF9A', label: 'Sage (default)' },
-    { hex: '#A9D6E5', label: 'Light Blue' },
+    // Dusty spa-blue (lum ≈ 0.62) — chosen specifically so the
+    // white on-pink icons stay legible. The earlier pick #A9D6E5
+    // was too pale (lum 0.81) and forced dark icons.
+    { hex: '#6FA8C9', label: 'Dusty Blue' },
     { hex: '#E8A6A6', label: 'Coral' },
     { hex: '#FF4FA3', label: 'Hot Pink' },
   ],
