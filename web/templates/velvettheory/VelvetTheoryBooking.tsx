@@ -21,6 +21,7 @@
  */
 
 import LushStudioBooking from '../lushstudio/LushStudioBooking'
+import { LushCustomerAuthProvider } from '../lushstudio/LushCustomerAuth'
 import type {
   AvailabilityData, BookingQuestion, PublicPaymentSettings,
   PublicStaffMember, Service, ServiceAddon, ServiceCategory,
@@ -40,13 +41,18 @@ interface Props {
 }
 
 export default function VelvetTheoryBooking(props: Props) {
+  // The Lush booking flow uses useLushCustomerAuth() internally, which
+  // throws if not wrapped in LushCustomerAuthProvider. Inject the provider
+  // here so VelvetTheoryTemplate doesn't have to know about Lush internals.
   return (
-    <div className="vt-booking-frame">
-      <div className="vt-booking-eyebrow">
-        <span>Reserve</span>
-        <span className="vt-booking-rule" aria-hidden="true" />
+    <LushCustomerAuthProvider>
+      <div className="vt-booking-frame">
+        <div className="vt-booking-eyebrow">
+          <span>Reserve</span>
+          <span className="vt-booking-rule" aria-hidden="true" />
+        </div>
+        <LushStudioBooking {...props} />
       </div>
-      <LushStudioBooking {...props} />
-    </div>
+    </LushCustomerAuthProvider>
   )
 }
