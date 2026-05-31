@@ -211,10 +211,25 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
 
   const [active, setActive] = useState<TabId>('book')
   const tabRailRef = useRef<HTMLDivElement>(null)
+  const bookPanelRef = useRef<HTMLElement>(null)
 
+  // Switch to the Reserve tab AND actually scroll the booking content into
+  // view. The previous implementation called scrollIntoView on the sticky
+  // tab rail, which is a no-op once the rail is pinned to top — clicking
+  // Reserve from the footer felt broken. Now we scroll to the panel itself,
+  // offset by the rail height so the content lands just below it.
   function goBook() {
     setActive('book')
-    setTimeout(() => tabRailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const panel = bookPanelRef.current
+        const rail  = tabRailRef.current
+        if (!panel) return
+        const railH = rail?.getBoundingClientRect().height ?? 60
+        const y = panel.getBoundingClientRect().top + window.scrollY - railH - 8
+        window.scrollTo({ top: y, behavior: 'smooth' })
+      })
+    })
   }
 
   // ── Pull settings dump for sub-sections (typed loosely — these are
@@ -270,14 +285,14 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
                 const override = safeContactHref(header.call_button_url, 'tel')
                 const href = override ?? (p?.public_phone ? `tel:${p.public_phone.replace(/[^\d+]/g, '')}` : null)
                 return href ? (
-                  <li><a href={href} aria-label="Call"><Phone size={15} /></a></li>
+                  <li><a href={href} aria-label="Call"><Phone size={18} /></a></li>
                 ) : null
               })()}
               {header.show_email_button && (() => {
                 const override = safeContactHref(header.email_button_url, 'mailto')
                 const href = override ?? (p?.public_email ? `mailto:${p.public_email}` : null)
                 return href ? (
-                  <li><a href={href} aria-label="Email"><Mail size={15} /></a></li>
+                  <li><a href={href} aria-label="Email"><Mail size={18} /></a></li>
                 ) : null
               })()}
               {header.show_message_button && (() => {
@@ -285,7 +300,7 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
                 const isWeb = !!href && /^https?:/i.test(href)
                 return href ? (
                   <li><a href={href} target={isWeb ? '_blank' : undefined} rel={isWeb ? 'noopener noreferrer' : undefined} aria-label="Message">
-                    <MessageSquare size={15} />
+                    <MessageSquare size={18} />
                   </a></li>
                 ) : null
               })()}
@@ -293,43 +308,43 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
                 const override = safeHref(header.directions_button_url)
                 const href = override ?? (address ? `https://maps.google.com/?q=${encodeURIComponent(address)}` : null)
                 return href ? (
-                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="Directions"><MapPin size={15} /></a></li>
+                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="Directions"><MapPin size={18} /></a></li>
                 ) : null
               })()}
               {header.show_instagram_button && (() => {
                 const href = safeHref(header.instagram_button_url) ?? safeHref(p?.instagram_url) ?? null
                 return href ? (
-                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="Instagram"><Instagram size={15} /></a></li>
+                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="Instagram"><Instagram size={18} /></a></li>
                 ) : null
               })()}
               {header.show_tiktok_button && (() => {
                 const href = safeHref(header.tiktok_button_url) ?? null
                 return href ? (
-                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="TikTok"><TikTokGlyph size={15} /></a></li>
+                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="TikTok"><TikTokGlyph size={18} /></a></li>
                 ) : null
               })()}
               {header.show_youtube_button && (() => {
                 const href = safeHref(header.youtube_button_url) ?? null
                 return href ? (
-                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="YouTube"><Youtube size={15} /></a></li>
+                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="YouTube"><Youtube size={18} /></a></li>
                 ) : null
               })()}
               {header.show_facebook_button && (() => {
                 const href = safeHref(header.facebook_button_url) ?? null
                 return href ? (
-                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="Facebook"><Facebook size={15} /></a></li>
+                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="Facebook"><Facebook size={18} /></a></li>
                 ) : null
               })()}
               {header.show_pinterest_button && (() => {
                 const href = safeHref(header.pinterest_button_url) ?? null
                 return href ? (
-                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="Pinterest"><PinterestGlyph size={15} /></a></li>
+                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="Pinterest"><PinterestGlyph size={18} /></a></li>
                 ) : null
               })()}
               {header.show_whatsapp_button && (() => {
                 const href = safeHref(header.whatsapp_button_url) ?? null
                 return href ? (
-                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><WhatsAppGlyph size={15} /></a></li>
+                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><WhatsAppGlyph size={18} /></a></li>
                 ) : null
               })()}
             </ul>
@@ -354,7 +369,7 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
         </nav>
 
         {/* ── Reserve / Book ── */}
-        <section className={`vt-panel${active === 'book' ? ' is-active' : ''}`}>
+        <section ref={bookPanelRef} className={`vt-panel${active === 'book' ? ' is-active' : ''}`}>
           {site.booking_settings && site.booking_settings.booking_enabled === false ? (
             <div className="vt-section vt-empty">
               <p className="vt-eyebrow">Reserve</p>
@@ -458,17 +473,21 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
 
         {/* ── Additionals: thank-you opens it, then FAQs ── */}
         <section className="vt-additionals">
-          {/* Thank-you note — first impression at the bottom of every tab. */}
+          {/* Thank-you note — first impression at the bottom of every tab.
+              Editorial treatment: italic Fraunces title, italic body, gold
+              signature line. Reads as a handwritten note from the studio. */}
           {additionals.show_thank_you !== false
             && (additionals.thank_you_title || additionals.thank_you_body) && (
             <div className="vt-section vt-section-narrow vt-thanks">
-              <p className="vt-eyebrow">A note</p>
-              <h2 className="vt-h2">
+              <p className="vt-eyebrow vt-thanks-eyebrow">A note</p>
+              <span className="vt-thanks-mark" aria-hidden="true">&#x2733;</span>
+              <h2 className="vt-thanks-title">
                 {additionals.thank_you_title ?? 'Thank you.'}
               </h2>
               {additionals.thank_you_body && (
-                <p className="vt-prose-lede">{additionals.thank_you_body}</p>
+                <p className="vt-thanks-body">{additionals.thank_you_body}</p>
               )}
+              <span className="vt-thanks-sign">&mdash;&nbsp;{signatureWord(displayName)}</span>
             </div>
           )}
 
@@ -851,7 +870,10 @@ const VT_CSS = `
 .vt-hero-cta {
   margin-bottom: 56px;
 }
-.vt-link-cta {
+/* Scoped to .vt-template so it beats the universal '.vt-template button'
+   reset on specificity (0,2,0 vs 0,1,1). Without this the button reset's
+   `border: 0` was killing the gold underline on button-rendered CTAs. */
+.vt-template .vt-link-cta {
   display: inline-block;
   font-family: var(--vt-display);
   font-size: 22px;
@@ -861,7 +883,7 @@ const VT_CSS = `
   border-bottom: 1px solid var(--vt-accent);
   transition: opacity 160ms ease, border-color 160ms ease;
 }
-.vt-link-cta:hover { opacity: 0.78; }
+.vt-template .vt-link-cta:hover { opacity: 0.78; }
 /* Minimal hero contacts — icon-only, no labels, no borders, just the
    glyph in foreground color. Spaced so the row reads as a quiet contact
    strip rather than a button bar. */
@@ -1209,9 +1231,59 @@ const VT_CSS = `
 /* ── Additionals (thank-you + FAQs only — hours now lives in the footer) ── */
 .vt-additionals { padding: 0; }
 .vt-additionals > .vt-section { border-top: 1px solid var(--vt-rule); padding-top: 80px; }
-.vt-thanks .vt-prose-lede {
-  margin-top: 8px;
-  margin-bottom: 0;
+
+/* Thank-you: editorial moment. Italic Fraunces title, italic body,
+   asterisk mark above, gold-rule signature below. Reads as a real note
+   from the studio rather than a template placeholder. */
+.vt-thanks {
+  text-align: center;
+  padding-top: 112px;
+  padding-bottom: 112px;
+}
+.vt-thanks-eyebrow {
+  margin-bottom: 20px;
+}
+.vt-thanks-mark {
+  display: block;
+  font-family: var(--vt-display);
+  font-size: 32px;
+  color: var(--vt-accent);
+  line-height: 1;
+  margin-bottom: 24px;
+}
+.vt-thanks-title {
+  font-family: var(--vt-display);
+  font-style: italic;
+  font-weight: 300;
+  font-size: clamp(40px, 6vw, 64px);
+  line-height: 1.06;
+  letter-spacing: -0.018em;
+  color: var(--vt-fg);
+  margin: 0 auto 28px;
+  max-width: 640px;
+}
+.vt-thanks-body {
+  font-family: var(--vt-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(17px, 1.8vw, 21px);
+  line-height: 1.6;
+  color: var(--vt-fg);
+  opacity: 0.92;
+  max-width: 560px;
+  margin: 0 auto 48px;
+}
+/* Signature underline only — no asterisk repeated. */
+.vt-thanks-sign {
+  display: inline-block;
+  font-family: var(--vt-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 17px;
+  color: var(--vt-accent);
+  padding-top: 28px;
+  border-top: 1px solid var(--vt-rule);
+  min-width: 240px;
 }
 
 /* ── FAQs ── */
@@ -1249,11 +1321,11 @@ const VT_CSS = `
   opacity: 0.85;
 }
 
-/* ── Footer: Reserve CTA + contact info + colophon ── */
+/* ── Footer: Reserve CTA + hours + contact info + colophon ── */
 .vt-footer {
   border-top: 1px solid var(--vt-rule);
-  padding: 72px 24px 36px;
-  margin-top: 80px;
+  padding: 56px 24px 32px;
+  margin-top: 32px;
 }
 .vt-footer-inner {
   max-width: 1080px;

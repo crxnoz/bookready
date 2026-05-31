@@ -74,13 +74,77 @@ const VT_BOOKING_FRAME_CSS = `
   padding: 0;
 }
 
-/* The signed-in / sign-out account widget needs breathing room below it
-   before the booking form starts. Two variants exist in the Lush flow —
-   the full widget at the top, and the thin auth strip used in the booking
-   inline. Both need margin so they don't visually stick to the next block. */
+/* Auth widgets — 20px consistent with the rest of the site's small-gap
+   rhythm. The 36px we had earlier felt too separated. */
 .vt-booking-inner.lush-template .lush-account-widget,
 .vt-booking-inner.lush-template .lush-booking-auth-thin {
-  margin-bottom: 36px !important;
+  margin-bottom: 20px !important;
+}
+
+/* Auth strips + summary blocks need stronger text — the bone-at-62% from
+   the global --lush-muted override was too low-contrast on burgundy.
+   Bump these specific surfaces back up so the body reads cleanly. */
+.vt-booking-inner.lush-template .lush-account-widget,
+.vt-booking-inner.lush-template .lush-account-widget *,
+.vt-booking-inner.lush-template .lush-booking-auth-thin,
+.vt-booking-inner.lush-template .lush-booking-auth-thin *,
+.vt-booking-inner.lush-template [class*="lush-booking-summary"],
+.vt-booking-inner.lush-template [class*="lush-booking-summary"] dt,
+.vt-booking-inner.lush-template [class*="lush-booking-summary"] dd {
+  color: var(--vt-fg) !important;
+  opacity: 1 !important;
+}
+
+/* Step indicators (the "1 of 5" pills at the top of the booking flow) —
+   when active, the background became gold AND the text stayed gold via the
+   global eyebrow override, hiding the number. Invert the text color when
+   the pill is in its active/filled state. */
+.vt-booking-inner.lush-template [class*="lush-booking-pill"][class*="active"],
+.vt-booking-inner.lush-template [class*="lush-booking-step"][class*="active"],
+.vt-booking-inner.lush-template [class*="lush-booking-step"][class*="current"],
+.vt-booking-inner.lush-template [class*="lush-booking-pill"][class*="current"] {
+  background: var(--vt-accent) !important;
+  color: var(--vt-bg) !important;
+  border-color: var(--vt-accent) !important;
+}
+.vt-booking-inner.lush-template [class*="lush-booking-pill"][class*="active"] *,
+.vt-booking-inner.lush-template [class*="lush-booking-step"][class*="active"] * {
+  color: var(--vt-bg) !important;
+}
+
+/* Calendar — Lush day cells used too-faded text for unavailable dates and
+   too-subtle styling for the selected date on the VT palette. Bump opacity
+   on disabled, and make the selected day clearly readable. */
+.vt-booking-inner.lush-template [class*="lush-booking-cal"] button,
+.vt-booking-inner.lush-template [class*="lush-booking-day"] {
+  color: var(--vt-fg) !important;
+  opacity: 1 !important;
+}
+.vt-booking-inner.lush-template [class*="lush-booking-cal"] button[disabled],
+.vt-booking-inner.lush-template [class*="lush-booking-cal"] button[aria-disabled="true"],
+.vt-booking-inner.lush-template [class*="lush-booking-day"][disabled],
+.vt-booking-inner.lush-template [class*="lush-booking-day"][aria-disabled="true"],
+.vt-booking-inner.lush-template [class*="lush-booking-cal"] button[class*="disabled"],
+.vt-booking-inner.lush-template [class*="lush-booking-cal"] button[class*="unavailable"],
+.vt-booking-inner.lush-template [class*="lush-booking-day"][class*="disabled"],
+.vt-booking-inner.lush-template [class*="lush-booking-day"][class*="unavailable"] {
+  color: rgba(245,239,230,0.32) !important;
+  opacity: 1 !important;
+  cursor: not-allowed !important;
+}
+.vt-booking-inner.lush-template [class*="lush-booking-cal"] button[aria-selected="true"],
+.vt-booking-inner.lush-template [class*="lush-booking-day"][aria-selected="true"],
+.vt-booking-inner.lush-template [class*="lush-booking-cal"] button[class*="selected"],
+.vt-booking-inner.lush-template [class*="lush-booking-cal"] button[class*="active"],
+.vt-booking-inner.lush-template [class*="lush-booking-day"][class*="selected"],
+.vt-booking-inner.lush-template [class*="lush-booking-day"][class*="active"] {
+  background: var(--vt-accent) !important;
+  color: var(--vt-bg) !important;
+  border-color: var(--vt-accent) !important;
+  font-weight: 600 !important;
+}
+.vt-booking-inner.lush-template [class*="lush-booking-cal"] button[class*="today"] {
+  border: 1px solid var(--vt-accent) !important;
 }
 
 /* ── Lush-variable re-skin: paint embedded booking in VT tokens ── */
