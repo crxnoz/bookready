@@ -82,18 +82,33 @@ function hrefFor(tab: SubTab): string {
   return tab === 'overview' ? '/editor/website' : `/editor/website?tab=${tab}`
 }
 
-// TheFadeRoom accent palette. `#FF3DBE` is the original pink and saves
-// as `null` (so future template-default tweaks propagate). The rest are
-// stored verbatim and resolved client-side to an `rgba(R,G,B,a)` triplet
-// for the dozens of glow shadows in TFR_CSS.
-const ACCENT_PRESETS: { hex: string; label: string }[] = [
-  { hex: '#FF3DBE', label: 'Pink (default)' },
-  { hex: '#F9FAFB', label: 'White' },
-  { hex: '#22F5A3', label: 'Mint' },
-  { hex: '#FF3B5C', label: 'Red' },
-  { hex: '#FFD84D', label: 'Yellow' },
-  { hex: '#3DA9FC', label: 'Blue' },
-]
+// Accent palettes keyed by template. The first entry of each palette is
+// the template's default; selecting it saves `null` to the DB so future
+// default tweaks propagate. All others are stored verbatim and resolved
+// client-side to rgba(R,G,B,a) triplets for the glow / tint usages
+// inside each template's scoped CSS.
+const ACCENT_PALETTES: Record<string, { hex: string; label: string }[]> = {
+  thefaderoom: [
+    { hex: '#FF3DBE', label: 'Pink (default)' },
+    { hex: '#F9FAFB', label: 'White' },
+    { hex: '#22F5A3', label: 'Mint' },
+    { hex: '#FF3B5C', label: 'Red' },
+    { hex: '#FFD84D', label: 'Yellow' },
+    { hex: '#3DA9FC', label: 'Blue' },
+  ],
+  lushstudio: [
+    { hex: '#7FAF9A', label: 'Sage (default)' },
+    { hex: '#A9D6E5', label: 'Light Blue' },
+    { hex: '#E8A6A6', label: 'Coral' },
+    { hex: '#FF4FA3', label: 'Hot Pink' },
+  ],
+}
+function paletteFor(slug: string) {
+  return ACCENT_PALETTES[slug] ?? ACCENT_PALETTES.thefaderoom
+}
+function defaultAccentFor(slug: string): string {
+  return paletteFor(slug)[0].hex
+}
 
 const SECTION_LABEL_FOR_KEY: Record<string, string> = {
   header:             'Header',
@@ -674,9 +689,12 @@ function OverviewPanel({
 
   // Accent color picker — single source of truth lives in
   // settings.theme.accent_color. Null = use the template's default
-  // pink. Each swatch click PATCHes the template and the preview
-  // iframe re-keys via the existing previewKey bump in the parent.
+  // (resolved per-template via defaultAccentFor). Each swatch click
+  // PATCHes the template and the preview iframe re-keys via the
+  // existing previewKey bump in the parent.
   const accent = settings.theme?.accent_color ?? null
+  const accentPalette = paletteFor(templateSlug)
+  const defaultAccent = defaultAccentFor(templateSlug)
   const [savingAccent, setSavingAccent] = useState<string | null>(null)
   const [accentError,  setAccentError]  = useState<string | null>(null)
   async function pickAccent(hex: string | null) {
@@ -741,14 +759,14 @@ function OverviewPanel({
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {ACCENT_PRESETS.map(({ hex, label }) => {
-              const isActive = (accent ?? '#FF3DBE').toUpperCase() === hex.toUpperCase()
+            {accentPalette.map(({ hex, label }) => {
+              const isActive = (accent ?? defaultAccent).toUpperCase() === hex.toUpperCase()
               const isBusy   = savingAccent === hex
               return (
                 <button
                   key={hex}
                   type="button"
-                  onClick={() => pickAccent(hex === '#FF3DBE' ? null : hex)}
+                  onClick={() => pickAccent(hex === defaultAccent ? null : hex)}
                   disabled={!!savingAccent}
                   title={label}
                   aria-label={`Accent: ${label}`}

@@ -108,9 +108,11 @@ import { safeHref } from '@/lib/safeHref'
 
 // Pick a readable text color (#0E1111 or #FFFFFF) for use on top of a
 // solid accent fill. Uses the standard sRGB relative-luminance formula;
-// anything brighter than ~60% luminance gets dark text. Unknown input
-// falls back to white so existing dark accents (pink, red, blue) keep
-// their original on-pink white text.
+// anything brighter than ~75% luminance gets dark text. Threshold is
+// tuned so the Lush sage default (#7FAF9A, lum ≈ 0.64) still gets
+// WHITE text — only genuinely pale accents (light blue at 0.81) drop
+// to dark text. Unknown input falls back to white so dark accents
+// (hot pink, sage, coral) keep their on-accent white text.
 function pickOnAccentColor(hex: string | null | undefined): string {
   if (!hex) return '#FFFFFF'
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
@@ -121,7 +123,7 @@ function pickOnAccentColor(hex: string | null | undefined): string {
   const b = (n & 0xff) / 255
   // Quick perceived luminance (Rec. 709 coefficients).
   const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
-  return lum > 0.6 ? '#0E1111' : '#FFFFFF'
+  return lum > 0.75 ? '#0E1111' : '#FFFFFF'
 }
 
 // Convert a #RRGGBB hex string to a "R, G, B" triplet (comma-space
@@ -1830,17 +1832,23 @@ const LUSH_CSS = `
   position:absolute; width:1px; height:1px; padding:0; margin:-1px;
   overflow:hidden; clip:rect(0 0 0 0); border:0;
 }
+/* Default icon color = the accent-aware contrast var. Social brand
+   buttons override this to forced white further down so platform
+   gradients stay legible regardless of the chosen accent. */
 .lush-header-btn svg {
-  color:#FFFFFF !important; stroke:#FFFFFF; fill:#FFFFFF;
+  color:var(--lush-on-pink) !important;
+  stroke:var(--lush-on-pink);
+  fill:var(--lush-on-pink);
 }
 
-/* Book + Call + Email + Message → flat sage solids (highlight color),
+/* Book + Call + Email + Message → flat accent solids (highlight color),
    replacing the FadeRoom multi-color gradients. */
 .lush-header-btn-book,
 .lush-header-btn-call,
 .lush-header-btn-chat,
 .lush-header-btn-message {
   background:var(--lush-pink) !important;
+  color:var(--lush-on-pink) !important;
 }
 
 /* The remaining contact + social buttons keep their brand gradients
@@ -1852,6 +1860,21 @@ const LUSH_CSS = `
 .lush-header-btn-facebook   { background:linear-gradient(45deg,#1877F2 0%,#5DA8FF 100%); }
 .lush-header-btn-pinterest  { background:linear-gradient(45deg,#E60023 0%,#FF6E80 100%); }
 .lush-header-btn-whatsapp   { background:linear-gradient(45deg,#25D366 0%,#A4F4C5 100%); }
+
+/* Social-brand icons are always WHITE — the platform gradients are
+   saturated enough that white is the only reliably-legible icon
+   color across every accent choice. */
+.lush-header-btn-directions svg,
+.lush-header-btn-tiktok svg,
+.lush-header-btn-youtube svg,
+.lush-header-btn-instagram svg,
+.lush-header-btn-facebook svg,
+.lush-header-btn-pinterest svg,
+.lush-header-btn-whatsapp svg {
+  color:#FFFFFF !important;
+  stroke:#FFFFFF !important;
+  fill:#FFFFFF !important;
+}
 
 .lush-header-btn-mobile-only { display:inline-flex !important; }
 
@@ -2656,7 +2679,7 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 .lush-ba-card--after.is-revealed span { display:none; }
 
 /* ── About ── */
-.lush-about-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:36px 20px 58px; }
+.lush-about-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:12px 20px 58px; }
 
 /* About hero: a rounded 4-point star window that masks the about
    image into the spark shape, with the heading wrap stacked BELOW
@@ -2925,14 +2948,14 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
   width:100%;
   display:inline-flex; align-items:center; justify-content:center; gap:10px;
   padding:14px 22px;
-  background:var(--lush-pink); color:#FFFFFF;
+  background:var(--lush-pink); color:var(--lush-on-pink);
   border:none; border-radius:14px;
   font-family:var(--lush-ui); font-size:14px; font-weight:700;
   letter-spacing:0.04em; line-height:1;
   cursor:pointer;
   transition:filter .15s ease, transform .15s ease;
 }
-.lush-footer-book svg { color:#FFFFFF; fill:#FFFFFF; }
+.lush-footer-book svg { color:var(--lush-on-pink); fill:var(--lush-on-pink); }
 @media (hover:hover) and (pointer:fine) {
   .lush-footer-book:hover { filter:brightness(1.06); transform:translateY(-1px); }
 }
