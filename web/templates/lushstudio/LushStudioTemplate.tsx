@@ -1450,7 +1450,11 @@ function Footer({
 
 // ── Scoped CSS ────────────────────────────────────────────────────────────────
 
-const LUSH_CSS = `
+// Exported so other templates (e.g. Velvet Theory) that embed
+// LushStudioBooking can inject the lush-* class system. The booking
+// flow's CSS is scoped to .lush-template, so the consumer must wrap
+// the embedded booking in a div with that class.
+export const LUSH_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Cookie&family=DM+Mono:wght@400;500&family=Molle:ital@1&family=DM+Serif+Text:ital@0;1&family=DM+Sans:opsz,wght@9..40,300..700&family=Roboto:wght@400;500;700&display=swap');
 
 /* ── Tokens scoped to template root ── */
