@@ -9,8 +9,9 @@ export interface TemplateProps {
 type TemplateLoader = () => Promise<{ default: ComponentType<TemplateProps> }>
 
 const REGISTRY: Record<string, TemplateLoader> = {
-  thefaderoom: () => import('./thefaderoom/TheFadeRoomTemplate'),
-  lushstudio:  () => import('./lushstudio/LushStudioTemplate'),
+  thefaderoom:  () => import('./thefaderoom/TheFadeRoomTemplate'),
+  lushstudio:   () => import('./lushstudio/LushStudioTemplate'),
+  velvettheory: () => import('./velvettheory/VelvetTheoryTemplate'),
 }
 
 export function resolveTemplate(site: PublicSite): TemplateLoader | null {

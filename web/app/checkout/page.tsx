@@ -9,6 +9,7 @@ import { BillingCycle } from '@/lib/types'
 const TEMPLATE_KEY = 'br_template'
 
 const TEMPLATES = [
+  { slug: 'velvettheory', label: 'Velvet Theory', desc: 'Editorial luxury — sharp, refined, deep tones', color: '#2D0F19' },
   { slug: 'thefaderoom', label: 'The Fade Room', desc: 'Dark editorial barbershop', color: '#0A0A0A' },
   { slug: 'lushstudio', label: 'Lush Studio', desc: 'Clean feminine salon aesthetic', color: '#F3E8F0' },
   { slug: 'cleanbeauty', label: 'Clean Beauty', desc: 'Minimal spa-inspired look', color: '#F8F8F6' },
