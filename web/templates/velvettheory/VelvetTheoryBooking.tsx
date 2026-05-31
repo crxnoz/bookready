@@ -45,10 +45,6 @@ export default function VelvetTheoryBooking(props: Props) {
       <style>{LUSH_CSS}</style>
       <style>{VT_BOOKING_FRAME_CSS}</style>
       <div className="vt-booking-frame">
-        <div className="vt-booking-header">
-          <span className="vt-booking-eyebrow">Reserve</span>
-          <span className="vt-booking-rule" aria-hidden="true" />
-        </div>
         <div className="lush-template vt-booking-inner">
           <LushStudioBooking {...props} />
         </div>
@@ -64,39 +60,25 @@ export default function VelvetTheoryBooking(props: Props) {
 const VT_BOOKING_FRAME_CSS = `
 /* Full-width — sit directly on the VT page background. The booking's
    internal max-width (.lush-booking-section { max-width: 860px }) keeps
-   content readable. */
+   content readable. Top padding matches .vt-section (96px) so the Reserve
+   tab has the same vertical rhythm as every other section. */
 .vt-booking-frame {
   width: 100%;
   margin: 0;
-  padding: 80px 0 32px;
+  padding: 96px 0 32px;
   background: var(--vt-bg);
-}
-.vt-booking-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 56px;
-  padding: 0 24px;
-}
-.vt-booking-eyebrow {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  color: var(--vt-accent);
-}
-.vt-booking-rule {
-  display: block;
-  width: 36px;
-  height: 1px;
-  background: var(--vt-accent);
 }
 /* No card framing — booking lives DIRECTLY on the VT page background. */
 .vt-booking-inner {
   background: transparent !important;
   padding: 0;
+}
+
+/* The signed-in / sign-out account widget needs breathing room below it
+   before the booking form starts. Without margin it visually sticks to
+   the next block. */
+.vt-booking-inner.lush-template .lush-account-widget {
+  margin-bottom: 36px !important;
 }
 
 /* ── Lush-variable re-skin: paint embedded booking in VT tokens ── */

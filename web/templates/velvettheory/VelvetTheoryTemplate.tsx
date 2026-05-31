@@ -270,22 +270,22 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
                 const override = safeContactHref(header.call_button_url, 'tel')
                 const href = override ?? (p?.public_phone ? `tel:${p.public_phone.replace(/[^\d+]/g, '')}` : null)
                 return href ? (
-                  <li><a href={href}><Phone size={11} /><span>Call</span></a></li>
+                  <li><a href={href} aria-label="Call"><Phone size={15} /></a></li>
                 ) : null
               })()}
               {header.show_email_button && (() => {
                 const override = safeContactHref(header.email_button_url, 'mailto')
                 const href = override ?? (p?.public_email ? `mailto:${p.public_email}` : null)
                 return href ? (
-                  <li><a href={href}><Mail size={11} /><span>Email</span></a></li>
+                  <li><a href={href} aria-label="Email"><Mail size={15} /></a></li>
                 ) : null
               })()}
               {header.show_message_button && (() => {
                 const href = safeContactHref(header.message_button_url, 'sms')
                 const isWeb = !!href && /^https?:/i.test(href)
                 return href ? (
-                  <li><a href={href} target={isWeb ? '_blank' : undefined} rel={isWeb ? 'noopener noreferrer' : undefined}>
-                    <MessageSquare size={11} /><span>Message</span>
+                  <li><a href={href} target={isWeb ? '_blank' : undefined} rel={isWeb ? 'noopener noreferrer' : undefined} aria-label="Message">
+                    <MessageSquare size={15} />
                   </a></li>
                 ) : null
               })()}
@@ -293,43 +293,43 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
                 const override = safeHref(header.directions_button_url)
                 const href = override ?? (address ? `https://maps.google.com/?q=${encodeURIComponent(address)}` : null)
                 return href ? (
-                  <li><a href={href} target="_blank" rel="noopener noreferrer"><MapPin size={11} /><span>Directions</span></a></li>
+                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="Directions"><MapPin size={15} /></a></li>
                 ) : null
               })()}
               {header.show_instagram_button && (() => {
                 const href = safeHref(header.instagram_button_url) ?? safeHref(p?.instagram_url) ?? null
                 return href ? (
-                  <li><a href={href} target="_blank" rel="noopener noreferrer"><Instagram size={11} /><span>Instagram</span></a></li>
+                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="Instagram"><Instagram size={15} /></a></li>
                 ) : null
               })()}
               {header.show_tiktok_button && (() => {
                 const href = safeHref(header.tiktok_button_url) ?? null
                 return href ? (
-                  <li><a href={href} target="_blank" rel="noopener noreferrer"><TikTokGlyph size={11} /><span>TikTok</span></a></li>
+                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="TikTok"><TikTokGlyph size={15} /></a></li>
                 ) : null
               })()}
               {header.show_youtube_button && (() => {
                 const href = safeHref(header.youtube_button_url) ?? null
                 return href ? (
-                  <li><a href={href} target="_blank" rel="noopener noreferrer"><Youtube size={11} /><span>YouTube</span></a></li>
+                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="YouTube"><Youtube size={15} /></a></li>
                 ) : null
               })()}
               {header.show_facebook_button && (() => {
                 const href = safeHref(header.facebook_button_url) ?? null
                 return href ? (
-                  <li><a href={href} target="_blank" rel="noopener noreferrer"><Facebook size={11} /><span>Facebook</span></a></li>
+                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="Facebook"><Facebook size={15} /></a></li>
                 ) : null
               })()}
               {header.show_pinterest_button && (() => {
                 const href = safeHref(header.pinterest_button_url) ?? null
                 return href ? (
-                  <li><a href={href} target="_blank" rel="noopener noreferrer"><PinterestGlyph size={11} /><span>Pinterest</span></a></li>
+                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="Pinterest"><PinterestGlyph size={15} /></a></li>
                 ) : null
               })()}
               {header.show_whatsapp_button && (() => {
                 const href = safeHref(header.whatsapp_button_url) ?? null
                 return href ? (
-                  <li><a href={href} target="_blank" rel="noopener noreferrer"><WhatsAppGlyph size={11} /><span>WhatsApp</span></a></li>
+                  <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><WhatsAppGlyph size={15} /></a></li>
                 ) : null
               })()}
             </ul>
@@ -493,18 +493,41 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
           )}
         </section>
 
-        {/* ── Footer (colophon — one line) ── */}
+        {/* ── Footer: Reserve CTA, contact info, colophon ── */}
         <footer className="vt-footer">
           <div className="vt-footer-inner">
-            <span>Velvet Theory</span>
-            <span className="vt-footer-dot">·</span>
-            <span>&copy; {new Date().getFullYear()} {displayName}</span>
-            {footerSettings.show_powered_by !== false && (
-              <>
-                <span className="vt-footer-dot">·</span>
-                <span>Powered by BookReady</span>
-              </>
+
+            {/* Book CTA — same typography as the hero CTA */}
+            <button type="button" className="vt-link-cta vt-footer-cta" onClick={goBook}>
+              Reserve
+            </button>
+
+            {/* Contact info strip */}
+            {(address || p?.public_phone || p?.public_email) && (
+              <div className="vt-footer-contact">
+                {address && <span>{address}</span>}
+                {p?.public_phone && (() => {
+                  const tel = `tel:${p.public_phone.replace(/[^\d+]/g, '')}`
+                  return <a href={tel}>{p.public_phone}</a>
+                })()}
+                {p?.public_email && (
+                  <a href={`mailto:${p.public_email}`}>{p.public_email}</a>
+                )}
+              </div>
             )}
+
+            {/* Colophon */}
+            <div className="vt-footer-meta">
+              <span>Velvet Theory</span>
+              <span className="vt-footer-dot">·</span>
+              <span>&copy; {new Date().getFullYear()} {displayName}</span>
+              {footerSettings.show_powered_by !== false && (
+                <>
+                  <span className="vt-footer-dot">·</span>
+                  <span>Powered by BookReady</span>
+                </>
+              )}
+            </div>
           </div>
         </footer>
       </div>
@@ -822,26 +845,27 @@ const VT_CSS = `
   transition: opacity 160ms ease, border-color 160ms ease;
 }
 .vt-link-cta:hover { opacity: 0.78; }
+/* Minimal hero contacts — icon-only, no labels, no borders, just the
+   glyph in foreground color. Spaced so the row reads as a quiet contact
+   strip rather than a button bar. */
 .vt-hero-contacts {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 24px;
+  gap: 28px;
 }
 .vt-hero-contacts li a {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-family: var(--vt-body);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
+  justify-content: center;
   color: var(--vt-fg);
-  opacity: 0.72;
-  transition: opacity 160ms ease;
+  opacity: 0.62;
+  transition: opacity 180ms ease, color 180ms ease;
 }
-.vt-hero-contacts li a:hover { opacity: 1; }
+.vt-hero-contacts li a:hover {
+  opacity: 1;
+  color: var(--vt-accent);
+}
 
 /* No-image hero variant — just type on flat bg with a hairline */
 .vt-hero:not(:has(.vt-hero-backdrop)) {
@@ -1226,15 +1250,45 @@ const VT_CSS = `
   opacity: 0.85;
 }
 
-/* ── Footer / colophon ── */
+/* ── Footer: Reserve CTA + contact info + colophon ── */
 .vt-footer {
   border-top: 1px solid var(--vt-rule);
-  padding: 28px 24px;
-  margin-top: 64px;
+  padding: 72px 24px 36px;
+  margin-top: 80px;
 }
 .vt-footer-inner {
   max-width: 1080px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 36px;
+  text-align: center;
+}
+.vt-footer-cta {
+  /* Inherits the gold-underlined Fraunces styling from .vt-link-cta. */
+}
+.vt-footer-contact {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 28px;
+  width: 100%;
+  padding: 28px 0;
+  border-top: 1px solid var(--vt-rule);
+  border-bottom: 1px solid var(--vt-rule);
+  font-family: var(--vt-body);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--vt-fg);
+  opacity: 0.85;
+}
+.vt-footer-contact a {
+  color: var(--vt-fg);
+  transition: color 160ms ease;
+}
+.vt-footer-contact a:hover { color: var(--vt-accent); }
+.vt-footer-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
