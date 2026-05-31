@@ -872,7 +872,7 @@ const VT_CSS = `
 }
 /* Scoped to .vt-template so it beats the universal '.vt-template button'
    reset on specificity (0,2,0 vs 0,1,1). Without this the button reset's
-   `border: 0` was killing the gold underline on button-rendered CTAs. */
+   border:0 was killing the gold underline on button-rendered CTAs. */
 .vt-template .vt-link-cta {
   display: inline-block;
   font-family: var(--vt-display);
