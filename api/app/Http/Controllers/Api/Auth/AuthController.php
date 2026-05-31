@@ -40,7 +40,7 @@ class AuthController extends Controller
         // Phase S6 — also set the token as an httpOnly cookie so the
         // frontend doesn't need to stash it in localStorage. The token
         // is not returned in the JSON body.
-        return response()
+        $response = response()
             ->json([
                 'user' => [
                     'id'        => $user->id,
@@ -51,8 +51,21 @@ class AuthController extends Controller
                     'is_admin'  => (bool) ($user->is_admin ?? false),
                 ],
             ])
-            ->withCookie(AuthCookie::make($token))
-            ->withCookie(AuthCookie::forgetLegacySharedDomain());
+            ->withCookie(AuthCookie::make($token));
+
+        // Phase S6+ — only attach the .bkrdy.me-scoped delete cookie when
+        // the request actually carries a bookready_token already. Without
+        // an incoming cookie there's no legacy state to clean up, and the
+        // unconditional Set-Cookie was double-stacking same-named cookies
+        // on the response. Recent Chrome (especially incognito) treats the
+        // parent-domain delete as a third-party cookie and silently rejects
+        // the entire response — surfacing in the SPA as "Failed to fetch"
+        // on login submit.
+        if ($request->cookies->has(AuthCookie::NAME)) {
+            $response->withCookie(AuthCookie::forgetLegacySharedDomain());
+        }
+
+        return $response;
     }
 
     public function logout(Request $request): JsonResponse

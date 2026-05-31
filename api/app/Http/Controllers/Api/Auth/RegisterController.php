@@ -56,7 +56,7 @@ class RegisterController extends Controller
         }
 
         // Same cookie-attach flow as login. The bearer token is only sent as an httpOnly cookie.
-        return response()
+        $response = response()
             ->json([
                 'tenant_id' => $tenant->id,
                 'domain'    => $tenant->domains()->first()?->domain,
@@ -69,7 +69,17 @@ class RegisterController extends Controller
                     'is_admin'  => (bool) ($owner->is_admin ?? false),
                 ],
             ], 201)
-            ->withCookie(AuthCookie::make($token))
-            ->withCookie(AuthCookie::forgetLegacySharedDomain());
+            ->withCookie(AuthCookie::make($token));
+
+        // Phase S6+ — only attach the legacy-domain delete cookie when the
+        // request actually has a stale bookready_token. Otherwise we
+        // double-stack same-named Set-Cookie headers and Chrome incognito
+        // rejects the response. See AuthController::login for the full
+        // explanation.
+        if ($request->cookies->has(AuthCookie::NAME)) {
+            $response->withCookie(AuthCookie::forgetLegacySharedDomain());
+        }
+
+        return $response;
     }
 }

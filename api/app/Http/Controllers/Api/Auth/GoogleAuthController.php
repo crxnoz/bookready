@@ -325,7 +325,7 @@ class GoogleAuthController extends Controller
         )->plainTextToken;
 
         // The bearer token is only sent as an httpOnly cookie.
-        return response()
+        $response = response()
             ->json([
                 'tenant_id' => $owner->tenant_id,
                 'user'      => [
@@ -337,8 +337,15 @@ class GoogleAuthController extends Controller
                     'is_admin'  => (bool) ($owner->is_admin ?? false),
                 ],
             ])
-            ->withCookie(AuthCookie::make($token))
-            ->withCookie(AuthCookie::forgetLegacySharedDomain());
+            ->withCookie(AuthCookie::make($token));
+
+        // Phase S6+ — only attach legacy-domain delete when an old cookie
+        // is actually present. See AuthController::login.
+        if ($request->cookies->has(AuthCookie::NAME)) {
+            $response->withCookie(AuthCookie::forgetLegacySharedDomain());
+        }
+
+        return $response;
     }
 
     /**
@@ -368,10 +375,17 @@ class GoogleAuthController extends Controller
         // starts (the OAuth callback only minted a single-use code). Set
         // the httpOnly session cookie HERE so the frontend doesn't need
         // to store the token from $payload anywhere JS-readable.
-        return response()
+        $response = response()
             ->json($payload['response'])
-            ->withCookie(AuthCookie::make((string) $payload['token']))
-            ->withCookie(AuthCookie::forgetLegacySharedDomain());
+            ->withCookie(AuthCookie::make((string) $payload['token']));
+
+        // Phase S6+ — only attach legacy-domain delete when an old cookie
+        // is actually present. See AuthController::login.
+        if ($request->cookies->has(AuthCookie::NAME)) {
+            $response->withCookie(AuthCookie::forgetLegacySharedDomain());
+        }
+
+        return $response;
     }
 
     // ── Shared finalization ──────────────────────────────────────────────
