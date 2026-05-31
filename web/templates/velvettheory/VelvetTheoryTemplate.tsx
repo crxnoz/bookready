@@ -456,36 +456,35 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
           </div>
         </section>
 
-        {/* ── Additionals (hours + reviews + FAQs) appear at the bottom of every tab ── */}
+        {/* ── Additionals: thank-you opens it, then FAQs ── */}
         <section className="vt-additionals">
-          {hours.length > 0 && (
-            <div className="vt-section vt-section-narrow">
-              <p className="vt-eyebrow">Hours</p>
-              <h2 className="vt-h2">Open by appointment.</h2>
-              <dl className="vt-hours">
-                {hours.map((h: any) => (
-                  <div key={h.id} className="vt-hours-row">
-                    <dt>{h.day_name}</dt>
-                    <dd>
-                      {h.is_open && h.open_time && h.close_time
-                        ? `${fmt12(h.open_time)} — ${fmt12(h.close_time)}`
-                        : 'Closed'}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
+          {/* Thank-you note — first impression at the bottom of every tab. */}
+          {additionals.show_thank_you !== false
+            && (additionals.thank_you_title || additionals.thank_you_body) && (
+            <div className="vt-section vt-section-narrow vt-thanks">
+              <p className="vt-eyebrow">A note</p>
+              <h2 className="vt-h2">
+                {additionals.thank_you_title ?? 'Thank you.'}
+              </h2>
+              {additionals.thank_you_body && (
+                <p className="vt-prose-lede">{additionals.thank_you_body}</p>
+              )}
             </div>
           )}
 
-          {Array.isArray((additionals as any).faqs) && (additionals as any).faqs.length > 0 && (
+          {/* FAQs — only render when present + enabled. The backend shape is
+              additionals.faq.{ enabled, heading, items[{q,a}] }. */}
+          {additionals.faq?.enabled !== false
+            && Array.isArray(additionals.faq?.items)
+            && additionals.faq.items.length > 0 && (
             <div className="vt-section vt-section-narrow">
               <p className="vt-eyebrow">Questions</p>
-              <h2 className="vt-h2">Frequently asked.</h2>
+              <h2 className="vt-h2">{additionals.faq.heading ?? 'Frequently asked.'}</h2>
               <div className="vt-faqs">
-                {(additionals as any).faqs.map((f: any, i: number) => (
+                {additionals.faq.items.map((f: any, i: number) => (
                   <details key={i} className="vt-faq">
-                    <summary>{f.q}</summary>
-                    <p>{f.a}</p>
+                    <summary>{f.q ?? f.question ?? ''}</summary>
+                    <p>{f.a ?? f.answer ?? ''}</p>
                   </details>
                 ))}
               </div>
@@ -501,6 +500,24 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
             <button type="button" className="vt-link-cta vt-footer-cta" onClick={goBook}>
               Reserve
             </button>
+
+            {/* Hours — moved into the footer so business info reads as one
+                contiguous block at the bottom of the page rather than two
+                competing sections. */}
+            {hours.length > 0 && (
+              <dl className="vt-footer-hours">
+                {hours.map((h: any) => (
+                  <div key={h.id} className="vt-footer-hours-row">
+                    <dt>{h.day_name}</dt>
+                    <dd>
+                      {h.is_open && h.open_time && h.close_time
+                        ? `${fmt12(h.open_time)} — ${fmt12(h.close_time)}`
+                        : 'Closed'}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
 
             {/* Contact info strip */}
             {(address || p?.public_phone || p?.public_email) && (
@@ -1189,30 +1206,12 @@ const VT_CSS = `
   letter-spacing: 0.04em;
 }
 
-/* ── Hours ── */
+/* ── Additionals (thank-you + FAQs only — hours now lives in the footer) ── */
 .vt-additionals { padding: 0; }
 .vt-additionals > .vt-section { border-top: 1px solid var(--vt-rule); padding-top: 80px; }
-.vt-hours {
-  display: flex;
-  flex-direction: column;
-}
-.vt-hours-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 16px;
-  padding: 14px 0;
-  border-top: 1px solid var(--vt-rule);
-  font-family: var(--vt-body);
-  font-size: 14px;
-}
-.vt-hours-row:first-child { border-top: 0; }
-.vt-hours-row dt {
-  font-weight: 500;
-  letter-spacing: 0.04em;
-}
-.vt-hours-row dd {
-  color: var(--vt-fg-muted);
-  letter-spacing: 0.04em;
+.vt-thanks .vt-prose-lede {
+  margin-top: 8px;
+  margin-bottom: 0;
 }
 
 /* ── FAQs ── */
@@ -1267,6 +1266,34 @@ const VT_CSS = `
 }
 .vt-footer-cta {
   /* Inherits the gold-underlined Fraunces styling from .vt-link-cta. */
+}
+.vt-footer-hours {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+.vt-footer-hours-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--vt-rule);
+  font-family: var(--vt-body);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+.vt-footer-hours-row:first-child { border-top: 0; }
+.vt-footer-hours-row dt {
+  font-weight: 500;
+  color: var(--vt-fg);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+.vt-footer-hours-row dd {
+  color: var(--vt-fg-muted);
 }
 .vt-footer-contact {
   display: flex;

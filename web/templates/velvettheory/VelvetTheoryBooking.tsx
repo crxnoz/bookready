@@ -75,9 +75,11 @@ const VT_BOOKING_FRAME_CSS = `
 }
 
 /* The signed-in / sign-out account widget needs breathing room below it
-   before the booking form starts. Without margin it visually sticks to
-   the next block. */
-.vt-booking-inner.lush-template .lush-account-widget {
+   before the booking form starts. Two variants exist in the Lush flow —
+   the full widget at the top, and the thin auth strip used in the booking
+   inline. Both need margin so they don't visually stick to the next block. */
+.vt-booking-inner.lush-template .lush-account-widget,
+.vt-booking-inner.lush-template .lush-booking-auth-thin {
   margin-bottom: 36px !important;
 }
 
