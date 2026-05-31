@@ -706,8 +706,8 @@ const VT_CSS = `
 
 /* Reset that doesn't fight the editor app's tailwind.
    IMPORTANT: do NOT reset padding/font/color on the universal button
-   selector — `.vt-template button` has higher specificity (0,1,1) than a
-   single class like `.vt-tab` (0,1,0), so blanket resets there silently
+   selector — .vt-template button has higher specificity (0,1,1) than a
+   single class like .vt-tab (0,1,0), so blanket resets there silently
    override every class-based button styling. Just neutralize the chrome
    the browser adds. */
 .vt-template *, .vt-template *::before, .vt-template *::after { box-sizing: border-box; }
