@@ -2528,7 +2528,7 @@ const LUSH_CSS = `
 
 /* ── Gallery ── */
 .lush-gallery-section { width:100%; padding:0 0 clamp(64px,8vw,110px); background:var(--lush-bg); overflow:hidden; }
-.lush-gallery-group { width:min(100%,396px); margin:0 auto; padding:22px 30px 0; }
+.lush-gallery-group { width:min(100%,396px); margin:0 auto; padding:36px 30px 0; }
 .lush-gallery-group+.lush-gallery-group { padding-top:30px; }
 .lush-gallery-group h2 {
   margin:0 0 22px; color:var(--lush-text); text-align:center;
@@ -2594,7 +2594,7 @@ const LUSH_CSS = `
 }
 
 /* ── Before & After ── */
-.lush-before-after-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:32px 0 70px; }
+.lush-before-after-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:36px 0 70px; }
 /* "Amazing" + "results" are both Molle italic in highlight-color sage
    with a hard sharp shadow (no blur). Big word on TOP (h2 = "Amazing"),
    small word BELOW (backdrop = "results") translated up so they sit
@@ -2656,7 +2656,7 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 .lush-ba-card--after.is-revealed span { display:none; }
 
 /* ── About ── */
-.lush-about-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:14px 20px 58px; }
+.lush-about-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:36px 20px 58px; }
 
 /* About hero: a rounded 4-point star window that masks the about
    image into the spark shape, with the heading wrap stacked BELOW
@@ -2665,11 +2665,11 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
    falls back to a solid sage fill (rendered server-side). */
 .lush-about-hero {
   display:flex; flex-direction:column; align-items:center;
-  padding:6px 16px 24px;
+  padding:0 16px 24px;
   margin-bottom:24px;
 }
 .lush-about-star {
-  width:min(86vw, 280px);
+  width:min(94vw, 340px);
   aspect-ratio:1;
   color:var(--lush-pink);
   filter:drop-shadow(0 10px 22px rgba(14,17,17,0.14));
@@ -2735,7 +2735,7 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 .lush-about-list strong { display:block; color:var(--lush-text); font-weight:400; font-family:var(--lush-serif); font-size:18px; line-height:1.1; letter-spacing:-0.02em; margin-bottom:2px; }
 
 /* ── Policy ── */
-.lush-policy-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:48px 14px 64px; }
+.lush-policy-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:36px 14px 64px; }
 /* Policy heading is a Molle twin-line kicker pattern:
    small "Booking" kicker on top, big "Policies" heading underneath
    (translated up to close the gap). */
@@ -2775,7 +2775,7 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 .lush-policy-copy { color:var(--lush-text); font-size:13px; font-family:var(--lush-ui); font-weight:400; line-height:1.55; }
 
 /* ── Before appointment / Aftercare ── */
-.lush-before-appointment-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:28px 16px 60px; }
+.lush-before-appointment-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:36px 16px 60px; }
 .lush-before-appointment-section h2 { margin:0 0 38px; color:var(--lush-text); text-align:center; font-size:clamp(40px,9vw,52px); font-family:var(--lush-script); font-weight:400; line-height:1; letter-spacing:0; }
 .lush-before-timeline { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:26px; position:relative; }
 /* No connector line between steps — the alternating sage nodes carry
@@ -2813,7 +2813,7 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
   font-size:10px; font-weight:600; letter-spacing:0.18em; text-transform:uppercase;
 }
 
-.lush-aftercare-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:28px 14px 60px; }
+.lush-aftercare-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:36px 14px 60px; }
 .lush-aftercare-section h2 { margin:0 0 30px; color:var(--lush-text); text-align:center; font-size:clamp(42px,10vw,56px); font-family:var(--lush-script); font-weight:400; line-height:1; letter-spacing:0; }
 .lush-aftercare-list { display:grid; gap:18px; }
 /* Alternating cards: odd children are solid sage with white text;
