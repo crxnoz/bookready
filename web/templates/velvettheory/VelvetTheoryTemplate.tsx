@@ -844,45 +844,63 @@ const VT_CSS = `
   padding: 120px 32px 80px;
 }
 
-/* ── Tabs ── */
+/* ── Tabs ──
+   Editorial serif labels, hairline gold underline on active.
+   The underline sits ON the parent's bottom border (not below it) so
+   the seam reads as one continuous fine line, not two stacked ones.
+   On mobile the row scrolls horizontally instead of wrapping — keeps
+   the rhythm consistent when there are 6-7 labels of varying widths. */
 .vt-tabs {
   position: sticky;
   top: 0;
   z-index: 10;
   background: var(--vt-bg);
-  border-top: 1px solid var(--vt-rule);
   border-bottom: 1px solid var(--vt-rule);
-  padding: 0 24px;
 }
 .vt-tabs-inner {
   max-width: 1120px;
   margin: 0 auto;
   display: flex;
-  flex-wrap: wrap;
   justify-content: center;
-  gap: 0;
+  gap: 8px;
+  padding: 0 24px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.vt-tabs-inner::-webkit-scrollbar { display: none; }
 .vt-tab {
   font-family: var(--vt-display);
   font-size: 15px;
   font-weight: 400;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.015em;
   color: var(--vt-fg);
-  opacity: 0.55;
-  padding: 18px 18px;
+  opacity: 0.48;
+  padding: 20px 14px 18px;
   position: relative;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: opacity 180ms ease;
 }
 .vt-tab:hover { opacity: 0.85; }
 .vt-tab.is-active { opacity: 1; }
+/* Underline sits flush with the parent's border-bottom (bottom: -1px lines
+   up exactly with the 1px hairline) and spans just the text area, not the
+   full padded tab — feels more like a typesetter's mark than a button
+   state. */
 .vt-tab.is-active::after {
   content: '';
   position: absolute;
   bottom: -1px;
-  left: 18px;
-  right: 18px;
+  left: 14px;
+  right: 14px;
   height: 1px;
   background: var(--vt-accent);
+}
+@media (max-width: 640px) {
+  .vt-tabs-inner { justify-content: flex-start; padding: 0 16px; gap: 4px; }
+  .vt-tab { padding: 16px 10px 14px; font-size: 14px; }
+  .vt-tab.is-active::after { left: 10px; right: 10px; }
 }
 
 /* ── Panels ── */
@@ -1226,12 +1244,10 @@ const VT_CSS = `
 }
 .vt-footer-dot { color: var(--vt-accent); }
 
-/* Mobile tweaks */
+/* Mobile tweaks (tab-specific rules live in the .vt-tabs block above) */
 @media (max-width: 640px) {
   .vt-hero { padding: 60px 20px 80px; }
   .vt-section { padding: 60px 20px; }
-  .vt-tab { padding: 14px 10px; font-size: 14px; }
-  .vt-tab.is-active::after { left: 10px; right: 10px; }
   .vt-hero-contacts { gap: 14px; }
   .vt-strip img { aspect-ratio: 1.5 / 1; }
 }

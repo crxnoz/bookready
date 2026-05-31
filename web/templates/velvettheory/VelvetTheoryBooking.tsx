@@ -66,8 +66,11 @@ export default function VelvetTheoryBooking(props: Props) {
 }
 
 // The VT side of the seam — title strip above the embedded Lush booking,
-// plus a contained "card" surface so the cream/pink Lush palette doesn't
-// bleed visually into the burgundy page.
+// plus an aggressive Lush-variable override that re-skins the embedded
+// booking flow in Velvet Theory tokens (champagne gold accent, burgundy
+// text on bone background, Fraunces + Inter typography). Same architectural
+// approach Lush itself uses to swap accents — we just hijack the variables
+// from outside.
 const VT_BOOKING_FRAME_CSS = `
 .vt-booking-frame {
   max-width: 1080px;
@@ -96,13 +99,52 @@ const VT_BOOKING_FRAME_CSS = `
   background: #C9A876;
 }
 /* The Lush booking flow is scoped to .lush-template — render it on its own
-   cream surface so it reads as an inset card inside the burgundy page,
-   not a broken color mismatch. */
+   bone surface so it reads as an intentional inset card inside the burgundy
+   page. The Lush variable overrides below re-skin it in VT tokens. */
 .vt-booking-inner {
-  background: #FAF6F1;
-  border: 1px solid rgba(245,239,230,0.18);
+  background: #F5EFE6;
+  border: 1px solid rgba(201,168,118,0.32);
   padding: 8px 0 32px;
 }
+
+/* ── Lush-variable re-skin: paint the embedded booking in VT tokens ── */
+.vt-booking-inner.lush-template {
+  --lush-bg:          #F5EFE6;            /* Bone */
+  --lush-card:        #FBF7F0;            /* Slightly warmer card surface */
+  --lush-text:        #2D0F19;            /* Burgundy text */
+  --lush-muted:       rgba(45,15,25,0.62);
+  --lush-pink:        #C9A876;            /* Champagne gold accent */
+  --lush-pink-rgb:    201, 168, 118;      /* Same accent as RGB triplet */
+  --lush-on-pink:     #2D0F19;            /* Burgundy text on gold buttons */
+  --lush-pink-soft:   #E0CFB0;            /* Lighter champagne */
+  --lush-dark-border: rgba(45,15,25,0.18);
+  --lush-serif:       'Fraunces', 'Cormorant Garamond', Georgia, serif;
+  --lush-sans:        'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --lush-ui:          'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--lush-text);
+  background: var(--lush-bg);
+}
+
+/* Round corners are TFR/Lush vocabulary — VT is sharp. Flatten everything
+   inside the booking card so it reads coherently with the rest of the VT
+   page (gallery strips, manifesto, footer — all 0 radius). */
+.vt-booking-inner.lush-template *,
+.vt-booking-inner.lush-template *::before,
+.vt-booking-inner.lush-template *::after {
+  border-radius: 0 !important;
+}
+
+/* Hard-coded inline-style accent colors that bypass the variables —
+   override them with attribute selectors so the deposit/full toggle and
+   any other inline-styled accents read as champagne gold instead of sage. */
+.vt-booking-inner.lush-template button[style*="#7FAF9A"] {
+  border-color: #C9A876 !important;
+}
+.vt-booking-inner.lush-template [style*="rgba(127,175,154"] {
+  background-color: rgba(201,168,118,0.10) !important;
+  border-color: rgba(201,168,118,0.32) !important;
+}
+
 @media (max-width: 640px) {
   .vt-booking-frame { padding: 60px 20px 32px; }
 }
