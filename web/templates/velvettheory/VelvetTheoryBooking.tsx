@@ -81,35 +81,68 @@ const VT_BOOKING_FRAME_CSS = `
   margin-bottom: 20px !important;
 }
 
-/* Auth strips + summary blocks need stronger text — the bone-at-62% from
-   the global --lush-muted override was too low-contrast on burgundy.
-   Bump these specific surfaces back up so the body reads cleanly. */
+/* Auth strips + summary blocks + account CTA need stronger text — the
+   bone-at-62% from the global --lush-muted override was too low-contrast
+   on burgundy. Bump these specific surfaces back up so the body reads
+   cleanly. */
 .vt-booking-inner.lush-template .lush-account-widget,
 .vt-booking-inner.lush-template .lush-account-widget *,
 .vt-booking-inner.lush-template .lush-booking-auth-thin,
 .vt-booking-inner.lush-template .lush-booking-auth-thin *,
 .vt-booking-inner.lush-template [class*="lush-booking-summary"],
 .vt-booking-inner.lush-template [class*="lush-booking-summary"] dt,
-.vt-booking-inner.lush-template [class*="lush-booking-summary"] dd {
+.vt-booking-inner.lush-template [class*="lush-booking-summary"] dd,
+.vt-booking-inner.lush-template .lush-booking-account-cta,
+.vt-booking-inner.lush-template .lush-booking-account-cta *,
+.vt-booking-inner.lush-template .lush-booking-account-cta-body,
+.vt-booking-inner.lush-template .lush-booking-account-cta-eyebrow,
+.vt-booking-inner.lush-template .lush-booking-account-cta-title,
+.vt-booking-inner.lush-template .lush-booking-account-cta-sub {
   color: var(--vt-fg) !important;
   opacity: 1 !important;
 }
 
-/* Step indicators (the "1 of 5" pills at the top of the booking flow) —
-   when active, the background became gold AND the text stayed gold via the
-   global eyebrow override, hiding the number. Invert the text color when
-   the pill is in its active/filled state. */
-.vt-booking-inner.lush-template [class*="lush-booking-pill"][class*="active"],
-.vt-booking-inner.lush-template [class*="lush-booking-step"][class*="active"],
-.vt-booking-inner.lush-template [class*="lush-booking-step"][class*="current"],
-.vt-booking-inner.lush-template [class*="lush-booking-pill"][class*="current"] {
+/* Step indicators. Lush uses three states on .lush-booking-step:
+     (no modifier) = upcoming
+     .is-active    = current step
+     .is-done      = completed past step
+   Lush originally fills both is-active AND is-done with --lush-pink — once
+   we override --lush-pink to champagne gold, completed steps look identical
+   to the current one. Differentiate explicitly: ONLY .is-active gets a
+   filled gold pill; .is-done is outlined gold (transparent fill, gold
+   border, gold number) so it reads as "done but not current". */
+
+/* CURRENT step (is-active) — gold fill, burgundy number visible inside */
+.vt-booking-inner.lush-template .lush-booking-step.is-active .lush-booking-step-num {
   background: var(--vt-accent) !important;
   color: var(--vt-bg) !important;
-  border-color: var(--vt-accent) !important;
+  border: 1px solid var(--vt-accent) !important;
 }
-.vt-booking-inner.lush-template [class*="lush-booking-pill"][class*="active"] *,
-.vt-booking-inner.lush-template [class*="lush-booking-step"][class*="active"] * {
-  color: var(--vt-bg) !important;
+
+/* PAST steps (is-done) — outlined, NOT filled. Gold border + gold number on
+   transparent bg. The connecting line between this and the next step still
+   gets the active gold treatment to show progress, but the pill itself
+   reads as a completed waypoint, not the current focus. */
+.vt-booking-inner.lush-template .lush-booking-step.is-done .lush-booking-step-num {
+  background: transparent !important;
+  color: var(--vt-accent) !important;
+  border: 1px solid var(--vt-accent) !important;
+}
+
+/* UPCOMING steps — muted outline so the visual hierarchy is clear. */
+.vt-booking-inner.lush-template .lush-booking-step:not(.is-active):not(.is-done) .lush-booking-step-num {
+  background: transparent !important;
+  color: var(--vt-fg-muted) !important;
+  border: 1px solid var(--vt-rule) !important;
+}
+
+/* Connecting line between steps — gold once previous is done, hairline
+   otherwise. */
+.vt-booking-inner.lush-template .lush-booking-step + .lush-booking-step::before {
+  background: var(--vt-rule) !important;
+}
+.vt-booking-inner.lush-template .lush-booking-step.is-done + .lush-booking-step::before {
+  background: var(--vt-accent) !important;
 }
 
 /* Calendar — Lush day cells used too-faded text for unavailable dates and
