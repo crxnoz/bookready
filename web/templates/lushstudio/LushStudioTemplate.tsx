@@ -342,7 +342,12 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
     <>
       <style>{LUSH_CSS}</style>
       <LushCustomerAuthProvider>
-      <div className="lush-template" style={accentVars}>
+      {/* `lush-femme` is the marker that scopes the feminine-luxury
+          decorations (scalloped hero edge, sparkle field, polaroid before/
+          after, etc.). VelvetTheoryBooking re-uses the Lush flow but only
+          adds `.lush-template` — so these decorations stay off the VT
+          embed. */}
+      <div className="lush-template lush-femme" style={accentVars}>
 
         {/* ── Announcement bar ── */}
         {(header.show_announcement ?? true) && (
@@ -3060,5 +3065,195 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
   .lush-booking-times { grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:6px; }
   .lush-gallery-group { padding-left:18px; padding-right:18px; }
   /* progress pills already use a sr-only label; no mobile override needed */
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   LUSH FEMME — visual signature that separates Lush from TFR.
+   Scoped to .lush-femme so the VelvetTheoryBooking embed (which only
+   has .lush-template) doesn't pick these up. Feminine + luxurious +
+   playful: scalloped hero edge, sparkle field, polaroid before/after,
+   script-font accents, soft pearl-glow shadows. None of these touch
+   the booking-flow internals — they're additive chrome.
+   ────────────────────────────────────────────────────────────────────── */
+
+/* Scalloped cover edge — feminine soft bottom (vs TFR's hard straight
+   edge). The mask cuts a wave pattern into the bottom of the hero
+   image so the next section reads as a soft transition. */
+.lush-femme .lush-header-cover {
+  position: relative;
+}
+.lush-femme .lush-header-cover > img {
+  -webkit-mask-image:
+    radial-gradient(ellipse 18px 10px at 12px 100%, transparent 99%, #000 100%),
+    linear-gradient(#000, #000);
+  mask-image:
+    radial-gradient(ellipse 18px 10px at 12px 100%, transparent 99%, #000 100%),
+    linear-gradient(#000, #000);
+  -webkit-mask-size: 36px 16px, 100% calc(100% - 14px);
+  mask-size: 36px 16px, 100% calc(100% - 14px);
+  -webkit-mask-repeat: repeat-x, no-repeat;
+  mask-repeat: repeat-x, no-repeat;
+  -webkit-mask-position: bottom, top;
+  mask-position: bottom, top;
+}
+
+/* Pearl-shimmer ring around the avatar — luxurious touch using a slow
+   conic gradient. Subtle. Animates the rotation so the ring catches
+   "light" like real pearl. */
+.lush-femme .lush-avatar-ring {
+  background: conic-gradient(
+    from 0deg,
+    rgba(255,232,242,0.95),
+    rgba(232,220,236,0.6),
+    rgba(255,232,242,0.95),
+    rgba(232,220,236,0.6),
+    rgba(255,232,242,0.95)
+  );
+  animation: lf-pearl 14s linear infinite;
+}
+@keyframes lf-pearl { to { transform: rotate(360deg); } }
+
+/* Floating sparkle field — adds 4-5 decorative star marks scattered
+   around the hero section using pseudo-elements on the section itself.
+   Pure decoration, doesn't affect layout. */
+.lush-femme .lush-header-section { position: relative; overflow: hidden; }
+.lush-femme .lush-header-section::before,
+.lush-femme .lush-header-section::after {
+  content: '✦';
+  position: absolute;
+  font-family: serif;
+  color: rgba(var(--lush-pink-rgb), 0.65);
+  pointer-events: none;
+  animation: lf-twinkle 4s ease-in-out infinite;
+}
+.lush-femme .lush-header-section::before {
+  top: 18%; left: 8%;
+  font-size: 14px;
+  animation-delay: 0s;
+}
+.lush-femme .lush-header-section::after {
+  top: 62%; right: 10%;
+  font-size: 18px;
+  animation-delay: 1.4s;
+}
+@keyframes lf-twinkle {
+  0%, 100% { opacity: 0.35; transform: scale(1) rotate(0deg); }
+  50%      { opacity: 0.95; transform: scale(1.15) rotate(8deg); }
+}
+
+/* Section title ornament — small flourish marks before/after every h2
+   inside the page (gallery / about / before-after / etc.) so the
+   feminine "decorated header" reads consistently. Uses currentColor so
+   it inherits the accent. */
+.lush-femme .lush-gallery-group h2::before {
+  content: '✺';
+  margin-right: 10px;
+  opacity: 0.75;
+  font-family: serif;
+}
+.lush-femme .lush-gallery-group h2::after {
+  content: '✺';
+  margin-left: 10px;
+  opacity: 0.75;
+  font-family: serif;
+}
+
+/* Polaroid before/after — wraps each pair as a soft offset stack with
+   a white border, slight rotation, and pearl-shadow. Reads as actual
+   photographs on a vanity table, not a clinical grid. The Lush ba-pair
+   markup uses two figures side-by-side; alternate the tilt so they look
+   handheld. */
+.lush-femme .lush-ba-pair figure {
+  background: #FFFFFF;
+  padding: 10px 10px 28px;
+  border: 1px solid rgba(18,18,18,0.06);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.8) inset,
+    0 12px 28px rgba(118, 75, 90, 0.18),
+    0 4px 8px rgba(0,0,0,0.06);
+  transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.lush-femme .lush-ba-pair figure:first-child  { transform: rotate(-1.6deg); }
+.lush-femme .lush-ba-pair figure:last-child   { transform: rotate(1.8deg); }
+.lush-femme .lush-ba-pair figure:hover {
+  transform: rotate(0deg) translateY(-4px);
+}
+.lush-femme .lush-ba-pair figcaption {
+  font-family: var(--lush-script);
+  font-size: 22px;
+  letter-spacing: 0;
+  text-transform: none !important;
+  color: var(--lush-text);
+  opacity: 0.75;
+  text-align: center;
+  margin-top: 8px;
+}
+
+/* Tab pills get a softer feminine shape — proper rounded pill with a
+   gentle gradient fill on active state instead of the TFR-style hard
+   underline. */
+.lush-femme .lush-tab-pill {
+  border-radius: 999px;
+  padding-left: 18px !important;
+  padding-right: 18px !important;
+  transition: background 200ms ease, color 200ms ease, box-shadow 200ms ease;
+}
+.lush-femme .lush-tab-pill.is-active {
+  background: linear-gradient(135deg,
+    rgba(var(--lush-pink-rgb), 0.16),
+    rgba(var(--lush-pink-rgb), 0.06));
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--lush-pink-rgb), 0.32),
+    0 4px 12px rgba(var(--lush-pink-rgb), 0.18);
+}
+.lush-femme .lush-tab-pill.is-active::after {
+  display: none; /* drop the underline — we use the soft pill fill now */
+}
+
+/* Service prices get a tiny heart marker — fun + feminine. Targets the
+   common service-row price node. Safe no-op if the class doesn't render. */
+.lush-femme [class*="lush-booking-service"] [class*="price"]::before {
+  content: '♡';
+  margin-right: 6px;
+  opacity: 0.55;
+  font-family: serif;
+}
+
+/* Announcement bar — small script accent at the start of the marquee so
+   the strip reads like a "love note" instead of an ALL-CAPS notice. */
+.lush-femme .lush-announce {
+  position: relative;
+}
+.lush-femme .lush-announce::before {
+  content: 'a note ✿';
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--lush-script);
+  font-size: 17px;
+  color: var(--lush-text);
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 2;
+  background: linear-gradient(90deg, var(--lush-bg) 70%, transparent);
+  padding-right: 18px;
+}
+
+/* Subtle pearl-tinted glow under primary CTAs — depth without weight.
+   Targets the hero book button + the booking-flow primary CTAs Lush
+   shares with us. */
+.lush-femme .lush-header-btn-book {
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.42) inset,
+    0 8px 18px rgba(var(--lush-pink-rgb), 0.28),
+    0 2px 6px rgba(var(--lush-pink-rgb), 0.20);
+}
+
+/* Reduced-motion respect — kill the animations for users who opt out. */
+@media (prefers-reduced-motion: reduce) {
+  .lush-femme .lush-avatar-ring { animation: none; }
+  .lush-femme .lush-header-section::before,
+  .lush-femme .lush-header-section::after { animation: none; opacity: 0.65; }
 }
 `
