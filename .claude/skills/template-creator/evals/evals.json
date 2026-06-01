@@ -1,0 +1,20 @@
+{
+  "skill_name": "template-creator",
+  "_notes": "Test prompts are written as if the creator already answered every interview question. Subagents in the test loop have no real user to interview, so each prompt embeds the full spec. The skill should recognize this and skip straight to scaffold/register/defaults/validate. Each test runs in an isolated git worktree so changes never pollute main.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "sun-salt-beach-spa",
+      "prompt": "Create a new BookReady template with these specs (treat this as the complete interview — no real user to ask follow-ups):\n\n- Name: Sun & Salt\n- Slug: sun-salt\n- Vibe (one sentence): Soft beach spa — sandy cream backgrounds, ocean blue accents, sun-yellow highlights, breezy and unpretentious.\n- color_role: accent\n- Palette (first is default):\n  - #F2E8DA Sand (default)\n  - #4B8FB2 Ocean\n  - #FFD659 Sun\n  - #FFFFFF Foam\n- Fonts: Serif headings (Fraunces) + sans body (Inter)\n- header_fields: all five (cover_image, avatar_image, announcement, business_type, social_buttons)\n- footer_fields: all six\n\nFollow the template-creator skill's full lifecycle: scaffold the 5 files under web/templates/sun-salt/, register the slug in web/templates/registry.ts, add a sunSaltSettings()/sunSaltSections() branch to api/app/Support/TemplateDefaults.php with beach-spa flavored seed copy, validate the manifest, and run npm run build. Report what passed and what failed.",
+      "expected_output": "5 template files under web/templates/sun-salt/, registry.ts updated with the new slug in both REGISTRY and MANIFESTS maps, TemplateDefaults.php has new sunSaltSettings() and sunSaltSections() functions plus match arms in settingsFor() and sectionsFor(), validateManifest() returns empty array, npm run build passes (or fails with an explicit fix-needed report).",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "leather-oxblood-luxury-barber",
+      "prompt": "Create a new BookReady template with these specs (treat this as the complete interview — no real user to ask follow-ups):\n\n- Name: Atlas & Hide\n- Slug: atlas-hide\n- Vibe (one sentence): Luxury heritage barbershop — leather chairs, oxblood walls, brass fittings, restrained editorial typography.\n- color_role: background (palette swatches replace the page background; a constant brass accent #B8966B stays across all variants)\n- Palette (first is default):\n  - #2A0E0E Oxblood (default)\n  - #1A1A1A Charcoal\n  - #3D2817 Walnut\n  - #F5EFE6 Bone (light)\n- Fonts: Cormorant Garamond (serif) + Inter (sans)\n- header_fields: cover_image, announcement, social_buttons (drop avatar_image and business_type — this is an editorial editorial vibe, no avatar block needed)\n- footer_fields: show_powered_by, show_hours, show_contact_links, business_name_override, subtext (drop show_quick_book — the design uses an in-flow CTA like VT)\n\nFollow the template-creator skill's full lifecycle: scaffold the 5 files under web/templates/atlas-hide/, register, add an atlasHideSettings()/atlasHideSections() branch to TemplateDefaults.php with luxury heritage-barber seed copy, validate the manifest, run npm run build. Report what passed and what failed.",
+      "expected_output": "5 template files under web/templates/atlas-hide/, registry.ts updated with the new slug, TemplateDefaults.php has atlasHide* functions, manifest validates with header_fields excluding avatar_image+business_type and footer_fields excluding show_quick_book, color_role: 'background' set, build passes (or fails with explicit report).",
+      "files": []
+    }
+  ]
+}

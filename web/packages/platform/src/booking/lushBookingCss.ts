@@ -1807,28 +1807,33 @@ export const LUSH_CSS = `
   .lush-ba-diptych { width:100%; max-width:520px; margin:0 auto; }
   .lush-ba-label { font-size:16px; }
   .lush-ba-caption { font-size:24px; margin-top:18px; }
-  /* Desktop About: full-width 1180px container to match the other
-     editorial sections, with a 2-col grid — image frame on the left,
-     pull quote + body copy stacked on the right. The hero column
-     keeps the blob-frame photo with overlaid heading; the content
-     column reads as a letter beside it. */
+  /* Desktop About: full-width 1180px section, 2-col grid. Left column
+     holds the blob-frame hero (image + overlaid heading); right
+     column stacks the pull-quote tagline ABOVE the body copy. */
   .lush-about-section {
     min-height:auto; padding:80px 40px 110px;
     width:min(100%,1180px); margin:0 auto;
     display:grid; grid-template-columns:1.05fr 1fr; gap:64px; align-items:start;
   }
-  .lush-about-hero { padding:0; margin-bottom:0; }
+  /* Explicit grid placement — without this the section's third child
+     (the plain <div> wrapping .lush-about-copy) flows to row 2 col 1
+     (under the hero), separating it from the quote. We want the
+     hero spanning both rows on the left, and quote+copy stacked
+     vertically on the right. */
+  .lush-about-section > .lush-about-hero { grid-column:1; grid-row:1 / span 2; padding:0; margin-bottom:0; }
+  .lush-about-section > .lush-about-quote { grid-column:2; grid-row:1; }
+  .lush-about-section > div:not(.lush-about-hero) { grid-column:2; grid-row:2; }
   .lush-about-frame { width:100%; max-width:520px; aspect-ratio:1.1; padding-right:18px; padding-bottom:20px; margin:0 auto; }
   .lush-about-frame-bg { top:20px; left:18px; right:0; }
   .lush-about-frame-img, .lush-about-frame-fallback, .lush-about-frame-overlay { right:18px; bottom:20px; }
   .lush-about-heading-wrap { top:22%; width:88%; }
   .lush-about-backdrop { font-size:clamp(32px,3.4vw,52px); text-shadow:3px 3px 0 rgba(14,17,17,0.18); }
   .lush-about-heading-wrap h2 { font-size:clamp(72px,7vw,108px); text-shadow:5px 5px 0 rgba(14,17,17,0.20); margin-top:-10px; }
-  .lush-about-quote { margin:0 0 32px; width:100%; max-width:none; text-align:left; align-items:flex-start; padding:0; }
-  .lush-about-quote::before { margin:0 0 22px; }
-  .lush-about-quote blockquote { font-size:28px; line-height:1.35; text-align:left; }
+  .lush-about-quote { margin:0 0 28px; width:100%; max-width:none; text-align:left; align-items:flex-start; padding:0; }
+  .lush-about-quote::before { margin:0 0 18px; }
+  .lush-about-quote blockquote { font-size:26px; line-height:1.35; text-align:left; }
   .lush-about-quote figcaption { align-self:flex-start; text-align:left; }
-  .lush-about-copy { max-width:none; width:100%; font-size:18px; line-height:1.6; }
+  .lush-about-copy { max-width:none; width:100%; font-size:17px; line-height:1.65; }
   .lush-policy-section { padding:70px 40px 110px; }
   .lush-policy-heading { align-items:center; margin-bottom:34px; }
   .lush-policy-heading span { font-size:clamp(48px,5vw,68px); text-shadow:5px 5px 0 rgba(14,17,17,0.18); }
@@ -1850,16 +1855,18 @@ export const LUSH_CSS = `
   .lush-before-step-body { padding:10px 0 22px; }
   .lush-before-step-body h3 { font-size:32px; margin-bottom:12px; }
   .lush-before-step-body p { font-size:15px; line-height:1.65; }
-  /* Aftercare ritual — centered editorial column (the wide section
-     stretches to 1180px now that we matched all sections; the
-     ritual list itself stays a focused 640px reading column). */
-  .lush-ritual { max-width:640px; margin:0 auto; }
-  .lush-ritual-step { padding:18px 4px 22px; text-align:center; }
-  .lush-ritual-body { display:inline-block; max-width:520px; text-align:left; }
+  /* Aftercare ritual — left-aligned column. Drops the centered
+     treatment; ritual sits at the left edge of the section as an
+     editorial reading column up to 720px wide. The h2 above stays
+     centered (it's the section heading); the items themselves
+     read as a left-anchored list. */
+  .lush-ritual { max-width:720px; margin:0; }
+  .lush-ritual-step { padding:18px 4px 22px; text-align:left; }
+  .lush-ritual-body { display:block; max-width:none; }
   .lush-ritual-kicker { font-size:30px; }
   .lush-ritual-step h3 { font-size:30px; margin-bottom:12px; }
   .lush-ritual-step p { font-size:15px; line-height:1.7; }
-  .lush-ritual-sep { padding:18px 0 6px; font-size:18px; }
+  .lush-ritual-sep { display:block; text-align:left; padding:18px 0 6px; font-size:18px; }
   /* FAQ + Reviews + Thanks at desktop — inherit their own
      inner max-widths (720, 960, 720) but the SECTION padding
      needs to breathe on wide viewports. */
