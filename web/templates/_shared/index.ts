@@ -8,3 +8,4 @@
 
 export * from './tokens'
 export * from './manifest'
+export * from './useTemplateManifest'

@@ -62,6 +62,15 @@ import type {
   PolicyCustomGroup,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
+// M4 — manifest-driven editor surface. The hook reads each template's
+// declared header / footer fields + color role + palette, so the editor
+// shows only controls that the active template actually surfaces.
+import {
+  useTemplateManifest,
+  supportsHeaderField,
+  supportsFooterField,
+  type TemplateManifest,
+} from '@/templates/_shared'
 
 // ── Types & constants ────────────────────────────────────────────────────────
 
@@ -84,67 +93,48 @@ function hrefFor(tab: SubTab): string {
   return tab === 'overview' ? '/editor/website' : `/editor/website?tab=${tab}`
 }
 
-// Accent palettes keyed by template. The first entry of each palette is
-// the template's default; selecting it saves `null` to the DB so future
-// default tweaks propagate. All others are stored verbatim and resolved
-// client-side to rgba(R,G,B,a) triplets for the glow / tint usages
-// inside each template's scoped CSS.
+// Palette + display-name fallbacks for when the manifest hasn't loaded
+// yet (or isn't registered). These mirror The Fade Room's manifest so a
+// missing-manifest tenant gets the same UX as before.
 //
-// Velvet Theory is special: the variants swap BACKGROUND, not accent —
-// the champagne gold accent stays constant across all six. We reuse the
-// same theme.accent_color field for storage so no migration is needed;
-// the VT template interprets it as a background hex.
-const ACCENT_PALETTES: Record<string, { hex: string; label: string }[]> = {
-  thefaderoom: [
-    { hex: '#FF3DBE', label: 'Pink (default)' },
-    { hex: '#F9FAFB', label: 'White' },
-    { hex: '#22F5A3', label: 'Mint' },
-    { hex: '#FF3B5C', label: 'Red' },
-    { hex: '#FFD84D', label: 'Yellow' },
-    { hex: '#3DA9FC', label: 'Blue' },
-  ],
-  lushstudio: [
-    { hex: '#7FAF9A', label: 'Sage (default)' },
-    // Dusty spa-blue (lum ≈ 0.62) — chosen specifically so the
-    // white on-pink icons stay legible. The earlier pick #A9D6E5
-    // was too pale (lum 0.81) and forced dark icons.
-    { hex: '#6FA8C9', label: 'Dusty Blue' },
-    { hex: '#E8A6A6', label: 'Coral' },
-    { hex: '#FF4FA3', label: 'Hot Pink' },
-  ],
-  velvettheory: [
-    { hex: '#2D0F19', label: 'Burgundy (default)' },
-    { hex: '#0E1A2B', label: 'Midnight' },
-    { hex: '#0F2620', label: 'Emerald' },
-    { hex: '#1F1130', label: 'Plum' },
-    { hex: '#1A1A1C', label: 'Charcoal' },
-    { hex: '#F5EFE6', label: 'Bone (light)' },
-  ],
-}
-function paletteFor(slug: string) {
-  return ACCENT_PALETTES[slug] ?? ACCENT_PALETTES.thefaderoom
-}
-function defaultAccentFor(slug: string): string {
-  return paletteFor(slug)[0].hex
+// M4: ACCENT_PALETTES + TEMPLATE_LABELS + colorPickerLabels are no
+// longer hardcoded here. They come from each template's manifest at
+// web/templates/{slug}/manifest.ts. See useTemplateManifest below.
+const FALLBACK_PALETTE = [
+  { hex: '#FF3DBE', label: 'Pink (default)' },
+  { hex: '#F9FAFB', label: 'White' },
+  { hex: '#22F5A3', label: 'Mint' },
+  { hex: '#FF3B5C', label: 'Red' },
+  { hex: '#FFD84D', label: 'Yellow' },
+  { hex: '#3DA9FC', label: 'Blue' },
+]
+
+function paletteFor(manifest: TemplateManifest | null) {
+  if (!manifest) return FALLBACK_PALETTE
+  return manifest.color_palette.map(c => ({ hex: c.hex, label: c.label }))
 }
 
-// Friendly display names for the template card header.
-const TEMPLATE_LABELS: Record<string, string> = {
-  thefaderoom:  'The Fade Room',
-  lushstudio:   'Lush Studio',
-  velvettheory: 'Velvet Theory',
-}
-function templateLabel(slug: string): string {
-  return TEMPLATE_LABELS[slug] ?? slug
+function defaultAccentFor(manifest: TemplateManifest | null): string {
+  return paletteFor(manifest)[0]?.hex ?? '#FF3DBE'
 }
 
-// Velvet Theory uses BACKGROUND swaps, not accent. Surface the right copy
-// in the editor so the owner knows what the picker does.
-function colorPickerLabels(slug: string): { title: string; hint: string; ariaPrefix: string } {
-  if (slug === 'velvettheory') {
+function templateLabel(slug: string, manifest: TemplateManifest | null): string {
+  if (manifest?.name) return manifest.name
+  // Last-resort fallback before the manifest resolves.
+  if (slug === 'thefaderoom')  return 'The Fade Room'
+  if (slug === 'lushstudio')   return 'Lush Studio'
+  if (slug === 'velvettheory') return 'Velvet Theory'
+  return slug
+}
+
+// Picker copy follows manifest.color_role. 'background' templates (Velvet
+// Theory) surface "Background variant"; 'accent' templates use the
+// classic "Accent color" copy.
+function colorPickerLabels(manifest: TemplateManifest | null): { title: string; hint: string; ariaPrefix: string } {
+  if (manifest?.color_role === 'background') {
     return {
       title:      'Background variant',
-      hint:       'Changes the page background — gold accent stays',
+      hint:       'Changes the page background — accent stays',
       ariaPrefix: 'Background',
     }
   }
@@ -229,6 +219,10 @@ export default function WebsiteHub() {
   const [loading, setLoading]         = useState(true)
   const [loadError, setLoadError]     = useState<string | null>(null)
   const [previewKey, setPreviewKey]   = useState(0)
+  // M4 — load the active template's manifest so editor panels can gate
+  // their fields. While loading we render fields anyway (no flash of
+  // missing controls); panels treat a null manifest as "show everything".
+  const { manifest } = useTemplateManifest(templateSlug)
 
   // Reset the page scroll to the top whenever the active tab changes.
   // Without this, jumping from a long panel (Content) to a shorter one
@@ -323,6 +317,7 @@ export default function WebsiteHub() {
               {tab === 'overview' && (
                 <OverviewPanel
                   templateSlug={templateSlug}
+                  manifest={manifest}
                   settings={settings}
                   sections={sections}
                   publicUrl={publicUrl}
@@ -332,7 +327,7 @@ export default function WebsiteHub() {
               )}
 
               {tab === 'header' && (
-                <HeaderPanel settings={settings} onSave={saveSettings} />
+                <HeaderPanel settings={settings} onSave={saveSettings} manifest={manifest} />
               )}
 
               {tab === 'content' && (
@@ -357,7 +352,7 @@ export default function WebsiteHub() {
               )}
 
               {tab === 'footer' && (
-                <FooterPanel settings={settings} onSave={saveSettings} />
+                <FooterPanel settings={settings} onSave={saveSettings} manifest={manifest} />
               )}
 
               {tab === 'seo' && <SeoComingSoonPanel />}
@@ -728,9 +723,10 @@ function useSettingsForm<T extends object>(
 // ── Overview ─────────────────────────────────────────────────────────────────
 
 function OverviewPanel({
-  templateSlug, settings, sections, publicUrl, onToggleSection, onSaveSettings,
+  templateSlug, manifest, settings, sections, publicUrl, onToggleSection, onSaveSettings,
 }: {
   templateSlug: string
+  manifest: TemplateManifest | null
   settings: TemplateSettings
   sections: WebsiteSection[]
   publicUrl: string
@@ -751,8 +747,8 @@ function OverviewPanel({
   // PATCHes the template and the preview iframe re-keys via the
   // existing previewKey bump in the parent.
   const accent = settings.theme?.accent_color ?? null
-  const accentPalette = paletteFor(templateSlug)
-  const defaultAccent = defaultAccentFor(templateSlug)
+  const accentPalette = paletteFor(manifest)
+  const defaultAccent = defaultAccentFor(manifest)
   const [savingAccent, setSavingAccent] = useState<string | null>(null)
   const [accentError,  setAccentError]  = useState<string | null>(null)
   async function pickAccent(hex: string | null) {
@@ -789,7 +785,7 @@ function OverviewPanel({
 
       {/* Template + status */}
       <Panel
-        title={templateLabel(templateSlug)}
+        title={templateLabel(templateSlug, manifest)}
         subtitle="Current template"
       >
         <div className="flex flex-wrap items-center gap-2">
@@ -809,7 +805,7 @@ function OverviewPanel({
         {/* ── Accent color (or, for Velvet Theory, Background variant) ── */}
         <div className="space-y-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
           {(() => {
-            const { title, hint } = colorPickerLabels(templateSlug)
+            const { title, hint } = colorPickerLabels(manifest)
             return (
               <div className="flex items-baseline justify-between gap-2">
                 <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
@@ -824,7 +820,7 @@ function OverviewPanel({
               const isActive = (accent ?? defaultAccent).toUpperCase() === hex.toUpperCase()
               const isBusy   = savingAccent === hex
               const checkCol = checkColorOn(hex)
-              const { ariaPrefix } = colorPickerLabels(templateSlug)
+              const { ariaPrefix } = colorPickerLabels(manifest)
               return (
                 <button
                   key={hex}
@@ -1013,11 +1009,17 @@ function CoreLink({ href, label, hint }: { href: string; label: string; hint: st
 // ── Header / Hero ────────────────────────────────────────────────────────────
 
 function HeaderPanel({
-  settings, onSave,
+  settings, onSave, manifest,
 }: {
   settings: TemplateSettings
   onSave: (p: Partial<TemplateSettings>) => Promise<void>
+  manifest: TemplateManifest | null
 }) {
+  // M4 — gate fields by manifest. Null manifest = show everything
+  // (the template's still-loading state, or an un-manifested legacy
+  // template). The defaults match The Fade Room's surface, so a
+  // missing-manifest tenant is no worse off than before.
+  const showAvatar = !manifest || supportsHeaderField(manifest, 'avatar_image')
   const form = useSettingsForm<TemplateHeaderSettings>(
     settings.header,
     async (next) => { await onSave({ header: next }) },
@@ -1046,7 +1048,10 @@ function HeaderPanel({
       </div>
 
       {/* Images */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+      <div className={cn(
+        'grid gap-4 pt-2 border-t border-[rgba(18,18,18,0.08)]',
+        showAvatar ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1',
+      )}>
         <div className="max-w-[260px]">
           <ImageUploadField
             label="Cover image"
@@ -1057,16 +1062,18 @@ function HeaderPanel({
             hint="Wide image behind your header."
           />
         </div>
-        <div className="max-w-[180px]">
-          <ImageUploadField
-            label="Avatar / logo"
-            value={form.value.avatar_image_url ?? null}
-            onChange={v => form.patch({ avatar_image_url: v })}
-            kind="header"
-            aspectClass="aspect-square"
-            hint="Square photo or logo."
-          />
-        </div>
+        {showAvatar && (
+          <div className="max-w-[180px]">
+            <ImageUploadField
+              label="Avatar / logo"
+              value={form.value.avatar_image_url ?? null}
+              onChange={v => form.patch({ avatar_image_url: v })}
+              kind="header"
+              aspectClass="aspect-square"
+              hint="Square photo or logo."
+            />
+          </div>
+        )}
       </div>
 
       {/* Identity note */}
@@ -2114,11 +2121,20 @@ function AdditionalsPanel({
 // ── Footer ───────────────────────────────────────────────────────────────────
 
 function FooterPanel({
-  settings, onSave,
+  settings, onSave, manifest,
 }: {
   settings: TemplateSettings
   onSave: (p: Partial<TemplateSettings>) => Promise<void>
+  manifest: TemplateManifest | null
 }) {
+  // M4 — gate footer toggles by manifest. See HeaderPanel for the
+  // null-manifest fallback rule.
+  const showHours        = !manifest || supportsFooterField(manifest, 'show_hours')
+  const showQuickBook    = !manifest || supportsFooterField(manifest, 'show_quick_book')
+  const showContactLinks = !manifest || supportsFooterField(manifest, 'show_contact_links')
+  const showPoweredBy    = !manifest || supportsFooterField(manifest, 'show_powered_by')
+  const showNameOverride = !manifest || supportsFooterField(manifest, 'business_name_override')
+  const showSubtext      = !manifest || supportsFooterField(manifest, 'subtext')
   const initial: TemplateFooterSettings = {
     business_name_override: settings.footer.business_name_override ?? null,
     subtext:                settings.footer.subtext                ?? '',
@@ -2146,28 +2162,40 @@ function FooterPanel({
         </p>
       </div>
 
-      <TextField
-        label="Footer business name override (optional)"
-        value={form.value.business_name_override ?? ''}
-        onChange={v => form.patch({ business_name_override: v || null })}
-        placeholder="Leave blank to use your Business Profile name"
-        maxLength={120}
-      />
+      {showNameOverride && (
+        <TextField
+          label="Footer business name override (optional)"
+          value={form.value.business_name_override ?? ''}
+          onChange={v => form.patch({ business_name_override: v || null })}
+          placeholder="Leave blank to use your Business Profile name"
+          maxLength={120}
+        />
+      )}
 
-      <TextareaField
-        label="Footer subtext"
-        value={form.value.subtext ?? ''}
-        onChange={v => form.patch({ subtext: v || null })}
-        placeholder="Booking by appointment. Walk-ins welcome when available."
-        rows={2}
-        maxLength={240}
-      />
+      {showSubtext && (
+        <TextareaField
+          label="Footer subtext"
+          value={form.value.subtext ?? ''}
+          onChange={v => form.patch({ subtext: v || null })}
+          placeholder="Booking by appointment. Walk-ins welcome when available."
+          rows={2}
+          maxLength={240}
+        />
+      )}
 
       <div className="space-y-1.5 pt-2 border-t border-[rgba(18,18,18,0.08)]">
-        <ToggleRow label="Show contact links" on={form.value.show_contact_links ?? true} onToggle={() => form.patch({ show_contact_links: !(form.value.show_contact_links ?? true) })} />
-        <ToggleRow label="Show hours"         on={form.value.show_hours         ?? true} onToggle={() => form.patch({ show_hours:         !(form.value.show_hours         ?? true) })} />
-        <ToggleRow label="Show Quick Book"    on={form.value.show_quick_book    ?? true} onToggle={() => form.patch({ show_quick_book:    !(form.value.show_quick_book    ?? true) })} />
-        <ToggleRow label="Show Powered by BookReady" on={form.value.show_powered_by}     onToggle={() => form.patch({ show_powered_by:    !form.value.show_powered_by })} />
+        {showContactLinks && (
+          <ToggleRow label="Show contact links" on={form.value.show_contact_links ?? true} onToggle={() => form.patch({ show_contact_links: !(form.value.show_contact_links ?? true) })} />
+        )}
+        {showHours && (
+          <ToggleRow label="Show hours"         on={form.value.show_hours         ?? true} onToggle={() => form.patch({ show_hours:         !(form.value.show_hours         ?? true) })} />
+        )}
+        {showQuickBook && (
+          <ToggleRow label="Show Quick Book"    on={form.value.show_quick_book    ?? true} onToggle={() => form.patch({ show_quick_book:    !(form.value.show_quick_book    ?? true) })} />
+        )}
+        {showPoweredBy && (
+          <ToggleRow label="Show Powered by BookReady" on={form.value.show_powered_by}     onToggle={() => form.patch({ show_powered_by:    !form.value.show_powered_by })} />
+        )}
       </div>
 
       <SaveBar

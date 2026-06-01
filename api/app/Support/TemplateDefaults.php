@@ -16,16 +16,20 @@ class TemplateDefaults
     public static function settingsFor(string $templateSlug): array
     {
         return match ($templateSlug) {
-            'thefaderoom' => self::theFadeRoomSettings(),
-            default       => self::theFadeRoomSettings(),
+            'thefaderoom'  => self::theFadeRoomSettings(),
+            'lushstudio'   => self::lushStudioSettings(),
+            'velvettheory' => self::velvetTheorySettings(),
+            default        => self::theFadeRoomSettings(),
         };
     }
 
     public static function sectionsFor(string $templateSlug): array
     {
         return match ($templateSlug) {
-            'thefaderoom' => self::theFadeRoomSections(),
-            default       => self::theFadeRoomSections(),
+            'thefaderoom'  => self::theFadeRoomSections(),
+            'lushstudio'   => self::lushStudioSections(),
+            'velvettheory' => self::velvetTheorySections(),
+            default        => self::theFadeRoomSections(),
         };
     }
 
@@ -154,6 +158,110 @@ class TemplateDefaults
             ['section_key' => 'timeline', 'section_type' => 'instructions',  'title' => 'Timeline', 'is_locked' => false, 'sort_order' => 8],
             ['section_key' => 'footer',             'section_type' => 'footer',        'title' => 'Footer',                  'is_locked' => true,  'sort_order' => 99],
         ];
+    }
+
+    // ─── Lush Studio ────────────────────────────────────────────────────────────
+    //
+    // M4 — per-template defaults. Lush is a feminine spa/salon template;
+    // the seeded copy reflects that. Structure mirrors The Fade Room so the
+    // editor + templates can share field names — only the wording differs.
+
+    private static function lushStudioSettings(): array
+    {
+        $base = self::theFadeRoomSettings();
+        $base['header']['announcement_text'] = 'Booking with care — limited spots each week.';
+        // Lush hides the avatar slot in CSS (manifest declares it
+        // unsupported), so we leave the field as-is for legacy tenants.
+        $base['about'] = [
+            'heading'    => 'About the studio',
+            'eyebrow'    => 'The Studio',
+            'body'       => 'Share your story — what you offer, who you serve, and what makes time in your chair feel different.',
+            'highlights' => [
+                ['title' => 'Considered, never rushed', 'body' => 'Every appointment runs at its own pace — your comfort comes first.'],
+                ['title' => 'Tailored to you',          'body' => 'Each service is shaped around what works best for you.'],
+            ],
+            'images'     => [null, null, null],
+        ];
+        $base['advice'] = [
+            'heading'     => 'Advice',
+            'card_kicker' => '',
+            'items'       => [
+                ['title' => 'Arrive ready',         'body' => 'Come with clean skin or hair, depending on your service.'],
+                ['title' => 'Talk it through',      'body' => 'Tell us what you love and what you avoid — we listen first.'],
+                ['title' => 'Mind the aftercare',   'body' => 'A few small habits keep your results looking fresh.'],
+                ['title' => 'Rebook with rhythm',   'body' => 'A regular cadence keeps your look consistent.'],
+            ],
+        ];
+        $base['timeline'] = [
+            'heading'     => 'Timeline',
+            'card_kicker' => '',
+            'items'       => [
+                ['title' => 'Choose your service',  'body' => 'Pick the treatment that fits.'],
+                ['title' => 'Find a time',          'body' => 'Browse the calendar and pick what suits your week.'],
+                ['title' => 'Share your details',   'body' => 'Drop us a note about anything we should know.'],
+                ['title' => 'See you soon',         'body' => 'Confirmation lands in your inbox once we review.'],
+            ],
+        ];
+        $base['footer']['subtext'] = 'Booking by appointment. Reach out anytime.';
+        return $base;
+    }
+
+    private static function lushStudioSections(): array
+    {
+        // Same section taxonomy as TFR — Lush surfaces the same set of
+        // tabs, just styled differently.
+        return self::theFadeRoomSections();
+    }
+
+    // ─── Velvet Theory ──────────────────────────────────────────────────────────
+    //
+    // M4 — luxe editorial template. Different copy voice (sparser, more
+    // measured) but the same field structure.
+
+    private static function velvetTheorySettings(): array
+    {
+        $base = self::theFadeRoomSettings();
+        $base['header']['announcement_text'] = 'Reservations open by appointment only.';
+        $base['about'] = [
+            'heading'    => 'The atelier',
+            'eyebrow'    => 'Studio',
+            'body'       => 'Tell visitors what your studio is — the work you do, the way you do it, and the world you’ve built around it.',
+            'highlights' => [
+                ['title' => 'A considered hand', 'body' => 'Every appointment is treated with the attention it deserves.'],
+                ['title' => 'Quietly precise',   'body' => 'Detail shows in the result. We treat the work as a craft, not a transaction.'],
+            ],
+            'images'     => [null, null, null],
+        ];
+        $base['advice'] = [
+            'heading'     => 'Notes',
+            'card_kicker' => '',
+            'items'       => [
+                ['title' => 'Arrive on time',      'body' => 'A few minutes early keeps the rhythm of the day.'],
+                ['title' => 'Bring references',    'body' => 'Images we can read together help us land what you want.'],
+                ['title' => 'Keep aftercare close','body' => 'A short routine extends what we do here.'],
+                ['title' => 'Return with rhythm',  'body' => 'A regular cadence preserves the look you’ve built.'],
+            ],
+        ];
+        $base['timeline'] = [
+            'heading'     => 'Itinerary',
+            'card_kicker' => '',
+            'items'       => [
+                ['title' => 'Select a service',    'body' => 'Pick what fits the visit you want.'],
+                ['title' => 'Reserve a time',      'body' => 'Choose the date and hour from the calendar.'],
+                ['title' => 'Share your notes',    'body' => 'A few details — anything we should know.'],
+                ['title' => 'Receive your seat',   'body' => 'Confirmation arrives once we review.'],
+            ],
+        ];
+        // VT footer manifest declines quick_book; the default is still set
+        // so a tenant who toggles the template back to TFR keeps the field
+        // populated. Manifest gating in the editor hides the toggle.
+        $base['footer']['subtext'] = 'Reservations by appointment. Inquiries welcome.';
+        return $base;
+    }
+
+    private static function velvetTheorySections(): array
+    {
+        return self::theFadeRoomSections();
     }
 
     /**
