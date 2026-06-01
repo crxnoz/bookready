@@ -7,8 +7,17 @@ use App\Models\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
-class BeforeAfterItemsController extends Controller
+/**
+ * Results items (formerly "before & after").
+ *
+ * M3 rename: the user-facing tab label has always been "Results"; the
+ * underlying table + controller now match. The pair of images per item
+ * still represents a before/after transformation — that's the content
+ * shape, not the label.
+ */
+class ResultsItemsController extends Controller
 {
     private function format(object $row): array
     {
@@ -31,13 +40,13 @@ class BeforeAfterItemsController extends Controller
         ];
     }
 
-    // GET /editor/before-after
+    // GET /editor/results
     public function index(Request $request): JsonResponse
     {
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
-        $query = DB::table('before_after_items')
+        $query = DB::table('results_items')
             ->orderBy('sort_order', 'asc')
             ->orderBy('id', 'asc');
 
@@ -52,7 +61,7 @@ class BeforeAfterItemsController extends Controller
         return response()->json($items);
     }
 
-    // POST /editor/before-after
+    // POST /editor/results
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -71,7 +80,7 @@ class BeforeAfterItemsController extends Controller
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
-        $nextOrder = (int) DB::table('before_after_items')->max('sort_order') + 1;
+        $nextOrder = (int) DB::table('results_items')->max('sort_order') + 1;
         $payload = [
             'title'             => $validated['title']             ?? null,
             'caption'           => $validated['caption']           ?? null,
@@ -85,13 +94,13 @@ class BeforeAfterItemsController extends Controller
             'created_at'        => now(),
             'updated_at'        => now(),
         ];
-        if (\Illuminate\Support\Facades\Schema::hasColumn('before_after_items', 'group_id')) {
+        if (Schema::hasColumn('results_items', 'group_id')) {
             $payload['group_id'] = $validated['group_id'] ?? null;
         }
 
-        $id = DB::table('before_after_items')->insertGetId($payload);
+        $id = DB::table('results_items')->insertGetId($payload);
 
-        $row    = DB::table('before_after_items')->find($id);
+        $row    = DB::table('results_items')->find($id);
         $result = $this->format($row);
 
         tenancy()->end();
@@ -99,7 +108,7 @@ class BeforeAfterItemsController extends Controller
         return response()->json($result, 201);
     }
 
-    // PATCH /editor/before-after/{item}
+    // PATCH /editor/results/{item}
     public function update(Request $request, int $item): JsonResponse
     {
         $validated = $request->validate([
@@ -118,10 +127,10 @@ class BeforeAfterItemsController extends Controller
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
-        $row = DB::table('before_after_items')->find($item);
+        $row = DB::table('results_items')->find($item);
         if (! $row) {
             tenancy()->end();
-            return response()->json(['message' => 'Before/after item not found'], 404);
+            return response()->json(['message' => 'Results item not found'], 404);
         }
 
         $data = ['updated_at' => now()];
@@ -135,12 +144,12 @@ class BeforeAfterItemsController extends Controller
         if (array_key_exists('is_active',        $validated)) $data['is_active']        = $validated['is_active'];
         if (array_key_exists('sort_order',       $validated)) $data['sort_order']       = $validated['sort_order'];
         if (array_key_exists('group_id', $validated)
-            && \Illuminate\Support\Facades\Schema::hasColumn('before_after_items', 'group_id')) {
+            && Schema::hasColumn('results_items', 'group_id')) {
             $data['group_id'] = $validated['group_id'];
         }
 
-        DB::table('before_after_items')->where('id', $item)->update($data);
-        $updated = DB::table('before_after_items')->find($item);
+        DB::table('results_items')->where('id', $item)->update($data);
+        $updated = DB::table('results_items')->find($item);
         $result  = $this->format($updated);
 
         tenancy()->end();
@@ -148,23 +157,23 @@ class BeforeAfterItemsController extends Controller
         return response()->json($result);
     }
 
-    // DELETE /editor/before-after/{item}
-    // Hard delete — before/after items hold no booking history.
+    // DELETE /editor/results/{item}
+    // Hard delete — results items hold no booking history.
     public function destroy(Request $request, int $item): JsonResponse
     {
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
-        $row = DB::table('before_after_items')->find($item);
+        $row = DB::table('results_items')->find($item);
         if (! $row) {
             tenancy()->end();
-            return response()->json(['message' => 'Before/after item not found'], 404);
+            return response()->json(['message' => 'Results item not found'], 404);
         }
 
-        DB::table('before_after_items')->where('id', $item)->delete();
+        DB::table('results_items')->where('id', $item)->delete();
 
         tenancy()->end();
 
-        return response()->json(['message' => 'Before/after item deleted', 'deleted' => true]);
+        return response()->json(['message' => 'Results item deleted', 'deleted' => true]);
     }
 }

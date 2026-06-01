@@ -34,14 +34,14 @@ import {
   createEditorGalleryGroup,
   updateEditorGalleryGroup,
   deleteEditorGalleryGroup,
-  getEditorBeforeAfter,
-  createEditorBeforeAfterItem,
-  updateEditorBeforeAfterItem,
-  deleteEditorBeforeAfterItem,
-  getEditorBeforeAfterGroups,
-  createEditorBeforeAfterGroup,
-  updateEditorBeforeAfterGroup,
-  deleteEditorBeforeAfterGroup,
+  getEditorResults,
+  createEditorResultsItem,
+  updateEditorResultsItem,
+  deleteEditorResultsItem,
+  getEditorResultsGroups,
+  createEditorResultsGroup,
+  updateEditorResultsGroup,
+  deleteEditorResultsGroup,
   getEditorPolicies,
   updateEditorPolicies,
 } from '@/lib/api'
@@ -55,9 +55,9 @@ import type {
   GalleryItem,
   GalleryItemPayload,
   GalleryGroup,
-  BeforeAfterItem,
-  BeforeAfterItemPayload,
-  BeforeAfterGroup,
+  ResultsItem,
+  ResultsItemPayload,
+  ResultsGroup,
   BusinessPolicy,
   PolicyCustomGroup,
 } from '@/lib/types'
@@ -70,8 +70,10 @@ type SubTab =
   | 'gallery' | 'policies'
   | 'additionals' | 'announcements' | 'footer' | 'seo'
 
-// 'before_after' kept as a redirect target so deep-links from old emails /
-// bookmarks land on the merged Gallery tab instead of 404ing.
+// M3 rename: 'before_after' section_key is now 'results'. Existing
+// deep-links from old emails / bookmarks still land on the merged
+// Gallery tab because we map both keys above in SECTION_KEY_TO_TAB
+// (results), and the migration rewrites stored values to 'results'.
 const VALID_TABS: SubTab[] = [
   'overview', 'header', 'introduction', 'content',
   'gallery', 'policies',
@@ -167,48 +169,48 @@ function checkColorOn(hex: string): string {
 }
 
 const SECTION_LABEL_FOR_KEY: Record<string, string> = {
-  header:             'Header',
-  book:               'Booking',
-  gallery:            'Gallery',
-  policy:             'Policy',
-  about:              'About',
-  before_after:       'Before & After',
-  steps:              'Advice',
-  before_appointment: 'Timeline',
-  footer:             'Footer',
+  header:   'Header',
+  book:     'Booking',
+  gallery:  'Gallery',
+  policy:   'Policy',
+  about:    'About',
+  results:  'Results',
+  advice:   'Advice',
+  timeline: 'Timeline',
+  footer:   'Footer',
 }
 
 // Maps a section key to the inner Website tab that edits it. Used by the
 // Section visibility row's link icon so owners can jump straight to the
 // right editor instead of hunting through tabs.
 const SECTION_KEY_TO_TAB: Record<string, SubTab> = {
-  header:             'header',
+  header:   'header',
   // 'book' is intentionally omitted — the booking section is configured
   // entirely outside the Website hub (Settings → Booking + Services). The
   // section is locked-on, so we don't surface an edit jump-link for it.
-  gallery:            'gallery',
-  policy:             'policies',
-  about:              'content',
-  before_after:       'gallery',
-  steps:              'content',
-  before_appointment: 'content',
-  footer:             'footer',
+  gallery:  'gallery',
+  policy:   'policies',
+  about:    'content',
+  results:  'gallery',
+  advice:   'content',
+  timeline: 'content',
+  footer:   'footer',
 }
 
 const SECTION_ICONS: Record<string, React.ElementType> = {
-  header:             Sparkles,
-  book:               Heart,
-  booking:            Heart,
-  gallery:            ImageIcon,
-  policy:             FileText,
-  about:              Info,
-  before_after:       Sparkles,
-  steps:              ListChecks,
-  before_appointment: ListChecks,
-  instructions:       ListChecks,
-  footer:             Lock,
-  text_block:         FileText,
-  announcement:       Megaphone,
+  header:       Sparkles,
+  book:         Heart,
+  booking:      Heart,
+  gallery:      ImageIcon,
+  policy:       FileText,
+  about:        Info,
+  results:      Sparkles,
+  advice:       ListChecks,
+  timeline:     ListChecks,
+  instructions: ListChecks,
+  footer:       Lock,
+  text_block:   FileText,
+  announcement: Megaphone,
 }
 
 // ── Root ─────────────────────────────────────────────────────────────────────
@@ -345,7 +347,7 @@ export default function WebsiteHub() {
               {tab === 'gallery' && (
                 <>
                   <GalleryManagerPanel />
-                  <BeforeAfterManagerPanel />
+                  <ResultsManagerPanel />
                 </>
               )}
               {tab === 'policies'     && <PoliciesEditorPanel />}
@@ -1204,9 +1206,9 @@ const TAB_LABEL_FIELDS: { key: keyof TemplateSettings['tabs']; sectionKey: strin
   { key: 'gallery_label',            sectionKey: 'gallery',            label: 'Gallery tab' },
   { key: 'policy_label',             sectionKey: 'policy',             label: 'Policy tab' },
   { key: 'about_label',              sectionKey: 'about',              label: 'About tab' },
-  { key: 'results_label',            sectionKey: 'before_after',       label: 'Before & After tab' },
-  { key: 'steps_label',              sectionKey: 'steps',              label: 'Advice tab' },
-  { key: 'before_appointment_label', sectionKey: 'before_appointment', label: 'Timeline tab' },
+  { key: 'results_label',  sectionKey: 'results',  label: 'Results tab'  },
+  { key: 'advice_label',   sectionKey: 'advice',   label: 'Advice tab'   },
+  { key: 'timeline_label', sectionKey: 'timeline', label: 'Timeline tab' },
 ]
 
 function ContentTabsPanel({
@@ -1310,11 +1312,11 @@ function ContentTabsPanel({
         subtitle="Tips, advice, or care instructions shown on the Advice tab."
         addLabel="Add Tip"
         emptyText="No tips yet — add your first one."
-        block={settings.steps ?? { heading: 'Advice', items: [] }}
+        block={settings.advice ?? { heading: 'Advice', items: [] }}
         defaultHeading="Advice"
         icon={ListChecks}
         itemLabel="Box"
-        onSave={(next) => onSaveSettings({ steps: next })}
+        onSave={(next) => onSaveSettings({ advice: next })}
       />
 
       <InstructionsEditorPanel
@@ -1322,10 +1324,10 @@ function ContentTabsPanel({
         subtitle="A numbered list shown on the Timeline tab — great for booking flow or appointment prep."
         addLabel="Add Step"
         emptyText="No steps yet — add your first one."
-        block={settings.before_appointment ?? { heading: 'Timeline', items: [] }}
+        block={settings.timeline ?? { heading: 'Timeline', items: [] }}
         defaultHeading="Timeline"
         icon={Clock}
-        onSave={(next) => onSaveSettings({ before_appointment: next })}
+        onSave={(next) => onSaveSettings({ timeline: next })}
       />
 
       <AboutEditorPanel
@@ -1353,7 +1355,7 @@ function SeoComingSoonPanel() {
   )
 }
 
-// ── Instructions editor (Advice & Timeline — internal keys are 'steps' and 'before_appointment') ───────────────────
+// ── Instructions editor (Advice & Timeline) ───────────────────
 
 const INSTRUCTIONS_MAX_ITEMS = 8
 
@@ -2853,19 +2855,19 @@ function GalleryItemDialog({
 const BA_MAX_GROUPS         = 3
 const BA_MAX_ITEMS_PER_GROUP = 6
 
-function BeforeAfterManagerPanel() {
-  const [items, setItems]     = useState<BeforeAfterItem[] | null>(null)
-  const [groups, setGroups]   = useState<BeforeAfterGroup[] | null>(null)
+function ResultsManagerPanel() {
+  const [items, setItems]     = useState<ResultsItem[] | null>(null)
+  const [groups, setGroups]   = useState<ResultsGroup[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
   const [busyId, setBusyId]   = useState<number | null>(null)
-  const [editing, setEditing] = useState<BeforeAfterItem | null>(null)
+  const [editing, setEditing] = useState<ResultsItem | null>(null)
   const [addingForGroup, setAddingForGroup] = useState<number | null | 'none'>(null)
   const [addingGroup, setAddingGroup]       = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([getEditorBeforeAfter(), getEditorBeforeAfterGroups()])
+    Promise.all([getEditorResults(), getEditorResultsGroups()])
       .then(([rows, gs]) => {
         if (cancelled) return
         setItems(rows)
@@ -2885,14 +2887,14 @@ function BeforeAfterManagerPanel() {
     [groups],
   )
 
-  function itemsForGroup(gid: number | null): BeforeAfterItem[] {
+  function itemsForGroup(gid: number | null): ResultsItem[] {
     return sortedItems.filter(i => (i.group_id ?? null) === gid)
   }
 
-  async function toggle(item: BeforeAfterItem) {
+  async function toggle(item: ResultsItem) {
     setBusyId(item.id); setError(null)
     try {
-      const updated = await updateEditorBeforeAfterItem(item.id, { is_active: !item.is_active })
+      const updated = await updateEditorResultsItem(item.id, { is_active: !item.is_active })
       setItems(prev => (prev ?? []).map(i => i.id === item.id ? updated : i))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to update')
@@ -2901,11 +2903,11 @@ function BeforeAfterManagerPanel() {
     }
   }
 
-  async function remove(item: BeforeAfterItem) {
+  async function remove(item: ResultsItem) {
     if (!confirm(`Delete this pair? This can't be undone.`)) return
     setBusyId(item.id); setError(null)
     try {
-      await deleteEditorBeforeAfterItem(item.id)
+      await deleteEditorResultsItem(item.id)
       setItems(prev => (prev ?? []).filter(i => i.id !== item.id))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete')
@@ -2914,13 +2916,13 @@ function BeforeAfterManagerPanel() {
     }
   }
 
-  async function handleSave(payload: BeforeAfterItemPayload, existingId: number | null) {
+  async function handleSave(payload: ResultsItemPayload, existingId: number | null) {
     setError(null)
     if (existingId) {
-      const updated = await updateEditorBeforeAfterItem(existingId, payload)
+      const updated = await updateEditorResultsItem(existingId, payload)
       setItems(prev => (prev ?? []).map(i => i.id === existingId ? updated : i))
     } else {
-      const created = await createEditorBeforeAfterItem(payload)
+      const created = await createEditorResultsItem(payload)
       setItems(prev => [...(prev ?? []), created])
     }
     setEditing(null)
@@ -2929,18 +2931,18 @@ function BeforeAfterManagerPanel() {
 
   async function createGroup(heading: string) {
     setError(null)
-    const created = await createEditorBeforeAfterGroup({ heading })
+    const created = await createEditorResultsGroup({ heading })
     setGroups(prev => [...(prev ?? []), created])
     setAddingGroup(false)
   }
 
-  async function renameGroup(g: BeforeAfterGroup, heading: string) {
+  async function renameGroup(g: ResultsGroup, heading: string) {
     setError(null)
-    const updated = await updateEditorBeforeAfterGroup(g.id, { heading })
+    const updated = await updateEditorResultsGroup(g.id, { heading })
     setGroups(prev => (prev ?? []).map(x => x.id === g.id ? updated : x))
   }
 
-  async function removeGroup(g: BeforeAfterGroup) {
+  async function removeGroup(g: ResultsGroup) {
     const inGroup = itemsForGroup(g.id).length
     const msg = inGroup === 0
       ? `Delete the "${g.heading}" collection?`
@@ -2948,7 +2950,7 @@ function BeforeAfterManagerPanel() {
     if (!confirm(msg)) return
     setError(null)
     try {
-      await deleteEditorBeforeAfterGroup(g.id)
+      await deleteEditorResultsGroup(g.id)
       setGroups(prev => (prev ?? []).filter(x => x.id !== g.id))
       setItems(prev => (prev ?? []).map(i =>
         (i.group_id ?? null) === g.id ? { ...i, group_id: null } : i,
@@ -3000,7 +3002,7 @@ function BeforeAfterManagerPanel() {
       )}
 
       {sortedGroups.map(g => (
-        <BeforeAfterGroupBlock
+        <ResultsGroupBlock
           key={g.id}
           group={g}
           items={itemsForGroup(g.id)}
@@ -3015,7 +3017,7 @@ function BeforeAfterManagerPanel() {
       ))}
 
       {ungrouped.length > 0 && (
-        <BeforeAfterGroupBlock
+        <ResultsGroupBlock
           key="__ungrouped"
           group={null}
           items={ungrouped}
@@ -3038,7 +3040,7 @@ function BeforeAfterManagerPanel() {
       )}
 
       {(editing || addingForGroup !== null) && (
-        <BeforeAfterItemDialog
+        <ResultsItemDialog
           item={editing}
           groups={sortedGroups}
           defaultGroupId={editing ? (editing.group_id ?? null) : (addingForGroup === 'none' ? null : (addingForGroup ?? null))}
@@ -3050,18 +3052,18 @@ function BeforeAfterManagerPanel() {
   )
 }
 
-function BeforeAfterGroupBlock({
+function ResultsGroupBlock({
   group, items, busyId, onRename, onDelete, onAddPair, onEdit, onToggle, onRemove,
 }: {
-  group: BeforeAfterGroup | null
-  items: BeforeAfterItem[]
+  group: ResultsGroup | null
+  items: ResultsItem[]
   busyId: number | null
   onRename: ((heading: string) => Promise<void>) | null
   onDelete: (() => void) | null
   onAddPair: () => void
-  onEdit:   (item: BeforeAfterItem) => void
-  onToggle: (item: BeforeAfterItem) => void
-  onRemove: (item: BeforeAfterItem) => void
+  onEdit:   (item: ResultsItem) => void
+  onToggle: (item: ResultsItem) => void
+  onRemove: (item: ResultsItem) => void
 }) {
   const [renaming, setRenaming]   = useState(false)
   const [heading, setHeading]     = useState(group?.heading ?? '')
@@ -3212,14 +3214,14 @@ function BAThumbLarge({ url, alt, label }: { url: string; alt: string | null; la
   )
 }
 
-function BeforeAfterItemDialog({
+function ResultsItemDialog({
   item, groups, defaultGroupId, onClose, onSave,
 }: {
-  item: BeforeAfterItem | null
-  groups: BeforeAfterGroup[]
+  item: ResultsItem | null
+  groups: ResultsGroup[]
   defaultGroupId: number | null
   onClose: () => void
-  onSave: (payload: BeforeAfterItemPayload, existingId: number | null) => void | Promise<void>
+  onSave: (payload: ResultsItemPayload, existingId: number | null) => void | Promise<void>
 }) {
   const [beforeUrl, setBeforeUrl] = useState(item?.before_image_url ?? '')
   const [afterUrl,  setAfterUrl]  = useState(item?.after_image_url  ?? '')
@@ -3273,14 +3275,14 @@ function BeforeAfterItemDialog({
               label="Before image *"
               value={beforeUrl || null}
               onChange={v => setBeforeUrl(v ?? '')}
-              kind="before_after"
+              kind="results"
               aspectClass="aspect-square"
             />
             <ImageUploadField
               label="After image *"
               value={afterUrl || null}
               onChange={v => setAfterUrl(v ?? '')}
-              kind="before_after"
+              kind="results"
               aspectClass="aspect-square"
             />
           </div>

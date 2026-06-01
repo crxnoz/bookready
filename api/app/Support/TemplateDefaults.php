@@ -61,15 +61,13 @@ class TemplateDefaults
                 'avatar_image_url'        => null,
             ],
             'tabs' => [
-                'book_label'               => 'Book',
-                'gallery_label'            => 'Gallery',
-                'policy_label'             => 'Policy',
-                'about_label'              => 'About',
-                'results_label'            => 'Before & After',
-                // Internal keys stay `steps` and `before_appointment` for backwards compatibility.
-                // User-facing defaults are now Advice + Timeline.
-                'steps_label'              => 'Advice',
-                'before_appointment_label' => 'Timeline',
+                'book_label'         => 'Book',
+                'gallery_label'      => 'Gallery',
+                'policy_label'       => 'Policy',
+                'about_label'        => 'About',
+                'results_label'      => 'Results',
+                'advice_label'       => 'Advice',
+                'timeline_label'     => 'Timeline',
             ],
             'about' => [
                 'heading'    => 'About',
@@ -83,7 +81,9 @@ class TemplateDefaults
                 // null = render the gradient placeholder.
                 'images'     => [null, null, null],
             ],
-            'steps' => [
+            // M3 rename: 'steps' (internal) → 'advice' (canonical). Migration
+            // 2026_06_01_000001 flips the stored key for existing tenants.
+            'advice' => [
                 'heading'     => 'Advice',
                 // Phase 8 — optional shared label rendered above every
                 // card's title (replaces the old auto "Step 01" labels).
@@ -96,7 +96,8 @@ class TemplateDefaults
                     ['title' => 'Follow the care guide','body' => 'Aftercare keeps your service looking great for longer.'],
                 ],
             ],
-            'before_appointment' => [
+            // M3 rename: 'before_appointment' (internal) → 'timeline' (canonical).
+            'timeline' => [
                 'heading'     => 'Timeline',
                 'card_kicker' => '',
                 'items'       => [
@@ -148,9 +149,9 @@ class TemplateDefaults
             ['section_key' => 'gallery',            'section_type' => 'gallery',       'title' => 'Gallery',                 'is_locked' => false, 'sort_order' => 3],
             ['section_key' => 'policy',             'section_type' => 'policy',        'title' => 'Policy',                  'is_locked' => false, 'sort_order' => 4],
             ['section_key' => 'about',              'section_type' => 'about',         'title' => 'About',                   'is_locked' => false, 'sort_order' => 5],
-            ['section_key' => 'before_after',       'section_type' => 'before_after',  'title' => 'Before & After',          'is_locked' => false, 'sort_order' => 6],
-            ['section_key' => 'steps',              'section_type' => 'instructions',  'title' => 'Advice',                  'is_locked' => false, 'sort_order' => 7],
-            ['section_key' => 'before_appointment', 'section_type' => 'instructions',  'title' => 'Timeline',                'is_locked' => false, 'sort_order' => 8],
+            ['section_key' => 'results',  'section_type' => 'results',       'title' => 'Results',  'is_locked' => false, 'sort_order' => 6],
+            ['section_key' => 'advice',   'section_type' => 'instructions',  'title' => 'Advice',   'is_locked' => false, 'sort_order' => 7],
+            ['section_key' => 'timeline', 'section_type' => 'instructions',  'title' => 'Timeline', 'is_locked' => false, 'sort_order' => 8],
             ['section_key' => 'footer',             'section_type' => 'footer',        'title' => 'Footer',                  'is_locked' => true,  'sort_order' => 99],
         ];
     }

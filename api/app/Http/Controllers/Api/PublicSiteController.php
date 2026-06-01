@@ -379,18 +379,23 @@ class PublicSiteController extends Controller
             ->values()
             ->all();
 
-        // ── Before & After items (active only, public) ──
-        $beforeAfter = [];
-        if (Schema::hasTable('before_after_items')) {
-            $hasBaGroupCol = Schema::hasColumn('before_after_items', 'group_id');
-            $beforeAfter = DB::table('before_after_items')
+        // ── Results items (active only, public) ──
+        //
+        // M3 rename: table was before_after_items, key was 'before_after'.
+        // Migration 2026_06_01_000001 handles the table rename for existing
+        // tenants. Old key still emitted for one release so templates that
+        // haven't been redeployed continue rendering.
+        $results = [];
+        if (Schema::hasTable('results_items')) {
+            $hasResultsGroupCol = Schema::hasColumn('results_items', 'group_id');
+            $results = DB::table('results_items')
                 ->where('is_active', true)
                 ->orderBy('sort_order', 'asc')
                 ->orderBy('id', 'asc')
                 ->get()
                 ->map(fn ($r) => [
                     'id'                => (int) $r->id,
-                    'group_id'          => $hasBaGroupCol && $r->group_id !== null ? (int) $r->group_id : null,
+                    'group_id'          => $hasResultsGroupCol && $r->group_id !== null ? (int) $r->group_id : null,
                     'title'             =>        $r->title,
                     'caption'           =>        $r->caption,
                     'before_image_url'  =>        $r->before_image_url,
@@ -404,10 +409,10 @@ class PublicSiteController extends Controller
                 ->all();
         }
 
-        // ── Before & After groups ──
-        $beforeAfterGroups = [];
-        if (Schema::hasTable('before_after_groups')) {
-            $beforeAfterGroups = DB::table('before_after_groups')
+        // ── Results groups ──
+        $resultsGroups = [];
+        if (Schema::hasTable('results_groups')) {
+            $resultsGroups = DB::table('results_groups')
                 ->orderBy('sort_order', 'asc')
                 ->orderBy('id', 'asc')
                 ->get()
@@ -606,8 +611,12 @@ class PublicSiteController extends Controller
             ],
             'gallery'              => $gallery,
             'gallery_groups'       => $galleryGroups,
-            'before_after'         => $beforeAfter,
-            'before_after_groups'  => $beforeAfterGroups,
+            'results'              => $results,
+            'results_groups'       => $resultsGroups,
+            // Legacy keys retained for one release so any client deploy lag
+            // doesn't break the public site. Drop in the release after M3.
+            'before_after'         => $results,
+            'before_after_groups'  => $resultsGroups,
             'template'      => [
                 'slug'     => $templateSlug,
                 'settings' => $templateSettings,

@@ -14,7 +14,7 @@ class WebsiteSectionsController extends Controller
 {
     private const STANDARD_KEYS = [
         'header', 'book', 'gallery', 'policy', 'about',
-        'before_after', 'steps', 'before_appointment', 'staff',
+        'results', 'advice', 'timeline', 'staff',
         'hours', 'contact', 'footer',
     ];
 

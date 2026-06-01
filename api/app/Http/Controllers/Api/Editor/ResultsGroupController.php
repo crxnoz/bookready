@@ -10,10 +10,14 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Before & After groups — mirrors GalleryGroupController. Same MAX cap
- * and same orphan-on-delete behavior so the UX is consistent.
+ * Results groups (formerly "before & after groups") — mirrors
+ * GalleryGroupController. Same MAX cap and same orphan-on-delete
+ * behavior so the UX is consistent.
+ *
+ * M3 rename: same controller as before, pointing at results_groups +
+ * results_items.
  */
-class BeforeAfterGroupController extends Controller
+class ResultsGroupController extends Controller
 {
     private const MAX_GROUPS = 3;
 
@@ -33,12 +37,12 @@ class BeforeAfterGroupController extends Controller
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
-        if (! Schema::hasTable('before_after_groups')) {
+        if (! Schema::hasTable('results_groups')) {
             tenancy()->end();
             return response()->json([]);
         }
 
-        $rows = DB::table('before_after_groups')
+        $rows = DB::table('results_groups')
             ->orderBy('sort_order', 'asc')
             ->orderBy('id', 'asc')
             ->get()
@@ -61,27 +65,27 @@ class BeforeAfterGroupController extends Controller
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
-        if (! Schema::hasTable('before_after_groups')) {
+        if (! Schema::hasTable('results_groups')) {
             tenancy()->end();
-            return response()->json(['message' => 'Before/after groups not supported yet.'], 409);
+            return response()->json(['message' => 'Results groups not supported yet.'], 409);
         }
 
-        if (DB::table('before_after_groups')->count() >= self::MAX_GROUPS) {
+        if (DB::table('results_groups')->count() >= self::MAX_GROUPS) {
             tenancy()->end();
             return response()->json([
-                'message' => 'You can have at most ' . self::MAX_GROUPS . ' before/after groups.',
+                'message' => 'You can have at most ' . self::MAX_GROUPS . ' results groups.',
             ], 422);
         }
 
-        $nextOrder = (int) DB::table('before_after_groups')->max('sort_order') + 1;
-        $id = DB::table('before_after_groups')->insertGetId([
+        $nextOrder = (int) DB::table('results_groups')->max('sort_order') + 1;
+        $id = DB::table('results_groups')->insertGetId([
             'heading'    => trim($validated['heading']),
             'sort_order' => $validated['sort_order'] ?? $nextOrder,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
-        $row = DB::table('before_after_groups')->find($id);
+        $row = DB::table('results_groups')->find($id);
         $result = $this->format($row);
         tenancy()->end();
 
@@ -98,12 +102,12 @@ class BeforeAfterGroupController extends Controller
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
-        if (! Schema::hasTable('before_after_groups')) {
+        if (! Schema::hasTable('results_groups')) {
             tenancy()->end();
             return response()->json(['message' => 'Group not found'], 404);
         }
 
-        $row = DB::table('before_after_groups')->find($group);
+        $row = DB::table('results_groups')->find($group);
         if (! $row) {
             tenancy()->end();
             return response()->json(['message' => 'Group not found'], 404);
@@ -113,8 +117,8 @@ class BeforeAfterGroupController extends Controller
         if (array_key_exists('heading', $validated))    $data['heading']    = trim($validated['heading']);
         if (array_key_exists('sort_order', $validated)) $data['sort_order'] = $validated['sort_order'];
 
-        DB::table('before_after_groups')->where('id', $group)->update($data);
-        $updated = DB::table('before_after_groups')->find($group);
+        DB::table('results_groups')->where('id', $group)->update($data);
+        $updated = DB::table('results_groups')->find($group);
         $result  = $this->format($updated);
 
         tenancy()->end();
@@ -127,27 +131,27 @@ class BeforeAfterGroupController extends Controller
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
-        if (! Schema::hasTable('before_after_groups')) {
+        if (! Schema::hasTable('results_groups')) {
             tenancy()->end();
             return response()->json(['message' => 'Group not found'], 404);
         }
 
-        $row = DB::table('before_after_groups')->find($group);
+        $row = DB::table('results_groups')->find($group);
         if (! $row) {
             tenancy()->end();
             return response()->json(['message' => 'Group not found'], 404);
         }
 
-        if (Schema::hasColumn('before_after_items', 'group_id')) {
-            DB::table('before_after_items')->where('group_id', $group)->update([
+        if (Schema::hasColumn('results_items', 'group_id')) {
+            DB::table('results_items')->where('group_id', $group)->update([
                 'group_id'   => null,
                 'updated_at' => now(),
             ]);
         }
-        DB::table('before_after_groups')->where('id', $group)->delete();
+        DB::table('results_groups')->where('id', $group)->delete();
 
         tenancy()->end();
 
-        return response()->json(['message' => 'Before/after group deleted', 'deleted' => true]);
+        return response()->json(['message' => 'Results group deleted', 'deleted' => true]);
     }
 }

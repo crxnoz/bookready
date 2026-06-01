@@ -202,9 +202,10 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
     { id: 'book',      label: tabLabels.book_label,               key: 'book'               },
     { id: 'gallery',   label: tabLabels.gallery_label,            key: 'gallery'            },
     { id: 'about',     label: tabLabels.about_label,              key: 'about'              },
-    { id: 'results',   label: tabLabels.results_label,            key: 'before_after'       },
-    { id: 'aftercare', label: tabLabels.steps_label,              key: 'steps'              },
-    { id: 'before',    label: tabLabels.before_appointment_label, key: 'before_appointment' },
+    // M3 rename — section_keys + label keys updated.
+    { id: 'results',   label: tabLabels.results_label ?? (tabLabels as any).before_after_label, key: 'results'  },
+    { id: 'aftercare', label: tabLabels.advice_label  ?? (tabLabels as any).steps_label,        key: 'advice'   },
+    { id: 'before',    label: tabLabels.timeline_label ?? (tabLabels as any).before_appointment_label, key: 'timeline' },
     { id: 'policies',  label: tabLabels.policy_label,             key: 'policy'             },
   ]
   const tabs = allTabs.filter(t => t.id === 'book' || enabledByTab[t.id])
@@ -238,8 +239,15 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
   // try to enumerate them) ──
   const settings: any = site.template?.settings ?? {}
   const aboutBlock: any = settings.about ?? {}
-  const stepsList: any[]  = Array.isArray(settings.steps) ? settings.steps : []
-  const beforeList: any[] = Array.isArray(settings.before_appointment) ? settings.before_appointment : []
+  // M3 rename — read canonical keys, fall back to legacy for one release.
+  const stepsList: any[]  = Array.isArray(settings.advice?.items)   ? settings.advice.items
+                          : Array.isArray(settings.steps?.items)    ? settings.steps.items
+                          : Array.isArray(settings.advice)          ? settings.advice
+                          : Array.isArray(settings.steps)           ? settings.steps : []
+  const beforeList: any[] = Array.isArray(settings.timeline?.items) ? settings.timeline.items
+                          : Array.isArray(settings.before_appointment?.items) ? settings.before_appointment.items
+                          : Array.isArray(settings.timeline)        ? settings.timeline
+                          : Array.isArray(settings.before_appointment) ? settings.before_appointment : []
   const additionals: any = settings.additionals ?? {}
 
   return (

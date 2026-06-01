@@ -301,9 +301,10 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
     { id: 'gallery',   label: tabLabels.gallery_label,            key: 'gallery'            },
     { id: 'policies',  label: tabLabels.policy_label,             key: 'policy'             },
     { id: 'about',     label: tabLabels.about_label,              key: 'about'              },
-    { id: 'results',   label: tabLabels.results_label,            key: 'before_after'       },
-    { id: 'aftercare', label: tabLabels.steps_label,              key: 'steps'              },
-    { id: 'before',    label: tabLabels.before_appointment_label, key: 'before_appointment' },
+    // M3 rename — section_keys + label keys updated.
+    { id: 'results',   label: tabLabels.results_label ?? (tabLabels as any).before_after_label, key: 'results'  },
+    { id: 'aftercare', label: tabLabels.advice_label  ?? (tabLabels as any).steps_label,        key: 'advice'   },
+    { id: 'before',    label: tabLabels.timeline_label ?? (tabLabels as any).before_appointment_label, key: 'timeline' },
   ]
 
   const tabs = allTabs.filter(t => t.id === 'book' || enabledByTab[t.id])
@@ -601,8 +602,8 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
           {enabledByTab.results && (
             <div className={`lush-tab-panel${active === 'results' ? ' is-active' : ''}`}>
               <ResultsPanel
-                items={site.before_after ?? []}
-                groups={site.before_after_groups ?? []}
+                items={site.results ?? site.before_after ?? []}
+                groups={site.results_groups ?? site.before_after_groups ?? []}
               />
             </div>
           )}
@@ -629,9 +630,9 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
           {enabledByTab.aftercare && (
             <div className={`lush-tab-panel${active === 'aftercare' ? ' is-active' : ''}`}>
               <AftercarePanel
-                items={site.template?.settings.steps?.items}
-                heading={site.template?.settings.steps?.heading}
-                cardKicker={site.template?.settings.steps?.card_kicker}
+                items={(site.template?.settings as any)?.advice?.items ?? (site.template?.settings as any)?.steps?.items}
+                heading={(site.template?.settings as any)?.advice?.heading ?? (site.template?.settings as any)?.steps?.heading}
+                cardKicker={(site.template?.settings as any)?.advice?.card_kicker ?? (site.template?.settings as any)?.steps?.card_kicker}
               />
             </div>
           )}
@@ -640,9 +641,9 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
           {enabledByTab.before && (
             <div className={`lush-tab-panel${active === 'before' ? ' is-active' : ''}`}>
               <BeforePanel
-                items={site.template?.settings.before_appointment?.items}
-                heading={site.template?.settings.before_appointment?.heading}
-                cardKicker={site.template?.settings.before_appointment?.card_kicker}
+                items={(site.template?.settings as any)?.timeline?.items ?? (site.template?.settings as any)?.before_appointment?.items}
+                heading={(site.template?.settings as any)?.timeline?.heading ?? (site.template?.settings as any)?.before_appointment?.heading}
+                cardKicker={(site.template?.settings as any)?.timeline?.card_kicker ?? (site.template?.settings as any)?.before_appointment?.card_kicker}
               />
             </div>
           )}

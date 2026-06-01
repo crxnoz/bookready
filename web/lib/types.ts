@@ -223,7 +223,7 @@ export interface GalleryGroupPayload {
 }
 
 // API-backed before/after pairs (editor + public)
-export interface BeforeAfterItem {
+export interface ResultsItem {
   id: number
   title: string | null
   caption: string | null
@@ -240,7 +240,7 @@ export interface BeforeAfterItem {
   updated_at?: string
 }
 
-export interface BeforeAfterItemPayload {
+export interface ResultsItemPayload {
   title?: string | null
   caption?: string | null
   before_image_url: string
@@ -253,7 +253,7 @@ export interface BeforeAfterItemPayload {
   group_id?: number | null
 }
 
-export interface PublicBeforeAfterItem {
+export interface PublicResultsItem {
   id: number
   title: string | null
   caption: string | null
@@ -267,7 +267,7 @@ export interface PublicBeforeAfterItem {
 }
 
 // Before/After groups (max 3 per tenant)
-export interface BeforeAfterGroup {
+export interface ResultsGroup {
   id: number
   heading: string
   sort_order: number
@@ -275,7 +275,7 @@ export interface BeforeAfterGroup {
   updated_at?: string
 }
 
-export interface BeforeAfterGroupPayload {
+export interface ResultsGroupPayload {
   heading: string
   sort_order?: number
 }
@@ -541,8 +541,13 @@ export interface PublicSite {
   staff?: PublicStaffMember[]
   gallery?: PublicGalleryItem[]
   gallery_groups?: GalleryGroup[]
-  before_after?: PublicBeforeAfterItem[]
-  before_after_groups?: BeforeAfterGroup[]
+  // M3 rename: results / results_groups are canonical. Old keys kept
+  // optional so a stale template render between deploys doesn't crash.
+  // Backend emits both for one release; drop next release.
+  results?: PublicResultsItem[]
+  results_groups?: ResultsGroup[]
+  before_after?: PublicResultsItem[]
+  before_after_groups?: ResultsGroup[]
   template?: PublicTemplate | null
   payment_settings?: PublicPaymentSettings | null
   booking_settings?: PublicBookingSettings | null
@@ -1274,8 +1279,13 @@ export interface TemplateTabLabels {
   policy_label: string
   about_label: string
   results_label: string
-  steps_label: string
-  before_appointment_label: string
+  // M3 rename — canonical keys are advice_label / timeline_label.
+  // Legacy steps_label / before_appointment_label stay optional for one
+  // release so a render between deploys doesn't crash. Drop next release.
+  advice_label: string
+  timeline_label: string
+  steps_label?: string
+  before_appointment_label?: string
 }
 
 export interface TemplateInstructionItem {
@@ -1360,8 +1370,13 @@ export interface TemplateThemeSettings {
 export interface TemplateSettings {
   header: TemplateHeaderSettings
   tabs: TemplateTabLabels
-  steps: TemplateInstructionBlock
-  before_appointment: TemplateInstructionBlock
+  // M3 rename — canonical keys are 'advice' / 'timeline'. Legacy 'steps'
+  // / 'before_appointment' remain optional so a stale render mid-deploy
+  // doesn't crash. Drop next release.
+  advice: TemplateInstructionBlock
+  timeline: TemplateInstructionBlock
+  steps?: TemplateInstructionBlock
+  before_appointment?: TemplateInstructionBlock
   footer: TemplateFooterSettings
   additionals?: TemplateAdditionalsSettings
   about?: TemplateAboutSettings
@@ -1379,7 +1394,7 @@ export type WebsiteSectionType =
   | 'gallery'
   | 'policy'
   | 'about'
-  | 'before_after'
+  | 'results'
   | 'instructions'
   | 'staff'
   | 'hours'

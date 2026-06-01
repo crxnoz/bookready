@@ -34,8 +34,8 @@ use App\Http\Controllers\Api\Editor\BookingSettingsController;
 use App\Http\Controllers\Api\Editor\NotificationSettingsController;
 use App\Http\Controllers\Api\Editor\PaymentSettingsController;
 use App\Http\Controllers\Api\Editor\StripeConnectController;
-use App\Http\Controllers\Api\Editor\BeforeAfterGroupController;
-use App\Http\Controllers\Api\Editor\BeforeAfterItemsController;
+use App\Http\Controllers\Api\Editor\ResultsGroupController;
+use App\Http\Controllers\Api\Editor\ResultsItemsController;
 use App\Http\Controllers\Api\Editor\GalleryGroupController;
 use App\Http\Controllers\Api\Editor\GalleryItemsController;
 use App\Http\Controllers\Api\Editor\ServicesController;
@@ -267,14 +267,14 @@ Route::prefix('v1')->group(function () {
         Route::patch ('gallery/{item}',               [GalleryItemsController::class, 'update']);
         Route::delete('gallery/{item}',               [GalleryItemsController::class, 'destroy']);
 
-        Route::get   ('before-after/groups',          [BeforeAfterGroupController::class, 'index']);
-        Route::post  ('before-after/groups',          [BeforeAfterGroupController::class, 'store']);
-        Route::patch ('before-after/groups/{group}',  [BeforeAfterGroupController::class, 'update']);
-        Route::delete('before-after/groups/{group}',  [BeforeAfterGroupController::class, 'destroy']);
-        Route::get   ('before-after',                 [BeforeAfterItemsController::class, 'index']);
-        Route::post  ('before-after',                 [BeforeAfterItemsController::class, 'store']);
-        Route::patch ('before-after/{item}',          [BeforeAfterItemsController::class, 'update']);
-        Route::delete('before-after/{item}',          [BeforeAfterItemsController::class, 'destroy']);
+        Route::get   ('results/groups',          [ResultsGroupController::class, 'index']);
+        Route::post  ('results/groups',          [ResultsGroupController::class, 'store']);
+        Route::patch ('results/groups/{group}',  [ResultsGroupController::class, 'update']);
+        Route::delete('results/groups/{group}',  [ResultsGroupController::class, 'destroy']);
+        Route::get   ('results',                 [ResultsItemsController::class, 'index']);
+        Route::post  ('results',                 [ResultsItemsController::class, 'store']);
+        Route::patch ('results/{item}',          [ResultsItemsController::class, 'update']);
+        Route::delete('results/{item}',          [ResultsItemsController::class, 'destroy']);
 
         Route::post('uploads',                        [UploadsController::class, 'store']);
 
