@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  createContext, useCallback, useContext, useEffect, useState,
+  createContext, useCallback, useContext, useEffect, useRef, useState,
   type ReactNode,
 } from 'react'
 import { X, UserCircle, Loader2 } from 'lucide-react'
@@ -142,14 +142,59 @@ function LushAuthModal({
   const [error,    setError]    = useState('')
   const [loading,  setLoading]  = useState(false)
 
-  // Escape to close + body scroll lock while open.
+  // M5: ref on the modal panel so we can scope focus trapping + initial
+  // focus to its descendants. Without this ref the focus search runs
+  // against document.body, which lets focus escape to the page beneath.
+  const modalRef = useRef<HTMLDivElement | null>(null)
+
+  // Escape to close + body scroll lock + focus trap while open.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        onClose()
+        return
+      }
+      // M5 focus trap. Tab / Shift+Tab on the boundary focusable cycles
+      // back into the modal instead of leaving it. Critical for screen-
+      // reader + keyboard-only users; without this, Tab takes them onto
+      // the (still rendered) tenant site behind the backdrop.
+      if (e.key !== 'Tab') return
+      const root = modalRef.current
+      if (!root) return
+      const focusables = root.querySelectorAll<HTMLElement>(
+        'a[href],button:not([disabled]),textarea,input,select,[tabindex]:not([tabindex="-1"])',
+      )
+      if (focusables.length === 0) return
+      const first = focusables[0]
+      const last  = focusables[focusables.length - 1]
+      const active = document.activeElement as HTMLElement | null
+      if (e.shiftKey) {
+        if (active === first || ! root.contains(active)) {
+          e.preventDefault()
+          last.focus()
+        }
+      } else {
+        if (active === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
     }
     document.addEventListener('keydown', onKey)
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+
+    // Initial focus — first focusable inside the modal — so a screen
+    // reader announces the dialog contents immediately.
+    queueMicrotask(() => {
+      const root = modalRef.current
+      if (!root) return
+      const first = root.querySelector<HTMLElement>(
+        'input,button:not([disabled]),a[href]',
+      )
+      first?.focus()
+    })
+
     return () => {
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = prevOverflow
@@ -193,7 +238,7 @@ function LushAuthModal({
       aria-modal="true"
       aria-label={mode === 'signin' ? 'Sign in to BookReady' : 'Create a BookReady account'}
     >
-      <div className="lush-auth-modal" onClick={e => e.stopPropagation()}>
+      <div className="lush-auth-modal" ref={modalRef} onClick={e => e.stopPropagation()}>
 
         {/* BookReady brand bar — makes it unambiguous what the user is
             authenticating INTO. Sharp dark strip across the top with

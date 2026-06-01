@@ -1356,6 +1356,11 @@ const TFR_CSS = `
   --tfr-sans:        "DM Sans", sans-serif;
   --tfr-ui:          "Roboto", sans-serif;
   --tfr-mono:        "DM Mono","Roboto Mono",monospace;
+  /* M5: aliases for rules that referenced --tfr-display / --tfr-fg
+     (e.g. .tfr-ba-bucket-heading). Without these declarations those
+     references resolved to inherited values silently. */
+  --tfr-display:     var(--tfr-serif);
+  --tfr-fg:          var(--tfr-text);
   width: 100%; background: var(--tfr-bg); color: var(--tfr-text);
   overflow-x: hidden; font-family: var(--tfr-ui);
 }

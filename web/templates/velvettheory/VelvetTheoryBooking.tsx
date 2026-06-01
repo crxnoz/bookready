@@ -322,15 +322,11 @@ const VT_BOOKING_FRAME_CSS = `
   background: rgba(201,168,118,0.10) !important;
 }
 
-/* Hard-coded inline sage from the deposit/full payment toggle. */
-.vt-booking-inner.lush-template button[style*="#7FAF9A"] {
-  border-color: #C9A876 !important;
-  background-color: rgba(201,168,118,0.10) !important;
-}
-.vt-booking-inner.lush-template [style*="rgba(127,175,154"] {
-  background-color: rgba(201,168,118,0.10) !important;
-  border-color: rgba(201,168,118,0.32) !important;
-}
+/* M5: removed. These rules string-matched against the hardcoded inline
+   sage hex (#7FAF9A) that Lush used on the staff-picker and payment-
+   choice tiles. Lush now uses var(--lush-pink) inline instead, which
+   VT's variable override (--lush-pink: gold) re-skins automatically.
+   See web/templates/_shared/booking/LushStudioBooking.tsx lines 1087+. */
 
 @media (max-width: 640px) {
   .vt-booking-frame { padding: 56px 0 32px; }

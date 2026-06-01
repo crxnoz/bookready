@@ -1084,8 +1084,8 @@ export default function LushStudioBooking({
                     style={{
                       padding: '12px 14px',
                       textAlign: 'left',
-                      border: '1.5px solid ' + (staffId == null ? '#7FAF9A' : 'rgba(14,17,17,0.12)'),
-                      background: staffId == null ? 'rgba(127,175,154,0.10)' : '#FFFFFF',
+                      border: '1.5px solid ' + (staffId == null ? 'var(--lush-pink)' : 'rgba(14,17,17,0.12)'),
+                      background: staffId == null ? 'rgba(var(--lush-pink-rgb), 0.10)' : '#FFFFFF',
                       color: '#0E1111',
                       cursor: 'pointer',
                       borderRadius: 12,
@@ -1104,8 +1104,8 @@ export default function LushStudioBooking({
                       style={{
                         padding: '12px 14px',
                         textAlign: 'left',
-                        border: '1.5px solid ' + (staffId === s.id ? '#7FAF9A' : 'rgba(14,17,17,0.12)'),
-                        background: staffId === s.id ? 'rgba(127,175,154,0.10)' : '#FFFFFF',
+                        border: '1.5px solid ' + (staffId === s.id ? 'var(--lush-pink)' : 'rgba(14,17,17,0.12)'),
+                        background: staffId === s.id ? 'rgba(var(--lush-pink-rgb), 0.10)' : '#FFFFFF',
                         color: '#0E1111',
                         cursor: 'pointer',
                         borderRadius: 12,
@@ -1562,8 +1562,8 @@ export default function LushStudioBooking({
                       style={{
                         padding: '12px 14px',
                         textAlign: 'left',
-                        border: '1.5px solid ' + (paymentChoice === 'deposit' ? '#7FAF9A' : 'rgba(14,17,17,0.12)'),
-                        background: paymentChoice === 'deposit' ? 'rgba(127,175,154,0.10)' : '#FFFFFF',
+                        border: '1.5px solid ' + (paymentChoice === 'deposit' ? 'var(--lush-pink)' : 'rgba(14,17,17,0.12)'),
+                        background: paymentChoice === 'deposit' ? 'rgba(var(--lush-pink-rgb), 0.10)' : '#FFFFFF',
                         color: '#0E1111',
                         cursor: 'pointer',
                         borderRadius: 12,
@@ -1585,8 +1585,8 @@ export default function LushStudioBooking({
                       style={{
                         padding: '12px 14px',
                         textAlign: 'left',
-                        border: '1.5px solid ' + (paymentChoice === 'full' ? '#7FAF9A' : 'rgba(14,17,17,0.12)'),
-                        background: paymentChoice === 'full' ? 'rgba(127,175,154,0.10)' : '#FFFFFF',
+                        border: '1.5px solid ' + (paymentChoice === 'full' ? 'var(--lush-pink)' : 'rgba(14,17,17,0.12)'),
+                        background: paymentChoice === 'full' ? 'rgba(var(--lush-pink-rgb), 0.10)' : '#FFFFFF',
                         color: '#0E1111',
                         cursor: 'pointer',
                         borderRadius: 12,

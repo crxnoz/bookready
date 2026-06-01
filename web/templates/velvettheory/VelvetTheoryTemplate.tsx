@@ -359,9 +359,12 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
           </div>
         </section>
 
-        {/* ── Sticky tab nav (serif underline) ── */}
+        {/* ── Sticky tab nav (serif underline) ──
+            M5: role="tablist" on the inner container so the role="tab"
+            children compose into valid ARIA. Without a tablist parent,
+            screen readers don't announce these as tab UI. */}
         <nav className="vt-tabs" ref={tabRailRef} aria-label="Sections">
-          <div className="vt-tabs-inner">
+          <div className="vt-tabs-inner" role="tablist">
             {tabs.map(t => (
               <button
                 key={t.id}
@@ -517,6 +520,35 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
                     <summary>{f.q ?? f.question ?? ''}</summary>
                     <p>{f.a ?? f.answer ?? ''}</p>
                   </details>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Reviews — M5 compliance. VT previously ignored
+              additionals.reviews.* entirely; now it renders them in an
+              editorial column scoped to .vt-section-narrow. Same data
+              shape as TFR ({ body, author, rating, location }). */}
+          {additionals.reviews?.enabled !== false
+            && Array.isArray(additionals.reviews?.items)
+            && additionals.reviews.items.length > 0 && (
+            <div className="vt-section vt-section-narrow">
+              <p className="vt-eyebrow">Reviews</p>
+              <h2 className="vt-h2">{additionals.reviews.heading ?? 'What guests say.'}</h2>
+              <div className="vt-reviews">
+                {additionals.reviews.items.map((rv: any, i: number) => (
+                  <figure key={i} className="vt-review">
+                    {typeof rv.rating === 'number' && rv.rating > 0 && (
+                      <span className="vt-review-stars" aria-label={`${rv.rating} of 5 stars`}>
+                        {'★'.repeat(Math.max(0, Math.min(5, Math.round(rv.rating))))}
+                      </span>
+                    )}
+                    <blockquote className="vt-review-body">{rv.body ?? rv.quote ?? ''}</blockquote>
+                    <figcaption className="vt-review-attr">
+                      {(rv.author ?? rv.name) && <span className="vt-review-author">{rv.author ?? rv.name}</span>}
+                      {rv.location && <span className="vt-review-location">{rv.location}</span>}
+                    </figcaption>
+                  </figure>
                 ))}
               </div>
             </div>
@@ -1332,6 +1364,47 @@ const VT_CSS = `
   line-height: 1.7;
   opacity: 0.85;
 }
+
+/* ── Reviews — M5 compliance. Editorial column, hairline dividers
+       between quotes, gold star markers. No cards (would clash with
+       VT's flatter language); items read as a stack of testimonials. */
+.vt-reviews { display: flex; flex-direction: column; }
+.vt-review {
+  padding: 24px 0;
+  margin: 0;
+  border-top: 1px solid var(--vt-rule);
+}
+.vt-review:first-child { border-top: none; padding-top: 0; }
+.vt-review-stars {
+  display: inline-block;
+  margin-bottom: 10px;
+  font-family: var(--vt-body);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: #C9A876;  /* gold accent — constant across background variants */
+}
+.vt-review-body {
+  margin: 0 0 14px;
+  font-family: var(--vt-serif);
+  font-size: 18px;
+  line-height: 1.5;
+  font-style: italic;
+  /* Editorial body opacity. Borderline AA on darker variants — see
+     audit §7 contrast notes. */
+  opacity: 0.92;
+}
+.vt-review-attr {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-family: var(--vt-body);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.vt-review-author { font-weight: 600; }
+.vt-review-location { opacity: 0.62; }
+.vt-review-location::before { content: '·'; margin-right: 8px; opacity: 0.6; }
 
 /* ── Footer: Reserve CTA + hours + contact info + colophon ── */
 .vt-footer {
