@@ -1094,19 +1094,36 @@ function AboutPanel({
 
   return (
     <section className="lush-about-section">
-      {/* Hero: type-only treatment. The image has been removed (the
-          spark mask was hard to get right at small sizes); section now
-          opens with a centered Molle eyebrow + big italic heading +
-          DM Mono tagline. Cleaner editorial entry, leaves room for a
-          future treatment when one is designed. */}
+      {/* Hero: organic blob-shaped frame holding the about image, with
+          a sage "shadow" block offset behind it (same shape, rotated
+          slightly). The heading wrap is absolutely positioned over the
+          top of the image, with a cream→transparent gradient overlay
+          so the Molle italic reads cleanly against any photo. Tagline
+          drops below the frame in DM Mono. */}
       <div className="lush-about-hero">
-        <div className="lush-about-heading-wrap">
-          <div className="lush-about-backdrop">{backdropText}</div>
-          <h2>{heading}</h2>
-          {p?.tagline && (
-            <p className="lush-about-tagline">{p.tagline}</p>
+        <div className="lush-about-frame">
+          <div className="lush-about-frame-bg" aria-hidden="true" />
+          {about?.images?.[0] ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              className="lush-about-frame-img"
+              src={about.images[0]}
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <div className="lush-about-frame-fallback" aria-hidden="true" />
           )}
+          <div className="lush-about-frame-overlay" aria-hidden="true" />
+          <div className="lush-about-heading-wrap">
+            <div className="lush-about-backdrop">{backdropText}</div>
+            <h2>{heading}</h2>
+          </div>
         </div>
+        {p?.tagline && (
+          <p className="lush-about-tagline">{p.tagline}</p>
+        )}
       </div>
       {/* Editorial pull-quote in big Molle italic. Pulls from the
           tenant's tagline when set (so it auto-personalizes) and

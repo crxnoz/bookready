@@ -1259,20 +1259,79 @@ export const LUSH_CSS = `
 /* ── About ── */
 .lush-about-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:12px 20px 58px; }
 
-/* About hero: type-only treatment now (the spark image was removed).
-   Centered Molle eyebrow + big italic heading + small DM Mono
-   tagline below. Sets up a quiet editorial entry that we can drop a
-   new image treatment back into later if/when one is designed. */
+/* About hero: organic blob frame with sage offset "shadow" behind,
+   heading absolutely overlaid on top of the image with a cream
+   gradient for legibility. Tagline drops below the frame. */
 .lush-about-hero {
   display:flex; flex-direction:column; align-items:center;
-  padding:24px 16px 24px;
+  padding:24px 16px 12px;
   margin-bottom:24px;
 }
+.lush-about-frame {
+  position:relative;
+  width:min(86vw, 320px);
+  aspect-ratio:0.9;
+  margin:0 auto 18px;
+  /* Leave room on the right + bottom for the sage offset shape to
+     peek out without overflowing the section padding. */
+  padding-right:14px;
+  padding-bottom:16px;
+  isolation:isolate;
+}
+/* Sage offset block — same organic blob shape, rotated and translated
+   so it reads as a colored editorial "shadow" behind the photo. */
+.lush-about-frame-bg {
+  position:absolute;
+  top:16px; right:0; bottom:0; left:14px;
+  background:var(--lush-pink);
+  border-radius:62% 38% 47% 53% / 49% 51% 50% 51%;
+  transform:rotate(-4deg);
+  z-index:0;
+  filter:drop-shadow(0 6px 14px rgba(14,17,17,0.10));
+}
+/* Image + fallback share the blob shape. object-position biases up so
+   portrait subjects stay framed after the curve eats the corners. */
+.lush-about-frame-img,
+.lush-about-frame-fallback {
+  position:absolute;
+  top:0; left:0; right:14px; bottom:16px;
+  display:block;
+  border-radius:62% 38% 47% 53% / 49% 51% 50% 51%;
+  z-index:1;
+}
+.lush-about-frame-img {
+  object-fit:cover;
+  object-position:50% 30%;
+  background:#ECE7DD;
+}
+.lush-about-frame-fallback {
+  background:linear-gradient(140deg, var(--lush-pink) 0%, #BFD8CC 60%, var(--lush-bg) 100%);
+}
+/* Cream→transparent gradient at the top of the image so the heading
+   reads regardless of the underlying photo. Sits inside the same
+   blob clip via matching border-radius. */
+.lush-about-frame-overlay {
+  position:absolute;
+  top:0; left:0; right:14px; bottom:16px;
+  border-radius:62% 38% 47% 53% / 49% 51% 50% 51%;
+  background:linear-gradient(180deg,
+    rgba(246,243,238,0.82) 0%,
+    rgba(246,243,238,0.55) 24%,
+    rgba(246,243,238,0.10) 48%,
+    rgba(246,243,238,0) 60%);
+  z-index:2;
+  pointer-events:none;
+}
+/* Heading wrap sits absolutely over the top portion of the frame. */
 .lush-about-heading-wrap {
-  position:relative; z-index:2;
+  position:absolute;
+  top:9%;
+  left:50%;
+  transform:translateX(-50%);
+  width:86%;
+  z-index:3;
   text-align:center;
   display:flex; flex-direction:column; align-items:center;
-  max-width:min(86vw, 360px);
 }
 /* Small eyebrow kicker on top, big heading underneath. */
 .lush-about-backdrop {
@@ -1742,16 +1801,18 @@ export const LUSH_CSS = `
   .lush-ba-card { width:205px; height:205px; }
   .lush-ba-card--before { left:0; top:64px; }
   .lush-ba-card--after  { right:0; top:128px; left:auto; }
-  /* Without the spark image, About becomes a centered editorial column —
-     hero (heading), pull quote, body, signature — all stacked. Caps
-     width at ~640px so it reads like a letter, not a column-stretched
-     body. */
-  .lush-about-section { min-height:auto; padding:80px 40px 110px; max-width:680px; margin:0 auto; display:block; }
+  /* Desktop: about is still a centered editorial column. Frame scales
+     up to ~440px, heading overlay stays positioned over the top of the
+     image with a larger Molle h2. */
+  .lush-about-section { min-height:auto; padding:80px 40px 110px; max-width:720px; margin:0 auto; display:block; }
   .lush-about-hero { padding:24px 0 36px; margin-bottom:0; }
-  .lush-about-heading-wrap { max-width:480px; }
-  .lush-about-backdrop { font-size:clamp(32px,3.5vw,56px); text-shadow:3px 3px 0 rgba(14,17,17,0.18); }
-  .lush-about-heading-wrap h2 { font-size:clamp(72px,7vw,108px); text-shadow:5px 5px 0 rgba(14,17,17,0.18); margin-top:-20px; }
-  .lush-about-tagline { font-size:13px; margin-top:18px; }
+  .lush-about-frame { width:min(70vw, 440px); aspect-ratio:0.92; padding-right:18px; padding-bottom:20px; margin-bottom:24px; }
+  .lush-about-frame-bg { top:20px; left:18px; right:0; }
+  .lush-about-frame-img, .lush-about-frame-fallback, .lush-about-frame-overlay { right:18px; bottom:20px; }
+  .lush-about-heading-wrap { top:9%; width:84%; }
+  .lush-about-backdrop { font-size:clamp(28px,3vw,46px); text-shadow:3px 3px 0 rgba(14,17,17,0.18); }
+  .lush-about-heading-wrap h2 { font-size:clamp(56px,5.5vw,82px); text-shadow:4px 4px 0 rgba(14,17,17,0.20); margin-top:-12px; }
+  .lush-about-tagline { font-size:13px; margin-top:14px; }
   .lush-about-copy { max-width:none; font-size:18px; line-height:1.55; }
   .lush-policy-section { padding:70px 40px 110px; }
   .lush-policy-heading { align-items:center; margin-bottom:34px; }
