@@ -13,6 +13,7 @@
  *
  * Origins listed below cover:
  *   - https://app.bkrdy.me  → the editor SPA
+ *   - https://bkrdy.me      → the apex/marketing surface that links to /login
  *   - https://*.bkrdy.me    → tenant booking sites that hit /api/v1/public/*
  *                             with credentials: 'include' (the cookie is
  *                             ignored on anonymous routes but the preflight
@@ -28,6 +29,17 @@ return [
 
     'allowed_origins' => [
         'https://app.bkrdy.me',
+        // The apex domain serves the same Next.js app and people land on
+        // /login from there (the marketing surface links straight to the
+        // login route). Without this entry the browser sees Origin:
+        // https://bkrdy.me, the backend refuses to emit a matching
+        // Access-Control-Allow-Origin, and the preflight fails with
+        // "No 'Access-Control-Allow-Origin' header is present on the
+        // requested resource." — surfacing as "Failed to fetch" on the
+        // login submit (incognito-only because logged-in browsers don't
+        // re-hit /login). The subdomain pattern below intentionally
+        // requires a leading label so it does not match the apex on its own.
+        'https://bkrdy.me',
         'http://app.daysbookings.site',
         'https://app.daysbookings.site',
         'http://localhost:3000',
