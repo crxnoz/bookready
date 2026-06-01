@@ -1270,7 +1270,7 @@ export const LUSH_CSS = `
 .lush-about-frame {
   position:relative;
   width:min(86vw, 320px);
-  aspect-ratio:0.9;
+  aspect-ratio:1.15;
   margin:0 auto 18px;
   /* Leave room on the right + bottom for the sage offset shape to
      peek out without overflowing the section padding. */
@@ -1348,18 +1348,8 @@ export const LUSH_CSS = `
   color:var(--lush-pink);
   text-shadow:3px 3px 0 rgba(14,17,17,0.18);
 }
-/* Tagline in DM Mono all caps — small typographic accent below the
-   heading. Sits at full opacity sage so it reads as a tight
-   secondary line, not a body-text muted afterthought. */
-.lush-about-tagline {
-  margin:14px 0 0;
-  font-family:var(--lush-mono);
-  font-size:11px; font-weight:500;
-  letter-spacing:0.18em; text-transform:uppercase;
-  color:var(--lush-pink);
-  line-height:1.4;
-  max-width:280px;
-}
+/* (DM Mono tagline removed — heading now stands alone over the
+   image; tagline duplicated the profile pull-quote below.) */
 .lush-about-copy { width:min(100%,344px); margin:0 auto; color:var(--lush-text); font-family:var(--lush-ui); font-size:15px; line-height:1.55; }
 .lush-about-copy p { margin:0 0 22px; padding:16px 0 0; border-top:1px solid var(--lush-dark-border); }
 .lush-about-copy p:first-of-type { border-top:0; padding-top:0; }
@@ -1806,13 +1796,12 @@ export const LUSH_CSS = `
      image with a larger Molle h2. */
   .lush-about-section { min-height:auto; padding:80px 40px 110px; max-width:720px; margin:0 auto; display:block; }
   .lush-about-hero { padding:24px 0 36px; margin-bottom:0; }
-  .lush-about-frame { width:min(70vw, 440px); aspect-ratio:0.92; padding-right:18px; padding-bottom:20px; margin-bottom:24px; }
+  .lush-about-frame { width:min(70vw, 480px); aspect-ratio:1.25; padding-right:18px; padding-bottom:20px; margin-bottom:24px; }
   .lush-about-frame-bg { top:20px; left:18px; right:0; }
   .lush-about-frame-img, .lush-about-frame-fallback, .lush-about-frame-overlay { right:18px; bottom:20px; }
-  .lush-about-heading-wrap { top:9%; width:84%; }
+  .lush-about-heading-wrap { top:16%; width:84%; }
   .lush-about-backdrop { font-size:clamp(28px,3vw,46px); text-shadow:3px 3px 0 rgba(14,17,17,0.18); }
   .lush-about-heading-wrap h2 { font-size:clamp(56px,5.5vw,82px); text-shadow:4px 4px 0 rgba(14,17,17,0.20); margin-top:-12px; }
-  .lush-about-tagline { font-size:13px; margin-top:14px; }
   .lush-about-copy { max-width:none; font-size:18px; line-height:1.55; }
   .lush-policy-section { padding:70px 40px 110px; }
   .lush-policy-heading { align-items:center; margin-bottom:34px; }
@@ -1887,13 +1876,12 @@ export const LUSH_CSS = `
      larger Molle h2 than mobile. */
   .lush-about-section { padding:64px 36px 88px; }
   .lush-about-hero { padding:24px 0 24px; margin-bottom:8px; }
-  .lush-about-frame { width:min(72vw, 380px); aspect-ratio:0.9; padding-right:16px; padding-bottom:18px; }
+  .lush-about-frame { width:min(72vw, 420px); aspect-ratio:1.2; padding-right:16px; padding-bottom:18px; }
   .lush-about-frame-bg { top:18px; left:16px; right:0; }
   .lush-about-frame-img, .lush-about-frame-fallback, .lush-about-frame-overlay { right:16px; bottom:18px; }
-  .lush-about-heading-wrap { top:9%; width:84%; }
+  .lush-about-heading-wrap { top:14%; width:84%; }
   .lush-about-backdrop { font-size:34px; text-shadow:2px 2px 0 rgba(14,17,17,0.18); }
   .lush-about-heading-wrap h2 { font-size:64px; text-shadow:3px 3px 0 rgba(14,17,17,0.18); margin-top:-8px; }
-  .lush-about-tagline { font-size:12px; margin-top:14px; }
   .lush-about-copy { font-size:16px; line-height:1.6; }
 
   /* Policy — 2-col grid, heading sized down from the giant mobile

@@ -1121,9 +1121,6 @@ function AboutPanel({
             <h2>{heading}</h2>
           </div>
         </div>
-        {p?.tagline && (
-          <p className="lush-about-tagline">{p.tagline}</p>
-        )}
       </div>
       {/* Editorial pull-quote in big Molle italic. Pulls from the
           tenant's tagline when set (so it auto-personalizes) and
