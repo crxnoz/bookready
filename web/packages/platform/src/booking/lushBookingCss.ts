@@ -1836,25 +1836,114 @@ export const LUSH_CSS = `
   .lush-aftercare-card { padding:28px 28px 30px; }
   .lush-aftercare-card h3 { font-size:38px; margin-bottom:14px; }
   .lush-aftercare-card p { font-size:15px; line-height:1.6; }
+  /* FAQ + Reviews + Thanks at desktop — inherit their own
+     inner max-widths (720, 960, 720) but the SECTION padding
+     needs to breathe on wide viewports. */
+  .lush-faq-section { padding:88px 48px 40px; }
+  .lush-faq-heading { font-size:64px; }
+  .lush-reviews-section { padding:88px 48px 56px; }
+  .lush-reviews-heading { font-size:64px; }
+  .lush-thanks-section { padding:104px 48px 112px; }
   .lush-footer-inner { padding:72px 48px 36px; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:48px; align-items:start; }
   .brk-booking-section { padding:48px 48px 80px; }
   .brk-booking-services { grid-template-columns:repeat(2,1fr); }
 }
 
 /* ── Tablet ── */
+/* Tablet sits between the mobile phone-frame design and the wide
+   editorial desktop. The base mobile widths cap content at ~395px
+   even on 1024px screens, so this block widens containers, scales
+   typography up from mobile clamps, and switches grids to 2-col
+   where it earns space. Padding bumps in each section give the
+   layout the breathing room the mobile design assumes is missing. */
 @media (min-width:641px) and (max-width:1024px) {
-  /* Header at tablet: same mobile-first design, just slightly more
-     generous container padding. Buttons grid + circle sizing stays
-     uniform across breakpoints (5 × 50 px circles). */
+  /* Header — slightly taller cover, content gets editorial padding. */
   .lush-header-cover { min-height:260px; }
   .lush-header-content { padding:48px 44px 52px; max-width:760px; }
   .lush-tab-slider { padding:6px 28px; justify-content:center; gap:8px; }
+  .lush-tab-pill { padding:18px 16px; font-size:11px; letter-spacing:0.18em; }
+
+  /* Shared section container width — every editorial section sits in
+     a 720px column on tablet (vs 395px on mobile). */
   .lush-gallery-group, .lush-before-after-section, .lush-about-section, .lush-policy-section, .lush-before-appointment-section, .lush-aftercare-section { width:min(100%,720px); }
-  .lush-gallery-grid { grid-template-columns:repeat(3,1fr); gap:14px; }
-  .lush-policy-list { grid-template-columns:repeat(2,1fr); }
-  .lush-aftercare-list { grid-template-columns:repeat(2,1fr); }
-  .lush-footer-inner { grid-template-columns:1fr 1fr; }
+
+  /* Gallery — 3-col grid with comfortable gutters. */
+  .lush-gallery-section { padding:0 32px 80px; }
+  .lush-gallery-group { padding:48px 0 0; }
+  .lush-gallery-group h2 { font-size:48px; margin:0 0 28px; }
+  .lush-gallery-grid { grid-template-columns:repeat(3,1fr); gap:18px; }
+
+  /* Before/After — at tablet the diptych stack becomes a 2-col grid
+     so two transformations sit side-by-side instead of stacking
+     vertically forever. Cards keep the same offset choreography. */
+  .lush-before-after-section { padding:64px 36px 96px; }
+  .lush-results-heading h2 { font-size:88px; }
+  .lush-results-backdrop { font-size:44px; }
+  .lush-ba-stack { grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
+  .lush-ba-pair { max-width:none; height:320px; }
+
+  /* About — frame scales up to ~380px on tablet, heading overlay
+     stays positioned over the top of the image with a slightly
+     larger Molle h2 than mobile. */
+  .lush-about-section { padding:64px 36px 88px; }
+  .lush-about-hero { padding:24px 0 24px; margin-bottom:8px; }
+  .lush-about-frame { width:min(72vw, 380px); aspect-ratio:0.9; padding-right:16px; padding-bottom:18px; }
+  .lush-about-frame-bg { top:18px; left:16px; right:0; }
+  .lush-about-frame-img, .lush-about-frame-fallback, .lush-about-frame-overlay { right:16px; bottom:18px; }
+  .lush-about-heading-wrap { top:9%; width:84%; }
+  .lush-about-backdrop { font-size:34px; text-shadow:2px 2px 0 rgba(14,17,17,0.18); }
+  .lush-about-heading-wrap h2 { font-size:64px; text-shadow:3px 3px 0 rgba(14,17,17,0.18); margin-top:-8px; }
+  .lush-about-tagline { font-size:12px; margin-top:14px; }
+  .lush-about-copy { font-size:16px; line-height:1.6; }
+
+  /* Policy — 2-col grid, heading sized down from the giant mobile
+     clamp so it doesn't dominate the tablet viewport. */
+  .lush-policy-section { padding:64px 36px 96px; }
+  .lush-policy-heading { margin-bottom:30px; align-items:center; }
+  .lush-policy-heading span { font-size:42px; text-shadow:3px 3px 0 rgba(14,17,17,0.18); }
+  .lush-policy-heading h2 { font-size:84px; text-shadow:5px 5px 0 rgba(14,17,17,0.18); margin-top:-14px; }
+  .lush-policy-list { grid-template-columns:repeat(2,1fr); gap:16px; }
+  .lush-policy-card { min-height:280px; padding:22px 22px 26px; }
+  .lush-policy-card h3 { font-size:30px; margin-bottom:16px; }
+  .lush-policy-copy { font-size:14px; line-height:1.55; }
+
+  /* Before Appointment — timeline gets larger nodes + tighter
+     gap so it reads as a real timeline, not a list. */
+  .lush-before-appointment-section { padding:64px 36px 88px; }
+  .lush-before-appointment-section h2 { font-size:64px; margin-bottom:42px; }
+  .lush-before-timeline { max-width:560px; margin:0 auto; gap:30px; }
+  .lush-before-timeline::before { left:30px; }
+  .lush-before-step { grid-template-columns:64px 1fr; gap:24px; }
+  .lush-before-node { width:60px; height:60px; }
+  .lush-before-node-num { font-size:16px; }
+  .lush-before-step-body { padding:6px 0 16px; }
+  .lush-before-step-body h3 { font-size:32px; margin-bottom:10px; }
+  .lush-before-step-body p { font-size:14px; line-height:1.6; }
+
+  /* Aftercare — 2-col, intermediate card sizing. */
+  .lush-aftercare-section { padding:64px 36px 96px; }
+  .lush-aftercare-section h2 { font-size:64px; margin-bottom:36px; }
+  .lush-aftercare-list { grid-template-columns:repeat(2,1fr); gap:18px; }
+  .lush-aftercare-card { padding:24px 24px 26px; }
+  .lush-aftercare-card h3 { font-size:32px; margin-bottom:12px; }
+  .lush-aftercare-card p { font-size:14px; line-height:1.6; }
+
+  /* FAQ + Reviews + Thanks — bumped padding so the editorial breath
+     isn't pinched on a 1024px viewport. The mobile font-size clamps
+     already top out at a comfortable size for tablet so no type
+     override needed. */
+  .lush-faq-section { padding:72px 36px 32px; }
+  .lush-reviews-section { padding:72px 36px 44px; }
+  .lush-thanks-section { padding:88px 36px 96px; }
+
+  /* Footer — 2-col grid with the brand block spanning the full row. */
+  .lush-footer-inner { padding:64px 36px 32px; grid-template-columns:1fr 1fr; gap:36px; }
   .lush-footer-brand { grid-column:1/-1; }
+
+  /* Booking grid — services list breathes into 2-col on tablet too,
+     not just desktop. */
+  .brk-booking-section { padding:36px 36px 64px; }
+  .brk-booking-services { grid-template-columns:repeat(2,1fr); }
 }
 
 /* ── Mobile ── */
