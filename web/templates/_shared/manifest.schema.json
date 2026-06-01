@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bookready.app/schemas/template-manifest.json",
+  "title": "BookReady Template Manifest",
+  "description": "The contract every marketplace template MUST satisfy. Declares which editor fields the template surfaces, how it interprets the theme color, and the color palette it offers tenants. The BookReady editor reads this manifest to decide which controls to show. Submission review runs validateManifest() against this schema before forwarding to manual review.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["slug", "name", "version", "color_role", "color_palette", "header_fields", "footer_fields"],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "description": "Stable identifier. Must match the directory name under web/templates/ AND the value stored in template_settings.template_slug. Lowercase, alphanumeric + hyphens only. Cannot be changed after a tenant adopts the template.",
+      "pattern": "^[a-z][a-z0-9-]{1,40}$"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name shown in the editor template card and template list.",
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "version": {
+      "type": "string",
+      "description": "Semantic version. Bump on any change to data consumption or rendering. Marketplace upgrades + compatibility checks use this.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[a-z0-9.-]+)?$"
+    },
+    "color_role": {
+      "type": "string",
+      "enum": ["accent", "background"],
+      "description": "How this template interprets template.settings.theme.accent_color.\n  - 'accent':     value is applied as a highlight (buttons, links). Page background stays the template's default. Editor labels picker 'Accent color'.\n  - 'background': value replaces the page background. The template's accent stays constant. Editor labels picker 'Background variant'."
+    },
+    "color_palette": {
+      "type": "array",
+      "description": "Palette options offered to tenants. First entry is the default; selecting it stores null so future default changes propagate.",
+      "minItems": 2,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["hex", "label"],
+        "properties": {
+          "hex": {
+            "type": "string",
+            "description": "6-digit hex with leading #. Uppercase or lowercase accepted; the editor normalizes.",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+          },
+          "label": {
+            "type": "string",
+            "description": "Display name for the swatch. Keep short.",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        }
+      }
+    },
+    "header_fields": {
+      "type": "array",
+      "description": "Header fields the template actually renders to visitors. The editor hides controls for fields not declared. Tokens are grouped concepts (e.g. 'social_buttons' covers all 11 platform toggles + URL overrides).",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "cover_image",
+          "avatar_image",
+          "announcement",
+          "business_type",
+          "social_buttons"
+        ]
+      }
+    },
+    "footer_fields": {
+      "type": "array",
+      "description": "Footer fields the template actually renders. Same gating semantics as header_fields.",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "show_powered_by",
+          "show_hours",
+          "show_quick_book",
+          "show_contact_links",
+          "business_name_override",
+          "subtext"
+        ]
+      }
+    }
+  }
+}
