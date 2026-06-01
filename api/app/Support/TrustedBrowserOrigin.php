@@ -74,6 +74,12 @@ class TrustedBrowserOrigin
     {
         $default = implode(',', [
             'https://app.bkrdy.me',
+            // The apex marketing surface links straight to /login + /register
+            // and posts auth requests with Origin: https://bkrdy.me. Without
+            // this entry the request passes the CORS allowlist but then 403s
+            // here with "Untrusted origin." — surfacing as "Failed to fetch"
+            // in the browser console.
+            'https://bkrdy.me',
             'http://localhost:3000',
             'https://localhost:3000',
             'http://127.0.0.1:3000',
