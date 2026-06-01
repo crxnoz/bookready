@@ -41,7 +41,7 @@ const PUBLIC_SITE_CSP = [
   // (the marketing surface + login live on the apex). Both need to be
   // listed as allowed iframe parents or Chrome refuses to render the
   // preview iframe — "preview doesnt show in incognito tabs".
-  "frame-ancestors 'self' https://app.bkrdy.me https://bkrdy.me https://app.daysbookings.site",
+  "frame-ancestors 'self' https://app.bkrdy.me https://bkrdy.me https://app.daysbookings.site https://mybookready.com",
   "base-uri 'self'",
   "form-action 'self' https://api.bkrdy.me",
   "object-src 'none'",
