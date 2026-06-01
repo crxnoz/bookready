@@ -18,12 +18,12 @@
  * max-width) so it reads as a native VT chapter, not a foreign embed.
  */
 
-// M2a — booking + auth moved to the shared platform module. LUSH_CSS still
-// lives in LushStudioTemplate (extracted in M2b alongside class rename to
-// .brk-booking-* + CSS variable theming).
+// M2b — booking flow, auth, and CSS all live in the shared platform
+// module now. Class rename to .brk-booking-* + CSS variable theming
+// (--brk-booking-*) is M2c.
 import LushStudioBooking from '../_shared/booking/LushStudioBooking'
 import { LushCustomerAuthProvider } from '../_shared/booking/LushCustomerAuth'
-import { LUSH_CSS } from '../lushstudio/LushStudioTemplate'
+import { LUSH_CSS } from '../_shared/booking/lushBookingCss'
 import type {
   AvailabilityData, BookingQuestion, PublicPaymentSettings,
   PublicStaffMember, Service, ServiceAddon, ServiceCategory,
