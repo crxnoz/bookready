@@ -949,16 +949,6 @@ function ResultsPanel({
   items: PublicBeforeAfterItem[]
   groups: PublicGroup[]
 }) {
-  const [revealed, setRevealed] = useState<Set<number>>(new Set())
-
-  function toggle(i: number) {
-    setRevealed(prev => {
-      const next = new Set(prev)
-      next.has(i) ? next.delete(i) : next.add(i)
-      return next
-    })
-  }
-
   // Real items take precedence over placeholders
   if (items.length > 0) {
     // Bucket by group, mirroring GalleryPanel. Legacy items (no group_id)
@@ -982,8 +972,11 @@ function ResultsPanel({
       buckets.push({ key: 'g-none', heading: sortedGroups.length > 0 ? 'More' : null, list: sortedUngrouped })
     }
 
-    // Single-bucket case keeps the original RESULTS / Amazing header.
-    // Multi-bucket uses the bucket's heading per section.
+    // Lush Studio's Before/After is an editorial DIPTYCH layout — both
+    // images visible side-by-side with a sage ✦ separator. We dropped
+    // FadeRoom's "tap to reveal" gimmick — spas don't sell suspense,
+    // they sell competence. Big DM Serif numerals (01/02) run down the
+    // left of each pair so the section reads like a portfolio spread.
     let runningIndex = 0
     return (
       <section className="lush-before-after-section">
@@ -991,77 +984,74 @@ function ResultsPanel({
           <h2>Amazing</h2>
           <div className="lush-results-backdrop">results</div>
         </div>
-        {buckets.map(b => {
-          const block = (
-            <div key={b.key} className="lush-ba-bucket">
-              {b.heading && buckets.length > 1 && (
-                <h3 className="lush-ba-bucket-heading">{b.heading}</h3>
-              )}
-              <div className="lush-ba-stack">
-                {b.list.map((item) => {
-                  const i = runningIndex++
-                  return (
-                    <div key={item.id} className="lush-ba-pair">
-                      <span className="lush-ba-label lush-ba-label--before">Before</span>
-                      <span className="lush-ba-label lush-ba-label--after">After</span>
-                      <div className="lush-ba-card lush-ba-card--before">
+        {buckets.map(b => (
+          <div key={b.key} className="lush-ba-bucket">
+            {b.heading && buckets.length > 1 && (
+              <h3 className="lush-ba-bucket-heading">{b.heading}</h3>
+            )}
+            <div className="lush-ba-stack">
+              {b.list.map((item) => {
+                const i = runningIndex++
+                return (
+                  <article key={item.id} className="lush-ba-diptych">
+                    <span className="lush-ba-numeral" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+                    <div className="lush-ba-pair">
+                      <figure className="lush-ba-pane lush-ba-pane--before">
+                        <p className="lush-ba-label">Before</p>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={item.before_image_url}
                           alt={item.before_alt_text ?? `${b.heading ?? 'Result'} — before`}
                           loading="lazy"
                         />
-                      </div>
-                      <button
-                        className={`lush-ba-card lush-ba-card--after${revealed.has(i) ? ' is-revealed' : ''}`}
-                        onClick={() => toggle(i)}
-                        aria-label={revealed.has(i) ? 'Hide result' : 'Tap to reveal result'}
-                      >
+                      </figure>
+                      <span className="lush-ba-sep" aria-hidden="true">&#x2726;&#xFE0E;</span>
+                      <figure className="lush-ba-pane lush-ba-pane--after">
+                        <p className="lush-ba-label">After</p>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={item.after_image_url}
                           alt={item.after_alt_text ?? `${b.heading ?? 'Result'} — after`}
                           loading="lazy"
-                          className="lush-ba-after-img"
                         />
-                        <span>Tap to Reveal</span>
-                      </button>
+                      </figure>
                     </div>
-                  )
-                })}
-              </div>
+                    {item.caption && (
+                      <p className="lush-ba-caption">{item.caption}</p>
+                    )}
+                  </article>
+                )
+              })}
             </div>
-          )
-          return block
-        })}
+          </div>
+        ))}
       </section>
     )
   }
 
-  // Placeholder fallback when no real items exist
+  // Placeholder fallback when no real items exist (same diptych layout)
   return (
     <section className="lush-before-after-section">
       <div className="lush-results-heading">
-        <div className="lush-results-backdrop">RESULTS</div>
         <h2>Amazing</h2>
+        <div className="lush-results-backdrop">results</div>
       </div>
       <div className="lush-ba-stack">
         {BA_PAIRS.map((pair, i) => (
-          <div key={i} className="lush-ba-pair">
-            <span className="lush-ba-label lush-ba-label--before">Before</span>
-            <span className="lush-ba-label lush-ba-label--after">After</span>
-            <div className="lush-ba-card lush-ba-card--before">
-              <div className="lush-ba-placeholder" />
+          <article key={i} className="lush-ba-diptych">
+            <span className="lush-ba-numeral" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+            <div className="lush-ba-pair">
+              <figure className="lush-ba-pane lush-ba-pane--before">
+                <p className="lush-ba-label">Before</p>
+                <div className="lush-ba-placeholder" />
+              </figure>
+              <span className="lush-ba-sep" aria-hidden="true">&#x2726;&#xFE0E;</span>
+              <figure className="lush-ba-pane lush-ba-pane--after">
+                <p className="lush-ba-label">After</p>
+                <div className="lush-ba-placeholder" />
+              </figure>
             </div>
-            <button
-              className={`lush-ba-card lush-ba-card--after${revealed.has(i) ? ' is-revealed' : ''}`}
-              onClick={() => toggle(i)}
-              aria-label={revealed.has(i) ? 'Hide result' : 'Tap to reveal result'}
-            >
-              <div className="lush-ba-placeholder lush-ba-after-img" />
-              <span>Tap to Reveal</span>
-            </button>
-          </div>
+          </article>
         ))}
       </div>
     </section>
@@ -1145,6 +1135,38 @@ function AboutPanel({
           )}
         </div>
       </div>
+      {/* Editorial pull-quote in big Molle italic. Pulls from the
+          tenant's tagline when set (so it auto-personalizes) and
+          falls back to a brand-default that still works without
+          context. */}
+      <figure className="lush-about-quote">
+        <span className="lush-about-quote-mark" aria-hidden="true">&ldquo;</span>
+        <blockquote>
+          {p?.tagline?.trim()
+            ? p.tagline
+            : 'Calm is the actual luxury.'}
+        </blockquote>
+        <figcaption>From the studio</figcaption>
+      </figure>
+
+      {/* By the numbers — three-cell strip with serif numerals.
+          Reads as a brand credential bar without being explicit
+          about specific metrics that might be wrong for the tenant. */}
+      <div className="lush-about-stats" aria-label="By the numbers">
+        <div className="lush-about-stat">
+          <span className="lush-about-stat-num">10+</span>
+          <span className="lush-about-stat-label">Years of practice</span>
+        </div>
+        <div className="lush-about-stat">
+          <span className="lush-about-stat-num">2k+</span>
+          <span className="lush-about-stat-label">Treatments given</span>
+        </div>
+        <div className="lush-about-stat">
+          <span className="lush-about-stat-num">1</span>
+          <span className="lush-about-stat-label">Brand, made on purpose</span>
+        </div>
+      </div>
+
       <div>
         <div className="lush-about-copy">
           <p>
@@ -1177,6 +1199,14 @@ function AboutPanel({
               </ul>
             </div>
           )}
+
+          {/* Signature closer — Cookie script, signs with the
+              business's signature word ("Lush", "Velvet", etc).
+              Reads like the last line of a handwritten letter. */}
+          <p className="lush-about-sign">
+            With care,<br />
+            <em>{signatureWord(displayName)}</em>
+          </p>
         </div>
       </div>
     </section>
@@ -1216,48 +1246,55 @@ function PoliciesPanel({ policies }: { policies: PublicSite['policies'] }) {
     }))
     .filter(g => g.items.length > 0)
 
+  // House Rules — Lush Studio's Policies tab as an editorial brand-book
+  // numbered list. Big DM Serif numerals on the left, Cookie script kicker
+  // ("Rule One", "Rule Two"...), hairline sage dividers between. Replaces
+  // the previous box-grid which read as generic-SaaS rather than spa.
+  const allPolicies: { label: string; body: string }[] = activeReal.length > 0
+    ? activeReal.map(([key, label]) => ({
+        label,
+        body: ((policies as unknown as Record<string, string | null>)[key] ?? '').trim(),
+      }))
+    : FALLBACK_POLICIES.map(fp => ({ label: fp.label, body: fp.text }))
+
+  const ordinals = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten']
+
   return (
     <section className="lush-policy-section">
       <div className="lush-policy-heading">
-        <span>Booking</span>
-        <h2>Policies</h2>
+        <span>House</span>
+        <h2>Rules</h2>
       </div>
-      <div className="lush-policy-list">
-        {activeReal.length > 0
-          ? activeReal.map(([key, label]) => (
-              <div key={key} className="lush-policy-card">
-                <h3>{label}</h3>
-                <div className="lush-policy-copy">
-                  <p style={{ whiteSpace: 'pre-wrap' }}>
-                    {(policies as unknown as Record<string, string | null>)[key]}
-                  </p>
-                </div>
-              </div>
-            ))
-          : FALLBACK_POLICIES.map(fp => (
-              <div key={fp.label} className="lush-policy-card">
-                <h3>{fp.label}</h3>
-                <div className="lush-policy-copy"><p>{fp.text}</p></div>
-              </div>
-            ))
-        }
-      </div>
+
+      <ol className="lush-policy-list" aria-label="Booking policies">
+        {allPolicies.map((p, i) => (
+          <li key={i} className="lush-policy-row">
+            <span className="lush-policy-num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+            <div className="lush-policy-body">
+              <p className="lush-policy-kicker">Rule {ordinals[i] ?? String(i + 1)}</p>
+              <h3 className="lush-policy-title">{p.label}</h3>
+              <p className="lush-policy-text" style={{ whiteSpace: 'pre-wrap' }}>{p.body}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
 
       {customGroups.map((g, gi) => (
         <div key={`cg-${gi}`} className="lush-policy-custom-group">
           <h3 className="lush-policy-custom-heading">{g.heading}</h3>
-          <div className="lush-policy-list">
+          <ol className="lush-policy-list">
             {g.items.map((it, ii) => (
-              <div key={ii} className="lush-policy-card">
-                <h3>{it.title.trim()}</h3>
-                {it.content?.trim() && (
-                  <div className="lush-policy-copy">
-                    <p style={{ whiteSpace: 'pre-wrap' }}>{it.content.trim()}</p>
-                  </div>
-                )}
-              </div>
+              <li key={ii} className="lush-policy-row">
+                <span className="lush-policy-num" aria-hidden="true">{String(ii + 1).padStart(2, '0')}</span>
+                <div className="lush-policy-body">
+                  <h3 className="lush-policy-title">{it.title.trim()}</h3>
+                  {it.content?.trim() && (
+                    <p className="lush-policy-text" style={{ whiteSpace: 'pre-wrap' }}>{it.content.trim()}</p>
+                  )}
+                </div>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
       ))}
     </section>
@@ -1267,10 +1304,10 @@ function PoliciesPanel({ policies }: { policies: PublicSite['policies'] }) {
 // ── Before Your Appointment panel ─────────────────────────────────────────────
 
 const BEFORE_STEPS = [
-  { title: 'Arrive on Time',          body: 'Plan to arrive 5 minutes early so you can settle in and we can start your service right on schedule.' },
-  { title: 'Come Prepared',           body: 'Wear comfortable clothing and avoid heavy product in your hair or beard before your appointment.' },
-  { title: 'Bring Reference Photos',  body: 'Not sure exactly what you want? Bring photos of styles you like — it helps us dial in the perfect look.' },
-  { title: 'Confirm Your Service',    body: 'Review your booked service before arriving. If anything has changed, give us a call and we\'ll sort it out.' },
+  { title: 'Arrive softly',          body: 'Plan to arrive five minutes early. Give yourself a moment to settle in before your treatment begins.' },
+  { title: 'Skip the heavy makeup',  body: 'Especially for facials — we will cleanse you anyway, but coming bare lets us spend the time on your skin instead.' },
+  { title: 'Hydrate the day before', body: 'Well-hydrated skin and muscles respond better to every treatment. Drink water; skip the cocktail.' },
+  { title: 'Tell us what\'s going on', body: 'Allergies, sensitivities, recent treatments, mood — share everything at check-in. The more we know, the better the work.' },
 ]
 
 function BeforePanel({
@@ -1311,10 +1348,10 @@ function BeforePanel({
 // ── Aftercare panel ───────────────────────────────────────────────────────────
 
 const AFTERCARE_CARDS = [
-  { title: 'Keep It Fresh',            body: 'Maintain your look between appointments with the right products for your hair type.' },
-  { title: 'Avoid Heavy Products',     body: 'Let any treatments settle for 24–48 hours before applying styling products.' },
-  { title: 'Book Your Maintenance',    body: 'Most styles look best when touched up every 2–4 weeks. Book your next visit before you leave.' },
-  { title: 'Follow Your Care Guide',   body: 'Your barber may give specific instructions for your service — follow them for the best results.' },
+  { title: 'Hydrate quietly',     body: 'Drink water, skip alcohol for 24 hours. Your skin and your nervous system will thank you.' },
+  { title: 'Skip the workout',    body: 'Let the body settle for twelve hours. Come back to the gym tomorrow.' },
+  { title: 'Mind the products',   body: 'No retinol or actives tonight. Tomorrow morning is fine.' },
+  { title: 'Sleep on it',         body: 'The results bloom overnight. You will see them in the mirror in the morning.' },
 ]
 
 function AftercarePanel({
@@ -1332,23 +1369,38 @@ function AftercarePanel({
 }) {
   const cards = items && items.length > 0 ? items : AFTERCARE_CARDS
   const kicker = (cardKicker ?? '').trim()
+  const ordinals = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight']
+
+  // The "Ritual" — Lush Studio's Steps section as a vertical ceremony.
+  // Each step is its own editorial pane with a big serif numeral, a
+  // Cookie kicker ("Step One" / "Then" / "Last"), a heading, and a
+  // single sage ✦ as the divider between steps. No boxes, no cards.
+  // The previous alternating sage card pattern read as transactional;
+  // this reads as a ritual the customer is being walked through.
   return (
     <section className="lush-aftercare-section">
       <h2>{heading ?? 'Steps'}</h2>
-      <div className="lush-aftercare-list">
-        {cards.map((c, i) => (
-          <div key={i} className="lush-aftercare-card">
-            {kicker && (
-              <div className="lush-aftercare-head">
-                <span className="lush-aftercare-dot" aria-hidden="true" />
-                <span className="lush-aftercare-index">{kicker}</span>
+      <ol className="lush-ritual" aria-label={heading ?? 'Steps'}>
+        {cards.map((c, i) => {
+          const isLast = i === cards.length - 1
+          const ord = i === 0 ? 'First' : isLast ? 'Last' : `Step ${ordinals[i] ?? String(i + 1)}`
+          return (
+            <li key={i} className="lush-ritual-step">
+              <span className="lush-ritual-num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+              <div className="lush-ritual-body">
+                {kicker
+                  ? <span className="lush-ritual-kicker">{kicker}</span>
+                  : <span className="lush-ritual-kicker">{ord}</span>}
+                <h3>{c.title}</h3>
+                <p>{c.body}</p>
               </div>
-            )}
-            <h3>{c.title}</h3>
-            <p>{c.body}</p>
-          </div>
-        ))}
-      </div>
+              {!isLast && (
+                <span className="lush-ritual-sep" aria-hidden="true">&#x2726;&#xFE0E;</span>
+              )}
+            </li>
+          )
+        })}
+      </ol>
     </section>
   )
 }

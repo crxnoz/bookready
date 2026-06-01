@@ -1206,41 +1206,63 @@ export const LUSH_CSS = `
   color:var(--lush-pink);
   text-shadow:3px 3px 0 rgba(14,17,17,0.18);
 }
-.lush-ba-stack { display:grid; gap:24px; padding:8px 0 0; }
-.lush-ba-bucket+.lush-ba-bucket { margin-top:36px; }
+/* Lush Studio's Before/After is an editorial DIPTYCH — side-by-side
+   panes with a sage ✦ separator. No tilt, no tap-to-reveal — those
+   were FadeRoom's barbershop gimmicks. The DM Serif numeral on the
+   left numbers the portfolio entries; small DM Serif italic labels
+   sit above each pane; cookie caption optional below. */
+.lush-ba-stack { display:grid; gap:36px; padding:14px 0 0; }
+.lush-ba-bucket+.lush-ba-bucket { margin-top:48px; }
 .lush-ba-bucket-heading {
   margin:18px 0 4px; font-family:var(--lush-script); font-size:42px; font-weight:400;
   letter-spacing:0; color:var(--lush-text); text-align:center; line-height:1;
 }
-.lush-ba-pair { width:min(100%,350px); height:230px; margin:0 auto; position:relative; }
-.lush-ba-label { position:absolute; z-index:5; color:var(--lush-text); font-size:22px; font-family:var(--lush-serif); font-weight:400; line-height:1.05; letter-spacing:-0.02em; pointer-events:none; }
-.lush-ba-label--before { left:58px; top:0; }
-.lush-ba-label--after  { right:50px; top:70px; }
-.lush-ba-card {
-  width:162px; height:162px; position:absolute;
-  background:#ECE7DD; border:1px solid var(--lush-dark-border);
-  overflow:hidden; border-radius:8px;
-  transition:border-color .25s ease,transform .35s ease;
+.lush-ba-diptych {
+  width:min(100%, 360px); margin:0 auto;
+  display:grid; grid-template-columns:32px 1fr; gap:14px;
+  padding:6px 0 0;
 }
-.lush-ba-card--before { left:22px; top:48px; transform:rotate(-6deg); z-index:1; border-color:var(--lush-dark-border); }
-.lush-ba-card--after {
-  right:22px; top:92px; transform:rotate(9deg); z-index:2;
-  border-color:var(--lush-pink);
-  appearance:none;
+.lush-ba-numeral {
+  font-family:var(--lush-serif); font-weight:400;
+  font-size:34px; line-height:1; letter-spacing:-0.04em;
+  color:var(--lush-pink);
+  align-self:flex-start;
 }
-.lush-ba-card--after:hover { border-color:var(--lush-pink); }
-.lush-ba-placeholder { width:100%; height:100%; background:#ECE7DD; }
-.lush-ba-card > img { width:100%; height:100%; object-fit:cover; display:block; }
-img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filter .35s ease,transform .35s ease; }
-.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filter .35s ease,transform .35s ease; }
-.lush-ba-card--after span {
-  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-  color:#fff; font-size:11px; font-family:var(--lush-ui); font-weight:600;
-  letter-spacing:0.16em; text-transform:uppercase; text-align:center;
-  background:rgba(14,17,17,0.35); z-index:3; pointer-events:none;
+.lush-ba-pair {
+  display:grid; grid-template-columns:1fr auto 1fr; gap:8px;
+  align-items:stretch;
 }
-.lush-ba-card--after.is-revealed .lush-ba-after-img { filter:blur(0); transform:scale(1); }
-.lush-ba-card--after.is-revealed span { display:none; }
+.lush-ba-pane { margin:0; display:flex; flex-direction:column; gap:6px; }
+.lush-ba-label {
+  margin:0; text-align:center;
+  font-family:var(--lush-serif); font-style:italic; font-weight:400;
+  font-size:14px; letter-spacing:0; line-height:1;
+  color:var(--lush-muted);
+}
+.lush-ba-pane img,
+.lush-ba-placeholder {
+  width:100%; aspect-ratio:1/1; object-fit:cover; display:block;
+  background:#ECE7DD;
+  border:1px solid var(--lush-dark-border);
+}
+.lush-ba-pane--after img { border-color:var(--lush-pink); }
+.lush-ba-sep {
+  align-self:center;
+  font-family:var(--lush-ui);
+  font-size:18px; line-height:1; color:var(--lush-pink);
+  padding:0 2px;
+  /* matches the post-label baseline so the ✦ sits between the photos,
+     not at the very top including the labels */
+  margin-top:18px;
+}
+.lush-ba-caption {
+  grid-column:2;
+  margin:10px 0 0;
+  text-align:center;
+  font-family:var(--lush-script);
+  font-size:22px; font-weight:400; line-height:1.1;
+  color:var(--lush-text);
+}
 
 /* ── About ── */
 .lush-about-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:12px 20px 58px; }
@@ -1321,6 +1343,81 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 .lush-about-list li::before { content:""; position:absolute; left:0; top:10px; width:12px; height:1px; background:var(--lush-pink); }
 .lush-about-list strong { display:block; color:var(--lush-text); font-weight:400; font-family:var(--lush-serif); font-size:18px; line-height:1.1; letter-spacing:-0.02em; margin-bottom:2px; }
 
+/* About — editorial pull quote in Molle italic with a big sage
+   opening quote mark. Sits between the star hero and the body copy
+   and gives the about section a brand-voice moment. */
+.lush-about-quote {
+  margin:0 auto 36px;
+  width:min(100%, 344px);
+  padding:0 8px;
+  display:flex; flex-direction:column; align-items:center;
+  text-align:center;
+}
+.lush-about-quote-mark {
+  font-family:var(--lush-serif); font-style:italic;
+  font-size:80px; line-height:0.6; color:var(--lush-pink);
+  margin-bottom:-8px;
+  user-select:none;
+}
+.lush-about-quote blockquote {
+  margin:0;
+  font-family:var(--lush-molle); font-style:italic; font-weight:400;
+  font-size:clamp(28px, 7vw, 38px); line-height:1.05; letter-spacing:-0.01em;
+  color:var(--lush-pink);
+  text-shadow:2px 2px 0 rgba(14,17,17,0.16);
+}
+.lush-about-quote figcaption {
+  margin:14px 0 0;
+  font-family:var(--lush-mono);
+  font-size:11px; font-weight:500;
+  letter-spacing:0.18em; text-transform:uppercase;
+  color:var(--lush-muted);
+}
+
+/* About — by-the-numbers strip. Three editorial stats with big DM
+   Serif numerals and small Roboto labels. Sage hairlines top + bottom
+   visually anchor it as a credentials bar. */
+.lush-about-stats {
+  width:min(100%, 344px); margin:0 auto 36px;
+  display:grid; grid-template-columns:repeat(3, 1fr);
+  border-top:1px solid var(--lush-dark-border);
+  border-bottom:1px solid var(--lush-dark-border);
+  padding:20px 0;
+}
+.lush-about-stat {
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding:0 6px; text-align:center;
+}
+.lush-about-stat-num {
+  font-family:var(--lush-serif); font-weight:400;
+  font-size:34px; line-height:1; letter-spacing:-0.04em;
+  color:var(--lush-pink);
+}
+.lush-about-stat-label {
+  font-family:var(--lush-ui);
+  font-size:11px; font-weight:500;
+  letter-spacing:0.04em;
+  color:var(--lush-muted);
+  line-height:1.3;
+}
+
+/* About — handwritten signature closer. Cookie script + italic so
+   it reads as a personal sign-off, not corporate boilerplate. */
+.lush-about-sign {
+  margin:24px 0 0;
+  padding:18px 0 0;
+  border-top:1px solid var(--lush-dark-border);
+  font-family:var(--lush-ui);
+  font-size:14px; color:var(--lush-muted);
+  line-height:1.5;
+}
+.lush-about-sign em {
+  font-family:var(--lush-script); font-style:normal;
+  font-size:38px; line-height:1;
+  color:var(--lush-pink);
+  margin-top:4px; display:inline-block;
+}
+
 /* ── Policy ── */
 .lush-policy-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:36px 14px 64px; }
 /* Policy heading is a Molle twin-line kicker pattern:
@@ -1345,21 +1442,53 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
   color:var(--lush-pink);
   text-shadow:5px 5px 0 rgba(14,17,17,0.18);
 }
-.lush-policy-list { display:grid; gap:12px; }
-.lush-policy-custom-group { margin-top:36px; }
+/* "House Rules" — Policies as an editorial brand-book numbered list.
+   Big DM Serif numerals on the left, Cookie script kicker ("Rule One"),
+   DM Serif rule title, Roboto body. Hairline sage divider between
+   policies. Replaces the previous box grid (which read as generic
+   SaaS rather than spa). */
+.lush-policy-list {
+  list-style:none; margin:0; padding:0;
+  display:flex; flex-direction:column;
+  border-top:1px solid var(--lush-dark-border);
+}
+.lush-policy-row {
+  display:grid; grid-template-columns:56px 1fr; gap:18px;
+  padding:24px 4px 28px;
+  border-bottom:1px solid var(--lush-dark-border);
+}
+.lush-policy-num {
+  font-family:var(--lush-serif); font-weight:400;
+  font-size:44px; line-height:0.9; letter-spacing:-0.04em;
+  color:var(--lush-pink);
+  align-self:flex-start;
+  padding-top:4px;
+}
+.lush-policy-body { min-width:0; }
+.lush-policy-kicker {
+  margin:0 0 4px;
+  font-family:var(--lush-script); font-weight:400;
+  font-size:24px; line-height:1; letter-spacing:0;
+  color:var(--lush-pink);
+}
+.lush-policy-title {
+  margin:0 0 10px;
+  font-family:var(--lush-serif); font-weight:400;
+  font-size:22px; line-height:1.1; letter-spacing:-0.02em;
+  color:var(--lush-text);
+}
+.lush-policy-text {
+  margin:0;
+  font-family:var(--lush-ui);
+  font-size:14px; font-weight:400; line-height:1.6;
+  color:var(--lush-text);
+}
+.lush-policy-custom-group { margin-top:48px; }
 .lush-policy-custom-heading {
-  margin:0 0 16px; font-family:var(--lush-serif); font-weight:400;
-  font-size:28px; letter-spacing:-0.02em; line-height:1.05;
+  margin:0 0 18px; font-family:var(--lush-script); font-weight:400;
+  font-size:36px; letter-spacing:0; line-height:1;
   color:var(--lush-text); text-align:center;
 }
-.lush-policy-card {
-  position:relative; width:100%; min-height:160px; padding:22px 22px;
-  background:var(--lush-card);
-  border:1px solid var(--lush-dark-border);
-  border-radius:24px; overflow:hidden;
-}
-.lush-policy-card h3 { margin:0 0 14px; color:var(--lush-text); font-size:22px; font-family:var(--lush-serif); font-weight:400; line-height:1.05; letter-spacing:-0.02em; }
-.lush-policy-copy { color:var(--lush-text); font-size:13px; font-family:var(--lush-ui); font-weight:400; line-height:1.55; }
 
 /* ── Before appointment / Aftercare ── */
 .lush-before-appointment-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:36px 16px 60px; }
@@ -1402,39 +1531,55 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 
 .lush-aftercare-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:36px 14px 60px; }
 .lush-aftercare-section h2 { margin:0 0 30px; color:var(--lush-text); text-align:center; font-size:clamp(42px,10vw,56px); font-family:var(--lush-script); font-weight:400; line-height:1; letter-spacing:0; }
-.lush-aftercare-list { display:grid; gap:18px; }
-/* Alternating cards: odd children are solid sage with white text;
-   even children are transparent with a sage border + sage text.
-   Both share the same big rounded shape so the alternation reads as
-   a rhythm, not as different card types. */
-.lush-aftercare-card {
+
+/* "The Ritual" — Steps as a vertical ceremony, no boxes. Each step
+   is an editorial pane with a big serif numeral, a Cookie kicker
+   ("First", "Then", "Last"), DM Serif title, Roboto body. A single
+   sage ✦ centered between steps reads as a separator without the
+   visual weight of card chrome. The previous alternating sage cards
+   read as transactional; this reads as something you're walked
+   through. */
+.lush-ritual {
+  list-style:none; margin:0; padding:0;
+  display:flex; flex-direction:column; gap:0;
+}
+.lush-ritual-step {
+  display:grid; grid-template-columns:56px 1fr; gap:18px;
+  padding:8px 4px 14px;
   position:relative;
-  padding:22px 22px 24px;
-  overflow:hidden;
-  border-radius:24px;
-  border:2px solid var(--lush-pink);
-  background:transparent;
 }
-.lush-aftercare-card:nth-child(odd) {
-  background:var(--lush-pink);
-  border-color:var(--lush-pink);
+.lush-ritual-num {
+  font-family:var(--lush-serif); font-weight:400;
+  font-size:48px; line-height:0.9; letter-spacing:-0.04em;
+  color:var(--lush-pink);
+  padding-top:6px;
 }
-.lush-aftercare-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-.lush-aftercare-dot { width:7px; height:7px; border-radius:999px; background:var(--lush-pink); display:inline-block; flex-shrink:0; }
-.lush-aftercare-index { font-family:var(--lush-ui); font-size:11px; font-weight:600; letter-spacing:0.18em; text-transform:uppercase; }
-.lush-aftercare-card h3 { margin:0 0 8px; font-family:var(--lush-serif); font-weight:400; font-size:22px; line-height:1.05; letter-spacing:-0.02em; }
-.lush-aftercare-card p { margin:0; font-family:var(--lush-ui); font-size:13px; font-weight:400; line-height:1.55; }
-/* Even cards: sage text + sage dot/index. */
-.lush-aftercare-card:nth-child(even) h3,
-.lush-aftercare-card:nth-child(even) p,
-.lush-aftercare-card:nth-child(even) .lush-aftercare-index { color:var(--lush-pink); }
-.lush-aftercare-card:nth-child(even) .lush-aftercare-dot { background:var(--lush-pink); }
-/* Odd cards (sage fill): everything goes white so it sits cleanly on
-   the highlight color. */
-.lush-aftercare-card:nth-child(odd) h3,
-.lush-aftercare-card:nth-child(odd) p,
-.lush-aftercare-card:nth-child(odd) .lush-aftercare-index { color:#FFFFFF; }
-.lush-aftercare-card:nth-child(odd) .lush-aftercare-dot { background:#FFFFFF; }
+.lush-ritual-body { min-width:0; }
+.lush-ritual-kicker {
+  display:block; margin-bottom:4px;
+  font-family:var(--lush-script); font-weight:400;
+  font-size:24px; line-height:1; letter-spacing:0;
+  color:var(--lush-pink);
+}
+.lush-ritual-step h3 {
+  margin:0 0 10px;
+  font-family:var(--lush-serif); font-weight:400;
+  font-size:22px; line-height:1.1; letter-spacing:-0.02em;
+  color:var(--lush-text);
+}
+.lush-ritual-step p {
+  margin:0;
+  font-family:var(--lush-ui);
+  font-size:14px; font-weight:400; line-height:1.6;
+  color:var(--lush-text);
+}
+.lush-ritual-sep {
+  grid-column:1 / -1;
+  text-align:center;
+  font-family:var(--lush-ui);
+  font-size:16px; line-height:1; color:var(--lush-pink);
+  padding:14px 0 18px;
+}
 
 /* ── Contact cards ── */
 .lush-contact-card {
