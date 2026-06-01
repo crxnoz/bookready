@@ -2,13 +2,13 @@
 
 // Phase S5 — security headers (updated for editor preview iframe).
 //
-// Per-host rules: the editor at app.bkrdy.me / app.daysbookings.site
-// loads Stripe.js, Google sign-in, and other third-party scripts
-// (APP_CSP) and must never be embedded (X-Frame-Options: DENY,
-// CSP frame-ancestors 'none'). Public tenant sites at /site/{slug}
-// (direct hits AND subdomain rewrites) get the tighter PUBLIC_SITE_CSP,
-// with frame-ancestors allowing the editor to embed them in the
-// website-preview iframe.
+// Per-host rules: the editor at app.bkrdy.me, app.daysbookings.site,
+// AND the apex bkrdy.me loads Stripe.js, Google sign-in, and other
+// third-party scripts (APP_CSP) and must never be embedded
+// (X-Frame-Options: DENY, CSP frame-ancestors 'none'). Public tenant
+// sites at /site/{slug} (direct hits AND subdomain rewrites) get the
+// tighter PUBLIC_SITE_CSP, with frame-ancestors allowing all three
+// editor surfaces to embed them in the website-preview iframe.
 //
 // CSP notes:
 //   - script-src includes 'unsafe-inline' because Next.js inlines its
@@ -37,7 +37,11 @@ const PUBLIC_SITE_CSP = [
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
   "connect-src 'self' https://api.bkrdy.me",
-  "frame-ancestors 'self' https://app.bkrdy.me https://app.daysbookings.site",
+  // The editor is served from both app.bkrdy.me AND the apex bkrdy.me
+  // (the marketing surface + login live on the apex). Both need to be
+  // listed as allowed iframe parents or Chrome refuses to render the
+  // preview iframe — "preview doesnt show in incognito tabs".
+  "frame-ancestors 'self' https://app.bkrdy.me https://bkrdy.me https://app.daysbookings.site",
   "base-uri 'self'",
   "form-action 'self' https://api.bkrdy.me",
   "object-src 'none'",
@@ -91,11 +95,14 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // Editor hosts (app.bkrdy.me / app.daysbookings.site) —
-        // X-Frame-Options: DENY + APP_CSP (allows Stripe/Google).
-        // No one should ever iframe the editor.
+        // Editor hosts — app.bkrdy.me / app.daysbookings.site AND the
+        // apex bkrdy.me. All three serve the editor (the apex carries
+        // the marketing+login surface that links straight into /editor).
+        // X-Frame-Options: DENY + APP_CSP (allows Stripe/Google + the
+        // *.bkrdy.me frame-src needed for the tenant-preview iframe).
+        // No one should ever iframe the editor itself.
         source: '/:path*',
-        has: [{ type: 'host', value: 'app\..+' }],
+        has: [{ type: 'host', value: '^(app\\..+|bkrdy\\.me)$' }],
         headers: [
           ...COMMON_HEADERS,
           { key: 'X-Frame-Options', value: 'DENY' },
@@ -115,9 +122,10 @@ const nextConfig = {
         // Tenant subdomains ({slug}.bkrdy.me) — middleware rewrites to
         // /site/{slug} internally, but headers() matches on the
         // incoming URL so this catch-all is what they hit. `missing`
-        // excludes editor hosts so they don't get the tenant CSP.
+        // excludes editor hosts (app.* AND the bkrdy.me apex) so they
+        // don't get the tenant CSP.
         source: '/:path*',
-        missing: [{ type: 'host', value: 'app\..+' }],
+        missing: [{ type: 'host', value: '^(app\\..+|bkrdy\\.me)$' }],
         headers: [
           ...COMMON_HEADERS,
           { key: 'Content-Security-Policy', value: PUBLIC_SITE_CSP },
