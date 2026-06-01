@@ -480,35 +480,35 @@ export const LUSH_CSS = `
 .lush-tab-panel.is-active { display:block; }
 
 /* ── Booking ── */
-.lush-booking-section { padding:36px 22px 64px; max-width:860px; margin:0 auto; color:var(--lush-text); }
-.lush-booking-head { text-align:center; margin-bottom:28px; }
-.lush-booking-eyebrow {
+.brk-booking-section { padding:36px 22px 64px; max-width:860px; margin:0 auto; color:var(--lush-text); }
+.brk-booking-head { text-align:center; margin-bottom:28px; }
+.brk-booking-eyebrow {
   display:inline-block; font-family:var(--lush-ui); font-size:11px;
   font-weight:600; letter-spacing:0.22em; text-transform:uppercase;
   color:var(--lush-pink); margin-bottom:8px;
 }
-.lush-booking-head h2 {
+.brk-booking-head h2 {
   font-family:var(--lush-script); font-size:clamp(48px,9vw,64px);
   font-weight:400; line-height:1; letter-spacing:0; margin:0 0 22px;
   color:var(--lush-text);
 }
 /* Compact dot-timeline: small numbered circles connected by thin lines
    with a single caption underneath ("Step 3 of 5 · Date & Time"). */
-.lush-booking-progress {
+.brk-booking-progress {
   display:flex; flex-direction:column; align-items:center;
   gap:12px; margin-bottom:6px;
 }
-.lush-booking-progress-track {
+.brk-booking-progress-track {
   display:flex; align-items:center; justify-content:center;
   gap:0; width:min(100%,360px);
 }
-.lush-booking-step {
+.brk-booking-step {
   background:transparent; border:0; padding:0;
   display:inline-flex; align-items:center; justify-content:center;
   flex:0 0 auto;
   cursor:pointer; transition:transform .2s ease;
 }
-.lush-booking-step-num {
+.brk-booking-step-num {
   width:28px; height:28px;
   display:inline-flex; align-items:center; justify-content:center;
   font-size:11px; font-weight:600; letter-spacing:0.02em;
@@ -516,37 +516,37 @@ export const LUSH_CSS = `
   color:var(--lush-muted); background:transparent;
   transition:all .25s ease;
 }
-.lush-booking-step + .lush-booking-step::before {
+.brk-booking-step + .brk-booking-step::before {
   content:""; flex:1 1 auto; height:1px; min-width:14px;
   background:var(--lush-dark-border); margin:0 4px;
   transition:background .25s ease;
 }
-.lush-booking-step.is-done + .lush-booking-step::before {
+.brk-booking-step.is-done + .brk-booking-step::before {
   background:var(--lush-pink);
 }
-.lush-booking-step.is-active { transform:scale(1.05); }
-.lush-booking-step.is-active .lush-booking-step-num {
+.brk-booking-step.is-active { transform:scale(1.05); }
+.brk-booking-step.is-active .brk-booking-step-num {
   background:var(--lush-pink); border-color:var(--lush-pink);
   color:var(--lush-on-pink);
 }
-.lush-booking-step.is-done .lush-booking-step-num {
+.brk-booking-step.is-done .brk-booking-step-num {
   border-color:var(--lush-pink);
   color:var(--lush-pink);
   background:transparent;
 }
-.lush-booking-step:hover:not(.is-active) .lush-booking-step-num {
+.brk-booking-step:hover:not(.is-active) .brk-booking-step-num {
   border-color:var(--lush-pink);
 }
-.lush-booking-step-label {
+.brk-booking-step-label {
   position:absolute; width:1px; height:1px; padding:0; margin:-1px;
   overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
 }
-.lush-booking-progress-caption {
+.brk-booking-progress-caption {
   margin:0; font-family:var(--lush-ui);
   font-size:10px; letter-spacing:0.18em; text-transform:uppercase;
   color:var(--lush-muted); font-weight:600;
 }
-.lush-booking-progress-caption strong {
+.brk-booking-progress-caption strong {
   color:var(--lush-pink); font-weight:600;
   margin-left:4px;
 }
@@ -612,14 +612,14 @@ export const LUSH_CSS = `
 }
 .lush-addon-meta-dot { opacity:0.45; }
 
-.lush-booking-slides { display:block; }
-.lush-booking-slide { display:none; animation:lushBookingFade .35s ease both; }
-.lush-booking-slide.is-active { display:block; }
+.brk-booking-slides { display:block; }
+.brk-booking-slide { display:none; animation:lushBookingFade .35s ease both; }
+.brk-booking-slide.is-active { display:block; }
 @keyframes lushBookingFade { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
 
 /* Services in booking */
-.lush-booking-services { display:grid; gap:12px; }
-.lush-booking-service-card {
+.brk-booking-services { display:grid; gap:12px; }
+.brk-booking-service-card {
   background:var(--lush-card);
   border:1px solid var(--lush-dark-border);
   border-left:2px solid var(--lush-pink);
@@ -627,17 +627,17 @@ export const LUSH_CSS = `
   display:flex; flex-direction:column; gap:8px;
   transition:border-color .2s ease;
 }
-.lush-booking-service-card:hover { border-color:var(--lush-pink); }
-.lush-booking-service-card.is-selected {
+.brk-booking-service-card:hover { border-color:var(--lush-pink); }
+.brk-booking-service-card.is-selected {
   border-color:var(--lush-pink);
   background:rgba(var(--lush-pink-rgb),0.06);
 }
-.lush-booking-service-top { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
-.lush-booking-service-card h3 { margin:0; font-family:var(--lush-ui); font-size:16px; font-weight:600; letter-spacing:0.02em; color:var(--lush-text); }
-.lush-booking-price { font-family:var(--lush-ui); font-size:15px; font-weight:600; color:var(--lush-pink); white-space:nowrap; }
-.lush-booking-desc { margin:0; font-size:13px; color:var(--lush-muted); line-height:1.5; }
-.lush-booking-meta { margin:0; font-size:12px; color:var(--lush-muted); display:inline-flex; gap:6px; align-items:center; }
-.lush-booking-pick {
+.brk-booking-service-top { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+.brk-booking-service-card h3 { margin:0; font-family:var(--lush-ui); font-size:16px; font-weight:600; letter-spacing:0.02em; color:var(--lush-text); }
+.brk-booking-price { font-family:var(--lush-ui); font-size:15px; font-weight:600; color:var(--lush-pink); white-space:nowrap; }
+.brk-booking-desc { margin:0; font-size:13px; color:var(--lush-muted); line-height:1.5; }
+.brk-booking-meta { margin:0; font-size:12px; color:var(--lush-muted); display:inline-flex; gap:6px; align-items:center; }
+.brk-booking-pick {
   align-self:flex-start; margin-top:4px; background:transparent;
   border:1px solid var(--lush-pink); color:var(--lush-text);
   border-radius:999px; padding:8px 14px;
@@ -645,17 +645,17 @@ export const LUSH_CSS = `
   cursor:pointer; display:inline-flex; gap:8px; align-items:center;
   transition:background .2s ease;
 }
-.lush-booking-pick:hover { background:rgba(var(--lush-pink-rgb),0.10); }
+.brk-booking-pick:hover { background:rgba(var(--lush-pink-rgb),0.10); }
 
 /* Date & time */
-.lush-booking-datetime { display:flex; flex-direction:column; gap:22px; }
-.lush-booking-block { }
-.lush-booking-block-label {
+.brk-booking-datetime { display:flex; flex-direction:column; gap:22px; }
+.brk-booking-block { }
+.brk-booking-block-label {
   display:block; font-size:11px; letter-spacing:0.18em;
   text-transform:uppercase; color:var(--lush-muted); margin-bottom:12px; font-weight:600;
 }
-.lush-booking-days { display:flex; flex-wrap:wrap; gap:8px; }
-.lush-booking-day {
+.brk-booking-days { display:flex; flex-wrap:wrap; gap:8px; }
+.brk-booking-day {
   flex:1 1 72px; min-width:68px; max-width:100px;
   background:var(--lush-card);
   border:1px solid var(--lush-dark-border);
@@ -663,19 +663,19 @@ export const LUSH_CSS = `
   display:flex; flex-direction:column; align-items:center; gap:3px;
   color:var(--lush-text); cursor:pointer; transition:all .2s ease;
 }
-.lush-booking-day span { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--lush-muted); }
-.lush-booking-day strong { font-family:var(--lush-ui); font-size:18px; font-weight:600; }
-.lush-booking-day:hover { border-color:var(--lush-pink); }
-.lush-booking-day.is-selected {
+.brk-booking-day span { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--lush-muted); }
+.brk-booking-day strong { font-family:var(--lush-ui); font-size:18px; font-weight:600; }
+.brk-booking-day:hover { border-color:var(--lush-pink); }
+.brk-booking-day.is-selected {
   border-color:var(--lush-pink);
   background:var(--lush-pink);
   color:var(--lush-on-pink);
 }
-.lush-booking-day.is-selected span,
-.lush-booking-day.is-selected strong { color:var(--lush-on-pink); }
+.brk-booking-day.is-selected span,
+.brk-booking-day.is-selected strong { color:var(--lush-on-pink); }
 
 /* ── Calendar ── */
-.lush-booking-calendar {
+.brk-booking-calendar {
   background:var(--lush-card);
   border:1px solid var(--lush-dark-border); border-radius:10px;
   padding:14px; display:flex; flex-direction:column; gap:10px;
@@ -731,14 +731,14 @@ export const LUSH_CSS = `
 .lush-calendar-day--empty {
   background:transparent; border:0; cursor:default; visibility:hidden;
 }
-.lush-booking-times { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:8px; }
-.lush-booking-time {
+.brk-booking-times { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:8px; }
+.brk-booking-time {
   background:var(--lush-card); border:1px solid var(--lush-dark-border);
   border-radius:999px; padding:12px 10px; color:var(--lush-text);
   font-family:var(--lush-ui); font-size:13px; cursor:pointer; transition:all .2s ease; text-align:center;
 }
-.lush-booking-time:hover { border-color:var(--lush-pink); }
-.lush-booking-time.is-selected {
+.brk-booking-time:hover { border-color:var(--lush-pink); }
+.brk-booking-time.is-selected {
   border-color:var(--lush-pink);
   background:var(--lush-pink);
   color:var(--lush-on-pink);
@@ -753,7 +753,7 @@ export const LUSH_CSS = `
    Same class handles --authed (cream tint) and the default (white).
    Sign-in button opens the LushAuthModal in-page; the link variant
    navigates to /account in a new tab. */
-.lush-booking-auth {
+.brk-booking-auth {
   display:flex; align-items:center; gap:10px; flex-wrap:wrap;
   padding:11px 14px; margin-bottom:14px;
   background:#FFFFFF;
@@ -763,9 +763,9 @@ export const LUSH_CSS = `
   font-size:12px; line-height:1.3;
   color:#121212;
 }
-.lush-booking-auth--authed { background:#F8F6F2; }
-.lush-booking-auth strong { font-weight:700; }
-.lush-booking-auth-link {
+.brk-booking-auth--authed { background:#F8F6F2; }
+.brk-booking-auth strong { font-weight:700; }
+.brk-booking-auth-link {
   margin-left:auto; color:#121212;
   text-decoration:underline; text-underline-offset:2px;
   font-weight:700; font-size:10px;
@@ -776,35 +776,35 @@ export const LUSH_CSS = `
   font-family:inherit; cursor:pointer;
 }
 @media (hover:hover) and (pointer:fine) {
-  .lush-booking-auth-link:hover { color:#6B7280; }
+  .brk-booking-auth-link:hover { color:#6B7280; }
 }
 
 /* Persistent thin sign-in row below the booking title. Centered,
    muted, single line — visible on every step without competing for
    attention. Bottom margin keeps it off the progress dots beneath. */
-.lush-booking-auth-thin {
+.brk-booking-auth-thin {
   margin:6px 0 20px;
   font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   font-size:12px; line-height:1.4;
   color:var(--lush-muted);
   text-align:center;
 }
-.lush-booking-auth-thin strong { font-weight:600; color:var(--lush-text); }
-.lush-booking-auth-thin button {
+.brk-booking-auth-thin strong { font-weight:600; color:var(--lush-text); }
+.brk-booking-auth-thin button {
   background:transparent; border:none; padding:0;
   font:inherit; color:var(--lush-text);
   text-decoration:underline; text-underline-offset:2px;
   cursor:pointer;
 }
 @media (hover:hover) and (pointer:fine) {
-  .lush-booking-auth-thin button:hover { opacity:0.7; }
+  .brk-booking-auth-thin button:hover { opacity:0.7; }
 }
 
 /* Prominent "View your bookings" CTA for already-authed visitors at
    Step 4. Sharp BookReady house style — full-width card that reads
    as a button. Replaces the previous subtle inline "Manage bookings"
    link. */
-.lush-booking-account-cta {
+.brk-booking-account-cta {
   display:flex; align-items:center; gap:14px;
   padding:14px 16px; margin-bottom:18px;
   background:#FFFFFF; color:#121212;
@@ -815,33 +815,33 @@ export const LUSH_CSS = `
   transition:background .15s ease, color .15s ease, border-color .15s ease;
 }
 @media (hover:hover) and (pointer:fine) {
-  .lush-booking-account-cta:hover {
+  .brk-booking-account-cta:hover {
     background:#121212; color:#FFFFFF; border-color:#121212;
   }
 }
-.lush-booking-account-cta-icon {
+.brk-booking-account-cta-icon {
   width:36px; height:36px;
   display:inline-flex; align-items:center; justify-content:center;
   background:rgba(18,18,18,0.06); flex-shrink:0;
   transition:background .15s ease;
 }
-.lush-booking-account-cta:hover .lush-booking-account-cta-icon {
+.brk-booking-account-cta:hover .brk-booking-account-cta-icon {
   background:rgba(255,255,255,0.12);
 }
-.lush-booking-account-cta-body { display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; }
-.lush-booking-account-cta-eyebrow {
+.brk-booking-account-cta-body { display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; }
+.brk-booking-account-cta-eyebrow {
   font-size:9px; font-weight:700;
   letter-spacing:0.18em; text-transform:uppercase;
   opacity:0.6;
 }
-.lush-booking-account-cta-title {
+.brk-booking-account-cta-title {
   font-size:15px; font-weight:700;
   letter-spacing:-0.005em;
 }
-.lush-booking-account-cta-sub {
+.brk-booking-account-cta-sub {
   font-size:12px; opacity:0.7; line-height:1.3;
 }
-.lush-booking-account-cta-arrow {
+.brk-booking-account-cta-arrow {
   width:32px; height:32px;
   display:inline-flex; align-items:center; justify-content:center;
   flex-shrink:0;
@@ -850,7 +850,7 @@ export const LUSH_CSS = `
 /* Opt-in "Create a BookReady account" block in Step 4 (unauthed).
    Sits inside the form flow, bordered to read as a related-but-
    optional choice. Password field reveals when checkbox is checked. */
-.lush-booking-create-account {
+.brk-booking-create-account {
   margin-top:6px;
   padding:14px 16px;
   background:#FFFFFF;
@@ -859,38 +859,38 @@ export const LUSH_CSS = `
   font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   color:#121212;
 }
-.lush-booking-create-account-row {
+.brk-booking-create-account-row {
   display:flex; align-items:center; gap:10px;
   cursor:pointer; user-select:none;
 }
-.lush-booking-create-account-row > input[type="checkbox"] {
+.brk-booking-create-account-row > input[type="checkbox"] {
   width:16px; height:16px; flex-shrink:0;
   accent-color:#121212; cursor:pointer;
 }
-.lush-booking-create-account-row > strong {
+.brk-booking-create-account-row > strong {
   font-size:14px; font-weight:700; letter-spacing:-0.005em;
 }
 /* Benefits paragraph sits below the row at full width — no leading
    indent that would compete with the checkbox alignment above. */
-.lush-booking-create-account-blurb {
+.brk-booking-create-account-blurb {
   margin:8px 0 0;
   font-size:12px; line-height:1.45; color:#6B7280;
 }
-.lush-booking-create-account-pw {
+.brk-booking-create-account-pw {
   display:flex; flex-direction:column; gap:6px;
   margin-top:12px; padding-top:12px;
   border-top:1px solid rgba(18,18,18,0.10);
 }
-.lush-booking-create-account-pw > span:first-child {
+.brk-booking-create-account-pw > span:first-child {
   font-size:10px; font-weight:700;
   letter-spacing:0.18em; text-transform:uppercase;
   color:#6B7280;
 }
 /* Password input — the higher-specificity selector (with [type] and
-   the create-account scope) wins over .lush-booking-fields input which
+   the create-account scope) wins over .brk-booking-fields input which
    would otherwise paint white text on a near-transparent background.
    Also using stronger border + a visible placeholder color. */
-.lush-booking-create-account .lush-booking-create-account-pw input[type="password"] {
+.brk-booking-create-account .brk-booking-create-account-pw input[type="password"] {
   width:100%; padding:11px 13px;
   background:#FFFFFF; color:#121212;
   border:1px solid rgba(18,18,18,0.25); border-radius:0;
@@ -898,13 +898,13 @@ export const LUSH_CSS = `
   -webkit-appearance:none; appearance:none;
   box-shadow:none;
 }
-.lush-booking-create-account .lush-booking-create-account-pw input[type="password"]:focus {
+.brk-booking-create-account .brk-booking-create-account-pw input[type="password"]:focus {
   outline:none; border-color:#121212;
 }
-.lush-booking-create-account .lush-booking-create-account-pw input[type="password"]::placeholder {
+.brk-booking-create-account .brk-booking-create-account-pw input[type="password"]::placeholder {
   color:#c4bcb6;
 }
-.lush-booking-create-account-fineprint {
+.brk-booking-create-account-fineprint {
   font-size:11px; line-height:1.45; color:#6B7280;
 }
 
@@ -912,7 +912,7 @@ export const LUSH_CSS = `
    when returning from Stripe with &account=new, and inside the
    success state when a non-payment booking just minted an account.
    Cream tint + Mail icon makes it visually distinct from the form. */
-.lush-booking-account-followup {
+.brk-booking-account-followup {
   display:flex; gap:14px;
   padding:16px;
   margin:12px 0 0;
@@ -921,30 +921,30 @@ export const LUSH_CSS = `
   font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   text-align:left;
 }
-.lush-booking-account-followup--success {
+.brk-booking-account-followup--success {
   margin:20px auto 0; max-width:520px;
 }
-.lush-booking-account-followup-icon {
+.brk-booking-account-followup-icon {
   width:36px; height:36px; flex-shrink:0;
   display:inline-flex; align-items:center; justify-content:center;
   background:#FFFFFF; border:1px solid rgba(18,18,18,0.12);
 }
-.lush-booking-account-followup-body { display:flex; flex-direction:column; gap:4px; flex:1; min-width:0; }
-.lush-booking-account-followup-eyebrow {
+.brk-booking-account-followup-body { display:flex; flex-direction:column; gap:4px; flex:1; min-width:0; }
+.brk-booking-account-followup-eyebrow {
   margin:0;
   font-size:9px; font-weight:700;
   letter-spacing:0.18em; text-transform:uppercase;
   color:#6B7280;
 }
-.lush-booking-account-followup-title {
+.brk-booking-account-followup-title {
   margin:0;
   font-size:14px; font-weight:700; line-height:1.25;
 }
-.lush-booking-account-followup-sub {
+.brk-booking-account-followup-sub {
   margin:0;
   font-size:12px; line-height:1.45; color:#6B7280;
 }
-.lush-booking-account-followup-cta {
+.brk-booking-account-followup-cta {
   display:inline-flex; align-items:center; gap:6px;
   margin-top:6px; align-self:flex-start;
   padding:7px 11px;
@@ -956,80 +956,80 @@ export const LUSH_CSS = `
   transition:background .15s ease,color .15s ease;
 }
 @media (hover:hover) and (pointer:fine) {
-  .lush-booking-account-followup-cta:hover { background:#2a2a2a; }
+  .brk-booking-account-followup-cta:hover { background:#2a2a2a; }
 }
 @media (hover:hover) and (pointer:fine) {
-  .lush-booking-auth-link:hover { opacity:0.75; }
+  .brk-booking-auth-link:hover { opacity:0.75; }
 }
 
-.lush-booking-fields { display:grid; gap:14px; }
+.brk-booking-fields { display:grid; gap:14px; }
 
 /* SMS consent row — small inline checkbox that sits below the Phone
    field when populated. Smaller and less prominent than the account-
    creation block above; this is regulatory plumbing, not a feature
-   nudge. Same .lush-booking-field-defying scoping (no .lush-booking-
+   nudge. Same .brk-booking-field-defying scoping (no .brk-booking-
    field class) so the wrapper's column rule doesn't grab it. */
-.lush-booking-sms-consent {
+.brk-booking-sms-consent {
   display:flex; align-items:flex-start; gap:9px;
   margin-top:-4px; padding:8px 0;
   cursor:pointer; user-select:none;
   font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   font-size:11px; line-height:1.45; color:#6B7280;
 }
-.lush-booking-sms-consent > input[type="checkbox"] {
+.brk-booking-sms-consent > input[type="checkbox"] {
   width:14px; height:14px; margin-top:2px; flex-shrink:0;
   accent-color:#121212; cursor:pointer;
 }
 
 /* One standard identity field row (Name / Email / Phone / Notes).
-   Scoped class instead of .lush-booking-fields label so nested labels
+   Scoped class instead of .brk-booking-fields label so nested labels
    inside the create-account block (the checkbox row, the password
    input, the fineprint) don't inherit this layout — and so the four
    standard fields can be styled independently (e.g. flex-direction:
    row) without disturbing the create-account UI. */
-.lush-booking-field { display:flex; flex-direction:column; gap:6px; }
-.lush-booking-field > span {
+.brk-booking-field { display:flex; flex-direction:column; gap:6px; }
+.brk-booking-field > span {
   font-size:10px; letter-spacing:0.18em; text-transform:uppercase;
   color:var(--lush-muted); font-weight:600;
 }
-.lush-booking-fields input,
-.lush-booking-textarea {
+.brk-booking-fields input,
+.brk-booking-textarea {
   background:var(--lush-card); border:1px solid var(--lush-dark-border);
   border-radius:6px; padding:12px 14px; color:var(--lush-text);
   font-family:var(--lush-ui); font-size:14px; width:100%;
   transition:border-color .2s ease;
 }
-.lush-booking-fields input::placeholder,
-.lush-booking-textarea::placeholder { color:var(--lush-muted); }
-.lush-booking-fields input:focus,
-.lush-booking-textarea:focus { outline:0; border-color:var(--lush-pink); }
-.lush-booking-textarea { resize:vertical; }
+.brk-booking-fields input::placeholder,
+.brk-booking-textarea::placeholder { color:var(--lush-muted); }
+.brk-booking-fields input:focus,
+.brk-booking-textarea:focus { outline:0; border-color:var(--lush-pink); }
+.brk-booking-textarea { resize:vertical; }
 
 /* Phase 16 — custom questions on the Details step */
-.lush-booking-questions {
+.brk-booking-questions {
   display:grid; gap:14px;
   padding-top:14px; margin-top:6px;
   border-top:1px solid var(--lush-dark-border);
 }
-.lush-booking-question { display:flex; flex-direction:column; gap:4px; }
-.lush-booking-question > label { display:flex; flex-direction:column; gap:6px; }
-.lush-booking-question select {
+.brk-booking-question { display:flex; flex-direction:column; gap:4px; }
+.brk-booking-question > label { display:flex; flex-direction:column; gap:6px; }
+.brk-booking-question select {
   width:100%; padding:12px 14px;
   background:var(--lush-card); border:1px solid var(--lush-dark-border);
   color:var(--lush-text); font-family:var(--lush-ui); font-size:14px;
   border-radius:6px;
 }
-.lush-booking-question select:focus { outline:0; border-color:var(--lush-pink); }
-.lush-booking-question-hint { font-size:11px; color:var(--lush-muted); margin:0; }
-.lush-booking-checkbox-row {
+.brk-booking-question select:focus { outline:0; border-color:var(--lush-pink); }
+.brk-booking-question-hint { font-size:11px; color:var(--lush-muted); margin:0; }
+.brk-booking-checkbox-row {
   display:flex; align-items:center; gap:10px;
   font-size:13px !important; color:var(--lush-text) !important;
   letter-spacing:normal !important; text-transform:none !important; font-weight:400 !important;
 }
-.lush-booking-checkbox-row input[type="checkbox"] { width:18px; height:18px; accent-color:var(--lush-pink); }
+.brk-booking-checkbox-row input[type="checkbox"] { width:18px; height:18px; accent-color:var(--lush-pink); }
 
-.lush-booking-image-upload { display:flex; flex-direction:column; gap:8px; }
-.lush-booking-image-pick {
+.brk-booking-image-upload { display:flex; flex-direction:column; gap:8px; }
+.brk-booking-image-pick {
   display:inline-flex; align-items:center; gap:8px;
   align-self:flex-start; padding:10px 16px; border-radius:6px;
   background:var(--lush-card); border:1px dashed var(--lush-dark-border);
@@ -1037,30 +1037,30 @@ export const LUSH_CSS = `
   transition:border-color .2s ease;
   letter-spacing:normal !important; text-transform:none !important; font-weight:500 !important;
 }
-.lush-booking-image-pick:hover { border-color:var(--lush-pink); }
-.lush-booking-image-preview {
+.brk-booking-image-pick:hover { border-color:var(--lush-pink); }
+.brk-booking-image-preview {
   position:relative; display:inline-block; max-width:220px;
 }
-.lush-booking-image-preview img {
+.brk-booking-image-preview img {
   width:100%; height:auto; max-height:180px; object-fit:cover;
   border-radius:6px; border:1px solid var(--lush-dark-border);
 }
-.lush-booking-image-remove {
+.brk-booking-image-remove {
   position:absolute; top:6px; right:6px;
   width:24px; height:24px; border-radius:50%;
   background:rgba(14,17,17,0.85); border:1px solid var(--lush-dark-border);
   color:#fff; display:inline-flex; align-items:center; justify-content:center;
   cursor:pointer;
 }
-.lush-booking-image-err { font-size:11px; color:#B91C1C; }
+.brk-booking-image-err { font-size:11px; color:#B91C1C; }
 .lush-spin { animation: lush-spin 1s linear infinite; }
 @keyframes lush-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 /* Nav buttons */
-.lush-booking-nav { display:flex; justify-content:space-between; gap:10px; padding-top:4px; flex-wrap:wrap; }
-.lush-booking-back,
-.lush-booking-next,
-.lush-booking-confirm-btn {
+.brk-booking-nav { display:flex; justify-content:space-between; gap:10px; padding-top:4px; flex-wrap:wrap; }
+.brk-booking-back,
+.brk-booking-next,
+.brk-booking-confirm-btn {
   background:transparent; border:1px solid var(--lush-dark-border);
   color:var(--lush-text); padding:13px 20px; border-radius:999px;
   font-size:11px; letter-spacing:0.16em; text-transform:uppercase;
@@ -1068,50 +1068,50 @@ export const LUSH_CSS = `
   display:inline-flex; gap:8px; align-items:center;
   transition:all .25s ease; font-family:var(--lush-ui);
 }
-.lush-booking-back:hover { border-color:var(--lush-text); }
-.lush-booking-next,
-.lush-booking-confirm-btn {
+.brk-booking-back:hover { border-color:var(--lush-text); }
+.brk-booking-next,
+.brk-booking-confirm-btn {
   background:var(--lush-pink); border-color:var(--lush-pink);
   color:var(--lush-on-pink);
 }
-.lush-booking-next:hover,
-.lush-booking-confirm-btn:hover { filter:brightness(1.06); transform:translateY(-1px); }
-.lush-booking-next:disabled,
-.lush-booking-confirm-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+.brk-booking-next:hover,
+.brk-booking-confirm-btn:hover { filter:brightness(1.06); transform:translateY(-1px); }
+.brk-booking-next:disabled,
+.brk-booking-confirm-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
 
 /* Confirm step */
-.lush-booking-confirm { display:flex; flex-direction:column; gap:18px; }
-.lush-booking-summary {
+.brk-booking-confirm { display:flex; flex-direction:column; gap:18px; }
+.brk-booking-summary {
   background:var(--lush-card);
   border:1px solid var(--lush-dark-border); border-radius:8px; padding:18px;
 }
-.lush-booking-summary dl { margin:0; display:flex; flex-direction:column; gap:8px; margin-top:12px; }
-.lush-booking-summary div {
+.brk-booking-summary dl { margin:0; display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+.brk-booking-summary div {
   display:flex; justify-content:space-between; align-items:baseline; gap:12px;
   padding-bottom:8px; border-bottom:1px dashed var(--lush-dark-border);
 }
-.lush-booking-summary div:last-child { border-bottom:0; padding-bottom:0; }
-.lush-booking-summary dt { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--lush-muted); margin:0; font-weight:600; }
-.lush-booking-summary dd { margin:0; font-family:var(--lush-ui); font-size:14px; color:var(--lush-text); text-align:right; }
-.lush-booking-total dt, .lush-booking-total dd { color:var(--lush-pink) !important; font-size:16px !important; }
-.lush-booking-error { background:#FEF2F2; border:1px solid #FECACA; border-radius:6px; padding:12px 16px; font-size:13px; color:#B91C1C; }
-.lush-booking-disclaimer { text-align:center; font-size:11px; color:var(--lush-muted); margin-top:4px; }
+.brk-booking-summary div:last-child { border-bottom:0; padding-bottom:0; }
+.brk-booking-summary dt { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--lush-muted); margin:0; font-weight:600; }
+.brk-booking-summary dd { margin:0; font-family:var(--lush-ui); font-size:14px; color:var(--lush-text); text-align:right; }
+.brk-booking-total dt, .brk-booking-total dd { color:var(--lush-pink) !important; font-size:16px !important; }
+.brk-booking-error { background:#FEF2F2; border:1px solid #FECACA; border-radius:6px; padding:12px 16px; font-size:13px; color:#B91C1C; }
+.brk-booking-disclaimer { text-align:center; font-size:11px; color:var(--lush-muted); margin-top:4px; }
 
 /* Success */
-.lush-booking-success {
+.brk-booking-success {
   text-align:center; padding:48px 24px; display:flex; flex-direction:column;
   align-items:center; gap:12px; max-width:500px; margin:0 auto;
 }
-.lush-booking-success-icon { font-size:48px; color:var(--lush-pink); }
-.lush-booking-success h3 { font-family:var(--lush-serif); font-size:clamp(28px,5vw,40px); font-weight:400; letter-spacing:-0.02em; margin:0; }
-.lush-booking-success-copy { font-size:15px; color:var(--lush-muted); line-height:1.55; margin:0; }
-.lush-booking-success-summary {
+.brk-booking-success-icon { font-size:48px; color:var(--lush-pink); }
+.brk-booking-success h3 { font-family:var(--lush-serif); font-size:clamp(28px,5vw,40px); font-weight:400; letter-spacing:-0.02em; margin:0; }
+.brk-booking-success-copy { font-size:15px; color:var(--lush-muted); line-height:1.55; margin:0; }
+.brk-booking-success-summary {
   display:flex; flex-wrap:wrap; justify-content:center; gap:8px;
   background:rgba(var(--lush-pink-rgb),0.07); border:1px solid var(--lush-dark-border);
   border-radius:8px; padding:12px 18px; font-size:14px; color:var(--lush-text);
 }
-.lush-booking-success-dot { color:var(--lush-pink); }
-.lush-booking-success-note { font-size:12px; color:var(--lush-muted); margin:0; }
+.brk-booking-success-dot { color:var(--lush-pink); }
+.brk-booking-success-note { font-size:12px; color:var(--lush-muted); margin:0; }
 
 /* ── Gallery ── */
 .lush-gallery-section { width:100%; padding:0 0 clamp(64px,8vw,110px); background:var(--lush-bg); overflow:hidden; }
@@ -1586,8 +1586,8 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
   .lush-aftercare-card h3 { font-size:38px; margin-bottom:14px; }
   .lush-aftercare-card p { font-size:15px; line-height:1.6; }
   .lush-footer-inner { padding:72px 48px 36px; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:48px; align-items:start; }
-  .lush-booking-section { padding:48px 48px 80px; }
-  .lush-booking-services { grid-template-columns:repeat(2,1fr); }
+  .brk-booking-section { padding:48px 48px 80px; }
+  .brk-booking-services { grid-template-columns:repeat(2,1fr); }
 }
 
 /* ── Tablet ── */
@@ -1614,10 +1614,10 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
   .lush-header-section { min-height:auto; }
   .lush-tab-pill { padding:14px 12px; font-size:10px; letter-spacing:0.12em; }
   .lush-tab-pill::after { left:12px; right:12px; }
-  .lush-booking-section { padding:28px 16px 56px; }
-  .lush-booking-days { gap:6px; }
-  .lush-booking-day { flex:1 1 64px; min-width:60px; padding:10px 6px; }
-  .lush-booking-times { grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:6px; }
+  .brk-booking-section { padding:28px 16px 56px; }
+  .brk-booking-days { gap:6px; }
+  .brk-booking-day { flex:1 1 64px; min-width:60px; padding:10px 6px; }
+  .brk-booking-times { grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:6px; }
   .lush-gallery-group { padding-left:18px; padding-right:18px; }
   /* progress pills already use a sr-only label; no mobile override needed */
 }
@@ -1767,7 +1767,7 @@ img.lush-ba-after-img { filter:blur(6px); transform:scale(1.06); transition:filt
 
 /* Service prices get a tiny heart marker — fun + feminine. Targets the
    common service-row price node. Safe no-op if the class doesn't render. */
-.lush-femme [class*="lush-booking-service"] [class*="price"]::before {
+.lush-femme [class*="brk-booking-service"] [class*="price"]::before {
   content: '♡';
   margin-right: 6px;
   opacity: 0.55;

@@ -567,9 +567,9 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
           {/* ── Book ── */}
           <div className={`lush-tab-panel${active === 'book' ? ' is-active' : ''}`}>
             {site.booking_settings && site.booking_settings.booking_enabled === false ? (
-              <section className="lush-booking-section">
-                <div className="lush-booking-summary" style={{ maxWidth: 480, margin: '40px auto' }}>
-                  <span className="lush-booking-block-label">Booking unavailable</span>
+              <section className="brk-booking-section">
+                <div className="brk-booking-summary" style={{ maxWidth: 480, margin: '40px auto' }}>
+                  <span className="brk-booking-block-label">Booking unavailable</span>
                   <p style={{ marginTop: 8, fontSize: 14, opacity: 0.85 }}>
                     Online booking is currently paused. Please check back soon — or reach out to the business directly.
                   </p>

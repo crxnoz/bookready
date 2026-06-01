@@ -609,26 +609,26 @@ export default function LushStudioBooking({
 
   if (success) {
     return (
-      <div className="lush-booking-success">
-        <div className="lush-booking-success-icon" aria-hidden="true">
+      <div className="brk-booking-success">
+        <div className="brk-booking-success-icon" aria-hidden="true">
           <Heart size={48} fill="currentColor" />
         </div>
-        <p className="lush-booking-eyebrow">Booking request sent</p>
+        <p className="brk-booking-eyebrow">Booking request sent</p>
         <h3>You&apos;re on the books</h3>
-        <p className="lush-booking-success-copy">
+        <p className="brk-booking-success-copy">
           Your request was sent to <strong>{displayName}</strong>.
           They will confirm your appointment shortly.
         </p>
         {selectedService && date && selectedSlot && (
-          <div className="lush-booking-success-summary">
+          <div className="brk-booking-success-summary">
             <span>{selectedService.name}</span>
-            <span className="lush-booking-success-dot" aria-hidden="true">·</span>
+            <span className="brk-booking-success-dot" aria-hidden="true">·</span>
             <span>{fmtDateDisplay(date)}</span>
-            <span className="lush-booking-success-dot" aria-hidden="true">·</span>
+            <span className="brk-booking-success-dot" aria-hidden="true">·</span>
             <span>{fmt12(selectedSlot)}</span>
           </div>
         )}
-        <p className="lush-booking-success-note">
+        <p className="brk-booking-success-note">
           No payment required — payment is handled at the appointment.
         </p>
 
@@ -638,16 +638,16 @@ export default function LushStudioBooking({
             return banner so the messaging is consistent regardless of
             whether the tenant takes payment. */}
         {customerAccountCreated && (
-          <div className="lush-booking-account-followup lush-booking-account-followup--success">
-            <div className="lush-booking-account-followup-icon" aria-hidden="true">
+          <div className="brk-booking-account-followup brk-booking-account-followup--success">
+            <div className="brk-booking-account-followup-icon" aria-hidden="true">
               <Mail size={18} />
             </div>
-            <div className="lush-booking-account-followup-body">
-              <p className="lush-booking-account-followup-eyebrow">Your BookReady account</p>
-              <p className="lush-booking-account-followup-title">
+            <div className="brk-booking-account-followup-body">
+              <p className="brk-booking-account-followup-eyebrow">Your BookReady account</p>
+              <p className="brk-booking-account-followup-title">
                 Check your inbox to verify your email.
               </p>
-              <p className="lush-booking-account-followup-sub">
+              <p className="brk-booking-account-followup-sub">
                 Your appointment is confirmed regardless. Verifying lets you
                 manage and reschedule from any device.
               </p>
@@ -655,7 +655,7 @@ export default function LushStudioBooking({
                 href="https://app.bkrdy.me/account"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="lush-booking-account-followup-cta"
+                className="brk-booking-account-followup-cta"
               >
                 Go to dashboard <ExternalLink size={12} aria-hidden />
               </a>
@@ -667,23 +667,23 @@ export default function LushStudioBooking({
             redirect): point them at /account so they can manage what
             they just booked. */}
         {! customerAccountCreated && authedUser && (
-          <div className="lush-booking-account-followup lush-booking-account-followup--success">
-            <div className="lush-booking-account-followup-icon" aria-hidden="true">
+          <div className="brk-booking-account-followup brk-booking-account-followup--success">
+            <div className="brk-booking-account-followup-icon" aria-hidden="true">
               <BookmarkCheck size={18} />
             </div>
-            <div className="lush-booking-account-followup-body">
-              <p className="lush-booking-account-followup-eyebrow">Your BookReady account</p>
-              <p className="lush-booking-account-followup-title">
+            <div className="brk-booking-account-followup-body">
+              <p className="brk-booking-account-followup-eyebrow">Your BookReady account</p>
+              <p className="brk-booking-account-followup-title">
                 Manage from your dashboard.
               </p>
-              <p className="lush-booking-account-followup-sub">
+              <p className="brk-booking-account-followup-sub">
                 Reschedule, cancel, or see every booking across BookReady businesses in one place.
               </p>
               <a
                 href="https://app.bkrdy.me/account"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="lush-booking-account-followup-cta"
+                className="brk-booking-account-followup-cta"
               >
                 Go to dashboard <ExternalLink size={12} aria-hidden />
               </a>
@@ -717,9 +717,9 @@ export default function LushStudioBooking({
   const goBackFromDateTime = () => setStep(hasAddonsForService ? 2 : 1)
 
   function stepClass(n: Step) {
-    if (step === n) return 'lush-booking-step is-active'
-    if (step > n)  return 'lush-booking-step is-done'
-    return 'lush-booking-step'
+    if (step === n) return 'brk-booking-step is-active'
+    if (step > n)  return 'brk-booking-step is-done'
+    return 'brk-booking-step'
   }
 
   // ── Calendar grid build ──
@@ -733,11 +733,11 @@ export default function LushStudioBooking({
   while (cells.length % 7 !== 0) cells.push(null)
 
   return (
-    <section className="lush-booking-section" ref={sectionRef}>
+    <section className="brk-booking-section" ref={sectionRef}>
 
       {/* ── Progress header ── */}
-      <div className="lush-booking-head">
-        <span className="lush-booking-eyebrow">Book Online</span>
+      <div className="brk-booking-head">
+        <span className="brk-booking-eyebrow">Book Online</span>
         <h2>Reserve Your Appointment</h2>
 
         {/* Persistent thin sign-in indicator — visible from every step.
@@ -748,7 +748,7 @@ export default function LushStudioBooking({
             link in the same slot so they can switch identities mid-
             flow if they need to. */}
         {authChecked && ! authedUser && (
-          <p className="lush-booking-auth-thin">
+          <p className="brk-booking-auth-thin">
             Have a BookReady account?{' '}
             <button type="button" onClick={() => openAuth('signin')}>
               Sign in
@@ -756,7 +756,7 @@ export default function LushStudioBooking({
           </p>
         )}
         {authChecked && authedUser && (
-          <p className="lush-booking-auth-thin">
+          <p className="brk-booking-auth-thin">
             Signed in as <strong>{authedUser.name}</strong>
             {' · '}
             <button type="button" onClick={handleSignOutThin}>
@@ -770,16 +770,16 @@ export default function LushStudioBooking({
             their account. The welcome+verify email has already gone
             out — we just need to point them at their inbox. */}
         {showStripeAccountBanner && (
-          <div className="lush-booking-account-followup">
-            <div className="lush-booking-account-followup-icon" aria-hidden="true">
+          <div className="brk-booking-account-followup">
+            <div className="brk-booking-account-followup-icon" aria-hidden="true">
               <Mail size={18} />
             </div>
-            <div className="lush-booking-account-followup-body">
-              <p className="lush-booking-account-followup-eyebrow">Almost done</p>
-              <p className="lush-booking-account-followup-title">
+            <div className="brk-booking-account-followup-body">
+              <p className="brk-booking-account-followup-eyebrow">Almost done</p>
+              <p className="brk-booking-account-followup-title">
                 Check your inbox to verify your BookReady account.
               </p>
-              <p className="lush-booking-account-followup-sub">
+              <p className="brk-booking-account-followup-sub">
                 Your appointment and payment are confirmed regardless. Verifying
                 your email lets you manage and reschedule from any device.
               </p>
@@ -787,7 +787,7 @@ export default function LushStudioBooking({
                 href="https://app.bkrdy.me/account"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="lush-booking-account-followup-cta"
+                className="brk-booking-account-followup-cta"
               >
                 Go to dashboard <ExternalLink size={12} aria-hidden />
               </a>
@@ -800,23 +800,23 @@ export default function LushStudioBooking({
             confirmation + a path back to /account so they can manage
             what they just booked. */}
         {showStripeConfirmedBanner && (
-          <div className="lush-booking-account-followup">
-            <div className="lush-booking-account-followup-icon" aria-hidden="true">
+          <div className="brk-booking-account-followup">
+            <div className="brk-booking-account-followup-icon" aria-hidden="true">
               <BookmarkCheck size={18} />
             </div>
-            <div className="lush-booking-account-followup-body">
-              <p className="lush-booking-account-followup-eyebrow">All set</p>
-              <p className="lush-booking-account-followup-title">
+            <div className="brk-booking-account-followup-body">
+              <p className="brk-booking-account-followup-eyebrow">All set</p>
+              <p className="brk-booking-account-followup-title">
                 Your booking is confirmed.
               </p>
-              <p className="lush-booking-account-followup-sub">
+              <p className="brk-booking-account-followup-sub">
                 Manage, reschedule, or cancel from your BookReady dashboard.
               </p>
               <a
                 href="https://app.bkrdy.me/account"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="lush-booking-account-followup-cta"
+                className="brk-booking-account-followup-cta"
               >
                 Go to dashboard <ExternalLink size={12} aria-hidden />
               </a>
@@ -827,8 +827,8 @@ export default function LushStudioBooking({
         {/* Phase 8 — compact dot timeline. Labels are sr-only on the
             individual buttons; the caption below the track shows the
             currently-active step's name so we don't lose context. */}
-        <div className="lush-booking-progress" role="tablist">
-          <div className="lush-booking-progress-track">
+        <div className="brk-booking-progress" role="tablist">
+          <div className="brk-booking-progress-track">
             {STEPS.map(([n, label]) => (
               <button
                 key={n}
@@ -838,57 +838,57 @@ export default function LushStudioBooking({
                 className={stepClass(n)}
                 onClick={() => { if (n < step) setStep(n) }}
               >
-                <span className="lush-booking-step-num">
+                <span className="brk-booking-step-num">
                   {step > n ? <Check size={12} strokeWidth={3} /> : n}
                 </span>
-                <span className="lush-booking-step-label">{label}</span>
+                <span className="brk-booking-step-label">{label}</span>
               </button>
             ))}
           </div>
-          <p className="lush-booking-progress-caption">
+          <p className="brk-booking-progress-caption">
             Step {step} of {STEPS.length}
             <strong>{STEPS.find(([n]) => n === step)?.[1]}</strong>
           </p>
         </div>
       </div>
 
-      <div className="lush-booking-slides">
+      <div className="brk-booking-slides">
 
         {/* ── Step 1: Service ── */}
-        <div className={`lush-booking-slide${step === 1 ? ' is-active' : ''}`}>
+        <div className={`brk-booking-slide${step === 1 ? ' is-active' : ''}`}>
           {services.length === 0 ? (
             <p style={{ color: 'var(--lush-muted)', fontSize: 14 }}>No services available yet.</p>
           ) : showCategoryPicker && categoryKey === null ? (
             /* Phase 8 — Category sub-screen. Renders when 2+ categories
                are in active use; user picks one before seeing services.
-               Tiles reuse the .lush-booking-service-card visual so the
+               Tiles reuse the .brk-booking-service-card visual so the
                look matches the rest of the booking flow. */
             <>
               <p
-                className="lush-booking-block-label"
+                className="brk-booking-block-label"
                 style={{ marginBottom: 10 }}
               >
                 Choose a category
               </p>
-              <div className="lush-booking-services">
+              <div className="brk-booking-services">
                 {categoryTiles.map(tile => (
                   <button
                     key={String(tile.key)}
                     type="button"
-                    className="lush-booking-service-card"
+                    className="brk-booking-service-card"
                     onClick={() => setCategoryKey(tile.key)}
                     style={{ textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit' }}
                   >
-                    <div className="lush-booking-service-top">
+                    <div className="brk-booking-service-top">
                       <h3>{tile.name}</h3>
-                      <span className="lush-booking-price" style={{ fontSize: 11, opacity: 0.75 }}>
+                      <span className="brk-booking-price" style={{ fontSize: 11, opacity: 0.75 }}>
                         {tile.count} service{tile.count === 1 ? '' : 's'}
                       </span>
                     </div>
                     {tile.description && (
-                      <p className="lush-booking-desc">{tile.description}</p>
+                      <p className="brk-booking-desc">{tile.description}</p>
                     )}
-                    <span className="lush-booking-pick" style={{ pointerEvents: 'none' }}>
+                    <span className="brk-booking-pick" style={{ pointerEvents: 'none' }}>
                       Browse <ArrowRight size={12} />
                     </span>
                   </button>
@@ -901,7 +901,7 @@ export default function LushStudioBooking({
               {showCategoryPicker && (
                 <button
                   type="button"
-                  className="lush-booking-back"
+                  className="brk-booking-back"
                   onClick={() => {
                     // Reset the chain — service / addons / staff all
                     // bound to the previous category get cleared.
@@ -918,26 +918,26 @@ export default function LushStudioBooking({
                   )}
                 </button>
               )}
-              <div className="lush-booking-services">
+              <div className="brk-booking-services">
                 {visibleServices.map(s => {
                   const isSelected = serviceId === s.id
                   const hasAddons  = (s.linked_addons ?? []).length > 0
                   return (
                     <div
                       key={s.id}
-                      className={`lush-booking-service-card${isSelected ? ' is-selected' : ''}`}
+                      className={`brk-booking-service-card${isSelected ? ' is-selected' : ''}`}
                     >
-                      <div className="lush-booking-service-top">
+                      <div className="brk-booking-service-top">
                         <h3>{s.name}</h3>
-                        <span className="lush-booking-price">${Number(s.price).toFixed(2)}</span>
+                        <span className="brk-booking-price">${Number(s.price).toFixed(2)}</span>
                       </div>
-                      {s.description && <p className="lush-booking-desc">{s.description}</p>}
-                      <p className="lush-booking-meta">
+                      {s.description && <p className="brk-booking-desc">{s.description}</p>}
+                      <p className="brk-booking-meta">
                         <Clock size={12} /> {s.duration_minutes} min
                         {hasAddons && <span style={{ opacity: 0.7, marginLeft: 6 }}>· add-ons available</span>}
                       </p>
                       <button
-                        className="lush-booking-pick"
+                        className="brk-booking-pick"
                         onClick={() => {
                           // Phase 8 — auto-advance to whichever step is
                           // next: Add-ons (step 2) if this service has
@@ -959,9 +959,9 @@ export default function LushStudioBooking({
                 })}
               </div>
 
-              <div className="lush-booking-nav" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
+              <div className="brk-booking-nav" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
                 <button
-                  className="lush-booking-next"
+                  className="brk-booking-next"
                   disabled={!canStep2}
                   onClick={goAfterService}
                 >
@@ -980,11 +980,11 @@ export default function LushStudioBooking({
             so this slide is only actually seen when there's something
             to pick. Required links are pre-checked + disabled so they
             can't be dropped; optional ones toggle freely. */}
-        <div className={`lush-booking-slide${step === 2 ? ' is-active' : ''}`}>
+        <div className={`brk-booking-slide${step === 2 ? ' is-active' : ''}`}>
           {selectedService && hasAddonsForService ? (
             <>
-              <div className="lush-booking-block">
-                <span className="lush-booking-block-label">Add-ons (optional)</span>
+              <div className="brk-booking-block">
+                <span className="brk-booking-block-label">Add-ons (optional)</span>
                 <p style={{ fontSize: 12, opacity: 0.75, margin: '6px 0 12px' }}>
                   Customize your <strong>{selectedService.name}</strong> with any of these extras.
                 </p>
@@ -1051,12 +1051,12 @@ export default function LushStudioBooking({
               No add-ons for this service — continue to choose a time.
             </p>
           )}
-          <div className="lush-booking-nav" style={{ marginTop: 16 }}>
-            <button className="lush-booking-back" onClick={() => setStep(1)}>
+          <div className="brk-booking-nav" style={{ marginTop: 16 }}>
+            <button className="brk-booking-back" onClick={() => setStep(1)}>
               <ArrowLeft size={12} /> Back
             </button>
             <button
-              className="lush-booking-next"
+              className="brk-booking-next"
               disabled={!canStep3}
               onClick={() => setStep(3)}
             >
@@ -1066,8 +1066,8 @@ export default function LushStudioBooking({
         </div>
 
         {/* ── Step 3: Date & Time ── */}
-        <div className={`lush-booking-slide${step === 3 ? ' is-active' : ''}`}>
-          <div className="lush-booking-datetime">
+        <div className={`brk-booking-slide${step === 3 ? ' is-active' : ''}`}>
+          <div className="brk-booking-datetime">
 
             {/* Phase 7 — Staff picker. Only shown when 2+ staff can do
                 this service. A single assigned staff is locked-in
@@ -1075,8 +1075,8 @@ export default function LushStudioBooking({
                 Changing this re-fetches slots (effectiveStaffId is in
                 the availability useEffect's dep list). */}
             {showStaffPicker && (
-              <div className="lush-booking-block">
-                <span className="lush-booking-block-label">Choose Your Staff</span>
+              <div className="brk-booking-block">
+                <span className="brk-booking-block-label">Choose Your Staff</span>
                 <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
                   <button
                     type="button"
@@ -1144,11 +1144,11 @@ export default function LushStudioBooking({
               </p>
             )}
 
-            <div className="lush-booking-block">
-              <span className="lush-booking-block-label">Pick a Day</span>
+            <div className="brk-booking-block">
+              <span className="brk-booking-block-label">Pick a Day</span>
 
               {/* Calendar */}
-              <div className="lush-booking-calendar">
+              <div className="brk-booking-calendar">
                 <div className="lush-calendar-head">
                   <button
                     type="button"
@@ -1207,8 +1207,8 @@ export default function LushStudioBooking({
               </div>
             </div>
 
-            <div className="lush-booking-block">
-              <span className="lush-booking-block-label">Available Times</span>
+            <div className="brk-booking-block">
+              <span className="brk-booking-block-label">Available Times</span>
               {!date && (
                 <p className="lush-slot-msg">Select a day above to see available times.</p>
               )}
@@ -1222,11 +1222,11 @@ export default function LushStudioBooking({
                 <p className="lush-slot-msg">{slotState.message ?? 'No times available. Try another day.'}</p>
               )}
               {slotState.status === 'loaded' && slotState.slots.length > 0 && (
-                <div className="lush-booking-times">
+                <div className="brk-booking-times">
                   {slotState.slots.map(slot => (
                     <button
                       key={slot.start_time}
-                      className={`lush-booking-time${selectedSlot === slot.start_time ? ' is-selected' : ''}`}
+                      className={`brk-booking-time${selectedSlot === slot.start_time ? ' is-selected' : ''}`}
                       onClick={() => setSelectedSlot(slot.start_time)}
                     >
                       {slot.label}
@@ -1236,12 +1236,12 @@ export default function LushStudioBooking({
               )}
             </div>
 
-            <div className="lush-booking-nav">
-              <button className="lush-booking-back" onClick={goBackFromDateTime}>
+            <div className="brk-booking-nav">
+              <button className="brk-booking-back" onClick={goBackFromDateTime}>
                 <ArrowLeft size={12} /> Back
               </button>
               <button
-                className="lush-booking-next"
+                className="brk-booking-next"
                 disabled={!canStep4}
                 onClick={() => setStep(4)}
               >
@@ -1252,7 +1252,7 @@ export default function LushStudioBooking({
         </div>
 
         {/* ── Step 4: Details ── */}
-        <div className={`lush-booking-slide${step === 4 ? ' is-active' : ''}`}>
+        <div className={`brk-booking-slide${step === 4 ? ' is-active' : ''}`}>
           {/* Already-authed: a prominent "View your bookings" card right
               above the form. Repeat customers care about jumping to
               their dashboard; we lean into that affordance instead of
@@ -1263,28 +1263,28 @@ export default function LushStudioBooking({
               href="https://app.bkrdy.me/account"
               target="_blank"
               rel="noopener noreferrer"
-              className="lush-booking-account-cta"
+              className="brk-booking-account-cta"
             >
-              <span className="lush-booking-account-cta-icon" aria-hidden="true">
+              <span className="brk-booking-account-cta-icon" aria-hidden="true">
                 <BookmarkCheck size={18} />
               </span>
-              <span className="lush-booking-account-cta-body">
-                <span className="lush-booking-account-cta-eyebrow">Your BookReady account</span>
-                <span className="lush-booking-account-cta-title">View your bookings</span>
-                <span className="lush-booking-account-cta-sub">
+              <span className="brk-booking-account-cta-body">
+                <span className="brk-booking-account-cta-eyebrow">Your BookReady account</span>
+                <span className="brk-booking-account-cta-title">View your bookings</span>
+                <span className="brk-booking-account-cta-sub">
                   See and manage every booking across BookReady.
                 </span>
               </span>
-              <span className="lush-booking-account-cta-arrow" aria-hidden="true">
+              <span className="brk-booking-account-cta-arrow" aria-hidden="true">
                 <ExternalLink size={14} />
               </span>
             </a>
           )}
-          <div className="lush-booking-fields">
-            {/* The four standard identity inputs use .lush-booking-field so
+          <div className="brk-booking-fields">
+            {/* The four standard identity inputs use .brk-booking-field so
                 styling can be tweaked (e.g. flex-direction:row) without
                 bleeding into the nested account-creation block below. */}
-            <label className="lush-booking-field">
+            <label className="brk-booking-field">
               <span>Full Name *</span>
               <input
                 type="text"
@@ -1294,7 +1294,7 @@ export default function LushStudioBooking({
                 autoComplete="name"
               />
             </label>
-            <label className="lush-booking-field">
+            <label className="brk-booking-field">
               <span>Email</span>
               <input
                 type="email"
@@ -1304,7 +1304,7 @@ export default function LushStudioBooking({
                 autoComplete="email"
               />
             </label>
-            <label className="lush-booking-field">
+            <label className="brk-booking-field">
               <span>Phone</span>
               <input
                 type="tel"
@@ -1321,7 +1321,7 @@ export default function LushStudioBooking({
                 have explicitly opted in PER booking. Consent is
                 never a condition of completing the booking. */}
             {phone.trim() !== '' && (
-              <label className="lush-booking-sms-consent">
+              <label className="brk-booking-sms-consent">
                 <input
                   type="checkbox"
                   checked={smsConsent}
@@ -1333,14 +1333,14 @@ export default function LushStudioBooking({
                 </span>
               </label>
             )}
-            <label className="lush-booking-field">
+            <label className="brk-booking-field">
               <span>Notes</span>
               <textarea
                 placeholder="Any special requests or notes…"
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 rows={3}
-                className="lush-booking-textarea"
+                className="brk-booking-textarea"
               />
             </label>
 
@@ -1352,8 +1352,8 @@ export default function LushStudioBooking({
                 so the booking still works as a one-shot anonymous
                 purchase. */}
             {authChecked && ! authedUser && (
-              <div className="lush-booking-create-account">
-                <label className="lush-booking-create-account-row">
+              <div className="brk-booking-create-account">
+                <label className="brk-booking-create-account-row">
                   <input
                     type="checkbox"
                     checked={createAccount}
@@ -1361,13 +1361,13 @@ export default function LushStudioBooking({
                   />
                   <strong>Create a BookReady account</strong>
                 </label>
-                <p className="lush-booking-create-account-blurb">
+                <p className="brk-booking-create-account-blurb">
                   Save your details, view this booking from any device, and
                   manage every booking you make across BookReady businesses
                   from one dashboard.
                 </p>
                 {createAccount && (
-                  <label className="lush-booking-create-account-pw">
+                  <label className="brk-booking-create-account-pw">
                     <span>Choose a password</span>
                     <input
                       type="password"
@@ -1377,7 +1377,7 @@ export default function LushStudioBooking({
                       minLength={8}
                       placeholder="At least 8 characters"
                     />
-                    <span className="lush-booking-create-account-fineprint">
+                    <span className="brk-booking-create-account-fineprint">
                       We&rsquo;ll email a verification link. Your appointment is
                       confirmed either way — verifying is just for your account.
                     </span>
@@ -1388,11 +1388,11 @@ export default function LushStudioBooking({
 
             {/* Phase 16 — custom owner-defined questions */}
             {applicableQuestions.length > 0 && (
-              <div className="lush-booking-questions">
+              <div className="brk-booking-questions">
                 {applicableQuestions.map(q => {
                   const a = questionAnswers[q.id] ?? {}
                   return (
-                    <div key={q.id} className="lush-booking-question">
+                    <div key={q.id} className="brk-booking-question">
                       <label>
                         <span>
                           {q.label}
@@ -1410,14 +1410,14 @@ export default function LushStudioBooking({
                         {q.type === 'textarea' && (
                           <textarea
                             rows={3}
-                            className="lush-booking-textarea"
+                            className="brk-booking-textarea"
                             value={(a.value as string) ?? ''}
                             onChange={e => patchAnswer(q.id, { value: e.target.value })}
                           />
                         )}
 
                         {q.type === 'checkbox' && (
-                          <span className="lush-booking-checkbox-row">
+                          <span className="brk-booking-checkbox-row">
                             <input
                               type="checkbox"
                               checked={a.value === true}
@@ -1440,13 +1440,13 @@ export default function LushStudioBooking({
                         )}
 
                         {q.type === 'image' && (
-                          <span className="lush-booking-image-upload">
+                          <span className="brk-booking-image-upload">
                             {a.image_url ? (
-                              <span className="lush-booking-image-preview">
+                              <span className="brk-booking-image-preview">
                                 <img src={a.image_url} alt={q.label} />
                                 <button
                                   type="button"
-                                  className="lush-booking-image-remove"
+                                  className="brk-booking-image-remove"
                                   onClick={() => patchAnswer(q.id, { image_url: null })}
                                   aria-label="Remove image"
                                 >
@@ -1454,7 +1454,7 @@ export default function LushStudioBooking({
                                 </button>
                               </span>
                             ) : (
-                              <label className="lush-booking-image-pick">
+                              <label className="brk-booking-image-pick">
                                 {uploadingFor === q.id
                                   ? <><Loader2 size={14} className="lush-spin" /> Uploading…</>
                                   : <><ImageIcon size={14} /> Choose image</>}
@@ -1472,13 +1472,13 @@ export default function LushStudioBooking({
                               </label>
                             )}
                             {uploadErrFor === q.id && (
-                              <span className="lush-booking-image-err">Upload failed. Try a smaller file.</span>
+                              <span className="brk-booking-image-err">Upload failed. Try a smaller file.</span>
                             )}
                           </span>
                         )}
                       </label>
                       {q.help_text && q.type !== 'checkbox' && (
-                        <p className="lush-booking-question-hint">{q.help_text}</p>
+                        <p className="brk-booking-question-hint">{q.help_text}</p>
                       )}
                     </div>
                   )
@@ -1486,12 +1486,12 @@ export default function LushStudioBooking({
               </div>
             )}
           </div>
-          <div className="lush-booking-nav" style={{ marginTop: 20 }}>
-            <button className="lush-booking-back" onClick={() => setStep(3)}>
+          <div className="brk-booking-nav" style={{ marginTop: 20 }}>
+            <button className="brk-booking-back" onClick={() => setStep(3)}>
               <ArrowLeft size={12} /> Back
             </button>
             <button
-              className="lush-booking-next"
+              className="brk-booking-next"
               disabled={!name.trim() || !questionsValid}
               onClick={() => setStep(5)}
             >
@@ -1501,11 +1501,11 @@ export default function LushStudioBooking({
         </div>
 
         {/* ── Step 5: Confirm ── */}
-        <div className={`lush-booking-slide${step === 5 ? ' is-active' : ''}`}>
-          <div className="lush-booking-confirm">
+        <div className={`brk-booking-slide${step === 5 ? ' is-active' : ''}`}>
+          <div className="brk-booking-confirm">
 
-            <div className="lush-booking-summary">
-              <span className="lush-booking-block-label">Your Appointment</span>
+            <div className="brk-booking-summary">
+              <span className="brk-booking-block-label">Your Appointment</span>
               <dl>
                 {selectedService && (
                   <div><dt>Service</dt><dd>{selectedService.name}</dd></div>
@@ -1530,7 +1530,7 @@ export default function LushStudioBooking({
                   <div><dt>Duration</dt><dd>{totalMinutes} min</dd></div>
                 )}
                 {selectedService && (
-                  <div className="lush-booking-total">
+                  <div className="brk-booking-total">
                     <dt>Total</dt>
                     <dd>${totalPrice.toFixed(2)}</dd>
                   </div>
@@ -1538,8 +1538,8 @@ export default function LushStudioBooking({
               </dl>
             </div>
 
-            <div className="lush-booking-summary" style={{ marginTop: 12 }}>
-              <span className="lush-booking-block-label">Your Info</span>
+            <div className="brk-booking-summary" style={{ marginTop: 12 }}>
+              <span className="brk-booking-block-label">Your Info</span>
               <dl>
                 <div><dt>Name</dt><dd>{name}</dd></div>
                 {email && <div><dt>Email</dt><dd>{email}</dd></div>}
@@ -1549,8 +1549,8 @@ export default function LushStudioBooking({
             </div>
 
             {paymentRequired && (
-              <div className="lush-booking-summary" style={{ marginTop: 12 }}>
-                <span className="lush-booking-block-label">
+              <div className="brk-booking-summary" style={{ marginTop: 12 }}>
+                <span className="brk-booking-block-label">
                   {showChoice ? 'Payment Options' : (effectiveChoice === 'full' ? 'Payment Required' : 'Deposit Required')}
                 </span>
 
@@ -1604,7 +1604,7 @@ export default function LushStudioBooking({
                 )}
 
                 <dl>
-                  <div className="lush-booking-total">
+                  <div className="brk-booking-total">
                     <dt>{effectiveChoice === 'full' ? 'Due now (paid in full)' : 'Deposit due now'}</dt>
                     <dd>${chargePreview!.toFixed(2)}</dd>
                   </div>
@@ -1646,15 +1646,15 @@ export default function LushStudioBooking({
             )}
 
             {submitError && (
-              <div className="lush-booking-error">{submitError}</div>
+              <div className="brk-booking-error">{submitError}</div>
             )}
 
-            <div className="lush-booking-nav">
-              <button className="lush-booking-back" onClick={() => setStep(4)}>
+            <div className="brk-booking-nav">
+              <button className="brk-booking-back" onClick={() => setStep(4)}>
                 <ArrowLeft size={12} /> Back
               </button>
               <button
-                className="lush-booking-confirm-btn"
+                className="brk-booking-confirm-btn"
                 disabled={submitting || !canSubmit}
                 onClick={handleSubmit}
               >
@@ -1669,7 +1669,7 @@ export default function LushStudioBooking({
               </button>
             </div>
 
-            <p className="lush-booking-disclaimer">
+            <p className="brk-booking-disclaimer">
               <CalendarCheck size={11} style={{ verticalAlign: -1, marginRight: 4 }} />
               {paymentRequired
                 ? (effectiveChoice === 'full'

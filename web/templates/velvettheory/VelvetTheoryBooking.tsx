@@ -6,7 +6,7 @@
  * The Lush Studio booking flow is ~1700 lines and uses its own scoped CSS
  * (LUSH_CSS, scoped to .lush-template). Rather than rewrite all that code,
  * we re-skin the embedded flow by:
- *   1. Injecting LUSH_CSS so all lush-booking-* classes resolve
+ *   1. Injecting LUSH_CSS so all brk-booking-* classes resolve
  *   2. Wrapping in .lush-template so the scoped rules match
  *   3. Overriding Lush's CSS variables with VT tokens (champagne gold,
  *      burgundy, Fraunces + Inter)
@@ -62,7 +62,7 @@ export default function VelvetTheoryBooking(props: Props) {
 // language — hairline gold borders, no shadows, flat surfaces, sharp edges.
 const VT_BOOKING_FRAME_CSS = `
 /* Full-width — sit directly on the VT page background. The booking's
-   internal max-width (.lush-booking-section { max-width: 860px }) keeps
+   internal max-width (.brk-booking-section { max-width: 860px }) keeps
    content readable. Top padding matches .vt-section (96px) so the Reserve
    tab has the same vertical rhythm as every other section. */
 .vt-booking-frame {
@@ -80,7 +80,7 @@ const VT_BOOKING_FRAME_CSS = `
 /* Auth widgets — 20px consistent with the rest of the site's small-gap
    rhythm. The 36px we had earlier felt too separated. */
 .vt-booking-inner.lush-template .lush-account-widget,
-.vt-booking-inner.lush-template .lush-booking-auth-thin {
+.vt-booking-inner.lush-template .brk-booking-auth-thin {
   margin-bottom: 20px !important;
 }
 
@@ -89,11 +89,11 @@ const VT_BOOKING_FRAME_CSS = `
    override was too low-contrast. */
 .vt-booking-inner.lush-template .lush-account-widget,
 .vt-booking-inner.lush-template .lush-account-widget *,
-.vt-booking-inner.lush-template .lush-booking-auth-thin,
-.vt-booking-inner.lush-template .lush-booking-auth-thin *,
-.vt-booking-inner.lush-template [class*="lush-booking-summary"],
-.vt-booking-inner.lush-template [class*="lush-booking-summary"] dt,
-.vt-booking-inner.lush-template [class*="lush-booking-summary"] dd {
+.vt-booking-inner.lush-template .brk-booking-auth-thin,
+.vt-booking-inner.lush-template .brk-booking-auth-thin *,
+.vt-booking-inner.lush-template [class*="brk-booking-summary"],
+.vt-booking-inner.lush-template [class*="brk-booking-summary"] dt,
+.vt-booking-inner.lush-template [class*="brk-booking-summary"] dd {
   color: var(--vt-fg) !important;
   opacity: 1 !important;
 }
@@ -103,24 +103,24 @@ const VT_BOOKING_FRAME_CSS = `
    text instead, kill Lush's per-element opacity dims (eyebrow 0.6, sub
    0.7), and give the arrow the same dark burgundy so all four spans read
    at full strength. */
-.vt-booking-inner.lush-template .lush-booking-account-cta,
-.vt-booking-inner.lush-template .lush-booking-account-cta *,
-.vt-booking-inner.lush-template .lush-booking-account-cta-body,
-.vt-booking-inner.lush-template .lush-booking-account-cta-eyebrow,
-.vt-booking-inner.lush-template .lush-booking-account-cta-title,
-.vt-booking-inner.lush-template .lush-booking-account-cta-sub,
-.vt-booking-inner.lush-template .lush-booking-account-cta-arrow {
+.vt-booking-inner.lush-template .brk-booking-account-cta,
+.vt-booking-inner.lush-template .brk-booking-account-cta *,
+.vt-booking-inner.lush-template .brk-booking-account-cta-body,
+.vt-booking-inner.lush-template .brk-booking-account-cta-eyebrow,
+.vt-booking-inner.lush-template .brk-booking-account-cta-title,
+.vt-booking-inner.lush-template .brk-booking-account-cta-sub,
+.vt-booking-inner.lush-template .brk-booking-account-cta-arrow {
   color: #2D0F19 !important;
   opacity: 1 !important;
 }
 /* On hover Lush flips the CTA to dark with white text — re-assert bone
    text in that state too. */
-.vt-booking-inner.lush-template .lush-booking-account-cta:hover,
-.vt-booking-inner.lush-template .lush-booking-account-cta:hover * {
+.vt-booking-inner.lush-template .brk-booking-account-cta:hover,
+.vt-booking-inner.lush-template .brk-booking-account-cta:hover * {
   color: var(--vt-fg) !important;
 }
 
-/* Step indicators. Lush uses three states on .lush-booking-step:
+/* Step indicators. Lush uses three states on .brk-booking-step:
      (no modifier) = upcoming
      .is-active    = current step
      .is-done      = completed past step
@@ -131,7 +131,7 @@ const VT_BOOKING_FRAME_CSS = `
    border, gold number) so it reads as "done but not current". */
 
 /* CURRENT step (is-active) — gold fill, burgundy number visible inside */
-.vt-booking-inner.lush-template .lush-booking-step.is-active .lush-booking-step-num {
+.vt-booking-inner.lush-template .brk-booking-step.is-active .brk-booking-step-num {
   background: var(--vt-accent) !important;
   color: var(--vt-bg) !important;
   border: 1px solid var(--vt-accent) !important;
@@ -141,14 +141,14 @@ const VT_BOOKING_FRAME_CSS = `
    transparent bg. The connecting line between this and the next step still
    gets the active gold treatment to show progress, but the pill itself
    reads as a completed waypoint, not the current focus. */
-.vt-booking-inner.lush-template .lush-booking-step.is-done .lush-booking-step-num {
+.vt-booking-inner.lush-template .brk-booking-step.is-done .brk-booking-step-num {
   background: transparent !important;
   color: var(--vt-accent) !important;
   border: 1px solid var(--vt-accent) !important;
 }
 
 /* UPCOMING steps — muted outline so the visual hierarchy is clear. */
-.vt-booking-inner.lush-template .lush-booking-step:not(.is-active):not(.is-done) .lush-booking-step-num {
+.vt-booking-inner.lush-template .brk-booking-step:not(.is-active):not(.is-done) .brk-booking-step-num {
   background: transparent !important;
   color: var(--vt-fg-muted) !important;
   border: 1px solid var(--vt-rule) !important;
@@ -156,45 +156,45 @@ const VT_BOOKING_FRAME_CSS = `
 
 /* Connecting line between steps — gold once previous is done, hairline
    otherwise. */
-.vt-booking-inner.lush-template .lush-booking-step + .lush-booking-step::before {
+.vt-booking-inner.lush-template .brk-booking-step + .brk-booking-step::before {
   background: var(--vt-rule) !important;
 }
-.vt-booking-inner.lush-template .lush-booking-step.is-done + .lush-booking-step::before {
+.vt-booking-inner.lush-template .brk-booking-step.is-done + .brk-booking-step::before {
   background: var(--vt-accent) !important;
 }
 
 /* Calendar — Lush day cells used too-faded text for unavailable dates and
    too-subtle styling for the selected date on the VT palette. Bump opacity
    on disabled, and make the selected day clearly readable. */
-.vt-booking-inner.lush-template [class*="lush-booking-cal"] button,
-.vt-booking-inner.lush-template [class*="lush-booking-day"] {
+.vt-booking-inner.lush-template [class*="brk-booking-cal"] button,
+.vt-booking-inner.lush-template [class*="brk-booking-day"] {
   color: var(--vt-fg) !important;
   opacity: 1 !important;
 }
-.vt-booking-inner.lush-template [class*="lush-booking-cal"] button[disabled],
-.vt-booking-inner.lush-template [class*="lush-booking-cal"] button[aria-disabled="true"],
-.vt-booking-inner.lush-template [class*="lush-booking-day"][disabled],
-.vt-booking-inner.lush-template [class*="lush-booking-day"][aria-disabled="true"],
-.vt-booking-inner.lush-template [class*="lush-booking-cal"] button[class*="disabled"],
-.vt-booking-inner.lush-template [class*="lush-booking-cal"] button[class*="unavailable"],
-.vt-booking-inner.lush-template [class*="lush-booking-day"][class*="disabled"],
-.vt-booking-inner.lush-template [class*="lush-booking-day"][class*="unavailable"] {
+.vt-booking-inner.lush-template [class*="brk-booking-cal"] button[disabled],
+.vt-booking-inner.lush-template [class*="brk-booking-cal"] button[aria-disabled="true"],
+.vt-booking-inner.lush-template [class*="brk-booking-day"][disabled],
+.vt-booking-inner.lush-template [class*="brk-booking-day"][aria-disabled="true"],
+.vt-booking-inner.lush-template [class*="brk-booking-cal"] button[class*="disabled"],
+.vt-booking-inner.lush-template [class*="brk-booking-cal"] button[class*="unavailable"],
+.vt-booking-inner.lush-template [class*="brk-booking-day"][class*="disabled"],
+.vt-booking-inner.lush-template [class*="brk-booking-day"][class*="unavailable"] {
   color: rgba(245,239,230,0.32) !important;
   opacity: 1 !important;
   cursor: not-allowed !important;
 }
-.vt-booking-inner.lush-template [class*="lush-booking-cal"] button[aria-selected="true"],
-.vt-booking-inner.lush-template [class*="lush-booking-day"][aria-selected="true"],
-.vt-booking-inner.lush-template [class*="lush-booking-cal"] button[class*="selected"],
-.vt-booking-inner.lush-template [class*="lush-booking-cal"] button[class*="active"],
-.vt-booking-inner.lush-template [class*="lush-booking-day"][class*="selected"],
-.vt-booking-inner.lush-template [class*="lush-booking-day"][class*="active"] {
+.vt-booking-inner.lush-template [class*="brk-booking-cal"] button[aria-selected="true"],
+.vt-booking-inner.lush-template [class*="brk-booking-day"][aria-selected="true"],
+.vt-booking-inner.lush-template [class*="brk-booking-cal"] button[class*="selected"],
+.vt-booking-inner.lush-template [class*="brk-booking-cal"] button[class*="active"],
+.vt-booking-inner.lush-template [class*="brk-booking-day"][class*="selected"],
+.vt-booking-inner.lush-template [class*="brk-booking-day"][class*="active"] {
   background: var(--vt-accent) !important;
   color: var(--vt-bg) !important;
   border-color: var(--vt-accent) !important;
   font-weight: 600 !important;
 }
-.vt-booking-inner.lush-template [class*="lush-booking-cal"] button[class*="today"] {
+.vt-booking-inner.lush-template [class*="brk-booking-cal"] button[class*="today"] {
   border: 1px solid var(--vt-accent) !important;
 }
 
@@ -226,13 +226,13 @@ const VT_BOOKING_FRAME_CSS = `
 /* Service cards, slots, addons — strip white-card vocabulary, replace with
    hairline gold borders on transparent backgrounds. Reads as ledger rows
    not floating cards. */
-.vt-booking-inner.lush-template [class*="lush-booking-card"],
-.vt-booking-inner.lush-template [class*="lush-booking-slot"],
-.vt-booking-inner.lush-template [class*="lush-booking-service"],
-.vt-booking-inner.lush-template [class*="lush-booking-addon"],
-.vt-booking-inner.lush-template [class*="lush-booking-summary"],
-.vt-booking-inner.lush-template [class*="lush-booking-staff"],
-.vt-booking-inner.lush-template [class*="lush-booking-cat"] {
+.vt-booking-inner.lush-template [class*="brk-booking-card"],
+.vt-booking-inner.lush-template [class*="brk-booking-slot"],
+.vt-booking-inner.lush-template [class*="brk-booking-service"],
+.vt-booking-inner.lush-template [class*="brk-booking-addon"],
+.vt-booking-inner.lush-template [class*="brk-booking-summary"],
+.vt-booking-inner.lush-template [class*="brk-booking-staff"],
+.vt-booking-inner.lush-template [class*="brk-booking-cat"] {
   background: transparent !important;
   border-color: rgba(201,168,118,0.28) !important;
   box-shadow: none !important;
@@ -269,9 +269,9 @@ const VT_BOOKING_FRAME_CSS = `
 }
 
 /* Eyebrow labels (e.g. "Your Appointment", "Step 1 of 5"). */
-.vt-booking-inner.lush-template .lush-booking-block-label,
-.vt-booking-inner.lush-template .lush-booking-eyebrow,
-.vt-booking-inner.lush-template .lush-booking-step-num {
+.vt-booking-inner.lush-template .brk-booking-block-label,
+.vt-booking-inner.lush-template .brk-booking-eyebrow,
+.vt-booking-inner.lush-template .brk-booking-step-num {
   font-family: 'Inter', sans-serif !important;
   font-size: 10px !important;
   letter-spacing: 0.32em !important;
@@ -280,9 +280,9 @@ const VT_BOOKING_FRAME_CSS = `
 }
 
 /* Primary CTA: gold fill, burgundy text, sharp, tracked uppercase. */
-.vt-booking-inner.lush-template .lush-booking-cta,
-.vt-booking-inner.lush-template button[class*="lush-booking-next"],
-.vt-booking-inner.lush-template button[class*="lush-booking-submit"] {
+.vt-booking-inner.lush-template .brk-booking-cta,
+.vt-booking-inner.lush-template button[class*="brk-booking-next"],
+.vt-booking-inner.lush-template button[class*="brk-booking-submit"] {
   background: var(--vt-accent) !important;
   color: var(--vt-bg) !important;
   border: 1px solid var(--vt-accent) !important;
@@ -294,14 +294,14 @@ const VT_BOOKING_FRAME_CSS = `
   font-size: 11px !important;
   padding: 16px 28px !important;
 }
-.vt-booking-inner.lush-template .lush-booking-cta:hover,
-.vt-booking-inner.lush-template button[class*="lush-booking-next"]:hover {
+.vt-booking-inner.lush-template .brk-booking-cta:hover,
+.vt-booking-inner.lush-template button[class*="brk-booking-next"]:hover {
   opacity: 0.88 !important;
 }
 
 /* Secondary/back buttons — hairline-bordered, gold text. */
-.vt-booking-inner.lush-template button[class*="lush-booking-back"],
-.vt-booking-inner.lush-template button[class*="lush-booking-secondary"] {
+.vt-booking-inner.lush-template button[class*="brk-booking-back"],
+.vt-booking-inner.lush-template button[class*="brk-booking-secondary"] {
   background: transparent !important;
   color: var(--vt-accent) !important;
   border: 1px solid var(--vt-accent) !important;
@@ -314,10 +314,10 @@ const VT_BOOKING_FRAME_CSS = `
 }
 
 /* Active/selected state on slots, services, addons — subtle gold fill. */
-.vt-booking-inner.lush-template [class*="lush-booking-slot"][class*="active"],
-.vt-booking-inner.lush-template [class*="lush-booking-slot"][class*="selected"],
-.vt-booking-inner.lush-template [class*="lush-booking-service"][class*="active"],
-.vt-booking-inner.lush-template [class*="lush-booking-service"][class*="selected"] {
+.vt-booking-inner.lush-template [class*="brk-booking-slot"][class*="active"],
+.vt-booking-inner.lush-template [class*="brk-booking-slot"][class*="selected"],
+.vt-booking-inner.lush-template [class*="brk-booking-service"][class*="active"],
+.vt-booking-inner.lush-template [class*="brk-booking-service"][class*="selected"] {
   border-color: var(--vt-accent) !important;
   background: rgba(201,168,118,0.10) !important;
 }
