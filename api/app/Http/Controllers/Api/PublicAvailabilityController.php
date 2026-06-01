@@ -21,7 +21,9 @@ class PublicAvailabilityController extends Controller
     {
         $slug = strtolower($slug);
 
-        if (! preg_match('/^[a-z0-9]+$/', $slug)) {
+        // Allow lowercase letters, numbers, and hyphens (dashed slugs
+        // like "the-fade-room" were previously rejected by [a-z0-9]+).
+        if (! preg_match('/^[a-z0-9-]+$/', $slug)) {
             return response()->json(['message' => 'Site not found'], 404);
         }
 

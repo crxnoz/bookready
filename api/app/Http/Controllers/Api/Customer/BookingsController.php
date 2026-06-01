@@ -381,7 +381,8 @@ class BookingsController extends Controller
         $customer = $request->user();
 
         $tenantSlug = strtolower($tenantSlug);
-        if (! preg_match('/^[a-z0-9]+$/', $tenantSlug)) {
+        // Allow dashes in tenant slugs (e.g. "the-fade-room").
+        if (! preg_match('/^[a-z0-9-]+$/', $tenantSlug)) {
             return response()->json(['message' => 'Booking not found'], 404);
         }
 

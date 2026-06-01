@@ -405,12 +405,12 @@ Route::prefix('v1')->group(function () {
             // reschedule. NO email verification required.
             Route::get   ('bookings',                                       [CustomerBookingsController::class, 'index']);
             Route::get   ('bookings/{tenant_slug}/{id}',                    [CustomerBookingsController::class, 'show'])
-                ->whereNumber('id')->where('tenant_slug', '[a-z0-9]+');
+                ->whereNumber('id')->where('tenant_slug', '[a-z0-9-]+');
             Route::post  ('bookings/{tenant_slug}/{id}/cancel',             [CustomerBookingsController::class, 'cancel'])
-                ->whereNumber('id')->where('tenant_slug', '[a-z0-9]+')
+                ->whereNumber('id')->where('tenant_slug', '[a-z0-9-]+')
                 ->middleware('throttle:10,1');
             Route::post  ('bookings/{tenant_slug}/{id}/reschedule',         [CustomerBookingsController::class, 'reschedule'])
-                ->whereNumber('id')->where('tenant_slug', '[a-z0-9]+')
+                ->whereNumber('id')->where('tenant_slug', '[a-z0-9-]+')
                 ->middleware('throttle:10,1');
 
             // Profile + Danger Zone DO require a verified email. Both

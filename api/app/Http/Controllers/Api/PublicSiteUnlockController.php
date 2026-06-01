@@ -23,7 +23,8 @@ class PublicSiteUnlockController extends Controller
     public function unlock(Request $request, string $slug): JsonResponse
     {
         $slug = strtolower($slug);
-        if (! preg_match('/^[a-z0-9]+$/', $slug)) {
+        // Allow dashes (e.g. "the-fade-room"). [a-z0-9]+ rejected them.
+        if (! preg_match('/^[a-z0-9-]+$/', $slug)) {
             return response()->json(['error' => 'not_found']);
         }
 

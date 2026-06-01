@@ -17,9 +17,12 @@ class PublicSiteController extends Controller
 {
     public function show(string $slug, Request $request): JsonResponse
     {
-        // Accept only lowercase letters and numbers — reject anything else
+        // Accept lowercase letters, numbers, and hyphens — reject anything
+        // else. Hyphens are valid in tenant slugs (e.g. "the-fade-room")
+        // and were accidentally rejected by the previous [a-z0-9]+ regex,
+        // which 404'd every dashed-subdomain tenant before lookup.
         $slug = strtolower($slug);
-        if (! preg_match('/^[a-z0-9]+$/', $slug)) {
+        if (! preg_match('/^[a-z0-9-]+$/', $slug)) {
             return response()->json(['message' => 'Site not found'], 404);
         }
 

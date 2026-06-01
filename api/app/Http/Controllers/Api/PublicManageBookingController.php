@@ -27,7 +27,8 @@ class PublicManageBookingController extends Controller
     private function resolveTenant(string $slug): ?Tenant
     {
         $slug = strtolower($slug);
-        if (! preg_match('/^[a-z0-9]+$/', $slug)) return null;
+        // Allow dashes (e.g. "the-fade-room"). [a-z0-9]+ rejected them.
+        if (! preg_match('/^[a-z0-9-]+$/', $slug)) return null;
         return Tenant::find($slug);
     }
 

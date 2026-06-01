@@ -36,7 +36,9 @@ class PublicBookingController extends Controller
     {
         $slug = strtolower($slug);
 
-        if (! preg_match('/^[a-z0-9]+$/', $slug)) {
+        // Allow dashes in slugs (e.g. "the-fade-room"). The previous
+        // [a-z0-9]+ regex 404'd every dashed-subdomain tenant.
+        if (! preg_match('/^[a-z0-9-]+$/', $slug)) {
             return response()->json(['message' => 'Site not found'], 404);
         }
 
