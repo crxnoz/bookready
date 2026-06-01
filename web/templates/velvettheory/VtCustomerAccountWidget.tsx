@@ -7,5 +7,5 @@
  * VelvetTheoryBooking.tsx.
  */
 
-// M2a — source moved to _shared/booking.
-export { default } from '../_shared/booking/LushCustomerAccountWidget'
+// Phase 0 step 2: source lives in @bkrdy/platform.
+export { CustomerAccountWidget as default } from '@bkrdy/platform/booking'

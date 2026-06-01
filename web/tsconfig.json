@@ -13,7 +13,12 @@
     "jsx": "preserve",
     "incremental": true,
     "plugins": [{ "name": "next" }],
-    "paths": { "@/*": ["./*"] }
+    "paths": {
+      "@/*": ["./*"],
+      "@bkrdy/platform": ["./packages/platform/src/index"],
+      "@bkrdy/platform/booking": ["./packages/platform/src/booking/index"],
+      "@bkrdy/platform/*": ["./packages/platform/src/*"]
+    }
   },
   "include": [
     "next-env.d.ts",

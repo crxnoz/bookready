@@ -102,9 +102,13 @@ function SparklesSolid({ size = 22 }: { size?: number }) {
 // Names retain the Lush* prefix for one release; M2b renames them to
 // Platform*/Customer* and introduces CSS variable theming hooks so
 // TheFadeRoom can also wrap the same primitives.
-import LushStudioBooking from '../_shared/booking/LushStudioBooking'
-import LushCustomerAccountWidget from '../_shared/booking/LushCustomerAccountWidget'
-import { LushCustomerAuthProvider } from '../_shared/booking/LushCustomerAuth'
+// M2a/M2b → Phase 0 step 2: booking primitives + CSS now live in @bkrdy/platform.
+import {
+  PlatformBookingFlow as LushStudioBooking,
+  CustomerAuthProvider as LushCustomerAuthProvider,
+  CustomerAccountWidget as LushCustomerAccountWidget,
+  PLATFORM_BOOKING_CSS as LUSH_CSS,
+} from '@bkrdy/platform/booking'
 import type { PublicSite, Service } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 
@@ -1460,9 +1464,9 @@ function Footer({
 
 // ── Scoped CSS ────────────────────────────────────────────────────────────────
 
-// M2b — LUSH_CSS extracted to web/templates/_shared/booking/lushBookingCss.ts.
-// Re-exported here so consumers that imported it from LushStudioTemplate
-// (notably the Velvet Theory booking shim) keep working without a path change.
-// New consumers should import from the shared module directly.
-import { LUSH_CSS } from "../_shared/booking/lushBookingCss"
+// Phase 0 step 2: LUSH_CSS is imported at the top alongside the other
+// booking primitives and used as <style>{LUSH_CSS}</style> below. The
+// re-export here keeps the existing public name available to any
+// in-flight consumer that imports `{ LUSH_CSS } from './LushStudioTemplate'`.
+// M2c.3 retires the LUSH_CSS alias once CSS variable theming lands.
 export { LUSH_CSS }

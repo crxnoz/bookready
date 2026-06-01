@@ -22,7 +22,7 @@
 
 import type { PublicSite } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
-import { tokensToCss } from '../_shared/tokens'
+import { tokensToCss } from '@bkrdy/platform'
 
 interface Props {
   site: PublicSite

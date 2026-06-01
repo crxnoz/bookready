@@ -142,12 +142,17 @@ Every template's booking flow must:
 The simplest way to satisfy all ten requirements is to wrap the platform's `PlatformBookingFlow`:
 
 ```tsx
-import { PlatformBookingFlow, CustomerAuthProvider, PLATFORM_BOOKING_CSS } from '@bkrdy/platform'
-import { LUSH_CSS } from '@bkrdy/platform/booking-css'
+import {
+  PlatformBookingFlow,
+  CustomerAuthProvider,
+  PLATFORM_BOOKING_CSS,
+} from '@bkrdy/platform/booking'
 
-// (M2c.1 today: classes are .brk-booking-*; we ship the booking flow CSS
-// under that prefix. Wrap the flow in a div with a scoping class that
-// applies your color/font variables.)
+// Today: classes are .brk-booking-* (M2c.1 done). The platform CSS
+// still scopes rules under .lush-template for one more release —
+// wrap your booking in <div className="lush-template my-template">
+// for now. M2c.3 drops the .lush-template qualifier so you can use
+// any scoping class.
 
 export default function CoolSalonBooking(props: PlatformBookingFlowProps) {
   return (

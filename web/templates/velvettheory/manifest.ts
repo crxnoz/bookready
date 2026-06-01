@@ -1,4 +1,4 @@
-import type { TemplateManifest } from '../_shared/manifest'
+import type { TemplateManifest } from '@bkrdy/platform'
 
 /**
  * Velvet Theory — editorial luxe burgundy/gold template.

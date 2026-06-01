@@ -1,4 +1,4 @@
-import type { TemplateManifest } from '../_shared/manifest'
+import type { TemplateManifest } from '@bkrdy/platform'
 
 /**
  * Lush Studio — feminine cream/sage template.

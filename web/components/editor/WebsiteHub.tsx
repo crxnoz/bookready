@@ -70,7 +70,7 @@ import {
   supportsHeaderField,
   supportsFooterField,
   type TemplateManifest,
-} from '@/templates/_shared'
+} from '@bkrdy/platform'
 
 // ── Types & constants ────────────────────────────────────────────────────────
 

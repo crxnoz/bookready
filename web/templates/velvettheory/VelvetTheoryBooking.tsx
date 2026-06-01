@@ -18,12 +18,15 @@
  * max-width) so it reads as a native VT chapter, not a foreign embed.
  */
 
-// M2b — booking flow, auth, and CSS all live in the shared platform
-// module now. Class rename to .brk-booking-* + CSS variable theming
-// (--brk-booking-*) is M2c.
-import LushStudioBooking from '../_shared/booking/LushStudioBooking'
-import { LushCustomerAuthProvider } from '../_shared/booking/LushCustomerAuth'
-import { LUSH_CSS } from '../_shared/booking/lushBookingCss'
+// Phase 0 step 2: booking primitives + CSS now live in @bkrdy/platform.
+// PlatformBookingFlow, CustomerAuthProvider, and PLATFORM_BOOKING_CSS
+// are the canonical exports; the Lush-prefixed names below are historical
+// aliases scheduled for cleanup in M2c.
+import {
+  PlatformBookingFlow as LushStudioBooking,
+  CustomerAuthProvider as LushCustomerAuthProvider,
+  PLATFORM_BOOKING_CSS as LUSH_CSS,
+} from '@bkrdy/platform/booking'
 import type {
   AvailabilityData, BookingQuestion, PublicPaymentSettings,
   PublicStaffMember, Service, ServiceAddon, ServiceCategory,

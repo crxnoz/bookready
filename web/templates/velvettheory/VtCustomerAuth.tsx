@@ -8,5 +8,5 @@
  * we'll fork this too.
  */
 
-// M2a — source moved to _shared/booking.
-export { useLushCustomerAuth as useVtCustomerAuth } from '../_shared/booking/LushCustomerAuth'
+// Phase 0 step 2: source lives in @bkrdy/platform.
+export { useCustomerAuth as useVtCustomerAuth } from '@bkrdy/platform/booking'

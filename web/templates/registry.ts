@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
 import type { PublicSite } from '@/lib/types'
-import type { TemplateManifest } from './_shared/manifest'
+import type { TemplateManifest } from '@bkrdy/platform'
 
 export interface TemplateProps {
   site: PublicSite

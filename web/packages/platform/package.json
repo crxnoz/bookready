@@ -1,0 +1,37 @@
+{
+  "name": "@bkrdy/platform",
+  "version": "0.1.0",
+  "description": "BookReady template marketplace platform — manifest types, design tokens, PlatformBookingFlow, CustomerAuth, and the shared CSS that every marketplace template builds against.",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./booking": {
+      "types": "./src/booking/index.ts",
+      "default": "./src/booking/index.ts"
+    },
+    "./booking/lushBookingCss": {
+      "types": "./src/booking/lushBookingCss.ts",
+      "default": "./src/booking/lushBookingCss.ts"
+    },
+    "./manifest.schema.json": "./src/manifest.schema.json",
+    "./AUTHORING.md": "./AUTHORING.md"
+  },
+  "peerDependencies": {
+    "react": "^18 || ^19"
+  },
+  "files": [
+    "src",
+    "AUTHORING.md",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "_notes": "This package is consumed by the BookReady web app via a TypeScript path alias (see web/tsconfig.json) — NOT installed via npm yet. Phase 1 of the marketplace plan publishes it to npm so 3rd-party creators can `npm install @bkrdy/platform`. The 'exports' map above is the published contract creators will see; we author against it now so the cutover is transparent."
+}
