@@ -37,7 +37,25 @@ use Laravel\Socialite\Facades\Socialite;
  */
 class GoogleAuthController extends Controller
 {
-    private const APP_BASE          = 'https://app.bkrdy.me';
+    /**
+     * The editor is served from app.bkrdy.me AND the bkrdy.me apex. If a
+     * user kicks off Google sign-in from the apex, we want to bounce them
+     * BACK to the apex post-callback instead of stranding them on the app
+     * subdomain. The base for each request comes from the redirect call's
+     * Referer header (or an explicit ?app_base= query param) and is signed
+     * into the OAuth state envelope so the callback can read it back out
+     * without trusting the user-controlled URL.
+     *
+     * Any base not in this allowlist falls back to DEFAULT_APP_BASE — an
+     * attacker can't redirect tokens to evil.com by mutating the envelope
+     * because the base is HMAC-signed alongside intent/payload/nonce/exp.
+     */
+    private const APP_BASES = [
+        'https://app.bkrdy.me',
+        'https://bkrdy.me',
+        'https://app.daysbookings.site',
+    ];
+    private const DEFAULT_APP_BASE  = 'https://app.bkrdy.me';
     private const STATE_TTL_SECONDS = 600;   // 10 minutes
     private const CODE_TTL_SECONDS  = 60;    // exchange window
 
@@ -49,14 +67,18 @@ class GoogleAuthController extends Controller
     {
         $intent  = $request->query('intent', 'signin');
         $payload = (string) $request->query('payload', '');
+        // Detect where the user kicked the flow off from (apex vs app
+        // subdomain) so we can land them back on the same surface after
+        // the Google round-trip.
+        $base    = $this->detectBase($request);
 
         if (! $this->credentialsConfigured()) {
-            return $this->errorBack($intent, 'Google sign-in is not configured. Contact support.');
+            return $this->errorBack($intent, 'Google sign-in is not configured. Contact support.', $base);
         }
 
         // Phase S4 — mint signed state with a single-use nonce. The nonce
         // is parked in cache and burned on callback to defeat replay.
-        $state = $this->mintState($intent === 'signup' ? 'signup' : 'signin', $payload);
+        $state = $this->mintState($intent === 'signup' ? 'signup' : 'signin', $payload, $base);
 
         return Socialite::driver('google')
             ->stateless()
@@ -71,6 +93,46 @@ class GoogleAuthController extends Controller
             ->redirect();
     }
 
+    /**
+     * Pick the base URL to land the user on post-callback. Prefers an
+     * explicit ?app_base= query param (frontend can set it for certainty),
+     * falls back to the Origin/Referer header from the kickoff request,
+     * defaults to DEFAULT_APP_BASE.
+     */
+    private function detectBase(Request $request): string
+    {
+        $explicit = (string) $request->query('app_base', '');
+        if ($explicit !== '') {
+            return $this->resolveBase($explicit);
+        }
+
+        foreach (['Origin', 'Referer'] as $header) {
+            $value = $request->headers->get($header);
+            if (! is_string($value) || $value === '') continue;
+            $parts = parse_url($value);
+            if (! is_array($parts) || empty($parts['scheme']) || empty($parts['host'])) continue;
+            $candidate = rtrim(strtolower($parts['scheme'] . '://' . $parts['host']), '/');
+            if (in_array($candidate, self::APP_BASES, true)) return $candidate;
+        }
+
+        return self::DEFAULT_APP_BASE;
+    }
+
+    /**
+     * Match a candidate base against APP_BASES. Anything not on the
+     * allowlist becomes DEFAULT_APP_BASE so a tampered envelope or
+     * malformed Referer can never redirect the auth payload to a
+     * third-party origin.
+     */
+    private function resolveBase(?string $candidate): string
+    {
+        if (! is_string($candidate) || $candidate === '') return self::DEFAULT_APP_BASE;
+        $normalized = rtrim(strtolower(trim($candidate)), '/');
+        return in_array($normalized, self::APP_BASES, true)
+            ? $normalized
+            : self::DEFAULT_APP_BASE;
+    }
+
     public function callback(Request $request): RedirectResponse
     {
         // Decode + verify our signed state envelope FIRST. Forged or
@@ -78,21 +140,25 @@ class GoogleAuthController extends Controller
         $stateRaw = (string) $request->query('state', '');
         $envelope = $this->verifyState($stateRaw);
         $intent   = $envelope['intent'] ?? 'signin';
+        // Pull the kickoff surface out of the envelope. resolveBase()
+        // returns DEFAULT_APP_BASE if the envelope is missing/invalid,
+        // so even errorBack on a tampered state lands somewhere sane.
+        $base     = $this->resolveBase($envelope['base'] ?? null);
 
         if (! $this->credentialsConfigured()) {
-            return $this->errorBack($intent, 'Google sign-in is not configured. Contact support.');
+            return $this->errorBack($intent, 'Google sign-in is not configured. Contact support.', $base);
         }
 
         // Surface Google's error param (e.g. user clicked "Cancel") cleanly.
         if ($request->query('error')) {
-            return $this->errorBack($intent, (string) $request->query('error'));
+            return $this->errorBack($intent, (string) $request->query('error'), $base);
         }
 
         // Short-circuit on missing code — happens when someone hits the
         // callback URL directly (refresh, bookmark, bot). Avoids a noisy
         // Socialite exception + WARN log for non-error traffic.
         if (! $request->filled('code')) {
-            return $this->errorBack($intent, 'Sign-in didn’t complete. Please start again.');
+            return $this->errorBack($intent, 'Sign-in didn’t complete. Please start again.', $base);
         }
 
         // Phase S4 — reject when state is missing, tampered, replayed, or
@@ -104,37 +170,38 @@ class GoogleAuthController extends Controller
                 'user_agent' => $request->userAgent(),
                 'state_len'  => strlen($stateRaw),
             ]);
-            return $this->errorBack($intent, 'Sign-in didn’t complete. Please start again.');
+            return $this->errorBack($intent, 'Sign-in didn’t complete. Please start again.', $base);
         }
 
         try {
             $google = Socialite::driver('google')->stateless()->user();
         } catch (\Throwable $e) {
             Log::warning('Google OAuth callback failed', ['error' => $e->getMessage()]);
-            return $this->errorBack($intent, 'Could not complete Google sign-in.');
+            return $this->errorBack($intent, 'Could not complete Google sign-in.', $base);
         }
 
         $email = strtolower((string) ($google->getEmail() ?? ''));
         if ($email === '') {
-            return $this->errorBack($intent, 'Google did not share an email.');
+            return $this->errorBack($intent, 'Google did not share an email.', $base);
         }
 
         $existing = User::where('email', $email)->first();
 
         if ($intent === 'signup') {
-            return $this->handleSignup($google, $email, $existing, $envelope['payload'] ?? '');
+            return $this->handleSignup($google, $email, $existing, $envelope['payload'] ?? '', $base);
         }
 
-        return $this->handleSignin($google, $email, $existing);
+        return $this->handleSignin($google, $email, $existing, $base);
     }
 
     // ── Sign-in (existing account) ───────────────────────────────────────
 
-    private function handleSignin($google, string $email, ?User $user): RedirectResponse
+    private function handleSignin($google, string $email, ?User $user, string $base): RedirectResponse
     {
         if (! $user) {
             return $this->errorBack('signin',
-                'No BookReady account uses this Google email. Sign up first.'
+                'No BookReady account uses this Google email. Sign up first.',
+                $base,
             );
         }
 
@@ -146,16 +213,17 @@ class GoogleAuthController extends Controller
             $user->save();
         }
 
-        return $this->finishWithUser($user, 'google-oauth');
+        return $this->finishWithUser($user, 'google-oauth', $base);
     }
 
     // ── Sign-up (new tenant) ─────────────────────────────────────────────
 
-    private function handleSignup($google, string $email, ?User $existing, string $rawPayload): RedirectResponse
+    private function handleSignup($google, string $email, ?User $existing, string $rawPayload, string $base): RedirectResponse
     {
         if ($existing) {
             return $this->errorBack('signup',
-                'An account already exists for this Google email. Sign in instead.'
+                'An account already exists for this Google email. Sign in instead.',
+                $base,
             );
         }
 
@@ -186,12 +254,13 @@ class GoogleAuthController extends Controller
                 'email'   => $email,
                 'name'    => (string) ($google->getName() ?? ''),
             ]);
-            return redirect()->away(self::APP_BASE . '/register/complete?' . $qs);
+            return redirect()->away($base . '/register/complete?' . $qs);
         }
 
         if (strlen($businessName) > 100) {
             return $this->errorBack('signup',
-                'Business name is too long (max 100 characters).'
+                'Business name is too long (max 100 characters).',
+                $base,
             );
         }
 
@@ -219,7 +288,7 @@ class GoogleAuthController extends Controller
                 'email' => $email,
                 'error' => $e->getMessage(),
             ]);
-            return $this->errorBack('signup', 'Could not finish creating your workspace. Try again.');
+            return $this->errorBack('signup', 'Could not finish creating your workspace. Try again.', $base);
         }
 
         // Phase S6 part 2 — Google verified the email, no signup verify
@@ -235,7 +304,7 @@ class GoogleAuthController extends Controller
             businessName: $businessName,
         );
 
-        return $this->finishWithUser($owner, 'google-oauth-signup');
+        return $this->finishWithUser($owner, 'google-oauth-signup', $base);
     }
 
     // ── Deferred-name signup completion ──────────────────────────────────
@@ -390,7 +459,7 @@ class GoogleAuthController extends Controller
 
     // ── Shared finalization ──────────────────────────────────────────────
 
-    private function finishWithUser(User $user, string $tokenName): RedirectResponse
+    private function finishWithUser(User $user, string $tokenName, string $base): RedirectResponse
     {
         $token = $user->createToken(
             $tokenName,
@@ -419,30 +488,34 @@ class GoogleAuthController extends Controller
             'response' => $response,
         ], self::CODE_TTL_SECONDS);
 
-        return redirect()->away(self::APP_BASE . '/auth/google/complete?code=' . $code);
+        return redirect()->away($base . '/auth/google/complete?code=' . $code);
     }
 
     // ── State signing / verification ─────────────────────────────────────
 
     /**
      * Mint a signed state envelope:
-     *   base64url( JSON({ intent, payload, nonce, exp, sig }) )
-     * where sig = HMAC-SHA256(intent + "|" + payload + "|" + nonce + "|" + exp, APP_KEY)
+     *   base64url( JSON({ intent, payload, base, nonce, exp, sig }) )
+     * where sig = HMAC-SHA256(intent + "|" + payload + "|" + base + "|" + nonce + "|" + exp, APP_KEY)
      *
      * The nonce is stored in cache for STATE_TTL_SECONDS and burned on
-     * verify so a captured state cannot be replayed.
+     * verify so a captured state cannot be replayed. `base` is the
+     * post-callback return URL captured from the kickoff request's Origin
+     * or Referer; signing it prevents tampering that could redirect tokens
+     * to a third-party origin.
      */
-    private function mintState(string $intent, string $payload): string
+    private function mintState(string $intent, string $payload, string $base): string
     {
         $nonce = Str::random(32);
         $exp   = time() + self::STATE_TTL_SECONDS;
-        $sig   = $this->signState($intent, $payload, $nonce, $exp);
+        $sig   = $this->signState($intent, $payload, $base, $nonce, $exp);
 
         Cache::put("google_oauth_nonce:{$nonce}", true, self::STATE_TTL_SECONDS);
 
         $json = json_encode([
             'intent'  => $intent,
             'payload' => $payload,
+            'base'    => $base,
             'nonce'   => $nonce,
             'exp'     => $exp,
             'sig'     => $sig,
@@ -454,7 +527,7 @@ class GoogleAuthController extends Controller
      * Verify + consume a state envelope. Returns the decoded envelope on
      * success or `[]` when the state is missing/tampered/expired/replayed.
      *
-     * @return array{intent?: string, payload?: string, nonce?: string}
+     * @return array{intent?: string, payload?: string, base?: string, nonce?: string}
      */
     private function verifyState(string $stateRaw): array
     {
@@ -469,13 +542,14 @@ class GoogleAuthController extends Controller
 
         $intent  = (string) ($decoded['intent']  ?? '');
         $payload = (string) ($decoded['payload'] ?? '');
+        $base    = (string) ($decoded['base']    ?? '');
         $nonce   = (string) ($decoded['nonce']   ?? '');
         $exp     = (int)    ($decoded['exp']     ?? 0);
         $sig     = (string) ($decoded['sig']     ?? '');
 
         if ($nonce === '' || $sig === '' || $exp <= time()) return [];
 
-        $expected = $this->signState($intent, $payload, $nonce, $exp);
+        $expected = $this->signState($intent, $payload, $base, $nonce, $exp);
         if (! hash_equals($expected, $sig)) return [];
 
         // Single-use: pop the nonce. If it's already gone, this is a replay.
@@ -486,14 +560,15 @@ class GoogleAuthController extends Controller
         return [
             'intent'  => $intent,
             'payload' => $payload,
+            'base'    => $base,
             'nonce'   => $nonce,
         ];
     }
 
-    private function signState(string $intent, string $payload, string $nonce, int $exp): string
+    private function signState(string $intent, string $payload, string $base, string $nonce, int $exp): string
     {
         $key = (string) config('app.key');
-        return hash_hmac('sha256', "{$intent}|{$payload}|{$nonce}|{$exp}", $key);
+        return hash_hmac('sha256', "{$intent}|{$payload}|{$base}|{$nonce}|{$exp}", $key);
     }
 
     /** @return array<string, mixed> */
@@ -506,10 +581,10 @@ class GoogleAuthController extends Controller
         return is_array($decoded) ? $decoded : [];
     }
 
-    private function errorBack(string $intent, string $message): RedirectResponse
+    private function errorBack(string $intent, string $message, string $base = self::DEFAULT_APP_BASE): RedirectResponse
     {
         $dest = $intent === 'signup' ? '/register' : '/login';
-        return redirect()->away(self::APP_BASE . $dest . '?google_error=' . urlencode($message));
+        return redirect()->away($base . $dest . '?google_error=' . urlencode($message));
     }
 
     /**
