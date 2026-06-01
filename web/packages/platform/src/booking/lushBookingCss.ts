@@ -1259,52 +1259,20 @@ export const LUSH_CSS = `
 /* ── About ── */
 .lush-about-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:12px 20px 58px; }
 
-/* About hero: a rounded 4-point star window that masks the about
-   image into the spark shape, with the heading wrap stacked BELOW
-   the star (heading-wrap pulled up slightly so it gently overlaps
-   the star's bottom edge). When no about image is set, the star
-   falls back to a solid sage fill (rendered server-side). */
+/* About hero: type-only treatment now (the spark image was removed).
+   Centered Molle eyebrow + big italic heading + small DM Mono
+   tagline below. Sets up a quiet editorial entry that we can drop a
+   new image treatment back into later if/when one is designed. */
 .lush-about-hero {
   display:flex; flex-direction:column; align-items:center;
-  padding:0 16px 24px;
+  padding:24px 16px 24px;
   margin-bottom:24px;
-}
-.lush-about-star {
-  width:min(86vw, 320px);
-  aspect-ratio:1;
-  position:relative;
-  flex-shrink:0;
-  filter:drop-shadow(0 12px 28px rgba(14,17,17,0.18));
-  isolation:isolate;
-}
-/* Real <img> clipped to the spark via the shared SVG clip-path. Using
-   object-fit:cover + object-position:50% 30% biases the crop UPWARD so
-   the face / focal point of a portrait stays visible after the spark
-   shape eats the bottom corners. The previous SVG <image> approach
-   center-cropped without override and the subject often disappeared
-   into the bottom indent. */
-.lush-about-star-img {
-  width:100%; height:100%; display:block;
-  object-fit:cover;
-  object-position:50% 30%;
-  clip-path:url(#lush-about-star-clip);
-  background:#ECE7DD;
-}
-/* Solid sage fallback for tenants who haven't set about.images[0]. */
-.lush-about-star-fallback {
-  width:100%; height:100%; display:block;
-  background:var(--lush-pink);
-  clip-path:url(#lush-about-star-clip);
 }
 .lush-about-heading-wrap {
   position:relative; z-index:2;
   text-align:center;
   display:flex; flex-direction:column; align-items:center;
-  /* Slight negative margin so the headline overlaps the bottom of
-     the star — gives the "heading sits on top of it" depth the
-     design called for, even though the heading itself is below. */
-  margin-top:-22px;
-  max-width:min(86vw, 320px);
+  max-width:min(86vw, 360px);
 }
 /* Small eyebrow kicker on top, big heading underneath. */
 .lush-about-backdrop {
@@ -1774,10 +1742,13 @@ export const LUSH_CSS = `
   .lush-ba-card { width:205px; height:205px; }
   .lush-ba-card--before { left:0; top:64px; }
   .lush-ba-card--after  { right:0; top:128px; left:auto; }
-  .lush-about-section { min-height:auto; padding:80px 40px 110px; display:grid; grid-template-columns:0.95fr 1.05fr; gap:64px; align-items:center; }
-  .lush-about-hero { padding:0; margin-bottom:0; }
-  .lush-about-star { width:min(40vw, 480px); }
-  .lush-about-heading-wrap { max-width:380px; margin-top:-30px; }
+  /* Without the spark image, About becomes a centered editorial column —
+     hero (heading), pull quote, body, signature — all stacked. Caps
+     width at ~640px so it reads like a letter, not a column-stretched
+     body. */
+  .lush-about-section { min-height:auto; padding:80px 40px 110px; max-width:680px; margin:0 auto; display:block; }
+  .lush-about-hero { padding:24px 0 36px; margin-bottom:0; }
+  .lush-about-heading-wrap { max-width:480px; }
   .lush-about-backdrop { font-size:clamp(32px,3.5vw,56px); text-shadow:3px 3px 0 rgba(14,17,17,0.18); }
   .lush-about-heading-wrap h2 { font-size:clamp(72px,7vw,108px); text-shadow:5px 5px 0 rgba(14,17,17,0.18); margin-top:-20px; }
   .lush-about-tagline { font-size:13px; margin-top:18px; }

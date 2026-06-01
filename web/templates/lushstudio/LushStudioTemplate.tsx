@@ -1094,42 +1094,12 @@ function AboutPanel({
 
   return (
     <section className="lush-about-section">
-      {/* Hero: rounded 4-point star window that masks the tenant
-          about-image (about.images[0]) into the spark shape. The
-          heading wrap sits BELOW the star (with a slight negative
-          margin-top so it gently overlaps the star's bottom edge).
-          Tagline below the heading is rendered in DM Mono all caps
-          as a small typographic accent. */}
+      {/* Hero: type-only treatment. The image has been removed (the
+          spark mask was hard to get right at small sizes); section now
+          opens with a centered Molle eyebrow + big italic heading +
+          DM Mono tagline. Cleaner editorial entry, leaves room for a
+          future treatment when one is designed. */}
       <div className="lush-about-hero">
-        {/* Star window. The clip path is defined ONCE in an inline SVG
-            <defs> with clipPathUnits=objectBoundingBox so it scales to
-            the element regardless of size; the image (or fallback fill)
-            is a plain DOM element that receives clip-path:url(#…) +
-            CSS object-fit / object-position. This is cleaner than the
-            old SVG <image href> approach because it lets us bias the
-            crop with object-position (faces want the subject biased up
-            so eyes stay in-frame after clipping). */}
-        <svg width="0" height="0" aria-hidden="true" focusable="false" style={{ position: 'absolute' }}>
-          <defs>
-            <clipPath id="lush-about-star-clip" clipPathUnits="objectBoundingBox" transform="rotate(35 0.5 0.5)">
-              <path d="M0.5,0.1 C0.6,0.1 0.95,0.4 0.95,0.5 C0.95,0.6 0.6,0.9 0.5,0.9 C0.4,0.9 0.05,0.6 0.05,0.5 C0.05,0.4 0.4,0.1 0.5,0.1 Z" />
-            </clipPath>
-          </defs>
-        </svg>
-        <div className="lush-about-star" aria-hidden="true">
-          {about?.images?.[0] ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              className="lush-about-star-img"
-              src={about.images[0]}
-              alt=""
-              loading="lazy"
-              decoding="async"
-            />
-          ) : (
-            <div className="lush-about-star-fallback" />
-          )}
-        </div>
         <div className="lush-about-heading-wrap">
           <div className="lush-about-backdrop">{backdropText}</div>
           <h2>{heading}</h2>

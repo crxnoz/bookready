@@ -1365,13 +1365,10 @@ const VT_CSS = `
   opacity: 0.85;
 }
 
-/* ── Reviews — editorial testimonials with real presence.
-       Each review opens with an oversized gold serif quote glyph
-       at the top-left, then italic Fraunces body copy, then a
-       tight uppercase author + location attribution. Hairline gold
-       dividers between quotes (no cards — keeps VT's flat language).
-       On wider screens reviews flow as a 2-column grid so the
-       section earns its place in the page rhythm. */
+/* ── Reviews — editorial testimonials, no quotation glyphs.
+       Italic Fraunces body, uppercase author + location attribution,
+       hairline gold dividers between quotes. 2-column grid on wider
+       screens so the section earns its place in the page rhythm. */
 .vt-reviews {
   display: grid;
   grid-template-columns: 1fr;
@@ -1382,30 +1379,14 @@ const VT_CSS = `
 }
 .vt-review {
   position: relative;
-  padding: 40px 0 28px;
+  padding: 32px 0 28px;
   margin: 0;
   border-top: 1px solid var(--vt-rule);
 }
-.vt-review:first-child { border-top: none; padding-top: 12px; }
+.vt-review:first-child { border-top: none; padding-top: 8px; }
 @media (min-width: 720px) {
-  .vt-review:nth-child(2) { border-top: none; padding-top: 12px; }
+  .vt-review:nth-child(2) { border-top: none; padding-top: 8px; }
 }
-/* Big serif opening quote glyph in gold — anchors each review
-   visually as the eye lands. */
-.vt-review::before {
-  content: "\\201C";
-  position: absolute;
-  top: 12px; left: -4px;
-  font-family: var(--vt-serif);
-  font-style: italic;
-  font-size: 64px;
-  line-height: 0.6;
-  color: #C9A876;
-  pointer-events: none;
-  user-select: none;
-}
-.vt-review:first-child::before,
-.vt-review:nth-child(2)::before { top: -8px; }
 .vt-review-stars {
   display: inline-block;
   margin: 0 0 12px;
@@ -1416,7 +1397,6 @@ const VT_CSS = `
 }
 .vt-review-body {
   margin: 0 0 18px;
-  padding-left: 28px;
   font-family: var(--vt-serif);
   font-size: 19px;
   line-height: 1.55;
@@ -1427,7 +1407,6 @@ const VT_CSS = `
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  padding-left: 28px;
   font-family: var(--vt-body);
   font-size: 10px;
   letter-spacing: 0.22em;
