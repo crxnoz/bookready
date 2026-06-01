@@ -1,5 +1,7 @@
 # Authoring BookReady Templates
 
+> ⏸ **Marketplace work paused.** See [MARKETPLACE_TODO.md](./MARKETPLACE_TODO.md) for the resume notes, the engineering queue, and the legal/tax checklist that's gating launch. This contract is stable and ready when work resumes.
+
 This document is the contract every marketplace template must satisfy. It is also a practical guide for someone building a template from scratch. Read it in order; each section builds on the previous one.
 
 ## What a template is
