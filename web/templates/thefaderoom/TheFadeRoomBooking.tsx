@@ -1318,8 +1318,12 @@ export default function TheFadeRoomBooking({
             {/* SMS consent — only shown when a phone is provided.
                 Unchecked by default. Required for TCR compliance:
                 outbound appointment SMS only goes to customers who
-                have explicitly opted in PER booking. Consent is
-                never a condition of completing the booking. */}
+                have explicitly opted in PER booking. The label is
+                the canonical TCR / 10DLC consent string — exact
+                wording referenced in the Telnyx campaign description,
+                so reviewers can verify the deployed UI matches the
+                claim on file. Consent is never a condition of
+                completing the booking. */}
             {phone.trim() !== '' && (
               <label className="tfr-booking-sms-consent">
                 <input
@@ -1328,8 +1332,14 @@ export default function TheFadeRoomBooking({
                   onChange={e => setSmsConsent(e.target.checked)}
                 />
                 <span>
-                  Send me SMS reminders about my appointment. Msg &amp; data
-                  rates may apply. Reply STOP to unsubscribe.
+                  Send me SMS reminders for this appointment. Msg &amp;
+                  data rates may apply. Msg frequency varies. Reply STOP
+                  to opt out, HELP for help. View our{' '}
+                  <a
+                    href="https://app.bkrdy.me/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >Privacy Policy</a>.
                 </span>
               </label>
             )}

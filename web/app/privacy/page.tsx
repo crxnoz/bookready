@@ -627,6 +627,64 @@ export default function PrivacyPage() {
         information will not be shared with third parties.
       </p>
 
+      <h3>SMS Communications and 10DLC Compliance</h3>
+      <p>
+        <strong><u>What SMS we send.</u></strong>{' '}
+        BookReady sends transactional SMS notifications related to your
+        appointments on a BookReady-powered booking site. Categories include:
+        appointment confirmations, reminders (typically 24 hours and 2 hours
+        before the appointment), cancellation notices, and reschedule notices.
+        We do not send marketing or promotional SMS through this consent channel.
+      </p>
+      <p>
+        <strong><u>How we collect your consent.</u></strong>{' '}
+        When you book an appointment on a BookReady-powered website, the booking
+        form presents an unchecked consent checkbox below the phone-number field
+        with the label: &ldquo;Send me SMS reminders for this appointment. Msg
+        &amp; data rates may apply. Msg frequency varies. Reply STOP to opt out,
+        HELP for help.&rdquo; You must affirmatively check this box before
+        submitting the booking. We record the consent action, timestamp, IP
+        address, and phone number against the appointment record. No SMS is sent
+        to a number without a recorded affirmative consent. Consent is{' '}
+        <em>never</em> a condition of completing your booking.
+      </p>
+      <p>
+        <strong><u>Message frequency and rates.</u></strong>{' '}
+        Message frequency varies depending on your appointment activity
+        (typically 3-5 messages per appointment cycle). Message and data rates
+        may apply, charged by your mobile carrier. BookReady is not responsible
+        for delayed or undelivered messages caused by your carrier.
+      </p>
+      <p>
+        <strong><u>How to opt out.</u></strong>{' '}
+        At any time, reply{' '}
+        <strong>STOP, UNSUBSCRIBE, CANCEL, END,</strong> or <strong>QUIT</strong>{' '}
+        to any SMS from BookReady to immediately unsubscribe. You will receive
+        one final confirmation message acknowledging the opt-out and will not
+        receive further SMS from BookReady or any business operating on the
+        BookReady platform. To resubscribe, reply <strong>START</strong>. For
+        help, reply <strong>HELP</strong> or <strong>INFO</strong>, or contact
+        us using the details in the section{' '}
+        <a href="#contact">How can you contact us about this notice?</a> below.
+      </p>
+      <p>
+        <strong><u>No sharing of mobile information.</u></strong>{' '}
+        BookReady will not share your mobile phone number or SMS opt-in consent
+        information with third parties or affiliates for marketing or
+        promotional purposes. We do not sell SMS opt-in data. Information may be
+        shared only with subcontractors that support our messaging
+        infrastructure (for example, our SMS delivery provider, Telnyx) and
+        solely for the purpose of delivering the transactional messages you have
+        consented to receive.
+      </p>
+      <p>
+        <strong><u>Carrier disclaimer.</u></strong>{' '}
+        Wireless carriers are not liable for any delays or failures in the
+        delivery of messages sent through our SMS service. Service is available
+        on AT&amp;T, Verizon Wireless, T-Mobile, U.S. Cellular, and other
+        participating US carriers.
+      </p>
+
       <h3>Account Information</h3>
       <p>
         If you would at any time like to review or change the information in your
