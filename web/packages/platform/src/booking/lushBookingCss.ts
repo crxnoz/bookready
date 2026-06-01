@@ -1270,13 +1270,32 @@ export const LUSH_CSS = `
   margin-bottom:24px;
 }
 .lush-about-star {
-  width:min(94vw, 340px);
+  width:min(86vw, 320px);
   aspect-ratio:1;
-  color:var(--lush-pink);
-  filter:drop-shadow(0 10px 22px rgba(14,17,17,0.14));
+  position:relative;
   flex-shrink:0;
+  filter:drop-shadow(0 12px 28px rgba(14,17,17,0.18));
+  isolation:isolate;
 }
-.lush-about-star svg { width:100%; height:100%; display:block; }
+/* Real <img> clipped to the spark via the shared SVG clip-path. Using
+   object-fit:cover + object-position:50% 30% biases the crop UPWARD so
+   the face / focal point of a portrait stays visible after the spark
+   shape eats the bottom corners. The previous SVG <image> approach
+   center-cropped without override and the subject often disappeared
+   into the bottom indent. */
+.lush-about-star-img {
+  width:100%; height:100%; display:block;
+  object-fit:cover;
+  object-position:50% 30%;
+  clip-path:url(#lush-about-star-clip);
+  background:#ECE7DD;
+}
+/* Solid sage fallback for tenants who haven't set about.images[0]. */
+.lush-about-star-fallback {
+  width:100%; height:100%; display:block;
+  background:var(--lush-pink);
+  clip-path:url(#lush-about-star-clip);
+}
 .lush-about-heading-wrap {
   position:relative; z-index:2;
   text-align:center;

@@ -1365,38 +1365,69 @@ const VT_CSS = `
   opacity: 0.85;
 }
 
-/* ── Reviews — M5 compliance. Editorial column, hairline dividers
-       between quotes, gold star markers. No cards (would clash with
-       VT's flatter language); items read as a stack of testimonials. */
-.vt-reviews { display: flex; flex-direction: column; }
+/* ── Reviews — editorial testimonials with real presence.
+       Each review opens with an oversized gold serif quote glyph
+       at the top-left, then italic Fraunces body copy, then a
+       tight uppercase author + location attribution. Hairline gold
+       dividers between quotes (no cards — keeps VT's flat language).
+       On wider screens reviews flow as a 2-column grid so the
+       section earns its place in the page rhythm. */
+.vt-reviews {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+@media (min-width: 720px) {
+  .vt-reviews { grid-template-columns: 1fr 1fr; gap: 0 48px; }
+}
 .vt-review {
-  padding: 24px 0;
+  position: relative;
+  padding: 40px 0 28px;
   margin: 0;
   border-top: 1px solid var(--vt-rule);
 }
-.vt-review:first-child { border-top: none; padding-top: 0; }
+.vt-review:first-child { border-top: none; padding-top: 12px; }
+@media (min-width: 720px) {
+  .vt-review:nth-child(2) { border-top: none; padding-top: 12px; }
+}
+/* Big serif opening quote glyph in gold — anchors each review
+   visually as the eye lands. */
+.vt-review::before {
+  content: "\\201C";
+  position: absolute;
+  top: 12px; left: -4px;
+  font-family: var(--vt-serif);
+  font-style: italic;
+  font-size: 64px;
+  line-height: 0.6;
+  color: #C9A876;
+  pointer-events: none;
+  user-select: none;
+}
+.vt-review:first-child::before,
+.vt-review:nth-child(2)::before { top: -8px; }
 .vt-review-stars {
   display: inline-block;
-  margin-bottom: 10px;
+  margin: 0 0 12px;
   font-family: var(--vt-body);
   font-size: 11px;
   letter-spacing: 0.22em;
-  color: #C9A876;  /* gold accent — constant across background variants */
+  color: #C9A876;
 }
 .vt-review-body {
-  margin: 0 0 14px;
+  margin: 0 0 18px;
+  padding-left: 28px;
   font-family: var(--vt-serif);
-  font-size: 18px;
-  line-height: 1.5;
+  font-size: 19px;
+  line-height: 1.55;
   font-style: italic;
-  /* Editorial body opacity. Borderline AA on darker variants — see
-     audit §7 contrast notes. */
-  opacity: 0.92;
+  opacity: 0.94;
 }
 .vt-review-attr {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  padding-left: 28px;
   font-family: var(--vt-body);
   font-size: 10px;
   letter-spacing: 0.22em;
@@ -1404,7 +1435,7 @@ const VT_CSS = `
 }
 .vt-review-author { font-weight: 600; }
 .vt-review-location { opacity: 0.62; }
-.vt-review-location::before { content: '·'; margin-right: 8px; opacity: 0.6; }
+.vt-review-location::before { content: "·"; margin-right: 8px; opacity: 0.6; }
 
 /* ── Footer: Reserve CTA + hours + contact info + colophon ── */
 .vt-footer {

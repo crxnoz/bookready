@@ -1101,35 +1101,34 @@ function AboutPanel({
           Tagline below the heading is rendered in DM Mono all caps
           as a small typographic accent. */}
       <div className="lush-about-hero">
+        {/* Star window. The clip path is defined ONCE in an inline SVG
+            <defs> with clipPathUnits=objectBoundingBox so it scales to
+            the element regardless of size; the image (or fallback fill)
+            is a plain DOM element that receives clip-path:url(#…) +
+            CSS object-fit / object-position. This is cleaner than the
+            old SVG <image href> approach because it lets us bias the
+            crop with object-position (faces want the subject biased up
+            so eyes stay in-frame after clipping). */}
+        <svg width="0" height="0" aria-hidden="true" focusable="false" style={{ position: 'absolute' }}>
+          <defs>
+            <clipPath id="lush-about-star-clip" clipPathUnits="objectBoundingBox" transform="rotate(35 0.5 0.5)">
+              <path d="M0.5,0.1 C0.6,0.1 0.95,0.4 0.95,0.5 C0.95,0.6 0.6,0.9 0.5,0.9 C0.4,0.9 0.05,0.6 0.05,0.5 C0.05,0.4 0.4,0.1 0.5,0.1 Z" />
+            </clipPath>
+          </defs>
+        </svg>
         <div className="lush-about-star" aria-hidden="true">
-          <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
-            <defs>
-              {/* Rounded 4-point spark — each tip has horizontal /
-                  vertical tangents on both sides (both control points
-                  share the tip's coordinate axis), so the four tips
-                  are SMOOTH ARCS instead of sharp points. The lobes
-                  between tips bulge convexly outward, leaving the
-                  masked image with plenty of room to show. Rotated
-                  35° so the points sit diagonally. */}
-              <clipPath id="lush-about-star-clip" transform="rotate(35 50 50)">
-                <path d="M50 10 C60 10 95 40 95 50 C95 60 60 90 50 90 C40 90 5 60 5 50 C5 40 40 10 50 10 Z" />
-              </clipPath>
-            </defs>
-            {about?.images?.[0] ? (
-              <image
-                href={about.images[0]}
-                x="0" y="0" width="100" height="100"
-                preserveAspectRatio="xMidYMid slice"
-                clipPath="url(#lush-about-star-clip)"
-              />
-            ) : (
-              <path
-                d="M50 10 C60 10 95 40 95 50 C95 60 60 90 50 90 C40 90 5 60 5 50 C5 40 40 10 50 10 Z"
-                fill="currentColor"
-                transform="rotate(35 50 50)"
-              />
-            )}
-          </svg>
+          {about?.images?.[0] ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              className="lush-about-star-img"
+              src={about.images[0]}
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <div className="lush-about-star-fallback" />
+          )}
         </div>
         <div className="lush-about-heading-wrap">
           <div className="lush-about-backdrop">{backdropText}</div>
