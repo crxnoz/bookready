@@ -1315,10 +1315,10 @@ export const LUSH_CSS = `
   top:0; left:0; right:14px; bottom:16px;
   border-radius:62% 38% 47% 53% / 49% 51% 50% 51%;
   background:linear-gradient(180deg,
-    rgba(246,243,238,0.82) 0%,
-    rgba(246,243,238,0.55) 24%,
-    rgba(246,243,238,0.10) 48%,
-    rgba(246,243,238,0) 60%);
+    rgba(246,243,238,0.88) 0%,
+    rgba(246,243,238,0.70) 30%,
+    rgba(246,243,238,0.32) 58%,
+    rgba(246,243,238,0) 78%);
   z-index:2;
   pointer-events:none;
 }
@@ -1337,14 +1337,14 @@ export const LUSH_CSS = `
 .lush-about-backdrop {
   margin:0;
   font-family:var(--lush-molle); font-style:italic; font-weight:400;
-  font-size:clamp(24px,6vw,36px); line-height:1.05;
+  font-size:clamp(26px,6.5vw,38px); line-height:1.05;
   color:var(--lush-pink);
   text-shadow:2px 2px 0 rgba(14,17,17,0.18);
 }
 .lush-about-heading-wrap h2 {
-  margin:-12px 0 0;
+  margin:-10px 0 0;
   font-family:var(--lush-molle); font-style:italic; font-weight:400;
-  font-size:clamp(44px,12vw,64px); line-height:1; letter-spacing:-0.01em;
+  font-size:clamp(56px,15vw,80px); line-height:1; letter-spacing:-0.01em;
   color:var(--lush-pink);
   text-shadow:3px 3px 0 rgba(14,17,17,0.18);
 }
@@ -1374,6 +1374,10 @@ export const LUSH_CSS = `
 /* About — editorial pull quote in Molle italic with a big sage
    opening quote mark. Sits between the star hero and the body copy
    and gives the about section a brand-voice moment. */
+/* Editorial pull-quote: now a quiet DM Serif italic line so it
+   contrasts the loose Molle italic heading above. A short sage
+   hairline sits above as a visual marker (replaces the old big
+   pink quote glyph). */
 .lush-about-quote {
   margin:0 auto 36px;
   width:min(100%, 344px);
@@ -1381,25 +1385,25 @@ export const LUSH_CSS = `
   display:flex; flex-direction:column; align-items:center;
   text-align:center;
 }
-.lush-about-quote-mark {
-  font-family:var(--lush-serif); font-style:italic;
-  font-size:80px; line-height:0.6; color:var(--lush-pink);
-  margin-bottom:-8px;
-  user-select:none;
+.lush-about-quote::before {
+  content:"";
+  display:block;
+  width:48px; height:1px;
+  background:var(--lush-pink);
+  margin-bottom:18px;
 }
 .lush-about-quote blockquote {
   margin:0;
-  font-family:var(--lush-molle); font-style:italic; font-weight:400;
-  font-size:clamp(28px, 7vw, 38px); line-height:1.05; letter-spacing:-0.01em;
-  color:var(--lush-pink);
-  text-shadow:2px 2px 0 rgba(14,17,17,0.16);
+  font-family:var(--lush-serif); font-style:italic; font-weight:400;
+  font-size:clamp(20px, 4.5vw, 26px); line-height:1.35; letter-spacing:-0.01em;
+  color:var(--lush-text);
 }
 .lush-about-quote figcaption {
-  margin:14px 0 0;
+  margin:16px 0 0;
   font-family:var(--lush-mono);
-  font-size:11px; font-weight:500;
-  letter-spacing:0.18em; text-transform:uppercase;
-  color:var(--lush-muted);
+  font-size:10px; font-weight:500;
+  letter-spacing:0.22em; text-transform:uppercase;
+  color:var(--lush-pink);
 }
 
 /* About — handwritten signature closer. Cookie script + italic so
@@ -1799,10 +1803,11 @@ export const LUSH_CSS = `
   .lush-about-frame { width:min(70vw, 480px); aspect-ratio:1.25; padding-right:18px; padding-bottom:20px; margin-bottom:24px; }
   .lush-about-frame-bg { top:20px; left:18px; right:0; }
   .lush-about-frame-img, .lush-about-frame-fallback, .lush-about-frame-overlay { right:18px; bottom:20px; }
-  .lush-about-heading-wrap { top:16%; width:84%; }
-  .lush-about-backdrop { font-size:clamp(28px,3vw,46px); text-shadow:3px 3px 0 rgba(14,17,17,0.18); }
-  .lush-about-heading-wrap h2 { font-size:clamp(56px,5.5vw,82px); text-shadow:4px 4px 0 rgba(14,17,17,0.20); margin-top:-12px; }
+  .lush-about-heading-wrap { top:22%; width:88%; }
+  .lush-about-backdrop { font-size:clamp(32px,3.4vw,52px); text-shadow:3px 3px 0 rgba(14,17,17,0.18); }
+  .lush-about-heading-wrap h2 { font-size:clamp(72px,7vw,108px); text-shadow:5px 5px 0 rgba(14,17,17,0.20); margin-top:-10px; }
   .lush-about-copy { max-width:none; font-size:18px; line-height:1.55; }
+  .lush-about-quote blockquote { font-size:28px; line-height:1.35; }
   .lush-policy-section { padding:70px 40px 110px; }
   .lush-policy-heading { align-items:center; margin-bottom:34px; }
   .lush-policy-heading span { font-size:clamp(48px,5vw,68px); text-shadow:5px 5px 0 rgba(14,17,17,0.18); }
@@ -1879,10 +1884,11 @@ export const LUSH_CSS = `
   .lush-about-frame { width:min(72vw, 420px); aspect-ratio:1.2; padding-right:16px; padding-bottom:18px; }
   .lush-about-frame-bg { top:18px; left:16px; right:0; }
   .lush-about-frame-img, .lush-about-frame-fallback, .lush-about-frame-overlay { right:16px; bottom:18px; }
-  .lush-about-heading-wrap { top:14%; width:84%; }
-  .lush-about-backdrop { font-size:34px; text-shadow:2px 2px 0 rgba(14,17,17,0.18); }
-  .lush-about-heading-wrap h2 { font-size:64px; text-shadow:3px 3px 0 rgba(14,17,17,0.18); margin-top:-8px; }
+  .lush-about-heading-wrap { top:20%; width:88%; }
+  .lush-about-backdrop { font-size:40px; text-shadow:2px 2px 0 rgba(14,17,17,0.18); }
+  .lush-about-heading-wrap h2 { font-size:84px; text-shadow:4px 4px 0 rgba(14,17,17,0.18); margin-top:-8px; }
   .lush-about-copy { font-size:16px; line-height:1.6; }
+  .lush-about-quote blockquote { font-size:26px; line-height:1.35; }
 
   /* Policy — 2-col grid, heading sized down from the giant mobile
      clamp so it doesn't dominate the tablet viewport. */

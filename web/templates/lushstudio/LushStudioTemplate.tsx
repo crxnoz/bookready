@@ -1127,7 +1127,6 @@ function AboutPanel({
           falls back to a brand-default that still works without
           context. */}
       <figure className="lush-about-quote">
-        <span className="lush-about-quote-mark" aria-hidden="true">&ldquo;</span>
         <blockquote>
           {p?.tagline?.trim()
             ? p.tagline
