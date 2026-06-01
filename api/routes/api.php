@@ -55,6 +55,7 @@ use App\Http\Controllers\Api\PublicBookingController;
 use App\Http\Controllers\Api\PublicManageBookingController;
 use App\Http\Controllers\Api\PublicSiteController;
 use App\Http\Controllers\Api\WebhookController;
+use App\Http\Controllers\Api\MarketingLeadController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -67,6 +68,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('v1')->group(function () {
+
+    // ── Marketing lead capture (no auth, from mybookready.com) ──────────
+    Route::post('leads', [MarketingLeadController::class, 'store'])
+        ->middleware('throttle:5,1');
 
     // ── Public tenant lookup, availability + booking (no auth) ──────────
     // Phase S5++ — throttle anonymous reads to slow automated scraping

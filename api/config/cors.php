@@ -44,6 +44,10 @@ return [
         'https://app.daysbookings.site',
         'http://localhost:3000',
         'https://localhost:3000',
+        // Marketing site — hits /api/v1/leads for exit-intent email capture.
+        // No tenant cookie needed; supports_credentials is global so the
+        // origin must still be listed explicitly.
+        'https://mybookready.com',
     ],
 
     // Pattern match for the tenant subdomains: {slug}.bkrdy.me — these
