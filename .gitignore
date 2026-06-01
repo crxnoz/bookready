@@ -42,5 +42,11 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 web/tsconfig.tsbuildinfo
-# Local Claude Code state — worktrees + settings
-.claude/
+# Local Claude Code state — worktrees + personal settings stay ignored.
+# .claude/skills/ is shared with the team and DOES get committed (project-
+# scoped skills like .claude/skills/template-creator). Pattern uses
+# .claude/* + targeted negation so we keep traversal but ignore everything
+# in the directory except skills/ — re-including a single subdir requires
+# the parent NOT be wholesale-ignored, hence the trailing * (not /).
+.claude/*
+!.claude/skills/
