@@ -98,9 +98,13 @@ function SparklesSolid({ size = 22 }: { size?: number }) {
     </svg>
   )
 }
-import LushStudioBooking from './LushStudioBooking'
-import LushCustomerAccountWidget from './LushCustomerAccountWidget'
-import { LushCustomerAuthProvider } from './LushCustomerAuth'
+// M2a — booking + auth + widget moved to the shared platform module.
+// Names retain the Lush* prefix for one release; M2b renames them to
+// Platform*/Customer* and introduces CSS variable theming hooks so
+// TheFadeRoom can also wrap the same primitives.
+import LushStudioBooking from '../_shared/booking/LushStudioBooking'
+import LushCustomerAccountWidget from '../_shared/booking/LushCustomerAccountWidget'
+import { LushCustomerAuthProvider } from '../_shared/booking/LushCustomerAuth'
 import type { PublicSite, Service } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 

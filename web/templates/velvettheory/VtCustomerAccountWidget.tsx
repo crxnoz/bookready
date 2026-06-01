@@ -7,4 +7,5 @@
  * VelvetTheoryBooking.tsx.
  */
 
-export { default } from '../lushstudio/LushCustomerAccountWidget'
+// M2a — source moved to _shared/booking.
+export { default } from '../_shared/booking/LushCustomerAccountWidget'

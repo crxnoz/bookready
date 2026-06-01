@@ -8,4 +8,5 @@
  * we'll fork this too.
  */
 
-export { useLushCustomerAuth as useVtCustomerAuth } from '../lushstudio/LushCustomerAuth'
+// M2a — source moved to _shared/booking.
+export { useLushCustomerAuth as useVtCustomerAuth } from '../_shared/booking/LushCustomerAuth'
