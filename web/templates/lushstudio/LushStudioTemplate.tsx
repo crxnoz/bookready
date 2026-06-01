@@ -667,6 +667,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
           return (
             <section className="lush-faq-section" aria-label="Frequently asked questions">
               <div className="lush-faq-inner">
+                <span className="lush-faq-eyebrow">Things people ask</span>
                 <h2 className="lush-faq-heading">{faq.heading || 'Frequently asked'}</h2>
                 <div className="lush-faq-list">
                   {items.map((it, i) => (
@@ -690,19 +691,24 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
           return (
             <section className="lush-reviews-section" aria-label="Reviews">
               <div className="lush-reviews-inner">
+                <span className="lush-reviews-eyebrow">From the chair</span>
                 <h2 className="lush-reviews-heading">{r.heading || 'What clients say'}</h2>
                 <div className="lush-reviews-grid">
                   {items.map((it, i) => (
                     <div key={i} className="lush-review-card">
+                      {/* Stars rendered as a row of sage ✦ — softer than ★ and
+                          ties to the rest of the Lush spark vocabulary. The
+                          ✦ glyph (U+2726) followed by U+FE0E stays a text
+                          glyph on iOS instead of upgrading to a color emoji. */}
                       {typeof it.rating === 'number' && it.rating > 0 && (
                         <div className="lush-review-stars" aria-label={`${it.rating} of 5 stars`}>
-                          {'★'.repeat(Math.max(0, Math.min(5, Math.round(it.rating))))}
+                          {'✦︎'.repeat(Math.max(0, Math.min(5, Math.round(it.rating))))}
                         </div>
                       )}
                       <p className="lush-review-body">&ldquo;{it.body}&rdquo;</p>
                       <p className="lush-review-author">
-                        — {it.author}
-                        {it.location ? <span className="lush-review-loc"> · {it.location}</span> : null}
+                        {it.author}
+                        {it.location && <span className="lush-review-loc">{it.location}</span>}
                       </p>
                     </div>
                   ))}
@@ -994,7 +1000,6 @@ function ResultsPanel({
                 const i = runningIndex++
                 return (
                   <article key={item.id} className="lush-ba-diptych">
-                    <span className="lush-ba-numeral" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
                     <div className="lush-ba-pair">
                       <figure className="lush-ba-pane lush-ba-pane--before">
                         <p className="lush-ba-label">Before</p>
@@ -1039,7 +1044,6 @@ function ResultsPanel({
       <div className="lush-ba-stack">
         {BA_PAIRS.map((pair, i) => (
           <article key={i} className="lush-ba-diptych">
-            <span className="lush-ba-numeral" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
             <div className="lush-ba-pair">
               <figure className="lush-ba-pane lush-ba-pane--before">
                 <p className="lush-ba-label">Before</p>
@@ -1149,24 +1153,6 @@ function AboutPanel({
         <figcaption>From the studio</figcaption>
       </figure>
 
-      {/* By the numbers — three-cell strip with serif numerals.
-          Reads as a brand credential bar without being explicit
-          about specific metrics that might be wrong for the tenant. */}
-      <div className="lush-about-stats" aria-label="By the numbers">
-        <div className="lush-about-stat">
-          <span className="lush-about-stat-num">10+</span>
-          <span className="lush-about-stat-label">Years of practice</span>
-        </div>
-        <div className="lush-about-stat">
-          <span className="lush-about-stat-num">2k+</span>
-          <span className="lush-about-stat-label">Treatments given</span>
-        </div>
-        <div className="lush-about-stat">
-          <span className="lush-about-stat-num">1</span>
-          <span className="lush-about-stat-label">Brand, made on purpose</span>
-        </div>
-      </div>
-
       <div>
         <div className="lush-about-copy">
           <p>
@@ -1257,8 +1243,6 @@ function PoliciesPanel({ policies }: { policies: PublicSite['policies'] }) {
       }))
     : FALLBACK_POLICIES.map(fp => ({ label: fp.label, body: fp.text }))
 
-  const ordinals = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten']
-
   return (
     <section className="lush-policy-section">
       <div className="lush-policy-heading">
@@ -1271,7 +1255,6 @@ function PoliciesPanel({ policies }: { policies: PublicSite['policies'] }) {
           <li key={i} className="lush-policy-row">
             <span className="lush-policy-num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
             <div className="lush-policy-body">
-              <p className="lush-policy-kicker">Rule {ordinals[i] ?? String(i + 1)}</p>
               <h3 className="lush-policy-title">{p.label}</h3>
               <p className="lush-policy-text" style={{ whiteSpace: 'pre-wrap' }}>{p.body}</p>
             </div>
@@ -1369,28 +1352,22 @@ function AftercarePanel({
 }) {
   const cards = items && items.length > 0 ? items : AFTERCARE_CARDS
   const kicker = (cardKicker ?? '').trim()
-  const ordinals = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight']
-
-  // The "Ritual" — Lush Studio's Steps section as a vertical ceremony.
-  // Each step is its own editorial pane with a big serif numeral, a
-  // Cookie kicker ("Step One" / "Then" / "Last"), a heading, and a
-  // single sage ✦ as the divider between steps. No boxes, no cards.
-  // The previous alternating sage card pattern read as transactional;
-  // this reads as a ritual the customer is being walked through.
+  // Aftercare — vertical un-numbered list. Each card is its own
+  // editorial pane (DM Serif title, Roboto body) separated by a sage
+  // ✦. No numerals and no auto-ordinal kicker: aftercare is a set of
+  // PARALLEL care tips, not a sequence — numbering made it read like a
+  // procedural to-do list. The only sequence in the template is the
+  // Before-Your-Appointment timeline (which is genuinely ordered).
   return (
     <section className="lush-aftercare-section">
       <h2>{heading ?? 'Steps'}</h2>
-      <ol className="lush-ritual" aria-label={heading ?? 'Steps'}>
+      <ul className="lush-ritual" aria-label={heading ?? 'Steps'}>
         {cards.map((c, i) => {
           const isLast = i === cards.length - 1
-          const ord = i === 0 ? 'First' : isLast ? 'Last' : `Step ${ordinals[i] ?? String(i + 1)}`
           return (
             <li key={i} className="lush-ritual-step">
-              <span className="lush-ritual-num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
               <div className="lush-ritual-body">
-                {kicker
-                  ? <span className="lush-ritual-kicker">{kicker}</span>
-                  : <span className="lush-ritual-kicker">{ord}</span>}
+                {kicker && <span className="lush-ritual-kicker">{kicker}</span>}
                 <h3>{c.title}</h3>
                 <p>{c.body}</p>
               </div>
@@ -1400,7 +1377,7 @@ function AftercarePanel({
             </li>
           )
         })}
-      </ol>
+      </ul>
     </section>
   )
 }

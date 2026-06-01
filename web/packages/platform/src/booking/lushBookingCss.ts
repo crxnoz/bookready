@@ -1219,14 +1219,7 @@ export const LUSH_CSS = `
 }
 .lush-ba-diptych {
   width:min(100%, 360px); margin:0 auto;
-  display:grid; grid-template-columns:32px 1fr; gap:14px;
   padding:6px 0 0;
-}
-.lush-ba-numeral {
-  font-family:var(--lush-serif); font-weight:400;
-  font-size:34px; line-height:1; letter-spacing:-0.04em;
-  color:var(--lush-pink);
-  align-self:flex-start;
 }
 .lush-ba-pair {
   display:grid; grid-template-columns:1fr auto 1fr; gap:8px;
@@ -1256,8 +1249,7 @@ export const LUSH_CSS = `
   margin-top:18px;
 }
 .lush-ba-caption {
-  grid-column:2;
-  margin:10px 0 0;
+  margin:14px 0 0;
   text-align:center;
   font-family:var(--lush-script);
   font-size:22px; font-weight:400; line-height:1.1;
@@ -1374,33 +1366,6 @@ export const LUSH_CSS = `
   color:var(--lush-muted);
 }
 
-/* About — by-the-numbers strip. Three editorial stats with big DM
-   Serif numerals and small Roboto labels. Sage hairlines top + bottom
-   visually anchor it as a credentials bar. */
-.lush-about-stats {
-  width:min(100%, 344px); margin:0 auto 36px;
-  display:grid; grid-template-columns:repeat(3, 1fr);
-  border-top:1px solid var(--lush-dark-border);
-  border-bottom:1px solid var(--lush-dark-border);
-  padding:20px 0;
-}
-.lush-about-stat {
-  display:flex; flex-direction:column; align-items:center; gap:4px;
-  padding:0 6px; text-align:center;
-}
-.lush-about-stat-num {
-  font-family:var(--lush-serif); font-weight:400;
-  font-size:34px; line-height:1; letter-spacing:-0.04em;
-  color:var(--lush-pink);
-}
-.lush-about-stat-label {
-  font-family:var(--lush-ui);
-  font-size:11px; font-weight:500;
-  letter-spacing:0.04em;
-  color:var(--lush-muted);
-  line-height:1.3;
-}
-
 /* About — handwritten signature closer. Cookie script + italic so
    it reads as a personal sign-off, not corporate boilerplate. */
 .lush-about-sign {
@@ -1465,12 +1430,6 @@ export const LUSH_CSS = `
   padding-top:4px;
 }
 .lush-policy-body { min-width:0; }
-.lush-policy-kicker {
-  margin:0 0 4px;
-  font-family:var(--lush-script); font-weight:400;
-  font-size:24px; line-height:1; letter-spacing:0;
-  color:var(--lush-pink);
-}
 .lush-policy-title {
   margin:0 0 10px;
   font-family:var(--lush-serif); font-weight:400;
@@ -1544,15 +1503,8 @@ export const LUSH_CSS = `
   display:flex; flex-direction:column; gap:0;
 }
 .lush-ritual-step {
-  display:grid; grid-template-columns:56px 1fr; gap:18px;
-  padding:8px 4px 14px;
+  padding:14px 4px 18px;
   position:relative;
-}
-.lush-ritual-num {
-  font-family:var(--lush-serif); font-weight:400;
-  font-size:48px; line-height:0.9; letter-spacing:-0.04em;
-  color:var(--lush-pink);
-  padding-top:6px;
 }
 .lush-ritual-body { min-width:0; }
 .lush-ritual-kicker {
@@ -1574,11 +1526,10 @@ export const LUSH_CSS = `
   color:var(--lush-text);
 }
 .lush-ritual-sep {
-  grid-column:1 / -1;
-  text-align:center;
+  display:block; text-align:center;
   font-family:var(--lush-ui);
   font-size:16px; line-height:1; color:var(--lush-pink);
-  padding:14px 0 18px;
+  padding:14px 0 4px;
 }
 
 /* ── Contact cards ── */
@@ -1595,29 +1546,133 @@ export const LUSH_CSS = `
 .lush-contact-value { font-size:14px; color:var(--lush-text); }
 
 /* ── FAQ — collapsible Q&A list ── */
-.lush-faq-section { position:relative; width:100%; background:var(--lush-bg); padding:64px 22px 16px; }
+/* FAQ — Lush editorial treatment. Drops the card chrome for a
+   hairline-divider list, switches the question to DM Serif italic,
+   replaces +/- with a rotating sage ✦ chevron, and tints the open
+   row with a soft sage wash. */
+.lush-faq-section { position:relative; width:100%; background:var(--lush-bg); padding:64px 22px 24px; }
 .lush-faq-inner { max-width:720px; margin:0 auto; color:var(--lush-text); }
-.lush-faq-heading { font-family:var(--lush-script); font-size:clamp(42px,8vw,56px); font-weight:400; line-height:1; letter-spacing:0; margin:0 0 24px; text-align:center; color:var(--lush-text); }
-.lush-faq-list { display:flex; flex-direction:column; gap:10px; }
-.lush-faq-item { background:var(--lush-card); border:1px solid var(--lush-dark-border); padding:14px 18px; border-radius:6px; }
-.lush-faq-item > summary { cursor:pointer; font-family:var(--lush-ui); font-size:14px; font-weight:600; color:var(--lush-text); list-style:none; outline:none; }
+.lush-faq-heading {
+  font-family:var(--lush-script);
+  font-size:clamp(48px,9vw,68px); font-weight:400; line-height:1; letter-spacing:0;
+  margin:0 0 8px; text-align:center; color:var(--lush-text);
+}
+.lush-faq-eyebrow {
+  display:block; text-align:center;
+  font-family:var(--lush-mono); font-size:11px; font-weight:500;
+  letter-spacing:0.18em; text-transform:uppercase;
+  color:var(--lush-pink);
+  margin:0 0 28px;
+}
+.lush-faq-list {
+  display:flex; flex-direction:column;
+  border-top:1px solid var(--lush-dark-border);
+}
+.lush-faq-item {
+  background:transparent;
+  border:0; border-bottom:1px solid var(--lush-dark-border);
+  border-radius:0;
+  padding:0;
+  transition:background .2s ease;
+}
+.lush-faq-item[open] { background:rgba(var(--lush-pink-rgb), 0.04); }
+.lush-faq-item > summary {
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:space-between; gap:18px;
+  padding:22px 18px;
+  font-family:var(--lush-serif); font-style:italic; font-weight:400;
+  font-size:clamp(17px, 2.4vw, 20px); line-height:1.25; letter-spacing:-0.02em;
+  color:var(--lush-text);
+  list-style:none; outline:none;
+}
 .lush-faq-item > summary::-webkit-details-marker { display:none; }
-.lush-faq-item > summary::after { content:'+'; float:right; font-size:18px; line-height:1; color:var(--lush-pink); transition:transform 0.15s; }
-.lush-faq-item[open] > summary::after { content:'−'; }
-.lush-faq-item > p { margin:10px 0 0; font-family:var(--lush-ui); font-size:13px; line-height:1.6; color:var(--lush-muted); }
+.lush-faq-item > summary::after {
+  content:"\\2726\\FE0E"; flex-shrink:0;
+  font-family:var(--lush-ui);
+  font-size:16px; line-height:1; color:var(--lush-pink);
+  transition:transform .25s ease;
+}
+.lush-faq-item[open] > summary::after { transform:rotate(45deg); }
+.lush-faq-item > p {
+  margin:0;
+  padding:0 18px 22px 18px;
+  font-family:var(--lush-ui);
+  font-size:14px; line-height:1.65; color:var(--lush-muted);
+}
 
 /* Reviews — testimonial grid */
-.lush-reviews-section { position:relative; width:100%; background:var(--lush-bg); padding:48px 22px 24px; }
-.lush-reviews-inner { max-width:1080px; margin:0 auto; color:var(--lush-text); }
-.lush-reviews-heading { font-family:var(--lush-script); font-size:clamp(42px,8vw,56px); font-weight:400; line-height:1; letter-spacing:0; margin:0 0 24px; text-align:center; color:var(--lush-text); }
-.lush-reviews-grid { display:grid; grid-template-columns:1fr; gap:14px; }
-@media (min-width:720px) { .lush-reviews-grid { grid-template-columns:repeat(2,1fr); } }
-@media (min-width:1080px) { .lush-reviews-grid { grid-template-columns:repeat(3,1fr); } }
-.lush-review-card { background:var(--lush-card); border:1px solid var(--lush-dark-border); padding:18px; border-radius:6px; display:flex; flex-direction:column; gap:10px; }
-.lush-review-stars { color:var(--lush-pink); font-size:13px; letter-spacing:2px; }
-.lush-review-body { margin:0; font-family:var(--lush-serif); font-size:15px; line-height:1.55; color:var(--lush-text); font-style:italic; }
-.lush-review-author { margin:auto 0 0; font-family:var(--lush-ui); font-size:12px; font-weight:600; color:var(--lush-muted); }
-.lush-review-loc { font-weight:400; color:var(--lush-muted); opacity:0.75; }
+/* Reviews — Lush editorial treatment. Each card opens with a big
+   sage Molle italic quote glyph, DM Serif italic body text, Cookie
+   script author name, and DM Mono uppercase location. Two-column
+   grid feels more like a magazine spread than the previous 3-col
+   tile wall. Star rating is reframed as a row of sage ✦. */
+.lush-reviews-section { position:relative; width:100%; background:var(--lush-bg); padding:64px 22px 36px; }
+.lush-reviews-inner { max-width:960px; margin:0 auto; color:var(--lush-text); }
+.lush-reviews-eyebrow {
+  display:block; text-align:center;
+  font-family:var(--lush-mono); font-size:11px; font-weight:500;
+  letter-spacing:0.18em; text-transform:uppercase;
+  color:var(--lush-pink);
+  margin:0 0 10px;
+}
+.lush-reviews-heading {
+  font-family:var(--lush-script);
+  font-size:clamp(48px,9vw,68px); font-weight:400; line-height:1; letter-spacing:0;
+  margin:0 0 36px; text-align:center; color:var(--lush-text);
+}
+.lush-reviews-grid { display:grid; grid-template-columns:1fr; gap:0; }
+@media (min-width:720px) {
+  .lush-reviews-grid {
+    grid-template-columns:repeat(2,1fr);
+    border-top:1px solid var(--lush-dark-border);
+    border-left:1px solid var(--lush-dark-border);
+  }
+  .lush-review-card {
+    border-right:1px solid var(--lush-dark-border);
+    border-bottom:1px solid var(--lush-dark-border);
+    border-top:none; border-left:none;
+  }
+}
+.lush-review-card {
+  position:relative;
+  background:transparent;
+  border:0; border-bottom:1px solid var(--lush-dark-border);
+  padding:32px 24px 28px;
+  border-radius:0;
+  display:flex; flex-direction:column; gap:14px;
+}
+.lush-review-card::before {
+  content:"\\201C";
+  position:absolute; top:14px; left:18px;
+  font-family:var(--lush-molle); font-style:italic;
+  font-size:72px; line-height:0.6; color:var(--lush-pink);
+  opacity:0.85;
+  text-shadow:2px 2px 0 rgba(14,17,17,0.14);
+  pointer-events:none;
+}
+.lush-review-stars {
+  align-self:flex-start;
+  margin-top:24px;
+  color:var(--lush-pink);
+  font-family:var(--lush-ui); font-size:12px; letter-spacing:6px;
+}
+.lush-review-body {
+  margin:0;
+  font-family:var(--lush-serif); font-style:italic; font-weight:400;
+  font-size:17px; line-height:1.55; letter-spacing:-0.01em;
+  color:var(--lush-text);
+}
+.lush-review-author {
+  margin:auto 0 0; padding-top:8px;
+  font-family:var(--lush-script); font-weight:400;
+  font-size:24px; line-height:1; color:var(--lush-text);
+}
+.lush-review-loc {
+  display:block; margin-top:6px;
+  font-family:var(--lush-mono); font-size:11px; font-weight:500;
+  letter-spacing:0.16em; text-transform:uppercase;
+  color:var(--lush-muted);
+}
 
 .lush-thanks-section { position:relative; width:100%; background:var(--lush-bg); padding:80px 22px 88px; border-top:1px solid var(--lush-dark-border); }
 .lush-thanks-inner { max-width:720px; margin:0 auto; text-align:center; color:var(--lush-text); display:flex; flex-direction:column; align-items:center; gap:24px; }
