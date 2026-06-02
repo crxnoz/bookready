@@ -1051,8 +1051,8 @@ const TFR_CSS = `
   .tfr-policy { grid-template-columns: minmax(160px, max-content) 1fr; }
 }
 .tfr-policy h3 {
-  background: var(--tfr-accent);
-  color: var(--tfr-bg);
+  background: color-mix(in srgb, var(--tfr-accent) 14%, transparent);
+  color: var(--tfr-accent);
   padding: 18px 24px;
   margin: 0;
   font-family: var(--tfr-body);
@@ -1063,8 +1063,9 @@ const TFR_CSS = `
   display: flex;
   align-items: center;
   white-space: nowrap;
-  /* Inner sheen so the tag reads as lit-from-within rather than flat. */
-  box-shadow: inset 0 0 14px color-mix(in srgb, white 18%, transparent);
+  /* Subtle right divider between the tag and the body — replaces the
+     solid-pink-block boundary with a hairline accent at low opacity. */
+  border-right: 1px solid color-mix(in srgb, var(--tfr-accent) 24%, transparent);
 }
 .tfr-policy p {
   padding: 18px 24px;
