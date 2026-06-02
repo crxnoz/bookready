@@ -358,21 +358,26 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
           embed. */}
       <div className="lush-template lush-femme" style={accentVars}>
 
-        {/* ── Announcement bar ── */}
+        {/* ── Announcement bar ──
+            Static centered strip matching TFR + Blackline. The
+            scrolling marquee was charming but inconsistent with the
+            other BookReady templates — and the sparkle/heart vocabulary
+            tucks neatly into the bookend slots TFR uses for ✦. Falls
+            back to a tagline or default copy when no announcement is
+            set so the bar still renders. */}
         {(header.show_announcement ?? true) && (
-          <div className="lush-announce" aria-hidden="true">
-            <div className="lush-announce-track">
-              <AnnounceMsgs
-                tagline={p?.tagline}
-                name={displayName}
-                custom={header.announcement_text ?? null}
-              />
-              <AnnounceMsgs
-                tagline={p?.tagline}
-                name={displayName}
-                custom={header.announcement_text ?? null}
-              />
-            </div>
+          <div className="lush-announce">
+            <span className="lush-announce-spark" aria-hidden="true">
+              <Heart size={11} fill="currentColor" />
+            </span>
+            <span>
+              {(header.announcement_text?.trim()
+                || p?.tagline?.trim()
+                || `Now booking with ${displayName}`)}
+            </span>
+            <span className="lush-announce-spark" aria-hidden="true">
+              <Heart size={11} fill="currentColor" />
+            </span>
           </div>
         )}
 
@@ -568,31 +573,36 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
             </div>
           </div>
 
-          {/* ── Book ── */}
+          {/* ── Book ── Wrapped in lush-book-frame so the booking
+              flow gets the same outer section padding the other
+              BookReady templates use (mirrors TFR's .tfr-section.tfr-book
+              and VT's .vt-section.vt-book). */}
           <div className={`lush-tab-panel${active === 'book' ? ' is-active' : ''}`}>
-            {site.booking_settings && site.booking_settings.booking_enabled === false ? (
-              <section className="brk-booking-section">
-                <div className="brk-booking-summary" style={{ maxWidth: 480, margin: '40px auto' }}>
-                  <span className="brk-booking-block-label">Booking unavailable</span>
-                  <p style={{ marginTop: 8, fontSize: 14, opacity: 0.85 }}>
-                    Online booking is currently paused. Please check back soon — or reach out to the business directly.
-                  </p>
-                </div>
-              </section>
-            ) : (
-              <LushStudioBooking
-                slug={slug}
-                services={services}
-                displayName={displayName}
-                availability={availability}
-                paymentSettings={site.payment_settings ?? null}
-                requirePolicyAgreement={!! site.policies?.require_policy_agreement}
-                serviceAddons={site.service_addons ?? []}
-                staffMembers={site.staff ?? []}
-                serviceCategories={site.service_categories ?? []}
-                bookingQuestions={site.booking_questions ?? []}
-              />
-            )}
+            <div className="lush-book-frame">
+              {site.booking_settings && site.booking_settings.booking_enabled === false ? (
+                <section className="brk-booking-section">
+                  <div className="brk-booking-summary" style={{ maxWidth: 480, margin: '40px auto' }}>
+                    <span className="brk-booking-block-label">Booking unavailable</span>
+                    <p style={{ marginTop: 8, fontSize: 14, opacity: 0.85 }}>
+                      Online booking is currently paused. Please check back soon — or reach out to the business directly.
+                    </p>
+                  </div>
+                </section>
+              ) : (
+                <LushStudioBooking
+                  slug={slug}
+                  services={services}
+                  displayName={displayName}
+                  availability={availability}
+                  paymentSettings={site.payment_settings ?? null}
+                  requirePolicyAgreement={!! site.policies?.require_policy_agreement}
+                  serviceAddons={site.service_addons ?? []}
+                  staffMembers={site.staff ?? []}
+                  serviceCategories={site.service_categories ?? []}
+                  bookingQuestions={site.booking_questions ?? []}
+                />
+              )}
+            </div>
           </div>
 
           {/* ── Gallery ── */}
@@ -1409,8 +1419,7 @@ function Footer({
       {showQuickBook && (
         <div className="lush-footer-cta-band">
           <button type="button" className="lush-footer-book" onClick={onBook}>
-            <CalendarCheck size={18} fill="currentColor" strokeWidth={1.5} />
-            <span>Reserve your chair</span>
+            Reserve your chair
           </button>
         </div>
       )}

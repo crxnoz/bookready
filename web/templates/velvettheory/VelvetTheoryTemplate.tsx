@@ -1516,7 +1516,10 @@ const VT_CSS = `
   text-align: center;
   border-bottom: 1px solid var(--vt-rule);
 }
-.vt-footer-book {
+/* Scoped to .vt-template so we beat the universal .vt-template-button
+   reset (0,1,1) that strips background:none. Without this scope, our rule
+   at 0,1,0 loses and the button paints transparent (invisible). */
+.vt-template .vt-footer-book {
   display: inline-flex;
   align-items: center;
   padding: 18px 44px;
@@ -1531,7 +1534,7 @@ const VT_CSS = `
   cursor: pointer;
   transition: opacity 160ms ease;
 }
-.vt-footer-book:hover { opacity: 0.86; }
+.vt-template .vt-footer-book:hover { opacity: 0.86; }
 
 /* Middle band — 3 information columns. Sharp edges + gold hairline
    dividers on PC, single column stack on mobile. */

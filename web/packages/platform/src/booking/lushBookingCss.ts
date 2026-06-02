@@ -62,28 +62,44 @@ export const LUSH_CSS = `
 .lush-template button, .lush-template a { -webkit-tap-highlight-color: transparent; cursor: pointer; }
 .lush-template :focus-visible { outline: 2px solid var(--lush-pink); outline-offset: 3px; }
 
-/* ── Announcement bar ── */
+/* ── Announcement bar ── Static centered strip matching the pattern
+   TFR (✦ bookends) and Blackline (clean strip) established. Lush keeps
+   its own vocabulary with heart bookends + flat sage tint. ── */
 .lush-announce {
-  width: 100%; overflow: hidden; position: relative;
-  /* Flat sage tint on cream — flat colors only per the soft-spa
-     direction. No multi-stop gradient. */
-  background: rgba(var(--lush-pink-rgb),0.08);
-  border-bottom: 1px solid rgba(var(--lush-pink-rgb),0.20);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  padding:12px 24px;
+  background:rgba(var(--lush-pink-rgb),0.08);
+  border-bottom:1px solid rgba(var(--lush-pink-rgb),0.20);
+  color:var(--lush-text);
+  font-family:var(--lush-ui);
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:0.22em;
+  text-transform:uppercase;
+  text-align:center;
 }
-.lush-announce::before, .lush-announce::after {
-  content:""; position:absolute; top:0; bottom:0; width:60px; z-index:2; pointer-events:none;
+.lush-announce-spark {
+  display:inline-flex;
+  align-items:center;
+  color:var(--lush-pink);
+  flex-shrink:0;
 }
-.lush-announce::before { left:0; background:linear-gradient(90deg,#F6F3EE,transparent); }
-.lush-announce::after  { right:0; background:linear-gradient(-90deg,#F6F3EE,transparent); }
-.lush-announce-track {
-  display:inline-flex; align-items:center; gap:20px; padding:10px 0;
-  white-space:nowrap; animation:lushMarquee 42s linear infinite;
-  color:var(--lush-text); font-family:var(--lush-sans); font-size:11px;
-  letter-spacing:0.14em; text-transform:uppercase; font-weight:600;
+
+/* ── Book tab outer frame ── Pads the booking flow so it has the same
+   breathing room above + beside as TFR's .tfr-section.tfr-book and
+   VT's .vt-section.vt-book wrappers give the embedded booking flow. */
+.lush-book-frame {
+  width:100%;
+  max-width:1080px;
+  margin:0 auto;
+  padding:48px 22px 80px;
 }
-.lush-announce-sep { color:var(--lush-pink); opacity:0.8; font-size:8px; }
-@keyframes lushMarquee { from{transform:translateX(0)} to{transform:translateX(-50%)} }
-@media (prefers-reduced-motion:reduce) { .lush-announce-track { animation:none; } }
+@media (max-width:720px) {
+  .lush-book-frame { padding:32px 16px 56px; }
+}
 
 /* ── Header ── */
 .lush-header-section {
