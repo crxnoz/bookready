@@ -1,20 +1,54 @@
 {
   "skill_name": "template-creator",
-  "_notes": "Test prompts are written as if the creator already answered every interview question. Subagents in the test loop have no real user to interview, so each prompt embeds the full spec. The skill should recognize this and skip straight to scaffold/register/defaults/validate. Each test runs in an isolated git worktree so changes never pollute main.",
+  "_notes": "Test prompts are written as if the creator already answered every interview question. Subagents in the test loop have no real user to interview, so each prompt embeds the full spec. The skill should recognize this and skip straight to scaffold/register/defaults/validate. Each test runs in an isolated git worktree so changes never pollute main. Each eval has two configurations — with_skill (agent reads .claude/skills/template-creator/SKILL.md first) and without_skill (baseline — agent figures out from existing templates).",
   "evals": [
     {
       "id": 1,
       "name": "sun-salt-beach-spa",
-      "prompt": "Create a new BookReady template with these specs (treat this as the complete interview — no real user to ask follow-ups):\n\n- Name: Sun & Salt\n- Slug: sun-salt\n- Vibe (one sentence): Soft beach spa — sandy cream backgrounds, ocean blue accents, sun-yellow highlights, breezy and unpretentious.\n- color_role: accent\n- Palette (first is default):\n  - #F2E8DA Sand (default)\n  - #4B8FB2 Ocean\n  - #FFD659 Sun\n  - #FFFFFF Foam\n- Fonts: Serif headings (Fraunces) + sans body (Inter)\n- header_fields: all five (cover_image, avatar_image, announcement, business_type, social_buttons)\n- footer_fields: all six\n\nFollow the template-creator skill's full lifecycle: scaffold the 5 files under web/templates/sun-salt/, register the slug in web/templates/registry.ts, add a sunSaltSettings()/sunSaltSections() branch to api/app/Support/TemplateDefaults.php with beach-spa flavored seed copy, validate the manifest, and run npm run build. Report what passed and what failed.",
+      "prompt": "Create a new BookReady template with these specs (treat this as the complete interview — no real user to ask follow-ups):\n\n- Name: Sun & Salt\n- Slug: sun-salt\n- Vibe (one sentence): Soft beach spa — sandy cream backgrounds, ocean blue accents, sun-yellow highlights, breezy and unpretentious.\n- color_role: accent\n- Palette (first is default):\n  - #F2E8DA Sand (default)\n  - #4B8FB2 Ocean\n  - #FFD659 Sun\n  - #FFFFFF Foam\n- Fonts: Serif headings (Fraunces) + sans body (Inter)\n- header_fields: all five (cover_image, avatar_image, announcement, business_type, social_buttons)\n- footer_fields: all six (show_powered_by, show_hours, show_contact_links, show_quick_book, business_name_override, subtext)\n\nFollow the template-creator skill's full lifecycle: scaffold the 5 files under web/templates/sun-salt/, register the slug in web/templates/registry.ts, add a sunSaltSettings()/sunSaltSections() branch to api/app/Support/TemplateDefaults.php with beach-spa flavored seed copy, validate the manifest, and run npm run build. Report what passed and what failed.",
       "expected_output": "5 template files under web/templates/sun-salt/, registry.ts updated with the new slug in both REGISTRY and MANIFESTS maps, TemplateDefaults.php has new sunSaltSettings() and sunSaltSections() functions plus match arms in settingsFor() and sectionsFor(), validateManifest() returns empty array, npm run build passes (or fails with an explicit fix-needed report).",
-      "files": []
+      "files": [],
+      "assertions": [
+        "Template directory created at web/templates/sun-salt/",
+        "manifest.ts exists at web/templates/sun-salt/manifest.ts and exports a TemplateManifest",
+        "Render component PascalTemplate.tsx exists at web/templates/sun-salt/",
+        "Booking wrapper exists (PascalBooking.tsx or similar) — even a thin wrapper around @bkrdy/platform/booking is fine",
+        "Customer auth re-export file exists (PascalCustomerAuth.tsx) that re-exports from @bkrdy/platform/booking",
+        "web/templates/registry.ts updated — slug appears in BOTH the REGISTRY map (dynamic loader) AND the MANIFESTS map",
+        "api/app/Support/TemplateDefaults.php — has new sun-saltSettings() (or camelCase equivalent) function returning seed copy",
+        "api/app/Support/TemplateDefaults.php — has new sun-saltSections() (or equivalent) function returning section list",
+        "api/app/Support/TemplateDefaults.php — settingsFor() match expression has a new arm for 'sun-salt'",
+        "api/app/Support/TemplateDefaults.php — sectionsFor() match expression has a new arm for 'sun-salt'",
+        "Manifest has correct slug='sun-salt', name, version (semver), color_role, color_palette, header_fields[], footer_fields[]",
+        "Manifest color_palette: first entry is default (#F2E8DA Sand), all hex values match spec, palette length matches spec",
+        "Manifest color_role matches spec (accent)",
+        "Manifest header_fields matches spec (all 5 fields)",
+        "Manifest footer_fields matches spec (all 6 fields)"
+      ]
     },
     {
       "id": 2,
       "name": "leather-oxblood-luxury-barber",
-      "prompt": "Create a new BookReady template with these specs (treat this as the complete interview — no real user to ask follow-ups):\n\n- Name: Atlas & Hide\n- Slug: atlas-hide\n- Vibe (one sentence): Luxury heritage barbershop — leather chairs, oxblood walls, brass fittings, restrained editorial typography.\n- color_role: background (palette swatches replace the page background; a constant brass accent #B8966B stays across all variants)\n- Palette (first is default):\n  - #2A0E0E Oxblood (default)\n  - #1A1A1A Charcoal\n  - #3D2817 Walnut\n  - #F5EFE6 Bone (light)\n- Fonts: Cormorant Garamond (serif) + Inter (sans)\n- header_fields: cover_image, announcement, social_buttons (drop avatar_image and business_type — this is an editorial editorial vibe, no avatar block needed)\n- footer_fields: show_powered_by, show_hours, show_contact_links, business_name_override, subtext (drop show_quick_book — the design uses an in-flow CTA like VT)\n\nFollow the template-creator skill's full lifecycle: scaffold the 5 files under web/templates/atlas-hide/, register, add an atlasHideSettings()/atlasHideSections() branch to TemplateDefaults.php with luxury heritage-barber seed copy, validate the manifest, run npm run build. Report what passed and what failed.",
+      "prompt": "Create a new BookReady template with these specs (treat this as the complete interview — no real user to ask follow-ups):\n\n- Name: Atlas & Hide\n- Slug: atlas-hide\n- Vibe (one sentence): Luxury heritage barbershop — leather chairs, oxblood walls, brass fittings, restrained editorial typography.\n- color_role: background (palette swatches replace the page background; a constant brass accent #B8966B stays across all variants)\n- Palette (first is default):\n  - #2A0E0E Oxblood (default)\n  - #1A1A1A Charcoal\n  - #3D2817 Walnut\n  - #F5EFE6 Bone (light)\n- Fonts: Cormorant Garamond (serif) + Inter (sans)\n- header_fields: cover_image, announcement, social_buttons (drop avatar_image and business_type — this is an editorial vibe, no avatar block needed)\n- footer_fields: show_powered_by, show_hours, show_contact_links, business_name_override, subtext (drop show_quick_book — the design uses an in-flow CTA like VT)\n\nFollow the template-creator skill's full lifecycle: scaffold the 5 files under web/templates/atlas-hide/, register, add an atlasHideSettings()/atlasHideSections() branch to TemplateDefaults.php with luxury heritage-barber seed copy, validate the manifest, run npm run build. Report what passed and what failed.",
       "expected_output": "5 template files under web/templates/atlas-hide/, registry.ts updated with the new slug, TemplateDefaults.php has atlasHide* functions, manifest validates with header_fields excluding avatar_image+business_type and footer_fields excluding show_quick_book, color_role: 'background' set, build passes (or fails with explicit report).",
-      "files": []
+      "files": [],
+      "assertions": [
+        "Template directory created at web/templates/atlas-hide/",
+        "manifest.ts exists at web/templates/atlas-hide/manifest.ts and exports a TemplateManifest",
+        "Render component PascalTemplate.tsx exists at web/templates/atlas-hide/",
+        "Booking wrapper exists (PascalBooking.tsx or similar) — even a thin wrapper around @bkrdy/platform/booking is fine",
+        "Customer auth re-export file exists (PascalCustomerAuth.tsx) that re-exports from @bkrdy/platform/booking",
+        "web/templates/registry.ts updated — slug appears in BOTH the REGISTRY map (dynamic loader) AND the MANIFESTS map",
+        "api/app/Support/TemplateDefaults.php — has new atlas-hideSettings() (or camelCase equivalent) function returning seed copy",
+        "api/app/Support/TemplateDefaults.php — has new atlas-hideSections() (or equivalent) function returning section list",
+        "api/app/Support/TemplateDefaults.php — settingsFor() match expression has a new arm for 'atlas-hide'",
+        "api/app/Support/TemplateDefaults.php — sectionsFor() match expression has a new arm for 'atlas-hide'",
+        "Manifest has correct slug='atlas-hide', name, version (semver), color_role, color_palette, header_fields[], footer_fields[]",
+        "Manifest color_palette: first entry is default (#2A0E0E Oxblood), all hex values match spec, palette length matches spec",
+        "Manifest color_role matches spec (background)",
+        "Manifest header_fields matches spec (cover_image+announcement+social_buttons ONLY, no avatar_image, no business_type)",
+        "Manifest footer_fields matches spec (5 fields excluding show_quick_book)"
+      ]
     }
   ]
 }
