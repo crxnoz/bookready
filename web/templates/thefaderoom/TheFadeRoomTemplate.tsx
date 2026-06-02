@@ -750,10 +750,11 @@ const TFR_CSS = `
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
 
-/* Tab rail — sticky band of fully-rendered neon pills. Each tab is a
-   rounded outlined chip; active tab fills with the accent color and
-   throws a glow halo, like a lit button on a club entrance panel.
-   Distinct from Blackline's flat-underlined editorial tabs. */
+/* Tab rail — sticky band of outlined pills. The active tab stays the
+   same shape but lights up via text-neon-glow + a small "marquee
+   marker" bar attached underneath, instead of the old fill-with-pink
+   approach. Reads as a row of label tags with the active one switched
+   on, more theater-marquee than club-button-panel. */
 .tfr-tab-rail {
   position: sticky;
   top: 0;
@@ -762,9 +763,10 @@ const TFR_CSS = `
   border-top: 1px solid var(--tfr-rule);
   border-bottom: 1px solid var(--tfr-rule);
   overflow-x: auto;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  padding: 14px 0;
+  padding: 16px 0 24px;
 }
 .tfr-tab-rail::-webkit-scrollbar { display: none; }
 .tfr-tab-slider {
@@ -776,11 +778,12 @@ const TFR_CSS = `
   gap: 8px;
 }
 .tfr-tab-pill {
+  position: relative;
   flex: 0 0 auto;
-  background: rgba(240, 239, 245, 0.03);
-  border: 1px solid var(--tfr-rule);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--tfr-accent) 20%, transparent);
   border-radius: 999px;
-  padding: 11px 22px;
+  padding: 11px 24px;
   margin: 0;
   font-family: var(--tfr-body);
   font-size: 11px;
@@ -789,20 +792,34 @@ const TFR_CSS = `
   text-transform: uppercase;
   color: var(--tfr-fg-muted);
   cursor: pointer;
-  transition: color 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 220ms ease;
+  transition: color 180ms ease, border-color 180ms ease, text-shadow 220ms ease;
   white-space: nowrap;
 }
 .tfr-tab-pill:hover {
   color: var(--tfr-fg);
-  border-color: color-mix(in srgb, var(--tfr-accent) 60%, transparent);
+  border-color: color-mix(in srgb, var(--tfr-accent) 50%, transparent);
 }
 .tfr-tab-pill.is-active {
-  background: var(--tfr-accent);
-  color: var(--tfr-bg);
+  color: var(--tfr-fg);
   border-color: var(--tfr-accent);
-  box-shadow:
-    0 0 16px color-mix(in srgb, var(--tfr-accent) 55%, transparent),
-    inset 0 0 12px color-mix(in srgb, white 22%, transparent);
+  text-shadow:
+    0 0 6px var(--tfr-accent),
+    0 0 16px color-mix(in srgb, var(--tfr-accent) 65%, transparent);
+}
+/* Marquee marker — a small horizontal accent bar attached below the
+   active pill with a soft glow halo. Reads as a marker light pointing
+   up to the active tab. */
+.tfr-tab-pill.is-active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 3px;
+  background: var(--tfr-accent);
+  border-radius: 2px;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tfr-accent) 80%, transparent);
 }
 .tfr-tab-pill:focus-visible {
   outline: 2px solid var(--tfr-accent);
