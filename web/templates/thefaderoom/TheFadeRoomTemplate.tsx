@@ -112,7 +112,7 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
       {/* eslint-disable-next-line @next/next/no-page-custom-font */}
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=DM+Serif+Text:ital@0;1&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap"
       />
       <style>{TFR_CSS}</style>
       <div
@@ -246,8 +246,31 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
           <div className={`tfr-tab-panel${active === 'about' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'about'}>
             <section className="tfr-section tfr-about" aria-label={tabs.about_label ?? 'About'}>
-              {about.eyebrow && <p className="tfr-eyebrow">{about.eyebrow}</p>}
-              <h2 className="tfr-section-title">{about.heading ?? 'The Shop'}</h2>
+              {/* Three-image staggered hero (editor exposes about.images[3]). */}
+              {Array.isArray(about.images) && about.images.some((img: any) => img) && (
+                <div className="tfr-about-images">
+                  {[0, 1, 2].map(i => {
+                    const img = about.images[i]
+                    return img
+                      ? <div key={i} className="tfr-about-img"><img src={img} alt="" /></div>
+                      : <div key={i} className="tfr-about-img tfr-about-img--placeholder" aria-hidden="true" />
+                  })}
+                </div>
+              )}
+
+              {/* Layered title: DM Serif backdrop eyebrow at 80px low-opacity,
+                  Dancing Script neon heading at 30px overlaid centered. */}
+              {(about.eyebrow || about.heading) && (
+                <div className="tfr-layered-title">
+                  {about.eyebrow && (
+                    <span className="tfr-layered-eyebrow" aria-hidden="true">{about.eyebrow}</span>
+                  )}
+                  {about.heading && (
+                    <h2 className="tfr-layered-heading">{about.heading}</h2>
+                  )}
+                </div>
+              )}
+
               {about.body && <p className="tfr-about-body">{about.body}</p>}
               {Array.isArray(about.highlights) && about.highlights.length > 0 && (
                 <ul className="tfr-highlights">
@@ -297,6 +320,9 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
                 <ul className="tfr-note-list">
                   {advice.map((it: any, i: number) => (
                     <li key={i}>
+                      {settings.advice?.card_kicker && (
+                        <span className="tfr-card-kicker">{settings.advice.card_kicker}</span>
+                      )}
                       <h3>{it.title}</h3>
                       <p>{it.body}</p>
                     </li>
@@ -322,6 +348,9 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
                     <li key={i}>
                       <span className="tfr-timeline-num">{String(i + 1).padStart(2, '0')}</span>
                       <div>
+                        {settings.timeline?.card_kicker && (
+                          <span className="tfr-card-kicker">{settings.timeline.card_kicker}</span>
+                        )}
                         <h3>{it.title}</h3>
                         <p>{it.body}</p>
                       </div>
@@ -506,17 +535,26 @@ const TFR_CSS = `
   /* --tfr-accent injected via inline style (tenant pick or pink default) */
   --tfr-display: 'Bricolage Grotesque', 'Outfit', 'Manrope', system-ui, sans-serif;
   --tfr-script: 'Dancing Script', 'Pacifico', cursive;
+  --tfr-serif: 'DM Serif Text', 'Playfair Display', Georgia, serif;
   --tfr-body: 'Inter', system-ui, -apple-system, sans-serif;
-  /* Sharp neon-sign text shadow (used on hero name + thanks title). The
-     four layers stack: tight white inner highlight → accent core → mid
-     halo → soft outer bloom. Gives real neon-tube definition rather
-     than the diffuse glow a single shadow produces. */
+  /* Sharp neon-sign text shadow — used on every script-treated heading
+     (section titles, tagline, layered-title overlay, thanks). Four
+     stacked layers: tight white inner highlight → accent core → mid
+     halo → soft outer bloom. Real neon-tube definition rather than the
+     diffuse glow a single shadow produces. */
   --tfr-neon-sign:
     0 0 1px rgba(255, 255, 255, 1),
     0 0 6px var(--tfr-accent),
     0 0 14px var(--tfr-accent),
     0 0 30px var(--tfr-accent),
     0 0 56px color-mix(in srgb, var(--tfr-accent) 80%, transparent);
+  /* Tighter halo for the smaller script bodies (tagline, layered
+     heading) — same definition, less spread. */
+  --tfr-neon-sign-tight:
+    0 0 1px rgba(255, 255, 255, 1),
+    0 0 4px var(--tfr-accent),
+    0 0 10px var(--tfr-accent),
+    0 0 22px var(--tfr-accent);
 
   background: var(--tfr-bg);
   color: var(--tfr-fg);
@@ -548,15 +586,18 @@ const TFR_CSS = `
   opacity: 0.85;
 }
 
-/* Section titles — display font, bold, slight negative tracking. */
+/* Section titles — Dancing Script with full neon-sign shadow. Each
+   panel reads like a glass-tube sign hanging over its section. */
 .tfr-section-title {
-  font-family: var(--tfr-display);
-  font-size: clamp(30px, 4.5vw, 52px);
+  font-family: var(--tfr-script);
+  font-size: clamp(38px, 5.5vw, 64px);
   font-weight: 700;
-  letter-spacing: -0.018em;
-  line-height: 1.05;
+  letter-spacing: 0;
+  line-height: 1.1;
   margin: 0 0 var(--brk-space-xl);
-  color: var(--tfr-fg);
+  color: var(--tfr-accent);
+  text-shadow: var(--tfr-neon-sign);
+  padding: 0.05em 0;
 }
 
 /* Announce bar — tracked uppercase muted, with sparkle bookends. */
@@ -625,45 +666,18 @@ const TFR_CSS = `
     0 0 60px color-mix(in srgb, var(--tfr-accent) 30%, transparent);
   margin: 0 0 var(--brk-space-md);
 }
-/* Hero name — Dancing Script in accent color with the sharp neon-sign
-   shadow stack. Sized large because script fonts read smaller than
-   their geometric counterparts at the same point size. */
+/* Hero name — plain white Bricolage. Establishes the brand without
+   competing with the script-neon headings throughout the page. The
+   contrast (white sans hero + accent script section headings) is what
+   makes the neon moments feel earned. */
 .tfr-name {
-  font-family: var(--tfr-script);
-  font-size: clamp(64px, 12vw, 144px);
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 1.0;
-  margin: 0 0 var(--brk-space-md);
-  color: var(--tfr-accent);
-  text-shadow: var(--tfr-neon-sign);
-  /* Slight optical alignment — Dancing Script has long descenders. */
-  padding: 0.05em 0;
-}
-@media (prefers-reduced-motion: no-preference) {
-  /* Slow tube-warmup pulse — 3.5s, very subtle. Real neon signs don't
-     blink wildly, they breathe. */
-  .tfr-name {
-    animation: tfr-neon-breath 3.6s ease-in-out infinite;
-  }
-}
-@keyframes tfr-neon-breath {
-  0%, 100% {
-    text-shadow:
-      0 0 1px rgba(255, 255, 255, 1),
-      0 0 6px var(--tfr-accent),
-      0 0 14px var(--tfr-accent),
-      0 0 30px var(--tfr-accent),
-      0 0 56px color-mix(in srgb, var(--tfr-accent) 80%, transparent);
-  }
-  50% {
-    text-shadow:
-      0 0 2px rgba(255, 255, 255, 1),
-      0 0 9px var(--tfr-accent),
-      0 0 20px var(--tfr-accent),
-      0 0 44px var(--tfr-accent),
-      0 0 80px color-mix(in srgb, var(--tfr-accent) 90%, transparent);
-  }
+  font-family: var(--tfr-display);
+  font-size: clamp(44px, 8vw, 88px);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 0.96;
+  margin: 0 0 var(--brk-space-sm);
+  color: var(--tfr-fg);
 }
 .tfr-business-type {
   font-family: var(--tfr-body);
@@ -674,13 +688,19 @@ const TFR_CSS = `
   color: var(--tfr-fg-muted);
   margin: 0 0 var(--brk-space-sm);
 }
+/* Tagline — Dancing Script with tight neon halo. One of the two "neon
+   moments" in the hero region (the other being the avatar's halo
+   ring). Sits just under the white wordmark. */
 .tfr-tagline {
-  font-family: var(--tfr-display);
-  font-size: 18px;
-  font-weight: 500;
-  color: var(--tfr-fg);
+  font-family: var(--tfr-script);
+  font-size: clamp(22px, 2.6vw, 30px);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--tfr-accent);
+  text-shadow: var(--tfr-neon-sign-tight);
   margin: 0 0 var(--brk-space-xl);
-  max-width: 38ch;
+  max-width: 28ch;
+  padding: 0.05em 0;
 }
 
 /* Social — pill buttons in a row, accent fill for Reserve, outlined for rest */
@@ -838,7 +858,104 @@ const TFR_CSS = `
 }
 .tfr-ba > img { aspect-ratio: 1; border-radius: 8px; }
 
-/* About */
+/* About — three-up staggered hero gallery. Each cell gets a slightly
+   different aspect-ratio + vertical offset so they don't read as a
+   strict grid. Equal-width columns keep the rhythm. */
+.tfr-about-images {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+  margin: 0 0 var(--brk-space-2xl);
+}
+.tfr-about-img {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--tfr-rule);
+  background: var(--tfr-card);
+  aspect-ratio: 3/4;
+}
+.tfr-about-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tfr-about-img--placeholder {
+  background: linear-gradient(
+    135deg,
+    var(--tfr-card),
+    color-mix(in srgb, var(--tfr-accent) 6%, var(--tfr-card))
+  );
+}
+/* Staggered heights via aspect-ratio + offset. Tall→short→tall, with
+   the middle column lifted to break the strict row alignment. */
+.tfr-about-images > *:nth-child(1) { aspect-ratio: 4/5; margin-top: 0; }
+.tfr-about-images > *:nth-child(2) { aspect-ratio: 3/5; margin-top: 28px; }
+.tfr-about-images > *:nth-child(3) { aspect-ratio: 2/3; margin-top: -14px; }
+@media (max-width: 640px) {
+  .tfr-about-images { grid-template-columns: 1fr; gap: 12px; }
+  .tfr-about-images > * { margin-top: 0 !important; aspect-ratio: 4/3 !important; }
+}
+
+/* Layered title — backdrop DM Serif eyebrow at low opacity with the
+   Dancing Script heading overlaid centered. The two type families and
+   contrasting sizes give the section a museum-placard-meets-neon-sign
+   feel that the simpler section-title can't carry. */
+.tfr-layered-title {
+  position: relative;
+  display: inline-block;
+  margin: 0 0 var(--brk-space-2xl);
+  line-height: 1;
+  max-width: 100%;
+}
+.tfr-layered-eyebrow {
+  display: block;
+  font-family: var(--tfr-serif);
+  font-size: clamp(48px, 9vw, 80px);
+  line-height: 1;
+  opacity: 0.14;
+  margin: 0;
+  letter-spacing: -0.015em;
+  color: var(--tfr-fg);
+  white-space: nowrap;
+  /* Strip any inherited script styling — this is a serif backdrop only. */
+  text-shadow: none;
+}
+.tfr-layered-heading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--tfr-script);
+  font-size: clamp(26px, 3.6vw, 36px);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+  color: var(--tfr-accent);
+  text-shadow: var(--tfr-neon-sign-tight);
+  margin: 0;
+  white-space: nowrap;
+  padding: 0.05em 0;
+  pointer-events: none;
+}
+
+/* Card kicker — small tracked uppercase label above each advice /
+   timeline item. Editor surfaces a single shared kicker per list
+   (e.g., "NOTE", "STEP"). Rendered above the item's title. */
+.tfr-card-kicker {
+  display: inline-block;
+  font-family: var(--tfr-body);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--tfr-accent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--tfr-accent) 36%, transparent);
+  margin: 0 0 8px;
+}
+
 .tfr-about-body {
   font-size: 18px;
   line-height: 1.65;
