@@ -1396,78 +1396,96 @@ function Footer({
     ? subtext
     : 'Booking by appointment. Walk-ins welcome when available.'
 
+  // 3-band footer matching the structure TFR + Blackline + VT use.
+  //   1. CTA band  — Reserve action, centered on cream.
+  //   2. 3-col grid — Brand (script tagline) / Hours / Contact, with
+  //      hairline sage dividers between columns on PC, single stack on
+  //      mobile.
+  //   3. Credit band — © year + Powered by BookReady.
+  // Keeps every Lush typography token (DM Serif name, Cookie script
+  // tagline, Roboto micro labels, sage pink accent).
   return (
     <footer className="lush-footer">
-      <div className="lush-footer-glow" aria-hidden="true" />
-      <div className="lush-footer-inner">
+      {showQuickBook && (
+        <div className="lush-footer-cta-band">
+          <button type="button" className="lush-footer-book" onClick={onBook}>
+            <CalendarCheck size={18} fill="currentColor" strokeWidth={1.5} />
+            <span>Reserve your chair</span>
+          </button>
+        </div>
+      )}
 
-        <div className="lush-footer-brand">
+      <div className="lush-footer-inner">
+        <div className="lush-footer-col lush-footer-brand">
+          <span className="lush-footer-label">The Studio</span>
           <span className="lush-footer-mark">{displayName}</span>
           {p?.tagline && <p className="lush-footer-tag">{p.tagline}</p>}
           <p className="lush-footer-blurb">{blurb}</p>
         </div>
 
+        {showHours && sorted.length > 0 && (
+          <div className="lush-footer-col lush-footer-col--hours">
+            <span className="lush-footer-label">Hours</span>
+            <ul className="lush-footer-hours-list">
+              {sorted.map(h => (
+                <li key={h.day_of_week} className="lush-footer-hour">
+                  <span>{h.day_name}</span>
+                  <span>
+                    {h.is_open && h.open_time && h.close_time
+                      ? `${fmt12(h.open_time)} – ${fmt12(h.close_time)}`
+                      : 'Closed'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {showContactLinks && (p?.public_phone || p?.public_email || address) && (
           <div className="lush-footer-col">
             <span className="lush-footer-label">Contact</span>
-            {p?.public_phone && (
-              <a className="lush-footer-item" href={`tel:${p.public_phone}`}>
-                <Phone size={14} /> {p.public_phone}
-              </a>
-            )}
-            {p?.public_email && (
-              <a className="lush-footer-item" href={`mailto:${p.public_email}`}>
-                <Mail size={14} /> {p.public_email}
-              </a>
-            )}
-            {address && (
-              <a
-                className="lush-footer-item"
-                href={`https://maps.google.com/?q=${encodeURIComponent(address)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <MapPin size={14} /> {address}
-              </a>
-            )}
+            <ul className="lush-footer-contact-list">
+              {p?.public_phone && (
+                <li>
+                  <a className="lush-footer-item" href={`tel:${p.public_phone.replace(/[^\d+]/g, '')}`}>
+                    <Phone size={14} /> {p.public_phone}
+                  </a>
+                </li>
+              )}
+              {p?.public_email && (
+                <li>
+                  <a className="lush-footer-item" href={`mailto:${p.public_email}`}>
+                    <Mail size={14} /> {p.public_email}
+                  </a>
+                </li>
+              )}
+              {address && (
+                <li>
+                  <a
+                    className="lush-footer-item"
+                    href={`https://maps.google.com/?q=${encodeURIComponent(address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <MapPin size={14} /> {address}
+                  </a>
+                </li>
+              )}
+            </ul>
           </div>
         )}
-
-        {showHours && sorted.length > 0 && (
-          <div className="lush-footer-col">
-            <span className="lush-footer-label">Hours</span>
-            {sorted.map(h => (
-              <div key={h.day_of_week} className="lush-footer-hour">
-                <span>{h.day_name}</span>
-                <span>
-                  {h.is_open && h.open_time && h.close_time
-                    ? `${fmt12(h.open_time)} – ${fmt12(h.close_time)}`
-                    : 'Closed'}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {showQuickBook && (
-          <div className="lush-footer-col">
-            <span className="lush-footer-label">Quick Book</span>
-            <button className="lush-footer-book" onClick={onBook}>
-              <CalendarCheck size={18} fill="currentColor" strokeWidth={1.5} />
-              <span>Book Now</span>
-            </button>
-          </div>
-        )}
-
       </div>
-      <div className="lush-footer-bottom">
-        <span>© {new Date().getFullYear()} {displayName}</span>
-        {showPoweredBy && (
-          <>
-            <span className="lush-footer-dot" aria-hidden="true"><Dot size={14} /></span>
-            <span>Powered by <strong>BookReady</strong></span>
-          </>
-        )}
+
+      <div className="lush-footer-credit-band">
+        <p>
+          © {new Date().getFullYear()} {displayName}
+          {showPoweredBy && (
+            <>
+              <span className="lush-footer-dot" aria-hidden="true">·</span>
+              Powered by <strong>BookReady</strong>
+            </>
+          )}
+        </p>
       </div>
     </footer>
   )

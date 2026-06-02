@@ -460,22 +460,46 @@ export const LUSH_CSS = `
 .lush-tab-pill {
   position:relative; flex:0 0 auto;
   display:inline-flex; align-items:center; justify-content:center;
-  padding:16px 14px; background:transparent; border:0;
+  padding:22px 16px 18px; background:transparent; border:0;
   color:var(--lush-muted);
   font-family:var(--lush-ui); font-size:11px; font-weight:600;
-  letter-spacing:0.16em; text-transform:uppercase; line-height:1;
+  letter-spacing:0.18em; text-transform:uppercase; line-height:1;
   cursor:pointer; white-space:nowrap; scroll-snap-align:center;
   transition:color .22s ease;
 }
+/* Signature Lush detail: tiny sage sparkle (✦) tucked above the active
+   tab — ties to the sparkle vocabulary used elsewhere (before/after
+   separators, header floating sparkles) and gives Lush a distinct
+   active-state marker vs TFR's marquee bar / Blackline's flat bar /
+   VT's bracketed serif. */
+.lush-tab-pill::before {
+  content:"\\2726"; /* ✦ — same glyph as the ritual separators */
+  position:absolute; top:6px; left:50%;
+  transform:translateX(-50%) translateY(-4px);
+  color:var(--lush-pink);
+  font-size:9px; line-height:1;
+  opacity:0; transition:opacity .22s ease, transform .28s cubic-bezier(.4,0,.2,1);
+  pointer-events:none;
+}
+/* Active marker bar — sage hairline anchored to the bottom edge.
+   Subtle (1px) so the sparkle reads as the headline indicator. */
 .lush-tab-pill::after {
   content:""; position:absolute; left:14px; right:14px; bottom:0;
-  height:2px; background:var(--lush-pink); border-radius:2px;
+  height:1px; background:var(--lush-pink);
   transform:scaleX(0); transform-origin:center;
   transition:transform .28s cubic-bezier(.4,0,.2,1);
 }
 .lush-tab-pill:hover { color:var(--lush-text); }
 .lush-tab-pill.is-active { color:var(--lush-text); }
 .lush-tab-pill.is-active::after { transform:scaleX(1); }
+.lush-tab-pill.is-active::before {
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+}
+@media (prefers-reduced-motion:reduce) {
+  .lush-tab-pill::before,
+  .lush-tab-pill::after { transition:none !important; }
+}
 .lush-tab-panel { display:none; }
 .lush-tab-panel.is-active { display:block; }
 
@@ -1727,35 +1751,174 @@ export const LUSH_CSS = `
 /* Footer: flat cream to match the page; hairline dark border for
    division. All text is the standard near-black so it reads cleanly
    on the cream bg (the FadeRoom #fff/#whites are invisible here). */
+/* ── Footer: 3-band layout (CTA band / 3-col content / credit band)
+   mirroring TFR + Blackline + VT. Lush stays in its own vocabulary:
+   DM Serif business name, Cookie script tagline, sage accent on cream
+   canvas with hairline dividers. ── */
 .lush-footer { position:relative; width:100%; background:var(--lush-bg); color:var(--lush-text); overflow:hidden; border-top:1px solid var(--lush-dark-border); }
 .lush-footer-glow { display:none; }
-.lush-footer-inner { position:relative; width:100%; max-width:1180px; margin:0 auto; padding:56px 24px 32px; display:grid; grid-template-columns:1fr; gap:36px; }
-.lush-footer-brand { display:flex; flex-direction:column; gap:10px; }
-.lush-footer-mark { font-family:var(--lush-serif); font-size:36px; line-height:1; letter-spacing:-0.03em; margin:0; }
-.lush-footer-tag { margin:0; font-family:var(--lush-script); font-style:normal; font-size:32px; line-height:1; color:var(--lush-pink); }
-.lush-footer-blurb { margin:0; color:var(--lush-muted); font-family:var(--lush-ui); font-size:13px; line-height:1.55; }
-.lush-footer-col { display:flex; flex-direction:column; gap:10px; }
-.lush-footer-label { font-family:var(--lush-ui); font-size:10px; letter-spacing:0.22em; text-transform:uppercase; color:var(--lush-pink); font-weight:600; margin-bottom:4px; }
-.lush-footer-item { display:inline-flex; align-items:center; gap:10px; color:var(--lush-text); font-family:var(--lush-ui); font-size:13px; line-height:1.4; transition:color .2s ease; }
-.lush-footer-item:hover { color:var(--lush-pink); }
-.lush-footer-hour { display:flex; justify-content:space-between; gap:16px; font-family:var(--lush-ui); font-size:12px; color:var(--lush-text); padding-bottom:6px; border-bottom:1px dashed var(--lush-dark-border); }
-.lush-footer-hour:last-of-type { border-bottom:0; }
-.lush-footer-hour span:last-child { color:var(--lush-muted); font-family:var(--lush-ui); font-size:11px; }
-.lush-footer-bottom { position:relative; border-top:1px solid var(--lush-dark-border); padding:18px 24px; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:10px; font-family:var(--lush-ui); font-size:11px; letter-spacing:0.08em; color:var(--lush-muted); }
-.lush-footer-bottom strong { color:var(--lush-pink); font-weight:600; }
-.lush-footer-dot { color:var(--lush-pink); opacity:0.5; font-size:6px; }
 
-/* Footer Quick Book — full-width sage pill, identical pattern to the
-   FadeRoom footer CTA. Distinct class so it doesn't inherit the
-   header's 50 px circle styling. */
-.lush-footer-book {
+/* Top band — sage pill CTA centered on cream. */
+.lush-footer-cta-band {
+  padding:56px 24px;
+  text-align:center;
+  border-bottom:1px solid var(--lush-dark-border);
+}
+
+/* Middle band — 3 informational columns. Hairline dividers between
+   columns on PC (≥720px); single column stack on mobile. */
+.lush-footer-inner {
+  position:relative;
   width:100%;
-  display:inline-flex; align-items:center; justify-content:center; gap:10px;
-  padding:14px 22px;
-  background:var(--lush-pink); color:var(--lush-on-pink);
-  border:none; border-radius:14px;
-  font-family:var(--lush-ui); font-size:14px; font-weight:700;
-  letter-spacing:0.04em; line-height:1;
+  max-width:1180px;
+  margin:0 auto;
+  padding:64px 24px;
+  display:grid;
+  grid-template-columns:1fr;
+  gap:48px;
+}
+@media (min-width:720px) {
+  .lush-footer-inner {
+    grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+    gap:0;
+  }
+  .lush-footer-col {
+    padding:0 36px;
+  }
+  .lush-footer-col:first-child { padding-left:0; }
+  .lush-footer-col:last-child  { padding-right:0; }
+  .lush-footer-col + .lush-footer-col {
+    border-left:1px solid var(--lush-dark-border);
+  }
+}
+.lush-footer-col {
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.lush-footer-brand { gap:10px; }
+.lush-footer-col--hours { min-width:240px; }
+.lush-footer-label {
+  font-family:var(--lush-ui);
+  font-size:10px;
+  letter-spacing:0.22em;
+  text-transform:uppercase;
+  color:var(--lush-pink);
+  font-weight:600;
+  margin-bottom:4px;
+}
+.lush-footer-mark {
+  font-family:var(--lush-serif);
+  font-size:32px;
+  line-height:1;
+  letter-spacing:-0.02em;
+  margin:0;
+  color:var(--lush-text);
+}
+.lush-footer-tag {
+  margin:0;
+  font-family:var(--lush-script);
+  font-style:normal;
+  font-size:28px;
+  line-height:1;
+  color:var(--lush-pink);
+}
+.lush-footer-blurb {
+  margin:6px 0 0;
+  color:var(--lush-muted);
+  font-family:var(--lush-ui);
+  font-size:13px;
+  line-height:1.55;
+  max-width:32ch;
+}
+
+/* Hours column — day / time pairs with hairline rule between rows. */
+.lush-footer-hours-list {
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:flex;
+  flex-direction:column;
+}
+.lush-footer-hour {
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:16px;
+  padding:10px 0;
+  border-top:1px solid var(--lush-dark-border);
+  font-family:var(--lush-ui);
+  font-size:12px;
+}
+.lush-footer-hour:first-child { border-top:0; padding-top:0; }
+.lush-footer-hour > span:first-child {
+  color:var(--lush-text);
+  font-weight:500;
+  letter-spacing:0.06em;
+  text-transform:uppercase;
+  font-size:11px;
+}
+.lush-footer-hour > span:last-child {
+  color:var(--lush-muted);
+  font-family:var(--lush-ui);
+  font-variant-numeric:tabular-nums;
+}
+
+/* Contact column — lookup list of phone / email / address. */
+.lush-footer-contact-list {
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.lush-footer-item {
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  color:var(--lush-text);
+  font-family:var(--lush-ui);
+  font-size:13px;
+  line-height:1.4;
+  transition:color .2s ease;
+}
+.lush-footer-item:hover { color:var(--lush-pink); }
+.lush-footer-item > svg { color:var(--lush-pink); flex-shrink:0; }
+
+/* Bottom band — © + Powered by BookReady hairline strip. */
+.lush-footer-credit-band {
+  padding:18px 24px;
+  border-top:1px solid var(--lush-dark-border);
+  text-align:center;
+}
+.lush-footer-credit-band p {
+  margin:0;
+  font-family:var(--lush-ui);
+  font-size:11px;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:var(--lush-muted);
+}
+.lush-footer-credit-band strong { color:var(--lush-pink); font-weight:600; }
+.lush-footer-dot { color:var(--lush-pink); opacity:0.5; padding:0 10px; }
+
+/* Footer Reserve CTA — sage pill, sized for the standalone band. */
+.lush-footer-book {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  padding:18px 44px;
+  background:var(--lush-pink);
+  color:var(--lush-on-pink);
+  border:none;
+  border-radius:999px;
+  font-family:var(--lush-ui);
+  font-size:13px;
+  font-weight:700;
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  line-height:1;
   cursor:pointer;
   transition:filter .15s ease, transform .15s ease;
 }
