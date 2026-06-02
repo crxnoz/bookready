@@ -175,13 +175,23 @@ const TFR_BOOKING_CSS = `
 /* Cards, slots, addons — dark surface, soft 8px corners, hairline border. */
 .tfr-booking-inner.lush-template [class*="brk-booking-card"],
 .tfr-booking-inner.lush-template [class*="brk-booking-slot"],
-.tfr-booking-inner.lush-template [class*="brk-booking-service"],
 .tfr-booking-inner.lush-template [class*="brk-booking-addon"],
 .tfr-booking-inner.lush-template [class*="brk-booking-summary"],
 .tfr-booking-inner.lush-template [class*="brk-booking-staff"],
 .tfr-booking-inner.lush-template [class*="brk-booking-cat"] {
   background: var(--tfr-card) !important;
   border-color: var(--tfr-rule) !important;
+  box-shadow: none !important;
+  color: var(--tfr-fg) !important;
+  border-radius: 8px !important;
+}
+/* Services specifically sit on the page canvas (transparent) — the
+   user feedback was "remove the background in the services section".
+   The hairline accent-tinted border keeps each service card distinct
+   without the heavy card surface. */
+.tfr-booking-inner.lush-template [class*="brk-booking-service"] {
+  background: transparent !important;
+  border: 1px solid var(--tfr-rule) !important;
   box-shadow: none !important;
   color: var(--tfr-fg) !important;
   border-radius: 8px !important;

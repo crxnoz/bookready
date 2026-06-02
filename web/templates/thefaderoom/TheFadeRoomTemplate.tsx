@@ -21,6 +21,7 @@
  */
 
 import { useState, useRef } from 'react'
+import { CalendarPlus, Phone, Mail, Instagram, MapPin, type LucideIcon } from 'lucide-react'
 import type { PublicSite } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 import { tokensToCss } from '@bkrdy/platform'
@@ -431,6 +432,18 @@ function PolicyRow({ label, body }: { label: string; body?: string | null }) {
   )
 }
 
+// Per-platform brand gradients. Each button's `background` reads like
+// the destination it points at — Insta's iconic pink→orange→purple,
+// Call's WhatsApp green, Email's mail blue, Directions' Maps green,
+// Reserve's tenant-accent gradient.
+const SOCIAL_STYLES: Record<string, { Icon: LucideIcon; gradient: string }> = {
+  book:       { Icon: CalendarPlus, gradient: 'linear-gradient(135deg, var(--tfr-accent), color-mix(in srgb, var(--tfr-accent) 55%, #fff))' },
+  call:       { Icon: Phone,        gradient: 'linear-gradient(135deg, #25D366, #128C7E)' },
+  email:      { Icon: Mail,         gradient: 'linear-gradient(135deg, #4F8BFF, #2D5FCF)' },
+  instagram:  { Icon: Instagram,    gradient: 'linear-gradient(135deg, #F58529 0%, #DD2A7B 45%, #8134AF 100%)' },
+  directions: { Icon: MapPin,       gradient: 'linear-gradient(135deg, #34A853, #16713C)' },
+}
+
 function SocialButtons({ header, profile, goBook }: { header: any; profile: any; goBook: () => void }) {
   const btns: { key: string; href: string | null; label: string }[] = [
     { key: 'book',       href: header.book_button_url || '#book', label: 'Reserve' },
@@ -450,15 +463,17 @@ function SocialButtons({ header, profile, goBook }: { header: any; profile: any;
         const onClick = b.key === 'book' && !header.book_button_url
           ? (e: React.MouseEvent<HTMLAnchorElement>) => { e.preventDefault(); goBook() }
           : undefined
-        const isBook = b.key === 'book'
+        const style = SOCIAL_STYLES[b.key]
         return (
           <a
             key={b.key}
             href={safeHref(b.href!)}
-            className={`tfr-social-btn${isBook ? ' tfr-social-btn--accent' : ''}`}
+            className="tfr-social-btn"
+            style={{ background: style?.gradient }}
             onClick={onClick}
           >
-            {b.label}
+            {style?.Icon && <style.Icon size={14} strokeWidth={2.4} />}
+            <span>{b.label}</span>
           </a>
         )
       })}
@@ -666,10 +681,10 @@ const TFR_CSS = `
     0 0 60px color-mix(in srgb, var(--tfr-accent) 30%, transparent);
   margin: 0 0 var(--brk-space-md);
 }
-/* Hero name — plain white Bricolage. Establishes the brand without
-   competing with the script-neon headings throughout the page. The
-   contrast (white sans hero + accent script section headings) is what
-   makes the neon moments feel earned. */
+/* Hero name — white Bricolage with neon halo (multi-layer shadow but
+   no stroke). The white core reads as the bright glass tube; the
+   colored halo bleeds into the surrounding canvas the way a real
+   neon sign casts onto the wall behind it. */
 .tfr-name {
   font-family: var(--tfr-display);
   font-size: clamp(44px, 8vw, 88px);
@@ -678,6 +693,10 @@ const TFR_CSS = `
   line-height: 0.96;
   margin: 0 0 var(--brk-space-sm);
   color: var(--tfr-fg);
+  text-shadow:
+    0 0 8px color-mix(in srgb, var(--tfr-accent) 80%, transparent),
+    0 0 24px color-mix(in srgb, var(--tfr-accent) 60%, transparent),
+    0 0 56px color-mix(in srgb, var(--tfr-accent) 35%, transparent);
 }
 .tfr-business-type {
   font-family: var(--tfr-body);
@@ -703,7 +722,11 @@ const TFR_CSS = `
   padding: 0.05em 0;
 }
 
-/* Social — pill buttons in a row, accent fill for Reserve, outlined for rest */
+/* Social — pill buttons with per-platform brand gradients + lucide
+   icons. Each button gets a different visual identity (Instagram pink/
+   orange/purple, Call green, Email blue, Directions Maps green,
+   Reserve accent gradient), so the row reads as a contact toolbox
+   rather than a homogeneous list. */
 .tfr-social {
   display: flex;
   flex-wrap: wrap;
@@ -713,35 +736,35 @@ const TFR_CSS = `
 .tfr-social-btn {
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   padding: 12px 22px;
   font-family: var(--tfr-body);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
+  font-weight: 700;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--tfr-fg);
-  border: 1px solid var(--tfr-rule);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
-  transition: color 160ms ease, border-color 160ms ease, box-shadow 200ms ease;
-  background: transparent;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+  transition: transform 160ms ease, box-shadow 220ms ease;
+  /* background-image set per-button via inline style */
 }
 .tfr-social-btn:hover {
-  color: var(--tfr-accent);
-  border-color: var(--tfr-accent);
-  box-shadow: 0 0 16px color-mix(in srgb, var(--tfr-accent) 30%, transparent);
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 24px color-mix(in srgb, var(--tfr-accent) 35%, transparent),
+    0 6px 16px rgba(0, 0, 0, 0.35);
 }
-.tfr-social-btn--accent {
-  background: var(--tfr-accent);
-  color: var(--tfr-bg);
-  border-color: var(--tfr-accent);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--tfr-accent) 45%, transparent);
-}
-.tfr-social-btn--accent:hover {
-  color: var(--tfr-bg);
-  box-shadow: 0 0 24px color-mix(in srgb, var(--tfr-accent) 65%, transparent);
+.tfr-social-btn svg {
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
 
-/* Tab rail — sticky, hairline-bordered, underline on active. */
+/* Tab rail — sticky band of fully-rendered neon pills. Each tab is a
+   rounded outlined chip; active tab fills with the accent color and
+   throws a glow halo, like a lit button on a club entrance panel.
+   Distinct from Blackline's flat-underlined editorial tabs. */
 .tfr-tab-rail {
   position: sticky;
   top: 0;
@@ -752,6 +775,7 @@ const TFR_CSS = `
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  padding: 14px 0;
 }
 .tfr-tab-rail::-webkit-scrollbar { display: none; }
 .tfr-tab-slider {
@@ -760,34 +784,40 @@ const TFR_CSS = `
   max-width: var(--brk-container-narrow);
   margin: 0 auto;
   padding: 0 var(--brk-space-md);
-  gap: 0;
+  gap: 8px;
 }
 .tfr-tab-pill {
   flex: 0 0 auto;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  padding: 20px 22px;
+  background: rgba(240, 239, 245, 0.03);
+  border: 1px solid var(--tfr-rule);
+  border-radius: 999px;
+  padding: 11px 22px;
   margin: 0;
   font-family: var(--tfr-body);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--tfr-fg-muted);
   cursor: pointer;
-  transition: color 180ms ease, border-color 180ms ease, text-shadow 200ms ease;
+  transition: color 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 220ms ease;
   white-space: nowrap;
 }
-.tfr-tab-pill:hover { color: var(--tfr-fg); }
+.tfr-tab-pill:hover {
+  color: var(--tfr-fg);
+  border-color: color-mix(in srgb, var(--tfr-accent) 60%, transparent);
+}
 .tfr-tab-pill.is-active {
-  color: var(--tfr-accent);
-  border-bottom-color: var(--tfr-accent);
-  text-shadow: 0 0 10px color-mix(in srgb, var(--tfr-accent) 40%, transparent);
+  background: var(--tfr-accent);
+  color: var(--tfr-bg);
+  border-color: var(--tfr-accent);
+  box-shadow:
+    0 0 16px color-mix(in srgb, var(--tfr-accent) 55%, transparent),
+    inset 0 0 12px color-mix(in srgb, white 22%, transparent);
 }
 .tfr-tab-pill:focus-visible {
   outline: 2px solid var(--tfr-accent);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
 /* Tab panels — display:none on inactive (preserves form state). */
@@ -1099,57 +1129,121 @@ const TFR_CSS = `
   line-height: 1.65;
 }
 
-/* Reviews */
+/* Reviews — tilted polaroid-style cards on a dark wall. Each card
+   gets a soft accent border + glow halo, slight rotation (alternating
+   -1/+1 degrees), and a giant Dancing Script quote glyph as a corner
+   watermark. Hover lifts the card and unskews it. Distinct from
+   Blackline's editorial column-with-rule treatment. */
 .tfr-reviews {
   list-style: none;
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 0;
+  gap: 28px;
 }
 @media (min-width: 720px) {
-  .tfr-reviews { grid-template-columns: repeat(2, 1fr); }
+  .tfr-reviews { grid-template-columns: repeat(2, 1fr); gap: 32px; }
 }
 .tfr-reviews > li {
-  padding: var(--brk-space-xl) 0;
-  border-top: 1px solid var(--tfr-rule);
   position: relative;
+  background: var(--tfr-card);
+  border: 1px solid color-mix(in srgb, var(--tfr-accent) 28%, var(--tfr-rule));
+  border-radius: 18px;
+  padding: var(--brk-space-xl);
+  box-shadow:
+    0 0 28px color-mix(in srgb, var(--tfr-accent) 14%, transparent),
+    0 12px 24px rgba(0, 0, 0, 0.32);
+  transition: transform 220ms ease, box-shadow 250ms ease;
 }
-.tfr-reviews > li:nth-last-child(-n+1) { border-bottom: 1px solid var(--tfr-rule); }
-@media (min-width: 720px) {
-  .tfr-reviews > li:nth-child(odd)  { padding-right: var(--brk-space-xl); }
-  .tfr-reviews > li:nth-child(even) {
-    padding-left: var(--brk-space-xl);
-    border-left: 1px solid var(--tfr-rule);
-  }
+.tfr-reviews > li:nth-child(odd)  { transform: rotate(-1.2deg); }
+.tfr-reviews > li:nth-child(even) { transform: rotate(1.2deg); }
+.tfr-reviews > li:hover {
+  transform: rotate(0deg) translateY(-6px);
+  box-shadow:
+    0 0 40px color-mix(in srgb, var(--tfr-accent) 28%, transparent),
+    0 16px 32px rgba(0, 0, 0, 0.4);
+}
+/* Giant accent quote glyph as corner watermark — Dancing Script,
+   stacked behind the body copy via low opacity + absolute position. */
+.tfr-reviews > li::before {
+  content: '\\201C';
+  position: absolute;
+  top: -28px;
+  right: 20px;
+  font-family: var(--tfr-script);
+  font-size: 140px;
+  line-height: 1;
+  color: var(--tfr-accent);
+  opacity: 0.5;
+  text-shadow: 0 0 28px color-mix(in srgb, var(--tfr-accent) 60%, transparent);
+  pointer-events: none;
 }
 .tfr-reviews blockquote {
   font-family: var(--tfr-display);
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.4;
-  letter-spacing: -0.008em;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
   margin: 0 0 var(--brk-space-md);
   color: var(--tfr-fg);
+  position: relative;
+  z-index: 1;
 }
-.tfr-quote-glyph {
-  font-family: var(--tfr-display);
-  color: var(--tfr-accent);
-  margin-right: 4px;
-  text-shadow: 0 0 10px color-mix(in srgb, var(--tfr-accent) 40%, transparent);
-}
+/* Hide the inline glyph from the markup — the corner watermark is
+   the new quote treatment. */
+.tfr-quote-glyph { display: none; }
 .tfr-review-attr {
   font-family: var(--tfr-body);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 700;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: var(--tfr-fg-muted);
+  color: var(--tfr-accent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--tfr-accent) 30%, transparent);
   margin: 0;
+  position: relative;
+  z-index: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tfr-reviews > li,
+  .tfr-reviews > li:hover {
+    transform: none;
+  }
 }
 
-/* Thanks — second "neon moment" of the page, mirroring the hero. */
-.tfr-thanks { text-align: center; padding-block: var(--brk-space-3xl); }
+/* Thanks — framed as a hung neon sign on the wall. Accent-tube border
+   with inner + outer glow, sparkle corners punched out of the border
+   line. Big Dancing Script title hanging inside. Distinct from
+   Blackline's centered-text outro. */
+.tfr-thanks {
+  position: relative;
+  max-width: 760px;
+  margin: var(--brk-space-3xl) auto;
+  padding: var(--brk-space-3xl) clamp(24px, 5vw, 56px) var(--brk-space-2xl);
+  text-align: center;
+  border: 2px solid var(--tfr-accent);
+  border-radius: 22px;
+  box-shadow:
+    0 0 28px color-mix(in srgb, var(--tfr-accent) 32%, transparent),
+    inset 0 0 32px color-mix(in srgb, var(--tfr-accent) 12%, transparent);
+}
+/* Sparkle corner cutouts — punch through the border line at top-left
+   and bottom-right so the ✦ glyphs look like they're attached to the
+   tube rather than hovering inside the frame. */
+.tfr-thanks::before,
+.tfr-thanks::after {
+  content: '✦';
+  position: absolute;
+  font-size: 28px;
+  color: var(--tfr-accent);
+  text-shadow: 0 0 16px color-mix(in srgb, var(--tfr-accent) 70%, transparent);
+  background: var(--tfr-bg);
+  padding: 0 10px;
+  line-height: 1;
+}
+.tfr-thanks::before { top: -18px; left: 32px; }
+.tfr-thanks::after  { bottom: -18px; right: 32px; }
+
 .tfr-thanks-title {
   font-family: var(--tfr-script);
   font-size: clamp(40px, 7vw, 80px);
@@ -1159,9 +1253,10 @@ const TFR_CSS = `
   color: var(--tfr-accent);
   text-shadow: var(--tfr-neon-sign);
   padding: 0.05em 0;
+  margin: 0 0 var(--brk-space-md);
 }
 .tfr-thanks-body {
-  max-width: 56ch;
+  max-width: 48ch;
   margin: 0 auto;
   color: var(--tfr-fg-muted);
   line-height: 1.65;
