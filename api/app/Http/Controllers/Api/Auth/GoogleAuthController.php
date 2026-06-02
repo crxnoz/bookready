@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Auth;
 
+use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\PlatformMailer;
@@ -323,8 +324,14 @@ class GoogleAuthController extends Controller
     public function completeSignup(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'handoff'       => 'required|string|size:40',
-            'business_name' => 'required|string|min:1|max:100',
+            'handoff'        => 'required|string|size:40',
+            'business_name'  => 'required|string|min:1|max:100',
+            // Pre-launch (#117): explicit ToS acceptance — same gate as
+            // the email signup endpoint. Required because the deferred-
+            // name Google flow can land here without going through the
+            // /register form, so we must collect consent on this screen
+            // too. See web/app/register/complete/page.tsx.
+            'terms_accepted' => ['required', 'accepted'],
         ]);
 
         $cacheKey = "google_signup:{$validated['handoff']}";
@@ -375,7 +382,11 @@ class GoogleAuthController extends Controller
         }
 
         // Phase S6 part 2 — Google verified the email; mark verified.
+        // Pre-launch (#117) — same save also stamps ToS acceptance so we
+        // can prove what version of /terms the user agreed to.
         $owner->email_verified_at = now();
+        $owner->terms_accepted_at = now();
+        $owner->terms_version     = RegisterController::TERMS_VERSION;
         $owner->save();
 
         // One-shot: this handoff token must never be replayable.

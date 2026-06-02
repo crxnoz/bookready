@@ -32,6 +32,11 @@ function CompleteInner() {
   const googleName = searchParams.get('name') ?? ''
 
   const [businessName, setBusinessName] = useState('')
+  // Pre-launch (#117): Google deferred-name signup also requires
+  // explicit ToS acceptance. The /register page collects it for the
+  // email flow; the Google flow returns here without going through
+  // that page, so we re-collect on this screen.
+  const [termsAccepted, setTermsAccepted] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -66,12 +71,17 @@ function CompleteInner() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (! termsAccepted) {
+      setError('Please agree to the Terms of Service and Privacy Policy to continue.')
+      return
+    }
     setError('')
     setLoading(true)
     try {
       const res = await completeGoogleSignup({
         handoff,
         business_name: businessName.trim(),
+        terms_accepted: termsAccepted,
       })
       setToken()
       const tenantId = res.tenant_id ?? res.user.tenant_id
@@ -138,25 +148,41 @@ function CompleteInner() {
           />
         </Field>
 
+        {/* Pre-launch (#117): explicit ToS checkbox on the Google
+            deferred-name completion page. Mirrors the email signup
+            flow on /register so consent is collected in both paths. */}
+        <label className="flex gap-2.5 items-start text-[11px] text-muted-text leading-relaxed cursor-pointer">
+          <input
+            type="checkbox"
+            checked={termsAccepted}
+            onChange={e => setTermsAccepted(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-near-black flex-shrink-0 cursor-pointer"
+            aria-describedby="terms-text-google"
+          />
+          <span id="terms-text-google">
+            I have read and agree to the{' '}
+            <Link href="/terms" className="underline underline-offset-2 hover:text-near-black">
+              Terms of Service
+            </Link>
+            ,{' '}
+            <Link href="/privacy" className="underline underline-offset-2 hover:text-near-black">
+              Privacy Policy
+            </Link>
+            , and{' '}
+            <Link href="/refund" className="underline underline-offset-2 hover:text-near-black">
+              Refund Policy
+            </Link>
+            {' '}of DaysGraphic LLC (d/b/a BookReady).
+          </span>
+        </label>
+
         <button
           type="submit"
-          disabled={loading || ! businessName.trim()}
+          disabled={loading || ! businessName.trim() || ! termsAccepted}
           className={submitCls}
         >
           {loading ? 'Creating workspace…' : 'Finish signup'}
         </button>
-
-        <p className="text-[10px] text-center text-muted-text">
-          By continuing, you agree to our{' '}
-          <Link href="/terms" className="underline underline-offset-2 hover:text-near-black">
-            Terms of Service
-          </Link>{' '}
-          and{' '}
-          <Link href="/privacy" className="underline underline-offset-2 hover:text-near-black">
-            Privacy Policy
-          </Link>
-          .
-        </p>
       </form>
 
       {/* Wrong account exit */}

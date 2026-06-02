@@ -1226,6 +1226,11 @@ export interface RegisterPayload {
   password_confirmation: string
   business_name: string
   template?: string
+  /**
+   * Pre-launch (#117): explicit ToS acceptance. Backend rejects signup
+   * unless this is true. Tied to a ticked checkbox on /register.
+   */
+  terms_accepted: boolean
 }
 
 export interface LoginPayload {

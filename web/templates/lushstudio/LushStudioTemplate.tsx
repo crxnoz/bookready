@@ -573,12 +573,13 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
             </div>
           </div>
 
-          {/* ── Book ── Wrapped in lush-book-frame so the booking
-              flow gets the same outer section padding the other
-              BookReady templates use (mirrors TFR's .tfr-section.tfr-book
-              and VT's .vt-section.vt-book). */}
+          {/* ── Book ── Wrapped in .lush-section.lush-book so the
+              booking flow gets the same outer section padding the
+              other BookReady templates use. Naming matches the trio:
+              .tfr-section.tfr-book / .blackline-section.blackline-book
+              / .vt-section.vt-book. */}
           <div className={`lush-tab-panel${active === 'book' ? ' is-active' : ''}`}>
-            <div className="lush-book-frame">
+            <div className="lush-section lush-book">
               {site.booking_settings && site.booking_settings.booking_enabled === false ? (
                 <section className="brk-booking-section">
                   <div className="brk-booking-summary" style={{ maxWidth: 480, margin: '40px auto' }}>

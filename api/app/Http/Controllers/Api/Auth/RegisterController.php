@@ -9,10 +9,19 @@ use App\Services\TenantProvisioningService;
 use App\Support\AuthCookie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class RegisterController extends Controller
 {
+    /**
+     * Current Terms of Service version stamped on every new user record.
+     * Matches the effective date shown at the top of /terms in the web
+     * app. Bump this when the Terms are materially updated AND require
+     * existing users to re-accept.
+     */
+    public const TERMS_VERSION = '2026-05-27';
+
     public function __construct(
         private readonly TenantProvisioningService $provisioner
     ) {}
@@ -20,14 +29,28 @@ class RegisterController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'owner_name'    => ['required', 'string', 'max:100'],
-            'email'         => ['required', 'email', 'unique:users,email'],
-            'password'      => ['required', 'string', 'min:8', 'confirmed'],
-            'business_name' => ['required', 'string', 'max:100'],
-            'template'      => ['sometimes', 'string', 'in:the-fade-room'],
+            'owner_name'     => ['required', 'string', 'max:100'],
+            'email'          => ['required', 'email', 'unique:users,email'],
+            'password'       => ['required', 'string', 'min:8', 'confirmed'],
+            'business_name'  => ['required', 'string', 'max:100'],
+            'template'       => ['sometimes', 'string', 'in:the-fade-room'],
+            // Explicit ToS acceptance — must be a truthy (1/true/yes/on)
+            // boolean. Laravel's "accepted" rule covers all of these.
+            'terms_accepted' => ['required', 'accepted'],
         ]);
 
         ['tenant' => $tenant, 'owner' => $owner] = $this->provisioner->provision($data);
+
+        // Stamp the Terms acceptance on the freshly-provisioned user. Done
+        // post-provision (rather than in the provisioner) so existing
+        // service signatures stay stable. timestamp + version both go on
+        // the central users row so an audit can prove what was on screen
+        // when the user clicked. See migration
+        // 2026_06_02_000001_add_terms_acceptance_to_users.
+        DB::table('users')->where('id', $owner->id)->update([
+            'terms_accepted_at' => now(),
+            'terms_version'     => self::TERMS_VERSION,
+        ]);
 
         $token = $owner->createToken(
             'api',

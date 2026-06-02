@@ -94,18 +94,19 @@ export const LUSH_CSS = `
   flex-shrink:0;
 }
 
-/* ── Book tab outer frame ── Pads the booking flow so it has the same
-   breathing room above + beside as TFR's .tfr-section.tfr-book and
-   VT's .vt-section.vt-book wrappers give the embedded booking flow. */
-.lush-book-frame {
-  width:100%;
-  max-width:1080px;
-  margin:0 auto;
-  padding:48px 22px 80px;
+/* ── Section frame ── Generic .lush-section base mirroring the trio's
+   .tfr-section / .blackline-section / .vt-section so Lush opts into
+   the same container width + padding rhythm those templates ship.
+   Uses the @bkrdy/platform tokens directly (--brk-container-narrow,
+   --brk-space-3xl, --brk-space-md). */
+.lush-section {
+  max-width: var(--brk-container-narrow);
+  margin: 0 auto;
+  padding: var(--brk-space-3xl) var(--brk-space-md);
 }
-@media (max-width:720px) {
-  .lush-book-frame { padding:32px 16px 56px; }
-}
+/* .lush-book — modifier matching .tfr-book / .blackline-book / .vt-book.
+   Identical handling to the trio (top padding from --brk-space-3xl). */
+.lush-book { padding-top: var(--brk-space-3xl); }
 
 /* ── Header ── */
 .lush-header-section {

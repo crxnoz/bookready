@@ -22,6 +22,11 @@ function RegisterForm() {
     password_confirmation: '',
     business_name: '',
   })
+  // Pre-launch (#117): explicit ToS acceptance. Tracked separately
+  // from the text fields so it can be a boolean. Submit is disabled
+  // until checked. Google flow uses its own checkbox on the
+  // /register/complete page after OAuth returns.
+  const [termsAccepted, setTermsAccepted] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -59,6 +64,10 @@ function RegisterForm() {
       setError('Passwords do not match.')
       return
     }
+    if (! termsAccepted) {
+      setError('Please agree to the Terms of Service and Privacy Policy to continue.')
+      return
+    }
     setError('')
     setLoading(true)
     try {
@@ -68,6 +77,7 @@ function RegisterForm() {
         password: form.password,
         password_confirmation: form.password_confirmation,
         business_name: form.business_name,
+        terms_accepted: termsAccepted,
       })
       setToken()
       const tenantId = res.tenant_id ?? res.user.tenant_id
@@ -188,21 +198,40 @@ function RegisterForm() {
           />
         </Field>
 
-        <button type="submit" disabled={loading} className={submitCls}>
+        {/* Pre-launch (#117): explicit ToS checkbox. Unchecked by
+            default; submit stays disabled until ticked. Stronger CYA
+            than passive "by signing up you agree" copy under the
+            button. Backend (RegisterController) rejects the request
+            unless terms_accepted is true and stamps users.terms_accepted_at
+            + terms_version on the user row. */}
+        <label className="flex gap-2.5 items-start text-[11px] text-muted-text leading-relaxed cursor-pointer">
+          <input
+            type="checkbox"
+            checked={termsAccepted}
+            onChange={e => setTermsAccepted(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-near-black flex-shrink-0 cursor-pointer"
+            aria-describedby="terms-text"
+          />
+          <span id="terms-text">
+            I have read and agree to the{' '}
+            <Link href="/terms" className="underline underline-offset-2 hover:text-near-black">
+              Terms of Service
+            </Link>
+            ,{' '}
+            <Link href="/privacy" className="underline underline-offset-2 hover:text-near-black">
+              Privacy Policy
+            </Link>
+            , and{' '}
+            <Link href="/refund" className="underline underline-offset-2 hover:text-near-black">
+              Refund Policy
+            </Link>
+            {' '}of DaysGraphic LLC (d/b/a BookReady).
+          </span>
+        </label>
+
+        <button type="submit" disabled={loading || !termsAccepted} className={submitCls}>
           {loading ? 'Creating account…' : 'Create account'}
         </button>
-
-        <p className="text-[10px] text-center text-muted-text">
-          By creating an account, you agree to the{' '}
-          <Link href="/terms" className="underline underline-offset-2 hover:text-near-black">
-            Terms of Service
-          </Link>{' '}
-          and{' '}
-          <Link href="/privacy" className="underline underline-offset-2 hover:text-near-black">
-            Privacy Policy
-          </Link>
-          {' '}of DaysGraphic LLC.
-        </p>
       </form>
 
       {/* Divider */}

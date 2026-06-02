@@ -127,6 +127,12 @@ export async function register(payload: RegisterPayload): Promise<AuthResponse> 
 export async function completeGoogleSignup(payload: {
   handoff: string
   business_name: string
+  /**
+   * Pre-launch (#117): same ToS gate as the email-signup endpoint —
+   * the deferred-name Google flow can land here without going through
+   * /register, so consent is collected on /register/complete.
+   */
+  terms_accepted: boolean
 }): Promise<AuthResponse> {
   return request<AuthResponse>('/auth/google/complete-signup', {
     method: 'POST',
