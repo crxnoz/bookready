@@ -1094,99 +1094,73 @@ function AboutPanel({
   // signature word is meaningful, not just "The".
   const businessWord = signatureWord(displayName)
 
-  // Saved values win; fall back to the previous default styling.
-  const heading      = about?.heading?.trim()    || `The ${signatureWord(displayName)} Experience`
-  // Eyebrow drives the small descriptor under the big headline. Title
-  // case (no .toUpperCase) so the spa Molle italic reads naturally.
-  const backdropText = about?.eyebrow?.trim() || businessWord
-  const bodyOverride = about?.body?.trim()       || ''
-  const highlights   = about?.highlights?.filter(h => h.title?.trim() || h.body?.trim()) ?? []
-  const useHighlights = highlights.length > 0
+  // Saved values win; fall back to brand-flavored defaults so empty
+  // tenants still feel intentional rather than placeholder-y.
+  const heading = about?.heading?.trim() || `The ${businessWord} Experience`
+  const eyebrow = about?.eyebrow?.trim() || businessWord
+  const body    = about?.body?.trim()
+    || (p?.tagline?.trim()
+          ? `${p.tagline} — we're dedicated to delivering an exceptional experience every visit.`
+          : `At ${displayName}, every appointment is an experience. We bring precision, care, and craft to every client.`)
+  const userHighlights = about?.highlights?.filter(h => h.title?.trim() || h.body?.trim()) ?? []
+  const highlights = userHighlights.length > 0 ? userHighlights : [
+    { title: 'Expert technique',         body: 'Refined through years of hands-on practice — each appointment built on craft.' },
+    { title: 'Personalized service',     body: 'Tailored to your style, your skin, your hair — every visit shaped around you.' },
+    { title: 'A welcoming atmosphere',   body: 'Calm room, soft music, no rushed checkouts. The kind of space you actually relax in.' },
+  ]
+  const images = about?.images ?? []
+  const hasImages = images.some(img => !! img)
 
   return (
     <section className="lush-about-section">
-      {/* Hero: organic blob-shaped frame holding the about image, with
-          a sage "shadow" block offset behind it (same shape, rotated
-          slightly). The heading wrap is absolutely positioned over the
-          top of the image, with a cream→transparent gradient overlay
-          so the Molle italic reads cleanly against any photo. Tagline
-          drops below the frame in DM Mono. */}
-      <div className="lush-about-hero">
-        <div className="lush-about-frame">
-          <div className="lush-about-frame-bg" aria-hidden="true" />
-          {about?.images?.[0] ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              className="lush-about-frame-img"
-              src={about.images[0]}
-              alt=""
-              loading="lazy"
-              decoding="async"
-            />
-          ) : (
-            <div className="lush-about-frame-fallback" aria-hidden="true" />
-          )}
-          <div className="lush-about-frame-overlay" aria-hidden="true" />
-          <div className="lush-about-heading-wrap">
-            <div className="lush-about-backdrop">{backdropText}</div>
-            <h2>{heading}</h2>
-          </div>
+      {/* Three-image staggered hero. Mirrors TFR's editorial pattern
+          (4:5, 3:5, 2:3 aspect ratios with offset margins), dressed
+          in Lush vocabulary: hairline sage borders + soft pink
+          placeholders for empty slots. */}
+      {hasImages && (
+        <div className="lush-about-images">
+          {[0, 1, 2].map(i => {
+            const img = images[i]
+            return img
+              ? <div key={i} className="lush-about-img">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={img} alt="" loading="lazy" /></div>
+              : <div key={i} className="lush-about-img lush-about-img--placeholder" aria-hidden="true" />
+          })}
         </div>
+      )}
+
+      {/* Layered title — DM Serif Text 140px backdrop at low opacity
+          with Cookie script 64px overlay centered. Same compositional
+          idea as TFR's neon-on-serif layered title, dressed in Lush
+          typography: cream serif eyebrow whispers behind, sage script
+          heading reads cleanly over top. */}
+      <div className="lush-layered-title">
+        <span className="lush-layered-eyebrow" aria-hidden="true">{eyebrow}</span>
+        <h2 className="lush-layered-heading">{heading}</h2>
       </div>
-      {/* Editorial pull-quote in big Molle italic. Pulls from the
-          tenant's tagline when set (so it auto-personalizes) and
-          falls back to a brand-default that still works without
-          context. */}
-      <figure className="lush-about-quote">
-        <blockquote>
-          {p?.tagline?.trim()
-            ? p.tagline
-            : 'Calm is the actual luxury.'}
-        </blockquote>
-        <figcaption>From the studio</figcaption>
-      </figure>
 
-      <div>
-        <div className="lush-about-copy">
-          <p>
-            {bodyOverride
-              ? bodyOverride
-              : (p?.tagline
-                  ? `${p.tagline} — we're dedicated to delivering an exceptional experience every visit.`
-                  : `At ${displayName}, every appointment is an experience. We bring precision, care, and craft to every client.`)}
-          </p>
-          {useHighlights ? (
-            <div className="lush-about-list">
-              <span>What we deliver</span>
-              <ul>
-                {highlights.map((h, i) => (
-                  <li key={i}>
-                    {h.title?.trim() && <strong>{h.title}</strong>}
-                    {h.title?.trim() && h.body?.trim() && ' '}
-                    {h.body?.trim()}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <div className="lush-about-list">
-              <span>What we deliver</span>
-              <ul>
-                <li><strong>Expert technique</strong> refined through years of hands-on practice.</li>
-                <li><strong>Personalized service</strong> tailored to your style and preferences.</li>
-                <li><strong>A welcoming atmosphere</strong> where you can relax and trust the process.</li>
-              </ul>
-            </div>
-          )}
+      {/* Body + highlights + signature in a single editorial column.
+          First paragraph gets a sage drop cap. Highlights below as a
+          divided list (mirrors VT's hairline-separated bullet style)
+          with DM Serif titles + Roboto body sentences. */}
+      <div className="lush-about-copy">
+        <p className="lush-about-body">{body}</p>
 
-          {/* Signature closer — Cookie script, signs with the
-              business's signature word ("Lush", "Velvet", etc).
-              Reads like the last line of a handwritten letter. */}
-          <p className="lush-about-sign">
-            With care,<br />
-            <em>{signatureWord(displayName)}</em>
-          </p>
-        </div>
+        <ul className="lush-about-highlights">
+          {highlights.map((h, i) => (
+            <li key={i}>
+              {h.title?.trim() && <h3>{h.title}</h3>}
+              {h.body?.trim() && <p>{h.body}</p>}
+            </li>
+          ))}
+        </ul>
+
+        {/* Signature closer — Cookie script, signs with the business's
+            signature word ("Lush", "Velvet", etc). Reads like the
+            last line of a handwritten letter. */}
+        <p className="lush-about-sign">
+          With care,<br />
+          <em>{signatureWord(displayName)}</em>
+        </p>
       </div>
     </section>
   )

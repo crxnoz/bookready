@@ -1325,171 +1325,172 @@ export const LUSH_CSS = `
   color:var(--lush-text);
 }
 
-/* ── About ── */
-.lush-about-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:12px 20px 58px; }
-
-/* About hero: organic blob frame with sage offset "shadow" behind,
-   heading absolutely overlaid on top of the image with a cream
-   gradient for legibility. Tagline drops below the frame. */
-.lush-about-hero {
-  display:flex; flex-direction:column; align-items:center;
-  padding:24px 16px 12px;
-  margin-bottom:24px;
-}
-.lush-about-frame {
-  position:relative;
-  width:min(86vw, 320px);
-  aspect-ratio:1.15;
-  margin:0 auto 18px;
-  /* Leave room on the right + bottom for the sage offset shape to
-     peek out without overflowing the section padding. */
-  padding-right:14px;
-  padding-bottom:16px;
-  isolation:isolate;
-}
-/* Sage offset block — same organic blob shape, rotated and translated
-   so it reads as a colored editorial "shadow" behind the photo. */
-.lush-about-frame-bg {
-  position:absolute;
-  top:16px; right:0; bottom:0; left:14px;
-  background:var(--lush-pink);
-  border-radius:62% 38% 47% 53% / 49% 51% 50% 51%;
-  transform:rotate(-4deg);
-  z-index:0;
-  filter:drop-shadow(0 6px 14px rgba(14,17,17,0.10));
-}
-/* Image + fallback share the blob shape. object-position biases up so
-   portrait subjects stay framed after the curve eats the corners. */
-.lush-about-frame-img,
-.lush-about-frame-fallback {
-  position:absolute;
-  top:0; left:0; right:14px; bottom:16px;
-  display:block;
-  border-radius:62% 38% 47% 53% / 49% 51% 50% 51%;
-  z-index:1;
-}
-.lush-about-frame-img {
-  object-fit:cover;
-  object-position:50% 30%;
-  background:#ECE7DD;
-}
-.lush-about-frame-fallback {
-  background:linear-gradient(140deg, var(--lush-pink) 0%, #BFD8CC 60%, var(--lush-bg) 100%);
-}
-/* Cream→transparent gradient at the top of the image so the heading
-   reads regardless of the underlying photo. Sits inside the same
-   blob clip via matching border-radius. */
-.lush-about-frame-overlay {
-  position:absolute;
-  top:0; left:0; right:14px; bottom:16px;
-  border-radius:62% 38% 47% 53% / 49% 51% 50% 51%;
-  background:linear-gradient(180deg,
-    rgba(246,243,238,0.88) 0%,
-    rgba(246,243,238,0.70) 30%,
-    rgba(246,243,238,0.32) 58%,
-    rgba(246,243,238,0) 78%);
-  z-index:2;
-  pointer-events:none;
-}
-/* Heading wrap sits absolutely over the top portion of the frame. */
-.lush-about-heading-wrap {
-  position:absolute;
-  top:9%;
-  left:50%;
-  transform:translateX(-50%);
-  width:86%;
-  z-index:3;
-  text-align:center;
-  display:flex; flex-direction:column; align-items:center;
-}
-/* Small eyebrow kicker on top, big heading underneath. */
-.lush-about-backdrop {
-  margin:0;
-  font-family:var(--lush-molle); font-style:italic; font-weight:400;
-  font-size:clamp(26px,6.5vw,38px); line-height:1.05;
-  color:var(--lush-pink);
-  text-shadow:2px 2px 0 rgba(14,17,17,0.18);
-}
-.lush-about-heading-wrap h2 {
-  margin:-10px 0 0;
-  font-family:var(--lush-molle); font-style:italic; font-weight:400;
-  font-size:clamp(56px,15vw,80px); line-height:1; letter-spacing:-0.01em;
-  color:var(--lush-pink);
-  text-shadow:3px 3px 0 rgba(14,17,17,0.18);
-}
-/* (DM Mono tagline removed — heading now stands alone over the
-   image; tagline duplicated the profile pull-quote below.) */
-.lush-about-copy { width:min(100%,344px); margin:0 auto; color:var(--lush-text); font-family:var(--lush-ui); font-size:15px; line-height:1.55; }
-.lush-about-copy p { margin:0 0 22px; padding:16px 0 0; border-top:1px solid var(--lush-dark-border); }
-.lush-about-copy p:first-of-type { border-top:0; padding-top:0; }
-.lush-about-copy span {
-  display:inline-flex; align-items:center; gap:8px; color:var(--lush-pink);
-  font-family:var(--lush-ui); font-size:11px; font-weight:600;
-  letter-spacing:0.22em; text-transform:uppercase; margin-bottom:12px;
-}
-.lush-about-copy span::before { content:""; width:18px; height:1px; background:var(--lush-pink); display:inline-block; }
-.lush-about-list { margin:0 0 22px; padding:16px 0 0; border-top:1px solid var(--lush-dark-border); }
-.lush-about-list span {
-  display:inline-flex; align-items:center; gap:8px; color:var(--lush-pink);
-  font-family:var(--lush-ui); font-size:11px; font-weight:600;
-  letter-spacing:0.22em; text-transform:uppercase; margin-bottom:12px;
-}
-.lush-about-list span::before { content:""; width:18px; height:1px; background:var(--lush-pink); display:inline-block; }
-.lush-about-list ul { margin:0; padding-left:0; list-style:none; }
-.lush-about-list li { position:relative; margin:0 0 12px; padding-left:22px; font-family:var(--lush-ui); font-size:14px; line-height:1.55; color:var(--lush-text); }
-.lush-about-list li::before { content:""; position:absolute; left:0; top:10px; width:12px; height:1px; background:var(--lush-pink); }
-.lush-about-list strong { display:block; color:var(--lush-text); font-weight:400; font-family:var(--lush-serif); font-size:18px; line-height:1.1; letter-spacing:-0.02em; margin-bottom:2px; }
-
-/* About — editorial pull quote in Molle italic with a big sage
-   opening quote mark. Sits between the star hero and the body copy
-   and gives the about section a brand-voice moment. */
-/* Editorial pull-quote: now a quiet DM Serif italic line so it
-   contrasts the loose Molle italic heading above. A short sage
-   hairline sits above as a visual marker (replaces the old big
-   pink quote glyph). */
-.lush-about-quote {
-  margin:0 auto 36px;
-  width:min(100%, 344px);
-  padding:0 8px;
-  display:flex; flex-direction:column; align-items:center;
-  text-align:center;
-}
-.lush-about-quote::before {
-  content:"";
-  display:block;
-  width:48px; height:1px;
-  background:var(--lush-pink);
-  margin-bottom:18px;
-}
-.lush-about-quote blockquote {
-  margin:0;
-  font-family:var(--lush-serif); font-style:italic; font-weight:400;
-  font-size:clamp(20px, 4.5vw, 26px); line-height:1.35; letter-spacing:-0.01em;
-  color:var(--lush-text);
-}
-.lush-about-quote figcaption {
-  margin:16px 0 0;
-  font-family:var(--lush-mono);
-  font-size:10px; font-weight:500;
-  letter-spacing:0.22em; text-transform:uppercase;
-  color:var(--lush-pink);
+/* ── About ── Editorial rebuild: 3 staggered images at top, layered
+   DM Serif backdrop + Cookie script overlay title, body with sage
+   drop cap, highlights bullets with hairline dividers, Cookie script
+   signature closer. Borrows the staggered-image + layered-title
+   pattern from TFR and the divided-highlights pattern from VT, in
+   Lush vocabulary. */
+.lush-about-section {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--lush-bg);
+  padding: 56px 24px 80px;
 }
 
-/* About — handwritten signature closer. Cookie script + italic so
-   it reads as a personal sign-off, not corporate boilerplate. */
+/* Three-image staggered hero — mirrors TFR's grid with the same
+   asymmetric rhythm (4:5 / 3:5 / 2:3 aspect ratios + offset margins),
+   re-skinned for cream: hairline sage borders, soft-pink fallbacks
+   for empty slots. */
+.lush-about-images {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+  margin: 0 0 64px;
+}
+.lush-about-img {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--lush-dark-border);
+  background: rgba(var(--lush-pink-rgb), 0.06);
+  aspect-ratio: 3/4;
+}
+.lush-about-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.lush-about-img--placeholder {
+  background: linear-gradient(
+    135deg,
+    rgba(var(--lush-pink-rgb), 0.04),
+    rgba(var(--lush-pink-rgb), 0.14)
+  );
+}
+.lush-about-images > *:nth-child(1) { aspect-ratio: 4/5; margin-top: 0; }
+.lush-about-images > *:nth-child(2) { aspect-ratio: 3/5; margin-top: 28px; }
+.lush-about-images > *:nth-child(3) { aspect-ratio: 2/3; margin-top: -14px; }
+@media (max-width: 640px) {
+  .lush-about-images { gap: 6px; }
+  .lush-about-images > *:nth-child(2) { margin-top: 14px; }
+  .lush-about-images > *:nth-child(3) { margin-top: -6px; }
+}
+
+/* Layered title — DM Serif Text backdrop at 14% opacity with the
+   Cookie script heading floated centered over top. Same compositional
+   idea as TFR's neon-on-serif layered title; the contrast between the
+   subtle museum-placard serif behind and the loose Cookie sign-painter
+   script in front gives the section voice. */
+.lush-layered-title {
+  position: relative;
+  display: inline-block;
+  margin: 0 0 48px;
+  line-height: 1;
+  max-width: 100%;
+}
+.lush-layered-eyebrow {
+  display: block;
+  font-family: var(--lush-serif);
+  font-size: clamp(80px, 14vw, 140px);
+  line-height: 1;
+  opacity: 0.14;
+  margin: 0;
+  letter-spacing: -0.02em;
+  color: var(--lush-text);
+  white-space: nowrap;
+}
+.lush-layered-heading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--lush-script);
+  font-size: clamp(44px, 7vw, 68px);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1;
+  color: var(--lush-pink);
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* Body copy + drop cap. First paragraph gets a sage DM Serif drop cap
+   that pulls the eye into the prose — borrowed from VT's editorial
+   treatment. */
+.lush-about-copy {
+  font-family: var(--lush-ui);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--lush-text);
+}
+.lush-about-body { margin: 0 0 40px; }
+.lush-about-body::first-letter {
+  font-family: var(--lush-serif);
+  font-size: 56px;
+  line-height: 0.9;
+  float: left;
+  padding: 6px 12px 0 0;
+  color: var(--lush-pink);
+}
+
+/* Highlights — divided list with sage hairlines top + bottom of each
+   row. DM Serif titles + Roboto body sentences. Borrowed pattern from
+   VT (vt-highlights) re-skinned for cream + sage. */
+.lush-about-highlights {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 56px;
+}
+.lush-about-highlights > li {
+  padding: 24px 0;
+  border-top: 1px solid var(--lush-dark-border);
+}
+.lush-about-highlights > li:last-child {
+  border-bottom: 1px solid var(--lush-dark-border);
+}
+.lush-about-highlights h3 {
+  margin: 0 0 6px;
+  font-family: var(--lush-serif);
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--lush-text);
+}
+.lush-about-highlights p {
+  margin: 0;
+  font-family: var(--lush-ui);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--lush-muted);
+}
+
+/* Signature closer — small uppercase Roboto "With care," sits above
+   the Cookie script signature word. Reads like the final line of a
+   handwritten note. */
 .lush-about-sign {
-  margin:24px 0 0;
-  padding:18px 0 0;
-  border-top:1px solid var(--lush-dark-border);
-  font-family:var(--lush-ui);
-  font-size:14px; color:var(--lush-muted);
-  line-height:1.5;
+  margin: 0;
+  text-align: center;
+  font-family: var(--lush-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lush-muted);
 }
 .lush-about-sign em {
-  font-family:var(--lush-script); font-style:normal;
-  font-size:38px; line-height:1;
-  color:var(--lush-pink);
-  margin-top:4px; display:inline-block;
+  display: block;
+  margin-top: 14px;
+  font-family: var(--lush-script);
+  font-style: normal;
+  font-size: 48px;
+  line-height: 1;
+  color: var(--lush-pink);
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 /* ── Policy ── */
