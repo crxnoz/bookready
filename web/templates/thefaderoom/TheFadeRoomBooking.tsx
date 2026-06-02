@@ -172,10 +172,12 @@ const TFR_BOOKING_CSS = `
   background: transparent;
 }
 
-/* Cards, slots, addons — dark surface, soft 8px corners, hairline border. */
-.tfr-booking-inner.lush-template [class*="brk-booking-card"],
-.tfr-booking-inner.lush-template [class*="brk-booking-slot"],
-.tfr-booking-inner.lush-template [class*="brk-booking-addon"],
+/* Cards, slots, addons — dark surface, soft 8px corners, hairline border.
+   Targeting specific classes (not substring) so we don't accidentally
+   restyle every descendant with "brk-booking-X" in its class. */
+.tfr-booking-inner.lush-template .brk-booking-card,
+.tfr-booking-inner.lush-template .brk-booking-slot,
+.tfr-booking-inner.lush-template .brk-booking-addon,
 .tfr-booking-inner.lush-template [class*="brk-booking-summary"],
 .tfr-booking-inner.lush-template [class*="brk-booking-staff"],
 .tfr-booking-inner.lush-template [class*="brk-booking-cat"] {
@@ -185,16 +187,30 @@ const TFR_BOOKING_CSS = `
   color: var(--tfr-fg) !important;
   border-radius: 8px !important;
 }
-/* Services specifically sit on the page canvas (transparent) — the
-   user feedback was "remove the background in the services section".
-   The hairline accent-tinted border keeps each service card distinct
-   without the heavy card surface. */
-.tfr-booking-inner.lush-template [class*="brk-booking-service"] {
-  background: transparent !important;
+/* Service CARDS keep the dark card surface — the feedback was the
+   *container* around them had an unwanted box, not the cards. Service
+   cards stay as cards; container collapses to bare grid. */
+.tfr-booking-inner.lush-template .brk-booking-service-card {
+  background: var(--tfr-card) !important;
   border: 1px solid var(--tfr-rule) !important;
   box-shadow: none !important;
   color: var(--tfr-fg) !important;
   border-radius: 8px !important;
+}
+/* The wrapping .brk-booking-services grid is pure layout — no border,
+   no background, no padding. Services sit directly on the page. */
+.tfr-booking-inner.lush-template .brk-booking-services {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+/* Inner name+price row (.brk-booking-service-top) was inheriting the
+   border from the old substring-match rule. Strip it. */
+.tfr-booking-inner.lush-template .brk-booking-service-top {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* Form fields — dark surface, accent focus glow. */

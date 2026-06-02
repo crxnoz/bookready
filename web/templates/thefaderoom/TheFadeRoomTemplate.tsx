@@ -681,22 +681,25 @@ const TFR_CSS = `
     0 0 60px color-mix(in srgb, var(--tfr-accent) 30%, transparent);
   margin: 0 0 var(--brk-space-md);
 }
-/* Hero name — white Bricolage with neon halo (multi-layer shadow but
-   no stroke). The white core reads as the bright glass tube; the
-   colored halo bleeds into the surrounding canvas the way a real
-   neon sign casts onto the wall behind it. */
+/* Hero name — Dancing Script in WHITE with the multi-layer accent
+   halo. White letters read as bright glass tube; the accent halo
+   bleeds onto the canvas like a real neon sign casts onto the wall
+   behind it. (Per feedback — not accent letters, white letters with
+   neon shadow.) */
 .tfr-name {
-  font-family: var(--tfr-display);
-  font-size: clamp(44px, 8vw, 88px);
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  line-height: 0.96;
-  margin: 0 0 var(--brk-space-sm);
+  font-family: var(--tfr-script);
+  font-size: clamp(56px, 11vw, 128px);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.0;
+  margin: 0 0 var(--brk-space-md);
   color: var(--tfr-fg);
   text-shadow:
+    0 0 1px rgba(255, 255, 255, 1),
     0 0 8px color-mix(in srgb, var(--tfr-accent) 80%, transparent),
-    0 0 24px color-mix(in srgb, var(--tfr-accent) 60%, transparent),
-    0 0 56px color-mix(in srgb, var(--tfr-accent) 35%, transparent);
+    0 0 20px color-mix(in srgb, var(--tfr-accent) 60%, transparent),
+    0 0 48px color-mix(in srgb, var(--tfr-accent) 36%, transparent);
+  padding: 0.05em 0;
 }
 .tfr-business-type {
   font-family: var(--tfr-body);
@@ -923,9 +926,13 @@ const TFR_CSS = `
 .tfr-about-images > *:nth-child(1) { aspect-ratio: 4/5; margin-top: 0; }
 .tfr-about-images > *:nth-child(2) { aspect-ratio: 3/5; margin-top: 28px; }
 .tfr-about-images > *:nth-child(3) { aspect-ratio: 2/3; margin-top: -14px; }
+/* Mobile keeps 3 cols side-by-side per feedback. Reduce the gap +
+   stagger magnitudes so it fits without crowding. */
 @media (max-width: 640px) {
-  .tfr-about-images { grid-template-columns: 1fr; gap: 12px; }
-  .tfr-about-images > * { margin-top: 0 !important; aspect-ratio: 4/3 !important; }
+  .tfr-about-images { gap: 6px; }
+  .tfr-about-images > *:nth-child(1) { margin-top: 0; }
+  .tfr-about-images > *:nth-child(2) { margin-top: 14px; }
+  .tfr-about-images > *:nth-child(3) { margin-top: -6px; }
 }
 
 /* Layered title — backdrop DM Serif eyebrow at low opacity with the
@@ -942,7 +949,7 @@ const TFR_CSS = `
 .tfr-layered-eyebrow {
   display: block;
   font-family: var(--tfr-serif);
-  font-size: clamp(48px, 9vw, 80px);
+  font-size: clamp(80px, 14vw, 140px);
   line-height: 1;
   opacity: 0.14;
   margin: 0;
@@ -959,12 +966,16 @@ const TFR_CSS = `
   align-items: center;
   justify-content: center;
   font-family: var(--tfr-script);
-  font-size: clamp(26px, 3.6vw, 36px);
+  font-size: clamp(40px, 6vw, 64px);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1;
-  color: var(--tfr-accent);
-  text-shadow: var(--tfr-neon-sign-tight);
+  color: var(--tfr-fg);
+  text-shadow:
+    0 0 1px rgba(255, 255, 255, 1),
+    0 0 6px var(--tfr-accent),
+    0 0 14px var(--tfr-accent),
+    0 0 30px var(--tfr-accent);
   margin: 0;
   white-space: nowrap;
   padding: 0.05em 0;
@@ -993,106 +1004,210 @@ const TFR_CSS = `
   margin: 0 0 var(--brk-space-2xl);
   color: var(--tfr-fg);
 }
+/* About highlights — accent-stick cards stacked vertically. Each card
+   has a glowing 3px neon spine on the left edge + Dancing Script title
+   in accent + muted body. Distinct from Blackline's two-column
+   hairline-divided pattern. */
 .tfr-highlights {
   list-style: none;
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 0;
-}
-@media (min-width: 720px) {
-  .tfr-highlights { grid-template-columns: repeat(2, 1fr); }
+  gap: 16px;
 }
 .tfr-highlights > li {
-  padding: var(--brk-space-xl) 0;
-  border-top: 1px solid var(--tfr-rule);
+  position: relative;
+  background: var(--tfr-card);
+  border: 1px solid color-mix(in srgb, var(--tfr-accent) 22%, var(--tfr-rule));
+  border-radius: 14px;
+  padding: var(--brk-space-lg) var(--brk-space-xl) var(--brk-space-lg) calc(var(--brk-space-xl) + 12px);
 }
-.tfr-highlights > li:last-child { border-bottom: 1px solid var(--tfr-rule); }
-@media (min-width: 720px) {
-  .tfr-highlights > li:nth-child(odd)  { padding-right: var(--brk-space-xl); }
-  .tfr-highlights > li:nth-child(even) {
-    padding-left: var(--brk-space-xl);
-    border-left: 1px solid var(--tfr-rule);
-  }
+/* The glowing neon spine on the left edge of each card. */
+.tfr-highlights > li::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 22px;
+  bottom: 22px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--tfr-accent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--tfr-accent) 60%, transparent);
 }
 .tfr-highlights h3 {
-  font-family: var(--tfr-display);
-  font-size: 22px;
+  font-family: var(--tfr-script);
+  font-size: 30px;
   font-weight: 700;
-  letter-spacing: -0.012em;
-  margin: 0 0 var(--brk-space-xs);
+  letter-spacing: 0;
+  line-height: 1.1;
+  color: var(--tfr-fg);
+  text-shadow:
+    0 0 1px rgba(255, 255, 255, 1),
+    0 0 6px var(--tfr-accent),
+    0 0 14px var(--tfr-accent);
+  margin: 0 0 8px;
+  padding: 0.05em 0;
 }
-.tfr-highlights p { margin: 0; color: var(--tfr-fg-muted); }
+.tfr-highlights p { margin: 0; color: var(--tfr-fg-muted); line-height: 1.55; }
 
-/* Policies */
-.tfr-policy-stack { border-top: 1px solid var(--tfr-rule); }
+/* Policies — tagged ticket layout. Each policy is a horizontal pill
+   with a filled accent-color "tag" on the left carrying the policy
+   label, and the body sitting in the white-on-card right side. Reads
+   like a ticket stub or a tagged folder, very distinct from
+   Blackline's editorial label-column-then-body pattern. */
+.tfr-policy-stack {
+  display: grid;
+  gap: 14px;
+}
 .tfr-policy {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--brk-space-sm);
-  padding: var(--brk-space-xl) 0;
-  border-bottom: 1px solid var(--tfr-rule);
+  gap: 0;
+  border: 1px solid color-mix(in srgb, var(--tfr-accent) 24%, var(--tfr-rule));
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--tfr-card);
 }
 @media (min-width: 720px) {
-  .tfr-policy { grid-template-columns: 200px 1fr; gap: var(--brk-space-2xl); }
+  .tfr-policy { grid-template-columns: minmax(160px, max-content) 1fr; }
 }
 .tfr-policy h3 {
+  background: var(--tfr-accent);
+  color: var(--tfr-bg);
+  padding: 18px 24px;
+  margin: 0;
   font-family: var(--tfr-body);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: var(--tfr-accent);
-  text-shadow: 0 0 8px color-mix(in srgb, var(--tfr-accent) 30%, transparent);
-  margin: 0;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  /* Inner sheen so the tag reads as lit-from-within rather than flat. */
+  box-shadow: inset 0 0 14px color-mix(in srgb, white 18%, transparent);
 }
 .tfr-policy p {
+  padding: 18px 24px;
   margin: 0;
   color: var(--tfr-fg);
-  line-height: 1.65;
+  line-height: 1.55;
+  display: flex;
+  align-items: center;
 }
 
-/* Notes */
-.tfr-note-list { list-style: none; padding: 0; margin: 0; }
-.tfr-note-list > li {
-  padding: var(--brk-space-xl) 0;
-  border-top: 1px solid var(--tfr-rule);
+/* Notes — sticky-note style cards with subtle tilt. Each note feels
+   like a post-it on a board. Two-up on desktop with alternating tilt
+   so they don't read as a strict grid. Distinct from Blackline's
+   stacked hairline-divided pattern. */
+.tfr-note-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 20px;
 }
-.tfr-note-list > li:last-child { border-bottom: 1px solid var(--tfr-rule); }
+@media (min-width: 720px) {
+  .tfr-note-list { grid-template-columns: repeat(2, 1fr); gap: 28px; }
+}
+.tfr-note-list > li {
+  position: relative;
+  background: var(--tfr-card);
+  border: 1px solid color-mix(in srgb, var(--tfr-accent) 24%, var(--tfr-rule));
+  border-radius: 14px;
+  padding: var(--brk-space-lg) var(--brk-space-xl);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+  transition: transform 220ms ease, box-shadow 250ms ease;
+}
+.tfr-note-list > li:nth-child(odd)  { transform: rotate(-0.8deg); }
+.tfr-note-list > li:nth-child(even) { transform: rotate(0.9deg); }
+.tfr-note-list > li:hover {
+  transform: rotate(0deg) translateY(-3px);
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.4),
+    0 0 24px color-mix(in srgb, var(--tfr-accent) 18%, transparent);
+}
 .tfr-note-list h3 {
   font-family: var(--tfr-display);
   font-size: 22px;
   font-weight: 700;
-  margin: 0 0 var(--brk-space-xs);
+  margin: 0 0 8px;
+  color: var(--tfr-fg);
 }
-.tfr-note-list p { margin: 0; color: var(--tfr-fg-muted); }
+.tfr-note-list p { margin: 0; color: var(--tfr-fg-muted); line-height: 1.55; }
+@media (prefers-reduced-motion: reduce) {
+  .tfr-note-list > li,
+  .tfr-note-list > li:hover { transform: none; }
+}
 
-/* Timeline */
-.tfr-timeline { list-style: none; padding: 0; margin: 0; }
+/* Timeline — vertical neon spine with circular node "buttons" punching
+   through. The spine is a glowing accent line; each step number sits
+   in an accent-bordered circle anchored to the spine. Distinct from
+   Blackline's number-column + hairline-rule pattern. */
+.tfr-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  position: relative;
+}
+/* The vertical accent spine running down the left side of the list.
+   Fades in/out at the ends so it doesn't terminate flush against the
+   container edges. */
+.tfr-timeline::before {
+  content: '';
+  position: absolute;
+  left: 21px;
+  top: 28px;
+  bottom: 28px;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--tfr-accent) 8%,
+    var(--tfr-accent) 92%,
+    transparent 100%
+  );
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tfr-accent) 50%, transparent);
+}
 .tfr-timeline > li {
   display: grid;
-  grid-template-columns: 64px 1fr;
-  gap: var(--brk-space-lg);
-  padding: var(--brk-space-xl) 0;
-  border-top: 1px solid var(--tfr-rule);
-  align-items: baseline;
+  grid-template-columns: 44px 1fr;
+  gap: 20px;
+  padding: 0 0 var(--brk-space-2xl);
+  align-items: start;
+  position: relative;
 }
-.tfr-timeline > li:last-child { border-bottom: 1px solid var(--tfr-rule); }
+.tfr-timeline > li:last-child { padding-bottom: 0; }
+/* Step numbers as circular nodes — bg matches page so the spine
+   appears to punch through behind them. Accent border + glow. */
 .tfr-timeline-num {
-  font-family: var(--tfr-display);
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--tfr-bg);
+  border: 2px solid var(--tfr-accent);
   color: var(--tfr-accent);
-  text-shadow: 0 0 10px color-mix(in srgb, var(--tfr-accent) 40%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--tfr-display);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--tfr-accent) 40%, transparent);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--tfr-accent) 50%, transparent);
 }
+.tfr-timeline > li > div { padding-top: 6px; }
 .tfr-timeline h3 {
   font-family: var(--tfr-display);
   font-size: 22px;
   font-weight: 700;
-  margin: 0 0 var(--brk-space-xs);
+  margin: 0 0 6px;
+  color: var(--tfr-fg);
 }
-.tfr-timeline p { margin: 0; color: var(--tfr-fg-muted); }
+.tfr-timeline p { margin: 0; color: var(--tfr-fg-muted); line-height: 1.55; }
 
 /* FAQ */
 .tfr-faq-stack { border-top: 1px solid var(--tfr-rule); }
@@ -1211,38 +1326,34 @@ const TFR_CSS = `
   }
 }
 
-/* Thanks — framed as a hung neon sign on the wall. Accent-tube border
-   with inner + outer glow, sparkle corners punched out of the border
-   line. Big Dancing Script title hanging inside. Distinct from
-   Blackline's centered-text outro. */
+/* Thanks — framed as a hung neon sign. Per feedback: explicit
+   horizontal margin (not flush against the viewport edges), no outer
+   glow, sparkles without their punched backgrounds. The border alone
+   carries the "neon tube" feel; the glow was reading muddy. */
 .tfr-thanks {
   position: relative;
-  max-width: 760px;
+  max-width: min(680px, calc(100% - 64px));
   margin: var(--brk-space-3xl) auto;
-  padding: var(--brk-space-3xl) clamp(24px, 5vw, 56px) var(--brk-space-2xl);
+  padding: var(--brk-space-3xl) clamp(28px, 5vw, 56px) var(--brk-space-2xl);
   text-align: center;
   border: 2px solid var(--tfr-accent);
   border-radius: 22px;
-  box-shadow:
-    0 0 28px color-mix(in srgb, var(--tfr-accent) 32%, transparent),
-    inset 0 0 32px color-mix(in srgb, var(--tfr-accent) 12%, transparent);
+  border-top: 2px solid var(--tfr-accent);
 }
-/* Sparkle corner cutouts — punch through the border line at top-left
-   and bottom-right so the ✦ glyphs look like they're attached to the
-   tube rather than hovering inside the frame. */
+/* Sparkles sit ON the border line — no background-punch, no halo.
+   The accent glyph alone is the corner decoration. */
 .tfr-thanks::before,
 .tfr-thanks::after {
   content: '✦';
   position: absolute;
-  font-size: 28px;
+  font-size: 22px;
   color: var(--tfr-accent);
-  text-shadow: 0 0 16px color-mix(in srgb, var(--tfr-accent) 70%, transparent);
-  background: var(--tfr-bg);
-  padding: 0 10px;
+  background: transparent;
+  padding: 0;
   line-height: 1;
 }
-.tfr-thanks::before { top: -18px; left: 32px; }
-.tfr-thanks::after  { bottom: -18px; right: 32px; }
+.tfr-thanks::before { top: -12px; left: 28px; }
+.tfr-thanks::after  { bottom: -12px; right: 28px; }
 
 .tfr-thanks-title {
   font-family: var(--tfr-script);
