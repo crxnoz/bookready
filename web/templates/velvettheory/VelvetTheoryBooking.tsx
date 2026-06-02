@@ -71,7 +71,9 @@ const VT_BOOKING_FRAME_CSS = `
 .vt-booking-frame {
   width: 100%;
   margin: 0;
-  padding: 96px 0 32px;
+  /* Align with TFR + Blackline — was 96px top, dropped to match the
+     other two so the booking section reads with the same rhythm. */
+  padding: var(--brk-space-md) 0 var(--brk-space-2xl);
   background: var(--vt-bg);
 }
 /* No card framing — booking lives DIRECTLY on the VT page background. */
@@ -332,7 +334,7 @@ const VT_BOOKING_FRAME_CSS = `
    See web/templates/_shared/booking/LushStudioBooking.tsx lines 1087+. */
 
 @media (max-width: 640px) {
-  .vt-booking-frame { padding: 56px 0 32px; }
+  .vt-booking-frame { padding: var(--brk-space-md) 0 var(--brk-space-xl); }
   .vt-booking-header { padding: 0 20px; margin-bottom: 40px; }
 }
 `

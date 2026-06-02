@@ -366,6 +366,8 @@ export default function BlacklineTemplate({ site, slug }: Props) {
             <p className="blackline-eyebrow">Outro</p>
             <h2 className="blackline-section-title">{additionals.thank_you_title}</h2>
             {additionals.thank_you_body && <p>{additionals.thank_you_body}</p>}
+            {/* Studio signature — borrowed from VT's outro pattern. */}
+            <p className="blackline-thanks-sign">— {display}</p>
           </section>
         )}
 
@@ -897,6 +899,14 @@ const BLACKLINE_CSS = `
   color: var(--blackline-fg-muted);
   line-height: 1.65;
 }
+.blackline-thanks-sign {
+  margin-top: var(--brk-space-lg) !important;
+  font-family: var(--blackline-body);
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--blackline-accent) !important;
+}
 
 /* ── Footer ── */
 /* Banded layout: brass CTA band → informational columns → credit band.
@@ -944,9 +954,8 @@ const BLACKLINE_CSS = `
   }
   .blackline-footer-col:first-child { padding-left: 0; }
   .blackline-footer-col:last-child  { padding-right: 0; }
-  .blackline-footer-col + .blackline-footer-col {
-    border-left: 1px solid var(--blackline-rule);
-  }
+  /* Per feedback — drop the divider between columns. Columns now sit
+     on bare canvas with just the symmetric padding for separation. */
 }
 .blackline-footer-col {
   display: flex;

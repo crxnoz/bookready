@@ -417,12 +417,33 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
           </div>
         </section>
 
-        {/* ── About (drop cap) ── */}
+        {/* ── About (lead image, drop cap, highlight bullets) ── */}
         <section className={`vt-panel${active === 'about' ? ' is-active' : ''}`}>
           <div className="vt-section vt-section-narrow">
+            {/* Lead image — sits above the heading. Per feedback the strip
+                pattern (3 images below) is dropped in favour of a single
+                editorial hero. */}
+            {((aboutBlock as any)?.images?.[0] ?? (aboutBlock as any)?.image_1_url) && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <figure className="vt-about-hero">
+                <img src={(aboutBlock as any).images?.[0] ?? (aboutBlock as any).image_1_url} alt="" />
+              </figure>
+            )}
             <p className="vt-eyebrow">Introduction</p>
             <h2 className="vt-h2">{(aboutBlock as any).eyebrow ?? `On ${signatureWord(displayName)}.`}</h2>
             {renderAbout(aboutBlock as any, displayName, p)}
+            {/* Highlights — editor-editable bullet list. Sits after the
+                drop-cap paragraphs as the closing motif. */}
+            {Array.isArray((aboutBlock as any)?.highlights) && (aboutBlock as any).highlights.length > 0 && (
+              <ul className="vt-highlights">
+                {(aboutBlock as any).highlights.map((h: any, i: number) => (
+                  <li key={i}>
+                    {h.title && <h3>{h.title}</h3>}
+                    {h.body && <p>{h.body}</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </section>
 
@@ -668,13 +689,8 @@ function renderAbout(aboutBlock: any, displayName: string, p: Profile | null) {
       `Reach out through the form — we&rsquo;ll be in touch within the day.`,
     )
   }
-  // M3 / editor canonical path is about.images[]; the legacy
-  // image_N_url keys remain valid for older tenants.
-  const imgs: string[] = [
-    aboutBlock?.image_1_url ?? aboutBlock?.images?.[0],
-    aboutBlock?.image_2_url ?? aboutBlock?.images?.[1],
-    aboutBlock?.image_3_url ?? aboutBlock?.images?.[2],
-  ].filter((s): s is string => typeof s === 'string' && s.length > 0)
+  // Images now render as a single hero above the heading (see the About
+  // section markup). The strip rendering below is intentionally dropped.
   return (
     <div className="vt-about">
       {paragraphs.map((para, i) => {
@@ -691,10 +707,6 @@ function renderAbout(aboutBlock: any, displayName: string, p: Profile | null) {
         }
         return <p key={i} className="vt-prose">{para}</p>
       })}
-      {imgs.map((src, i) => (
-        // eslint-disable-next-line @next/next/no-img-element
-        <figure key={i} className="vt-strip"><img src={src} alt="" /></figure>
-      ))}
     </div>
   )
 }
@@ -1141,8 +1153,48 @@ const VT_CSS = `
   padding-top: 6px;
   color: var(--vt-accent);
 }
-.vt-about .vt-strip {
-  margin: 48px 0;
+/* Lead image above the About heading — replaces the old 3-strip
+   pattern. Editorial 16:10 frame with VT's sharp 2px corners. */
+.vt-about-hero {
+  margin: 0 0 56px;
+  border-radius: 2px;
+  overflow: hidden;
+  aspect-ratio: 16/10;
+}
+.vt-about-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Highlights — editorial bullet list with hairline-gold bounded rows.
+   Closes the About panel after the drop-cap paragraphs. */
+.vt-highlights {
+  list-style: none;
+  padding: 0;
+  margin: 56px 0 0;
+}
+.vt-highlights > li {
+  padding: 24px 0;
+  border-top: 1px solid color-mix(in srgb, var(--vt-accent) 50%, transparent);
+}
+.vt-highlights > li:last-child {
+  border-bottom: 1px solid color-mix(in srgb, var(--vt-accent) 50%, transparent);
+}
+.vt-highlights h3 {
+  font-family: var(--vt-display);
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+  margin: 0 0 6px;
+  color: var(--vt-fg);
+}
+.vt-highlights p {
+  margin: 0;
+  color: var(--vt-fg-muted);
+  font-size: 15px;
+  line-height: 1.65;
 }
 
 /* ── Transformations: before/after ── */
@@ -1388,6 +1440,18 @@ const VT_CSS = `
   padding: 32px 0 28px;
   margin: 0;
   border-top: 1px solid var(--vt-rule);
+}
+/* Small gold ornament in the top-right of each review — distinguishes
+   VT's testimonial pattern from Blackline's same-shape hairline cells. */
+.vt-review::after {
+  content: '✻';
+  position: absolute;
+  top: 28px;
+  right: 4px;
+  color: var(--vt-accent);
+  font-family: var(--vt-display);
+  font-size: 13px;
+  opacity: 0.75;
 }
 .vt-review:first-child { border-top: none; padding-top: 8px; }
 @media (min-width: 720px) {

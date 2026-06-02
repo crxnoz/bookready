@@ -411,6 +411,8 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
             <p className="tfr-eyebrow"><span aria-hidden="true">✦</span> Outro <span aria-hidden="true">✦</span></p>
             <h2 className="tfr-section-title tfr-thanks-title">{additionals.thank_you_title}</h2>
             {additionals.thank_you_body && <p className="tfr-thanks-body">{additionals.thank_you_body}</p>}
+            {/* Studio signature — borrowed from VT's outro. */}
+            <p className="tfr-thanks-sign">— {display}</p>
           </section>
         )}
 
@@ -1367,6 +1369,16 @@ const TFR_CSS = `
   margin: 0 auto;
   color: var(--tfr-fg-muted);
   line-height: 1.65;
+}
+.tfr-thanks-sign {
+  margin: var(--brk-space-lg) 0 0;
+  font-family: var(--tfr-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--tfr-accent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--tfr-accent) 36%, transparent);
 }
 
 /* ── Footer ── 3-band: CTA + cols + credit */
