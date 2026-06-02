@@ -459,62 +459,80 @@ export const LUSH_CSS = `
 .lush-header-btn-mobile-only { display:inline-flex !important; }
 
 /* ── Tabs ── */
-.lush-tabbed-section { width:100%; background:var(--lush-bg); overflow:hidden; }
+.lush-tabbed-section { width:100%; background:var(--lush-bg); }
+
+/* Sticky rail matching the shape TFR + Blackline + VT use: position
+   sticky at top, top+bottom hairlines bracketing the strip, container
+   max-width inside, horizontal scroll on overflow. Drops the mask-image
+   fade edges (none of the other templates use them). PC padding widens
+   to the same 24px sides + 16/22 top/bottom rhythm. */
 .lush-tab-rail {
-  width:100%; background:var(--lush-bg); position:sticky; top:0; z-index:20;
+  position:sticky; top:0; z-index:20;
+  background:var(--lush-bg);
   border-top:1px solid var(--lush-dark-border);
   border-bottom:1px solid var(--lush-dark-border);
-  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 28px,#000 calc(100% - 28px),transparent 100%);
-          mask-image:linear-gradient(90deg,transparent 0,#000 28px,#000 calc(100% - 28px),transparent 100%);
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+  padding:18px 0 24px;
 }
+.lush-tab-rail::-webkit-scrollbar { display:none; }
 .lush-tab-slider {
-  width:100%; display:flex; align-items:stretch; gap:4px; padding:6px 22px;
-  overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch;
+  display:flex;
+  flex-wrap:nowrap;
+  max-width:1180px;
+  margin:0 auto;
+  padding:0 24px;
+  gap:8px;
   scroll-snap-type:x mandatory;
 }
-.lush-tab-slider::-webkit-scrollbar { display:none; }
+/* Rounded outlined pills — same structural shape as TFR's pills, dressed
+   in Lush vocabulary: hairline sage outline at 30% opacity on cream,
+   uppercase Roboto micro 11px/0.2em. Active state fills the border to
+   solid sage, swaps the label color to sage, and floats a ✦ sparkle
+   above the pill — Lush's signature marker, tied to the same glyph used
+   in ritual separators + before/after dividers. */
 .lush-tab-pill {
   position:relative; flex:0 0 auto;
   display:inline-flex; align-items:center; justify-content:center;
-  padding:22px 16px 18px; background:transparent; border:0;
+  padding:12px 22px;
+  background:transparent;
+  border:1px solid rgba(var(--lush-pink-rgb),0.30);
+  border-radius:999px;
   color:var(--lush-muted);
   font-family:var(--lush-ui); font-size:11px; font-weight:600;
-  letter-spacing:0.18em; text-transform:uppercase; line-height:1;
+  letter-spacing:0.20em; text-transform:uppercase; line-height:1;
   cursor:pointer; white-space:nowrap; scroll-snap-align:center;
-  transition:color .22s ease;
+  transition:color .22s ease, border-color .22s ease, background .22s ease;
 }
-/* Signature Lush detail: tiny sage sparkle (✦) tucked above the active
-   tab — ties to the sparkle vocabulary used elsewhere (before/after
-   separators, header floating sparkles) and gives Lush a distinct
-   active-state marker vs TFR's marquee bar / Blackline's flat bar /
-   VT's bracketed serif. */
 .lush-tab-pill::before {
-  content:"\\2726"; /* ✦ — same glyph as the ritual separators */
-  position:absolute; top:6px; left:50%;
-  transform:translateX(-50%) translateY(-4px);
+  content:"\\2726"; /* ✦ — same glyph as ritual separators */
+  position:absolute; top:-12px; left:50%;
+  transform:translateX(-50%) translateY(-2px);
   color:var(--lush-pink);
-  font-size:9px; line-height:1;
-  opacity:0; transition:opacity .22s ease, transform .28s cubic-bezier(.4,0,.2,1);
+  font-size:11px; line-height:1;
+  opacity:0;
+  transition:opacity .22s ease, transform .28s cubic-bezier(.4,0,.2,1);
   pointer-events:none;
 }
-/* Active marker bar — sage hairline anchored to the bottom edge.
-   Subtle (1px) so the sparkle reads as the headline indicator. */
-.lush-tab-pill::after {
-  content:""; position:absolute; left:14px; right:14px; bottom:0;
-  height:1px; background:var(--lush-pink);
-  transform:scaleX(0); transform-origin:center;
-  transition:transform .28s cubic-bezier(.4,0,.2,1);
+.lush-tab-pill:hover {
+  color:var(--lush-text);
+  border-color:rgba(var(--lush-pink-rgb),0.55);
 }
-.lush-tab-pill:hover { color:var(--lush-text); }
-.lush-tab-pill.is-active { color:var(--lush-text); }
-.lush-tab-pill.is-active::after { transform:scaleX(1); }
+.lush-tab-pill.is-active {
+  color:var(--lush-pink);
+  border-color:var(--lush-pink);
+}
 .lush-tab-pill.is-active::before {
   opacity:1;
   transform:translateX(-50%) translateY(0);
 }
+.lush-tab-pill:focus-visible {
+  outline:2px solid var(--lush-pink); outline-offset:2px;
+}
 @media (prefers-reduced-motion:reduce) {
-  .lush-tab-pill::before,
-  .lush-tab-pill::after { transition:none !important; }
+  .lush-tab-pill,
+  .lush-tab-pill::before { transition:none !important; }
 }
 .lush-tab-panel { display:none; }
 .lush-tab-panel.is-active { display:block; }
