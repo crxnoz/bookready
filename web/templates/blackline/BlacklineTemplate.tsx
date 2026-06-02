@@ -589,6 +589,14 @@ const BLACKLINE_CSS = `
 }
 .blackline-social-btn:last-child { border-right: none; }
 .blackline-social-btn:hover { color: var(--blackline-accent); }
+/* Mobile — buttons wrap onto multiple rows. Add top borders to every
+   button so each wrapped row has a clean visual separator. Drop the
+   outer top border on .blackline-social so the first row's buttons
+   provide the top edge instead. */
+@media (max-width: 720px) {
+  .blackline-social { border-top: none; }
+  .blackline-social-btn { border-top: 1px solid var(--blackline-rule); }
+}
 
 /* ── Tab rail ── */
 /* Sticky brass-edged rail beneath the hero. Horizontal scroll on narrow

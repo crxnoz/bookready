@@ -228,20 +228,42 @@ const VT_BOOKING_FRAME_CSS = `
   border-radius: 0 !important;
 }
 
-/* Service cards, slots, addons — strip white-card vocabulary, replace with
-   hairline gold borders on transparent backgrounds. Reads as ledger rows
-   not floating cards. */
-.vt-booking-inner.lush-template [class*="brk-booking-card"],
-.vt-booking-inner.lush-template [class*="brk-booking-slot"],
-.vt-booking-inner.lush-template [class*="brk-booking-service"],
-.vt-booking-inner.lush-template [class*="brk-booking-addon"],
+/* Cards, slots, addons — subtle bone surface tint matching TFR +
+   Blackline (transparent reads too thin against burgundy). Sharp 0px
+   corners stay (VT vocabulary). Targeting specific classes so we
+   don't accidentally restyle inner rows or the services container. */
+.vt-booking-inner.lush-template .brk-booking-card,
+.vt-booking-inner.lush-template .brk-booking-slot,
+.vt-booking-inner.lush-template .brk-booking-addon,
 .vt-booking-inner.lush-template [class*="brk-booking-summary"],
 .vt-booking-inner.lush-template [class*="brk-booking-staff"],
 .vt-booking-inner.lush-template [class*="brk-booking-cat"] {
-  background: transparent !important;
-  border-color: rgba(201,168,118,0.28) !important;
+  background: color-mix(in srgb, var(--vt-fg) 4%, var(--vt-bg)) !important;
+  border: 1px solid color-mix(in srgb, var(--vt-accent) 32%, transparent) !important;
   box-shadow: none !important;
   color: var(--vt-fg) !important;
+}
+/* Service CARDS get the same surface treatment. */
+.vt-booking-inner.lush-template .brk-booking-service-card {
+  background: color-mix(in srgb, var(--vt-fg) 4%, var(--vt-bg)) !important;
+  border: 1px solid color-mix(in srgb, var(--vt-accent) 32%, transparent) !important;
+  box-shadow: none !important;
+  color: var(--vt-fg) !important;
+}
+/* The wrapping .brk-booking-services grid is pure layout — no border,
+   no background. Services sit directly on the page. */
+.vt-booking-inner.lush-template .brk-booking-services {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+/* Inner name+price row — strip any border the substring rule may have
+   inherited. */
+.vt-booking-inner.lush-template .brk-booking-service-top {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* Form fields — flat, hairline-bordered, gold focus ring. */
