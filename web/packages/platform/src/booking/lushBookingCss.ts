@@ -54,7 +54,13 @@ export const LUSH_CSS = `
   --lush-ui:          "Roboto", sans-serif;
   --lush-mono:        "DM Mono","Roboto Mono",monospace;
   width: 100%; background: var(--lush-bg); color: var(--lush-text);
-  overflow-x: hidden; font-family: var(--lush-ui);
+  /* overflow-x:clip (not overflow-x:hidden) so the tab rail's
+     position:sticky still works. overflow:hidden would establish a
+     scroll container on .lush-template and ancestors of sticky
+     elements then become the sticky's scroll boundary — sticky never
+     activates against the viewport. overflow:clip does the same visual
+     clipping without creating a scroll context. */
+  overflow-x: clip; font-family: var(--lush-ui);
 }
 .lush-template *, .lush-template *::before, .lush-template *::after { box-sizing: border-box; }
 .lush-template img { max-width: 100%; display: block; }
