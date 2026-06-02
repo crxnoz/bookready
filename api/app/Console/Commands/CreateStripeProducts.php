@@ -48,6 +48,7 @@ class CreateStripeProducts extends Command
         $plans         = config('plans.plans', []);
         $multipliers   = config('plans.sms_multipliers', []);
         $cycles        = config('plans.cycles', []);
+        $perSmsUplift  = (float) config('plans.per_sms_uplift_dollars', 0);
 
         if (empty($plans) || empty($multipliers) || empty($cycles)) {
             $this->error('config/plans.php is missing required keys. Aborting.');
@@ -107,12 +108,15 @@ class CreateStripeProducts extends Command
                         ? $plan['monthly_base_cents']
                         : $plan['annual_base_cents'];
 
-                    // For monthly, uplift is per month. For annual, uplift is
-                    // per year (= per month × 12) so the bundle math reads
-                    // the same in either case.
-                    $upliftCents = $cycleKey === 'monthly'
-                        ? $upliftRow['uplift_cents']
-                        : $upliftRow['uplift_cents'] * 12;
+                    // Compute monthly uplift from per-SMS rate × additional SMS
+                    // count (sms_factor - 1, since 1× is the base). For annual
+                    // the uplift is monthly × 12 so the bundle math reads the
+                    // same on either cycle. Keeps margin uniform across plans.
+                    $extraSms           = ($upliftRow['sms_factor'] - 1) * $plan['sms_base'];
+                    $upliftCentsMonthly = (int) round($extraSms * $perSmsUplift * 100);
+                    $upliftCents        = $cycleKey === 'monthly'
+                        ? $upliftCentsMonthly
+                        : $upliftCentsMonthly * 12;
 
                     $finalCents = $baseCents + $upliftCents;
 

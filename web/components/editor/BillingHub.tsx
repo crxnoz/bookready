@@ -103,17 +103,20 @@ export default function BillingHub() {
     }
   }
 
-  // Pre-compute pricing per (plan, cycle, mult) using the catalog uplifts.
+  // Pre-compute pricing per (plan, cycle, mult). Uplift is computed
+  // from per_sms_uplift_dollars × sms_delta (same formula PHP uses in
+  // CreateStripeProducts) so 47% margin holds across all plans. Don't
+  // hardcode flat numbers here — they would drift from config/plans.php
+  // the moment the per-SMS rate changes.
   const pricedPlans = useMemo(() => {
     if (! plans) return []
     return (Object.keys(plans.plans) as PlanKey[]).map(key => {
-      const p     = plans.plans[key]
-      const uplift = plans.sms_multipliers[String(pickedMult) as '1' | '2' | '3']?.uplift_cents ?? 0
-      const cyclical = pickedCycle === 'monthly' ? p.monthly_base_cents : p.annual_base_cents
-      // Annual uplift is per-year (uplift_cents × 12) so the displayed
-      // savings vs monthly stays honest.
-      const upliftBilled = pickedCycle === 'monthly' ? uplift : uplift * 12
-      const totalCents   = cyclical + upliftBilled
+      const p             = plans.plans[key]
+      const extraSms      = (pickedMult - 1) * p.sms_base
+      const upliftMonthly = Math.round(extraSms * plans.per_sms_uplift_dollars * 100)
+      const upliftBilled  = pickedCycle === 'monthly' ? upliftMonthly : upliftMonthly * 12
+      const baseCents     = pickedCycle === 'monthly' ? p.monthly_base_cents : p.annual_base_cents
+      const totalCents    = baseCents + upliftBilled
       const perMonthCents = pickedCycle === 'monthly' ? totalCents : Math.round(totalCents / 12)
       return {
         key,
@@ -223,7 +226,10 @@ export default function BillingHub() {
           </CycleBtn>
         </div>
 
-        {/* SMS multiplier toggle */}
+        {/* SMS multiplier toggle. Uplift labels are intentionally NOT
+            hardcoded — they vary per plan now (Solo +$3, Studio +$6,
+            Salon +$15 for 2x). The per-card delta is shown on each plan
+            card below; here we just show the bundle name. */}
         <div className="flex items-center gap-2 mb-4">
           <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">SMS bundle:</span>
           {([1, 2, 3] as SmsMult[]).map(m => (
@@ -238,7 +244,7 @@ export default function BillingHub() {
                   : 'border-[rgba(18,18,18,0.15)] bg-white text-near-black hover:border-near-black',
               )}
             >
-              {m}× {m === 1 ? '(base)' : m === 2 ? '+$5/mo' : '+$10/mo'}
+              {m}× {m === 1 ? '(base)' : `(more SMS)`}
             </button>
           ))}
         </div>

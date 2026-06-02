@@ -394,10 +394,17 @@ export interface BillingPlan {
 }
 
 export interface BillingPlansResponse {
-  plans:             Record<'solo' | 'studio' | 'salon', BillingPlan>
-  sms_multipliers:   Record<'1' | '2' | '3', { uplift_cents: number; label: string; sms_factor: number }>
-  cycles:            Record<'monthly' | 'annual', { interval: string; interval_count: number; label: string }>
-  sms_overage_cents: number
+  plans:                  Record<'solo' | 'studio' | 'salon', BillingPlan>
+  sms_multipliers:        Record<'1' | '2' | '3', { label: string; sms_factor: number }>
+  cycles:                 Record<'monthly' | 'annual', { interval: string; interval_count: number; label: string }>
+  sms_overage_cents:      number
+  /**
+   * Per-SMS uplift dollars for the bundle upgrade. Same single source of
+   * truth as config/plans.php (currently $0.0075 = ~47% margin at $0.004
+   * carrier cost). Frontend computes uplift = sms_delta × per_sms_uplift
+   * × 100 cents.
+   */
+  per_sms_uplift_dollars: number
 }
 
 export async function getBillingPlans(): Promise<BillingPlansResponse> {

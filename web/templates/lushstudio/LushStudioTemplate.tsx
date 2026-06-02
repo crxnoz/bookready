@@ -1119,25 +1119,27 @@ function AboutPanel({
   const images = about?.images ?? []
   const hasImages = images.some(img => !! img)
 
+  // Pull the lead image out of the array so it can be a single wide
+  // feature at the top. The remaining two slots run as a 2-up between
+  // the body and the highlights. Empty slots gracefully fall away.
+  const leadImage    = images[0] ?? null
+  const sideImages   = [images[1] ?? null, images[2] ?? null]
+  const hasSideImages = sideImages.some(img => !! img)
+
   return (
     <section className="lush-about-section">
-      {/* Three-image staggered hero. Mirrors TFR's editorial pattern
-          (4:5, 3:5, 2:3 aspect ratios with offset margins), dressed
-          in Lush vocabulary: hairline sage borders + soft pink
-          placeholders for empty slots. */}
-      {hasImages && (
-        <div className="lush-about-images">
-          {[0, 1, 2].map(i => {
-            const img = images[i]
-            return img
-              ? <div key={i} className="lush-about-img">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={img} alt="" loading="lazy" /></div>
-              : <div key={i} className="lush-about-img lush-about-img--placeholder" aria-hidden="true" />
-          })}
+      {/* Wide lead image at the top — single 16:9 panel that gives the
+          About a strong photographic entrance. Reads as the magazine
+          opener before the article begins. */}
+      {leadImage && (
+        <div className="lush-about-feature">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={leadImage} alt="" loading="lazy" />
         </div>
       )}
 
       {/* Layered title — DM Serif Text 140px backdrop at low opacity
-          with Cookie script 64px overlay centered. Same compositional
+          with Molle italic script overlay centered. Same compositional
           idea as TFR's neon-on-serif layered title, dressed in Lush
           typography: cream serif eyebrow whispers behind, sage script
           heading reads cleanly over top. */}
@@ -1146,13 +1148,24 @@ function AboutPanel({
         <h2 className="lush-layered-heading">{heading}</h2>
       </div>
 
-      {/* Body + highlights + signature in a single editorial column.
-          First paragraph gets a sage drop cap. Highlights below as a
-          divided list (mirrors VT's hairline-separated bullet style)
-          with DM Serif titles + Roboto body sentences. */}
       <div className="lush-about-copy">
         <p className="lush-about-body">{body}</p>
 
+        {/* Two staggered companion images breaking up the prose. Only
+            renders when there's at least one image to show; otherwise
+            the section flows straight from body → highlights. */}
+        {hasSideImages && (
+          <div className="lush-about-images">
+            {sideImages.map((img, i) => (
+              img
+                ? <div key={i} className="lush-about-img">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={img} alt="" loading="lazy" /></div>
+                : <div key={i} className="lush-about-img lush-about-img--placeholder" aria-hidden="true" />
+            ))}
+          </div>
+        )}
+
+        {/* Highlights — divided list with sage hairlines, DM Serif
+            titles + Roboto body. */}
         <ul className="lush-about-highlights">
           {highlights.map((h, i) => (
             <li key={i}>
@@ -1163,8 +1176,8 @@ function AboutPanel({
         </ul>
 
         {/* Signature closer — Cookie script, signs with the business's
-            signature word ("Lush", "Velvet", etc). Reads like the
-            last line of a handwritten letter. */}
+            signature word. Reads like the last line of a handwritten
+            letter. */}
         <p className="lush-about-sign">
           With care,<br />
           <em>{signatureWord(displayName)}</em>

@@ -1372,23 +1372,38 @@ export const LUSH_CSS = `
   padding: 56px 24px 80px;
 }
 
-/* Three-image staggered hero — mirrors TFR's grid with the same
-   asymmetric rhythm (4:5 / 3:5 / 2:3 aspect ratios + offset margins),
-   re-skinned for cream: hairline sage borders, soft-pink fallbacks
-   for empty slots. */
+/* Lead image — wide 16:9 single panel at the top, magazine-opener
+   energy. Hairline sage border + soft cream surround keep it gentle
+   on cream. */
+.lush-about-feature {
+  margin: 0 0 56px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid var(--lush-dark-border);
+  background: rgba(var(--lush-pink-rgb), 0.06);
+  aspect-ratio: 16/9;
+}
+.lush-about-feature img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Two-image staggered companion strip — sits between the body
+   paragraph and the highlights, giving the prose a visual breath. */
 .lush-about-images {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 14px;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
   align-items: start;
-  margin: 0 0 64px;
+  margin: 40px 0 48px;
 }
 .lush-about-img {
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid var(--lush-dark-border);
   background: rgba(var(--lush-pink-rgb), 0.06);
-  aspect-ratio: 3/4;
 }
 .lush-about-img img {
   width: 100%;
@@ -1404,12 +1419,10 @@ export const LUSH_CSS = `
   );
 }
 .lush-about-images > *:nth-child(1) { aspect-ratio: 4/5; margin-top: 0; }
-.lush-about-images > *:nth-child(2) { aspect-ratio: 3/5; margin-top: 28px; }
-.lush-about-images > *:nth-child(3) { aspect-ratio: 2/3; margin-top: -14px; }
+.lush-about-images > *:nth-child(2) { aspect-ratio: 3/4; margin-top: 28px; }
 @media (max-width: 640px) {
-  .lush-about-images { gap: 6px; }
+  .lush-about-images { gap: 10px; }
   .lush-about-images > *:nth-child(2) { margin-top: 14px; }
-  .lush-about-images > *:nth-child(3) { margin-top: -6px; }
 }
 
 /* Layered title — DM Serif Text backdrop at 14% opacity with the
@@ -1435,16 +1448,19 @@ export const LUSH_CSS = `
   color: var(--lush-text);
   white-space: nowrap;
 }
+/* Molle italic — quieter cursive than Cookie, with a slight handwritten
+   slant that pairs better against the big DM Serif backdrop. */
 .lush-layered-heading {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--lush-script);
-  font-size: clamp(44px, 7vw, 68px);
+  font-family: var(--lush-molle);
+  font-style: italic;
+  font-size: clamp(52px, 8vw, 76px);
   font-weight: 400;
-  letter-spacing: 0;
+  letter-spacing: -0.005em;
   line-height: 1;
   color: var(--lush-pink);
   margin: 0;

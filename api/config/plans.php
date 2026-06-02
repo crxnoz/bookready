@@ -37,6 +37,20 @@ return [
     // in code until we decide).
     'trial_days' => 0,
 
+    // ── SMS bundle uplift ────────────────────────────────────────────
+    // Single source of truth for the additional-SMS bundle pricing.
+    // Carrier SMS cost is ~$0.004; we charge $0.0075/SMS extra for the
+    // bundle uplift, giving ~47% gross margin (just above the 40% floor
+    // we agreed to). Scales per plan automatically: uplift_cents =
+    // (sms_factor - 1) × plan.sms_base × per_sms_uplift_dollars × 100.
+    //
+    // Same value used by: CreateStripeProducts command (when creating
+    // prices), BillingController::plans (returned to frontend), and
+    // bookready-marketing/pricing.js (kept in lock-step manually).
+    // If you change this, re-run `php artisan stripe:create-products`
+    // to drift-detect and recreate the affected Stripe prices.
+    'per_sms_uplift_dollars' => 0.0075,
+
     // ── Plans ────────────────────────────────────────────────────────
     'plans' => [
         'solo' => [
@@ -71,12 +85,15 @@ return [
     ],
 
     // ── SMS bundle multipliers ──────────────────────────────────────
-    // mult => uplift in cents (added to monthly_base or annual_base / 12
-    // for the annual case — see helper computePriceCents below if added).
+    // Uplift used to be a flat per-mult value here (2x = +$5, 3x = +$10
+    // across plans). That over-charged Solo and lost money on Salon
+    // because Salon's SMS delta is 5x Solo's. Now uplift is computed
+    // from per_sms_uplift_dollars (above) × sms_delta, so each plan
+    // pays in proportion to how many added SMS the upgrade includes.
     'sms_multipliers' => [
-        1 => ['uplift_cents' => 0,     'label' => '1×', 'sms_factor' => 1],
-        2 => ['uplift_cents' => 500,   'label' => '2×', 'sms_factor' => 2],
-        3 => ['uplift_cents' => 1000,  'label' => '3×', 'sms_factor' => 3],
+        1 => ['sms_factor' => 1, 'label' => '1×'],
+        2 => ['sms_factor' => 2, 'label' => '2×'],
+        3 => ['sms_factor' => 3, 'label' => '3×'],
     ],
 
     // ── Billing cycles ───────────────────────────────────────────────

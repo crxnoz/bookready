@@ -22,10 +22,11 @@ class BillingController extends Controller
     public function plans(): JsonResponse
     {
         return response()->json([
-            'plans'           => config('plans.plans', []),
-            'sms_multipliers' => config('plans.sms_multipliers', []),
-            'cycles'          => config('plans.cycles', []),
-            'sms_overage_cents' => config('plans.sms_overage_cents', 3),
+            'plans'                  => config('plans.plans', []),
+            'sms_multipliers'        => config('plans.sms_multipliers', []),
+            'cycles'                 => config('plans.cycles', []),
+            'sms_overage_cents'      => config('plans.sms_overage_cents', 3),
+            'per_sms_uplift_dollars' => (float) config('plans.per_sms_uplift_dollars', 0),
         ]);
     }
 
