@@ -552,21 +552,18 @@ const TFR_CSS = `
   --tfr-script: 'Dancing Script', 'Pacifico', cursive;
   --tfr-serif: 'DM Serif Text', 'Playfair Display', Georgia, serif;
   --tfr-body: 'Inter', system-ui, -apple-system, sans-serif;
-  /* Sharp neon-sign text shadow — used on every script-treated heading
-     (section titles, tagline, layered-title overlay, thanks). Four
-     stacked layers: tight white inner highlight → accent core → mid
-     halo → soft outer bloom. Real neon-tube definition rather than the
-     diffuse glow a single shadow produces. */
-  --tfr-neon-sign:
-    0 0 1px rgba(255, 255, 255, 1),
+  /* Neon halo — used on every Dancing Script title (section titles,
+     tagline, layered heading, thanks, highlights). White text with a
+     colored halo around it (no white inner = no stroke effect, per
+     feedback). Multi-layer = real bloom, not a flat single shadow. */
+  --tfr-neon-shadow:
     0 0 6px var(--tfr-accent),
     0 0 14px var(--tfr-accent),
     0 0 30px var(--tfr-accent),
     0 0 56px color-mix(in srgb, var(--tfr-accent) 80%, transparent);
-  /* Tighter halo for the smaller script bodies (tagline, layered
-     heading) — same definition, less spread. */
-  --tfr-neon-sign-tight:
-    0 0 1px rgba(255, 255, 255, 1),
+  /* Tighter variant for smaller script type — same halo character,
+     less spread. */
+  --tfr-neon-shadow-tight:
     0 0 4px var(--tfr-accent),
     0 0 10px var(--tfr-accent),
     0 0 22px var(--tfr-accent);
@@ -601,8 +598,7 @@ const TFR_CSS = `
   opacity: 0.85;
 }
 
-/* Section titles — Dancing Script with full neon-sign shadow. Each
-   panel reads like a glass-tube sign hanging over its section. */
+/* Section titles — Dancing Script in WHITE with full neon halo. */
 .tfr-section-title {
   font-family: var(--tfr-script);
   font-size: clamp(38px, 5.5vw, 64px);
@@ -610,8 +606,8 @@ const TFR_CSS = `
   letter-spacing: 0;
   line-height: 1.1;
   margin: 0 0 var(--brk-space-xl);
-  color: var(--tfr-accent);
-  text-shadow: var(--tfr-neon-sign);
+  color: var(--tfr-fg);
+  text-shadow: var(--tfr-neon-shadow);
   padding: 0.05em 0;
 }
 
@@ -681,25 +677,17 @@ const TFR_CSS = `
     0 0 60px color-mix(in srgb, var(--tfr-accent) 30%, transparent);
   margin: 0 0 var(--brk-space-md);
 }
-/* Hero name — Dancing Script in WHITE with the multi-layer accent
-   halo. White letters read as bright glass tube; the accent halo
-   bleeds onto the canvas like a real neon sign casts onto the wall
-   behind it. (Per feedback — not accent letters, white letters with
-   neon shadow.) */
+/* Hero name — plain white Bricolage. No script, no neon, no
+   animation. The brand anchor; the script/neon language lives in the
+   section titles + taglines below. */
 .tfr-name {
-  font-family: var(--tfr-script);
-  font-size: clamp(56px, 11vw, 128px);
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 1.0;
-  margin: 0 0 var(--brk-space-md);
+  font-family: var(--tfr-display);
+  font-size: clamp(44px, 8vw, 88px);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 0.96;
+  margin: 0 0 var(--brk-space-sm);
   color: var(--tfr-fg);
-  text-shadow:
-    0 0 1px rgba(255, 255, 255, 1),
-    0 0 8px color-mix(in srgb, var(--tfr-accent) 80%, transparent),
-    0 0 20px color-mix(in srgb, var(--tfr-accent) 60%, transparent),
-    0 0 48px color-mix(in srgb, var(--tfr-accent) 36%, transparent);
-  padding: 0.05em 0;
 }
 .tfr-business-type {
   font-family: var(--tfr-body);
@@ -710,16 +698,14 @@ const TFR_CSS = `
   color: var(--tfr-fg-muted);
   margin: 0 0 var(--brk-space-sm);
 }
-/* Tagline — Dancing Script with tight neon halo. One of the two "neon
-   moments" in the hero region (the other being the avatar's halo
-   ring). Sits just under the white wordmark. */
+/* Tagline — Dancing Script in WHITE with tight neon halo. */
 .tfr-tagline {
   font-family: var(--tfr-script);
   font-size: clamp(22px, 2.6vw, 30px);
   font-weight: 700;
   line-height: 1.2;
-  color: var(--tfr-accent);
-  text-shadow: var(--tfr-neon-sign-tight);
+  color: var(--tfr-fg);
+  text-shadow: var(--tfr-neon-shadow-tight);
   margin: 0 0 var(--brk-space-xl);
   max-width: 28ch;
   padding: 0.05em 0;
@@ -971,11 +957,7 @@ const TFR_CSS = `
   letter-spacing: 0;
   line-height: 1;
   color: var(--tfr-fg);
-  text-shadow:
-    0 0 1px rgba(255, 255, 255, 1),
-    0 0 6px var(--tfr-accent),
-    0 0 14px var(--tfr-accent),
-    0 0 30px var(--tfr-accent);
+  text-shadow: var(--tfr-neon-shadow);
   margin: 0;
   white-space: nowrap;
   padding: 0.05em 0;
@@ -1041,10 +1023,7 @@ const TFR_CSS = `
   letter-spacing: 0;
   line-height: 1.1;
   color: var(--tfr-fg);
-  text-shadow:
-    0 0 1px rgba(255, 255, 255, 1),
-    0 0 6px var(--tfr-accent),
-    0 0 14px var(--tfr-accent);
+  text-shadow: var(--tfr-neon-shadow-tight);
   margin: 0 0 8px;
   padding: 0.05em 0;
 }
@@ -1361,8 +1340,8 @@ const TFR_CSS = `
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1.0;
-  color: var(--tfr-accent);
-  text-shadow: var(--tfr-neon-sign);
+  color: var(--tfr-fg);
+  text-shadow: var(--tfr-neon-shadow);
   padding: 0.05em 0;
   margin: 0 0 var(--brk-space-md);
 }
