@@ -176,12 +176,11 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
         {/* ── Tab panels — all in DOM, only is-active visible (preserves
             booking form state across tab switches) ── */}
 
-        {/* 3. Book */}
+        {/* 3. Book — eyebrow + title removed, the booking flow's own
+            internal step labels carry that work now (matches VT). */}
         <div className={`tfr-tab-panel${active === 'book' ? ' is-active' : ''}`}
              role="tabpanel" aria-hidden={active !== 'book'}>
           <section className="tfr-section tfr-book" aria-label={tabs.book_label ?? 'Book'}>
-            <p className="tfr-eyebrow">Reserve</p>
-            <h2 className="tfr-section-title">{tabs.book_label ?? 'Book the chair'}</h2>
             <TheFadeRoomBooking
               slug={slug}
               services={services}

@@ -162,12 +162,11 @@ export default function BlacklineTemplate({ site, slug }: Props) {
         {/* ── Tab panels — all rendered, only is-active visible (so tab
             switching preserves form state inside the booking flow) ── */}
 
-        {/* 3. Reserve / Book */}
+        {/* 3. Reserve / Book — eyebrow + title removed, booking flow's
+            own step labels carry that work now (matches VT). */}
         <div className={`blackline-tab-panel${active === 'book' ? ' is-active' : ''}`}
              role="tabpanel" aria-hidden={active !== 'book'}>
           <section className="blackline-section blackline-book" aria-label={tabs.book_label ?? 'Reserve'}>
-            <p className="blackline-eyebrow">Reserve</p>
-            <h2 className="blackline-section-title">{tabs.book_label ?? 'Book a chair'}</h2>
             <BlacklineBooking
               slug={slug}
               services={services}

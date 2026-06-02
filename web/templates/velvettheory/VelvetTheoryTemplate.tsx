@@ -390,18 +390,23 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
               </p>
             </div>
           ) : (
-            <VelvetTheoryBooking
-              slug={slug}
-              services={services}
-              displayName={displayName}
-              availability={availability}
-              paymentSettings={site.payment_settings ?? null}
-              requirePolicyAgreement={!! site.policies?.require_policy_agreement}
-              serviceAddons={site.service_addons ?? []}
-              staffMembers={site.staff ?? []}
-              serviceCategories={site.service_categories ?? []}
-              bookingQuestions={site.booking_questions ?? []}
-            />
+            // Wrapped in vt-section to give the booking flow the same
+            // outer padding the other VT panels get (mirrors how
+            // .blackline-section.blackline-book frames the booking).
+            <div className="vt-section vt-book">
+              <VelvetTheoryBooking
+                slug={slug}
+                services={services}
+                displayName={displayName}
+                availability={availability}
+                paymentSettings={site.payment_settings ?? null}
+                requirePolicyAgreement={!! site.policies?.require_policy_agreement}
+                serviceAddons={site.service_addons ?? []}
+                staffMembers={site.staff ?? []}
+                serviceCategories={site.service_categories ?? []}
+                bookingQuestions={site.booking_questions ?? []}
+              />
+            </div>
           )}
         </section>
 
