@@ -105,8 +105,15 @@ export const LUSH_CSS = `
   padding: var(--brk-space-3xl) var(--brk-space-md);
 }
 /* .lush-book — modifier matching .tfr-book / .blackline-book / .vt-book.
-   Identical handling to the trio (top padding from --brk-space-3xl). */
-.lush-book { padding-top: var(--brk-space-3xl); }
+   Adds extra breathing room above the embedded booking flow to match
+   what TFR gets from its .tfr-booking-frame shim (16px) on top of the
+   section's 64px. Lush has no equivalent shim wrapping the platform
+   booking — instead, the modifier here compensates so the compound
+   padding above .brk-booking-section matches the trio (~80px). */
+.lush-book {
+  padding-top: calc(var(--brk-space-3xl) + var(--brk-space-md));
+  padding-bottom: var(--brk-space-2xl);
+}
 
 /* ── Header ── */
 .lush-header-section {
@@ -468,47 +475,44 @@ export const LUSH_CSS = `
 /* ── Tabs ── */
 .lush-tabbed-section { width:100%; background:var(--lush-bg); }
 
-/* Sticky rail matching the shape TFR + Blackline + VT use: position
-   sticky at top, top+bottom hairlines bracketing the strip, container
-   max-width inside, horizontal scroll on overflow. Drops the mask-image
-   fade edges (none of the other templates use them). PC padding widens
-   to the same 24px sides + 16/22 top/bottom rhythm. */
+/* Sticky rail matched precisely to the trio's structural specs — same
+   max-width (--brk-container-narrow), same 16px sides (--brk-space-md),
+   same z-index:10, same 16/24 top/bottom rhythm as TFR. Drops the
+   mask-image fade edges (none of the others use them). */
 .lush-tab-rail {
-  position:sticky; top:0; z-index:20;
+  position:sticky; top:0; z-index:10;
   background:var(--lush-bg);
   border-top:1px solid var(--lush-dark-border);
   border-bottom:1px solid var(--lush-dark-border);
   overflow-x:auto;
   -webkit-overflow-scrolling:touch;
   scrollbar-width:none;
-  padding:18px 0 24px;
+  padding:16px 0 24px;
 }
 .lush-tab-rail::-webkit-scrollbar { display:none; }
 .lush-tab-slider {
   display:flex;
   flex-wrap:nowrap;
-  max-width:1180px;
+  max-width:var(--brk-container-narrow);
   margin:0 auto;
-  padding:0 24px;
+  padding:0 var(--brk-space-md);
   gap:8px;
   scroll-snap-type:x mandatory;
 }
-/* Rounded outlined pills — same structural shape as TFR's pills, dressed
-   in Lush vocabulary: hairline sage outline at 30% opacity on cream,
-   uppercase Roboto micro 11px/0.2em. Active state fills the border to
-   solid sage, swaps the label color to sage, and floats a ✦ sparkle
-   above the pill — Lush's signature marker, tied to the same glyph used
-   in ritual separators + before/after dividers. */
+/* Rounded outlined pills — exact structural shape as TFR's pills
+   (11px/24px padding, 999px radius, uppercase 11px/0.18em). Lush's
+   vocabulary owns the COLORS + the active marker: hairline sage outline
+   at 30% opacity on cream, sparkle ✦ floats above on active. */
 .lush-tab-pill {
   position:relative; flex:0 0 auto;
   display:inline-flex; align-items:center; justify-content:center;
-  padding:12px 22px;
+  padding:11px 24px;
   background:transparent;
   border:1px solid rgba(var(--lush-pink-rgb),0.30);
   border-radius:999px;
   color:var(--lush-muted);
   font-family:var(--lush-ui); font-size:11px; font-weight:600;
-  letter-spacing:0.20em; text-transform:uppercase; line-height:1;
+  letter-spacing:0.18em; text-transform:uppercase; line-height:1;
   cursor:pointer; white-space:nowrap; scroll-snap-align:center;
   transition:color .22s ease, border-color .22s ease, background .22s ease;
 }
