@@ -20,6 +20,7 @@ const REGISTRY: Record<string, TemplateLoader> = {
   lushstudio:   () => import('./lushstudio/LushStudioTemplate'),
   velvettheory: () => import('./velvettheory/VelvetTheoryTemplate'),
   blackline:    () => import('./blackline/BlacklineTemplate'),
+  opaline:      () => import('./opaline/OpalineTemplate'),
 }
 
 /**
@@ -34,6 +35,7 @@ const MANIFESTS: Record<string, ManifestLoader> = {
   lushstudio:   () => import('./lushstudio/manifest'),
   velvettheory: () => import('./velvettheory/manifest'),
   blackline:    () => import('./blackline/manifest'),
+  opaline:      () => import('./opaline/manifest'),
 }
 
 export function resolveTemplate(site: PublicSite): TemplateLoader | null {

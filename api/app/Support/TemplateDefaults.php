@@ -20,6 +20,7 @@ class TemplateDefaults
             'lushstudio'   => self::lushStudioSettings(),
             'velvettheory' => self::velvetTheorySettings(),
             'blackline'    => self::blacklineSettings(),
+            'opaline'      => self::opalineSettings(),
             default        => self::theFadeRoomSettings(),
         };
     }
@@ -31,6 +32,7 @@ class TemplateDefaults
             'lushstudio'   => self::lushStudioSections(),
             'velvettheory' => self::velvetTheorySections(),
             'blackline'    => self::blacklineSections(),
+            'opaline'      => self::opalineSections(),
             default        => self::theFadeRoomSections(),
         };
     }
@@ -319,6 +321,67 @@ class TemplateDefaults
     }
 
     private static function blacklineSections(): array
+    {
+        return self::theFadeRoomSections();
+    }
+
+    // ─── Opaline ──────────────────────────────────────────────────────────────
+    //
+    // Premium luxury beauty + spa. Voice: calm, considered, quietly
+    // confident. Pearl + champagne canvas; the copy reads like a high-end
+    // spa that values quality over volume.
+
+    private static function opalineSettings(): array
+    {
+        $base = self::theFadeRoomSettings();
+        $base['header']['announcement_text'] = 'By appointment — a calm, unhurried experience, every visit.';
+        $base['tabs'] = [
+            'book_label'     => 'Reserve',
+            'gallery_label'  => 'Gallery',
+            'policy_label'   => 'Policies',
+            'about_label'    => 'About',
+            'results_label'  => 'Results',
+            'advice_label'   => 'Care',
+            'timeline_label' => 'Visit',
+        ];
+        $base['about'] = [
+            'heading'    => 'The studio',
+            'eyebrow'    => 'About us',
+            'body'       => 'We are a quiet, considered studio built around one idea: that beauty should feel like care, not a transaction. Every treatment is tailored, every room is calm, and every detail is intentional — so you can relax fully and leave feeling like the best version of yourself.',
+            'highlights' => [
+                ['title' => 'Quality over volume', 'body' => 'We see fewer clients each day so yours is never rushed. The time is yours.'],
+                ['title' => 'A considered hand',   'body' => 'Treatments are tailored to your skin and your goals — never one-size-fits-all.'],
+                ['title' => 'A space to exhale',   'body' => 'Soft light, clean lines, and quiet. The environment is part of the result.'],
+            ],
+            'images'     => [null, null, null],
+        ];
+        $base['advice'] = [
+            'heading'     => 'Care notes',
+            'card_kicker' => '',
+            'items'       => [
+                ['title' => 'Keep it gentle',      'body' => 'Skip strong actives and exfoliants for 24–48 hours after your treatment.'],
+                ['title' => 'Protect your skin',   'body' => 'Daily SPF is the single best thing you can do to preserve your results.'],
+                ['title' => 'Hydrate, inside and out', 'body' => 'Water and a simple barrier moisturizer help your skin settle beautifully.'],
+                ['title' => 'Stay on a rhythm',    'body' => 'A regular cadence keeps results consistent. We will recommend yours.'],
+            ],
+        ];
+        $base['timeline'] = [
+            'heading'     => 'Your visit',
+            'card_kicker' => '',
+            'items'       => [
+                ['title' => 'Choose your service',  'body' => 'Select the treatment that suits you — we will confirm the right fit on arrival.'],
+                ['title' => 'Reserve your time',    'body' => 'Pick a date and time that works. A deposit may secure your appointment.'],
+                ['title' => 'Arrive and settle',    'body' => 'Come a few minutes early, breathe, and let the day slow down.'],
+                ['title' => 'Relax and renew',      'body' => 'We take it from here — unhurried, attentive, and entirely focused on you.'],
+            ],
+        ];
+        $base['additionals']['thank_you_title'] = 'Thank you for trusting us';
+        $base['additionals']['thank_you_body']  = 'It is a privilege to care for you. We look forward to welcoming you back.';
+        $base['footer']['subtext'] = 'By appointment. A calm, premium experience from the moment you arrive.';
+        return $base;
+    }
+
+    private static function opalineSections(): array
     {
         return self::theFadeRoomSections();
     }
