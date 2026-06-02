@@ -440,7 +440,7 @@ function Footer({ site, hours, services, goBook }: { site: PublicSite; hours: an
         </div>
 
         {footer.show_hours !== false && hours.length > 0 && (
-          <div className="blackline-footer-col">
+          <div className="blackline-footer-col blackline-footer-col--hours">
             <p className="blackline-eyebrow">Hours</p>
             <ul className="blackline-footer-hours">
               {hours.map((h: any) => (
@@ -954,6 +954,11 @@ const BLACKLINE_CSS = `
   gap: var(--brk-space-md);
 }
 .blackline-footer-brand { gap: var(--brk-space-sm); }
+/* Hours column needs more breathing room than the others — day-name +
+   time-string + side padding doesn't fit comfortably in a 200px track.
+   Setting an intrinsic min-width pushes its grid track wider; the other
+   1fr tracks share whatever space remains. */
+.blackline-footer-col--hours { min-width: 260px; }
 .blackline-footer-name {
   font-family: var(--blackline-display);
   font-size: 28px;
