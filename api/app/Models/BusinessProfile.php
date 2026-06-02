@@ -28,12 +28,16 @@ class BusinessProfile extends Model
         'email_signature',
         'site_visibility',
         'site_password_hash',
+        'onboarding_completed_at',
     ];
 
     protected $casts = [
         'booking_enabled' => 'boolean',
         'week_start_day'  => 'integer',
         'default_appointment_duration_minutes' => 'integer',
+        // #130 — cast so reads are always Carbon|null (not a raw string),
+        // which the controller's ?->toJSON() relies on.
+        'onboarding_completed_at' => 'datetime',
     ];
 
     /**
