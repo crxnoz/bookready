@@ -2032,222 +2032,180 @@ export const LUSH_CSS = `
 }
 .lush-footer-book:active { transform:translateY(0); }
 
-/* ── Desktop ── */
+/* ── Desktop ── Rebuilt PC layout. Keeps the tabbed-SPA model + the
+   Lush identity; styles the component's CURRENT classes. The previous
+   block targeted stale markup the component no longer renders
+   (.lush-about-frame / .lush-policy-card / .lush-results-*) and forced a
+   broken 2-col grid onto .lush-about-section, which is why the PC view
+   read as off. The .lush-femme signature block below still layers on
+   top at every width. */
 @media (min-width:1025px) {
-  /* Header at desktop: cover stays compact, card sits flush below
-     without overlapping (drops the -48px margin + top shadow that
-     made the card look like it had a weird halo on wide viewports).
-     Buttons left-align so they stack beneath the location +
-     services info rather than centered. */
-  .lush-header-cover { min-height:340px; }
+  /* Hero — full-bleed cover with a width-capped, corner-rounded floating
+     content card. Keeps Lush's signature card-over-cover overlap + soft
+     shadow, but the cap + radius make the shadow read as a floating panel
+     instead of the full-width "halo" the old block was fighting. */
+  .lush-header-cover { height:38vh; min-height:400px; }
   .lush-header-content {
-    max-width:1180px;
-    padding:56px 64px 64px;
-    margin-top:0;
-    border-radius:0;
-    box-shadow:none;
+    max-width:1040px;
+    margin:-76px auto 0;
+    padding:56px 64px 60px;
+    border-radius:30px;
+    box-shadow:0 24px 60px rgba(14,17,17,0.18);
   }
-  .lush-header-buttons { justify-content:flex-start; margin-top:32px; }
-  .lush-tab-slider { justify-content:center; padding:8px 40px; gap:12px; }
-  .lush-tab-pill { padding:22px 18px; font-size:12px; letter-spacing:0.2em; }
-  .lush-tab-pill::after { left:18px; right:18px; height:2px; }
-  .lush-gallery-group, .lush-before-after-section, .lush-about-section, .lush-policy-section, .lush-before-appointment-section, .lush-aftercare-section { width:min(100%,1180px); }
-  .lush-gallery-section { padding:0 40px 96px; }
-  .lush-gallery-group { padding:56px 0 0; }
+  .lush-header-content h1 { font-size:clamp(52px,5vw,74px); }
+  .lush-header-subtype { margin-top:14px; font-size:15px; }
+  .lush-header-info { margin-top:24px; gap:12px; }
+  .lush-header-info-row { font-size:17px; }
+  .lush-header-buttons { justify-content:flex-start; margin-top:34px; gap:16px; }
+
+  /* Tab rail — centered slider with roomier pills. */
+  .lush-tab-rail { padding:20px 0 26px; }
+  .lush-tab-slider { justify-content:center; padding:0 40px; gap:14px; }
+  .lush-tab-pill { padding:16px 26px; font-size:12px; letter-spacing:0.2em; }
+
+  /* Shared panel opener — larger eyebrow + script title. */
+  .lush-tab-header { max-width:880px; padding-top:76px; }
+  .lush-section-title { font-size:clamp(64px,6vw,86px); }
+
+  /* Gallery — 4-col polaroid wall in a wide column. */
+  .lush-gallery-section { max-width:1180px; padding:0 40px 104px; }
+  .lush-gallery-group { width:min(100%,1100px); padding:56px 0 0; }
   .lush-gallery-group+.lush-gallery-group { padding-top:56px; }
-  .lush-gallery-group h2 { font-size:64px; margin:0 0 34px; }
-  .lush-gallery-grid { grid-template-columns:repeat(4,1fr); gap:32px 22px; }
-  .lush-gallery-img--tall > img { aspect-ratio:1/1.25; }
-  .lush-gallery-img--wide { grid-column:span 2; }
-  .lush-gallery-img--wide > img { aspect-ratio:2/1; }
-  .lush-before-after-section { padding:74px 40px 110px; }
-  .lush-results-heading { padding:0 0 32px; }
-  .lush-results-heading h2 { font-size:clamp(96px,10vw,140px); text-shadow:7px 7px 0 rgba(14,17,17,0.18); }
-  .lush-results-backdrop { font-size:clamp(48px,5vw,68px); text-shadow:5px 5px 0 rgba(14,17,17,0.18); margin-top:-20px; }
-  /* Before/After: 2 diptychs per row (was 3, which compressed the
-     squares to tiny ~180px images). Each diptych container caps at
-     520px and centers in its grid cell so two pairs sit side-by-side
-     with comfortable breathing room. The mobile diptych grid
-     (1fr auto 1fr) gives proper squares once the cell is large
-     enough — at ~520px wide each before/after image is ~250px square. */
-  .lush-ba-stack { grid-template-columns:repeat(2,minmax(0,1fr)); gap:56px 48px; padding:30px 0 0; max-width:1080px; margin:0 auto; }
-  .lush-ba-diptych { width:100%; max-width:520px; margin:0 auto; }
-  .lush-ba-label { font-size:16px; }
-  .lush-ba-caption { font-size:24px; margin-top:18px; }
-  /* Desktop About: full-width 1180px section, 2-col grid. Left column
-     holds the blob-frame hero (image + overlaid heading); right
-     column stacks the pull-quote tagline ABOVE the body copy. */
-  .lush-about-section {
-    min-height:auto; padding:80px 40px 110px;
-    width:min(100%,1180px); margin:0 auto;
-    display:grid; grid-template-columns:1.05fr 1fr; gap:64px; align-items:start;
-  }
-  /* Explicit grid placement — without this the section's third child
-     (the plain <div> wrapping .lush-about-copy) flows to row 2 col 1
-     (under the hero), separating it from the quote. We want the
-     hero spanning both rows on the left, and quote+copy stacked
-     vertically on the right. */
-  .lush-about-section > .lush-about-hero { grid-column:1; grid-row:1 / span 2; padding:0; margin-bottom:0; }
-  .lush-about-section > .lush-about-quote { grid-column:2; grid-row:1; }
-  .lush-about-section > div:not(.lush-about-hero) { grid-column:2; grid-row:2; }
-  .lush-about-frame { width:100%; max-width:520px; aspect-ratio:1.1; padding-right:18px; padding-bottom:20px; margin:0 auto; }
-  .lush-about-frame-bg { top:20px; left:18px; right:0; }
-  .lush-about-frame-img, .lush-about-frame-fallback, .lush-about-frame-overlay { right:18px; bottom:20px; }
-  .lush-about-heading-wrap { top:22%; width:88%; }
-  .lush-about-backdrop { font-size:clamp(32px,3.4vw,52px); text-shadow:3px 3px 0 rgba(14,17,17,0.18); }
-  .lush-about-heading-wrap h2 { font-size:clamp(72px,7vw,108px); text-shadow:5px 5px 0 rgba(14,17,17,0.20); margin-top:-10px; }
-  .lush-about-quote { margin:0 0 28px; width:100%; max-width:none; text-align:left; align-items:flex-start; padding:0; }
-  .lush-about-quote::before { margin:0 0 18px; }
-  .lush-about-quote blockquote { font-size:26px; line-height:1.35; text-align:left; }
-  .lush-about-quote figcaption { align-self:flex-start; text-align:left; }
-  .lush-about-copy { max-width:none; width:100%; font-size:17px; line-height:1.65; }
-  .lush-policy-section { padding:70px 40px 110px; }
-  .lush-policy-heading { align-items:center; margin-bottom:34px; }
-  .lush-policy-heading span { font-size:clamp(48px,5vw,68px); text-shadow:5px 5px 0 rgba(14,17,17,0.18); }
-  .lush-policy-heading h2 { font-size:clamp(96px,10vw,140px); text-shadow:7px 7px 0 rgba(14,17,17,0.18); margin-top:-20px; }
-  .lush-policy-list { grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; align-items:stretch; }
-  .lush-policy-card { min-height:320px; padding:24px 24px 28px; display:flex; flex-direction:column; }
-  .lush-policy-card h3 { font-size:32px; margin-bottom:18px; }
-  .lush-policy-copy { font-size:15px; line-height:1.55; }
-  .lush-before-appointment-section, .lush-aftercare-section { padding:74px 40px 110px; }
-  .lush-before-appointment-section h2, .lush-aftercare-section h2 { font-size:84px; margin-bottom:48px; }
-  /* Timeline — narrower centered column, larger nodes, generous gap.
-     Was 880px and felt left-skewed in a 1180px section; 640px keeps
-     it visually centered as a single editorial track. */
-  .lush-before-timeline { max-width:640px; margin:0 auto; gap:36px; }
-  .lush-before-timeline::before { left:33px; }
-  .lush-before-step { grid-template-columns:70px 1fr; gap:28px; }
-  .lush-before-node { width:68px; height:68px; }
+  .lush-gallery-group h2 { font-size:54px; margin:0 0 34px; }
+  .lush-gallery-grid { grid-template-columns:repeat(4,1fr); gap:34px 26px; }
+
+  /* Before & After — 2 diptychs per row with generous gutters. */
+  .lush-before-after-section { max-width:1080px; padding:8px 40px 110px; }
+  .lush-ba-stack { grid-template-columns:repeat(2,minmax(0,1fr)); gap:56px 48px; padding:24px 0 0; }
+  .lush-ba-diptych { width:100%; max-width:480px; margin:0 auto; }
+  .lush-ba-label { font-size:15px; }
+  .lush-ba-caption { font-size:24px; margin-top:16px; }
+
+  /* About — centered editorial column (NO grid). Wide feature image,
+     layered Molle title, then prose + staggered images + highlights. */
+  .lush-about-section { max-width:920px; padding:24px 40px 110px; }
+  .lush-about-feature { aspect-ratio:21/9; margin-bottom:64px; }
+  .lush-layered-eyebrow { font-size:clamp(34px,3vw,46px); }
+  .lush-layered-heading { font-size:clamp(78px,7vw,108px); }
+  .lush-about-copy { font-size:17px; line-height:1.72; }
+  .lush-about-body::first-letter { font-size:64px; }
+  .lush-about-images { gap:24px; margin:48px 0 56px; }
+  .lush-about-highlights { margin-bottom:64px; }
+  .lush-about-highlights > li { padding:28px 0; }
+  .lush-about-highlights h3 { font-size:25px; }
+  .lush-about-highlights p { font-size:15px; }
+  .lush-about-sign em { font-size:56px; }
+
+  /* Policy — centered brand-book list, larger type. */
+  .lush-policy-section { max-width:780px; padding:8px 40px 110px; }
+  .lush-policy-row { grid-template-columns:40px 1fr; gap:22px; padding:30px 4px 34px; }
+  .lush-policy-mark { font-size:20px; }
+  .lush-policy-title { font-size:26px; margin-bottom:12px; }
+  .lush-policy-text { font-size:15px; line-height:1.65; }
+  .lush-policy-custom-heading { font-size:42px; }
+
+  /* Timeline (Before You Arrive) — centered single track, larger nodes. */
+  .lush-before-appointment-section { max-width:900px; padding:8px 40px 110px; }
+  .lush-before-timeline { max-width:640px; margin:0 auto; gap:34px; }
+  .lush-before-step { grid-template-columns:68px 1fr; gap:26px; }
+  .lush-before-node { width:64px; height:64px; }
   .lush-before-node-num { font-size:18px; }
-  .lush-before-step-body { padding:10px 0 22px; }
-  .lush-before-step-body h3 { font-size:32px; margin-bottom:12px; }
+  .lush-before-step-body { padding:8px 0 22px 6px; }
+  .lush-before-step-body h3 { font-size:26px; }
   .lush-before-step-body p { font-size:15px; line-height:1.65; }
-  /* Aftercare ritual — left-aligned column. Drops the centered
-     treatment; ritual sits at the left edge of the section as an
-     editorial reading column up to 720px wide. The h2 above stays
-     centered (it's the section heading); the items themselves
-     read as a left-anchored list. */
-  .lush-ritual { max-width:720px; margin:0; }
-  .lush-ritual-step { padding:18px 4px 22px; text-align:left; }
-  .lush-ritual-body { display:block; max-width:none; }
-  .lush-ritual-kicker { font-size:30px; }
-  .lush-ritual-step h3 { font-size:30px; margin-bottom:12px; }
+
+  /* Aftercare ritual — centered reading column. */
+  .lush-aftercare-section { max-width:900px; padding:8px 40px 110px; }
+  .lush-ritual { max-width:680px; margin:0 auto; }
+  .lush-ritual-step { padding:20px 4px 24px; }
+  .lush-ritual-kicker { font-size:28px; }
+  .lush-ritual-step h3 { font-size:26px; }
   .lush-ritual-step p { font-size:15px; line-height:1.7; }
-  .lush-ritual-sep { display:block; text-align:left; padding:18px 0 6px; font-size:18px; }
-  /* FAQ + Reviews + Thanks at desktop — inherit their own
-     inner max-widths (720, 960, 720) but the SECTION padding
-     needs to breathe on wide viewports. */
-  .lush-faq-section { padding:88px 48px 40px; }
+  .lush-ritual-sep { font-size:18px; padding:16px 0 6px; }
+
+  /* FAQ / Reviews / Thanks — section breathing room on wide screens. */
+  .lush-faq-section { padding:96px 48px 40px; }
   .lush-faq-heading { font-size:64px; }
-  .lush-reviews-section { padding:88px 48px 56px; }
+  .lush-reviews-section { padding:96px 48px 56px; }
   .lush-reviews-heading { font-size:64px; }
   .lush-thanks-section { padding:104px 48px 112px; }
-  .lush-footer-inner { padding:72px 48px 36px; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:48px; align-items:start; }
+
+  /* Footer — keep the base auto-fit columns (adapts to 1-3 enabled
+     columns; the old block hard-coded 4 cols and left an empty trailing
+     column). Just give the band desktop padding. */
+  .lush-footer-inner { padding:72px 48px 40px; }
+
+  /* Booking — services breathe into 2-col within the shared section.
+     (Shared .brk-* rule, preserved from the prior block so the other
+     templates that inject this CSS keep their desktop booking layout.) */
   .brk-booking-section { padding:48px 48px 80px; }
   .brk-booking-services { grid-template-columns:repeat(2,1fr); }
 }
 
-/* ── Tablet ── */
-/* Tablet sits between the mobile phone-frame design and the wide
-   editorial desktop. The base mobile widths cap content at ~395px
-   even on 1024px screens, so this block widens containers, scales
-   typography up from mobile clamps, and switches grids to 2-col
-   where it earns space. Padding bumps in each section give the
-   layout the breathing room the mobile design assumes is missing. */
+/* ── Tablet ── Sits between the mobile phone layout and desktop.
+   Widens containers, scales type up, and switches grids to 2-3 col
+   where they earn it. Targets the component's current classes (the old
+   tablet block referenced stale .lush-about-frame / .lush-policy-card
+   markup). */
 @media (min-width:641px) and (max-width:1024px) {
-  /* Header — slightly taller cover, content gets editorial padding. */
-  .lush-header-cover { min-height:260px; }
-  .lush-header-content { padding:48px 44px 52px; max-width:760px; }
-  .lush-tab-slider { padding:6px 28px; justify-content:center; gap:8px; }
-  .lush-tab-pill { padding:18px 16px; font-size:11px; letter-spacing:0.18em; }
+  /* Hero — taller cover, centered floating card (smaller than desktop). */
+  .lush-header-cover { height:34vh; min-height:300px; }
+  .lush-header-content {
+    max-width:760px;
+    margin:-64px auto 0;
+    padding:48px 48px 52px;
+    border-radius:26px;
+    box-shadow:0 18px 46px rgba(14,17,17,0.16);
+  }
+  .lush-header-content h1 { font-size:clamp(40px,6vw,56px); }
+  .lush-header-info-row { font-size:16px; }
+  .lush-header-buttons { justify-content:flex-start; margin-top:30px; }
+  .lush-tab-slider { justify-content:center; padding:0 28px; gap:10px; }
+  .lush-tab-pill { padding:14px 20px; font-size:11px; letter-spacing:0.18em; }
+  .lush-tab-header { padding-top:64px; }
 
-  /* Shared section container width — every editorial section sits in
-     a 720px column on tablet (vs 395px on mobile). */
-  .lush-gallery-group, .lush-before-after-section, .lush-about-section, .lush-policy-section, .lush-before-appointment-section, .lush-aftercare-section { width:min(100%,720px); }
+  /* Gallery — 3-col polaroid grid. */
+  .lush-gallery-section { max-width:900px; padding:0 32px 88px; }
+  .lush-gallery-group { width:min(100%,760px); padding:48px 0 0; }
+  .lush-gallery-group h2 { font-size:46px; margin:0 0 28px; }
+  .lush-gallery-grid { grid-template-columns:repeat(3,1fr); gap:22px 18px; }
 
-  /* Gallery — 3-col grid with comfortable gutters. */
-  .lush-gallery-section { padding:0 32px 80px; }
-  .lush-gallery-group { padding:48px 0 0; }
-  .lush-gallery-group h2 { font-size:48px; margin:0 0 28px; }
-  .lush-gallery-grid { grid-template-columns:repeat(3,1fr); gap:18px; }
-
-  /* Before/After — 2 diptychs per row, comfortable gutter. Each
-     diptych is a normal 1fr auto 1fr grid (label + square image
-     stack vertically per pane). */
-  .lush-before-after-section { padding:64px 36px 96px; }
-  .lush-results-heading h2 { font-size:88px; }
-  .lush-results-backdrop { font-size:44px; }
-  .lush-ba-stack { grid-template-columns:repeat(2,minmax(0,1fr)); gap:32px 24px; }
+  /* Before & After — 2 diptychs per row. */
+  .lush-before-after-section { max-width:760px; padding:8px 36px 96px; }
+  .lush-ba-stack { grid-template-columns:repeat(2,minmax(0,1fr)); gap:36px 28px; }
   .lush-ba-diptych { width:100%; max-width:none; margin:0; }
 
-  /* About — frame scales up to ~380px on tablet, heading overlay
-     stays positioned over the top of the image with a slightly
-     larger Molle h2 than mobile. */
-  .lush-about-section { padding:64px 36px 88px; }
-  .lush-about-hero { padding:24px 0 24px; margin-bottom:8px; }
-  .lush-about-frame { width:min(72vw, 420px); aspect-ratio:1.2; padding-right:16px; padding-bottom:18px; }
-  .lush-about-frame-bg { top:18px; left:16px; right:0; }
-  .lush-about-frame-img, .lush-about-frame-fallback, .lush-about-frame-overlay { right:16px; bottom:18px; }
-  .lush-about-heading-wrap { top:20%; width:88%; }
-  .lush-about-backdrop { font-size:40px; text-shadow:2px 2px 0 rgba(14,17,17,0.18); }
-  .lush-about-heading-wrap h2 { font-size:84px; text-shadow:4px 4px 0 rgba(14,17,17,0.18); margin-top:-8px; }
-  .lush-about-copy { font-size:16px; line-height:1.6; }
-  .lush-about-quote blockquote { font-size:26px; line-height:1.35; }
+  /* About — centered column, mid type scale. */
+  .lush-about-section { max-width:680px; padding:16px 36px 88px; }
+  .lush-about-feature { aspect-ratio:16/9; margin-bottom:48px; }
+  .lush-layered-eyebrow { font-size:clamp(30px,4vw,38px); }
+  .lush-layered-heading { font-size:clamp(64px,9vw,88px); }
+  .lush-about-copy { font-size:16px; line-height:1.66; }
 
-  /* Policy — 2-col grid, heading sized down from the giant mobile
-     clamp so it doesn't dominate the tablet viewport. */
-  .lush-policy-section { padding:64px 36px 96px; }
-  .lush-policy-heading { margin-bottom:30px; align-items:center; }
-  .lush-policy-heading span { font-size:42px; text-shadow:3px 3px 0 rgba(14,17,17,0.18); }
-  .lush-policy-heading h2 { font-size:84px; text-shadow:5px 5px 0 rgba(14,17,17,0.18); margin-top:-14px; }
-  .lush-policy-list { grid-template-columns:repeat(2,1fr); gap:16px; }
-  .lush-policy-card { min-height:280px; padding:22px 22px 26px; }
-  .lush-policy-card h3 { font-size:30px; margin-bottom:16px; }
-  .lush-policy-copy { font-size:14px; line-height:1.55; }
+  /* Policy — centered list. */
+  .lush-policy-section { max-width:680px; padding:8px 36px 96px; }
+  .lush-policy-title { font-size:24px; }
 
-  /* Before Appointment — timeline gets larger nodes + tighter
-     gap so it reads as a real timeline, not a list. */
-  .lush-before-appointment-section { padding:64px 36px 88px; }
-  .lush-before-appointment-section h2 { font-size:64px; margin-bottom:42px; }
+  /* Timeline / Aftercare — centered columns. */
+  .lush-before-appointment-section { max-width:760px; padding:8px 36px 88px; }
   .lush-before-timeline { max-width:560px; margin:0 auto; gap:30px; }
-  .lush-before-timeline::before { left:30px; }
-  .lush-before-step { grid-template-columns:64px 1fr; gap:24px; }
-  .lush-before-node { width:60px; height:60px; }
-  .lush-before-node-num { font-size:16px; }
-  .lush-before-step-body { padding:6px 0 16px; }
-  .lush-before-step-body h3 { font-size:32px; margin-bottom:10px; }
-  .lush-before-step-body p { font-size:14px; line-height:1.6; }
-
-  /* Aftercare ritual — centered editorial column at tablet, sized
-     down from desktop. The mobile flat-list reads fine here; just
-     constrain max-width so it doesn't stretch the 720px section. */
-  .lush-aftercare-section { padding:64px 36px 96px; }
-  .lush-aftercare-section h2 { font-size:64px; margin-bottom:36px; }
+  .lush-before-step { grid-template-columns:60px 1fr; gap:22px; }
+  .lush-before-node { width:58px; height:58px; }
+  .lush-before-step-body h3 { font-size:24px; }
+  .lush-aftercare-section { max-width:760px; padding:8px 36px 96px; }
   .lush-ritual { max-width:560px; margin:0 auto; }
-  .lush-ritual-step { padding:16px 4px 20px; text-align:center; }
-  .lush-ritual-body { display:inline-block; max-width:480px; text-align:left; }
-  .lush-ritual-kicker { font-size:26px; }
-  .lush-ritual-step h3 { font-size:26px; margin-bottom:10px; }
-  .lush-ritual-step p { font-size:14px; line-height:1.65; }
-  .lush-ritual-sep { padding:14px 0 4px; font-size:16px; }
-  /* Timeline at tablet — narrower than the 720px section so it reads
-     centered, not left-skewed. */
-  .lush-before-timeline { max-width:520px; margin:0 auto; }
+  .lush-ritual-step h3 { font-size:24px; }
 
-  /* FAQ + Reviews + Thanks — bumped padding so the editorial breath
-     isn't pinched on a 1024px viewport. The mobile font-size clamps
-     already top out at a comfortable size for tablet so no type
-     override needed. */
+  /* FAQ / Reviews / Thanks — bumped padding. */
   .lush-faq-section { padding:72px 36px 32px; }
   .lush-reviews-section { padding:72px 36px 44px; }
   .lush-thanks-section { padding:88px 36px 96px; }
 
-  /* Footer — 2-col grid with the brand block spanning the full row. */
-  .lush-footer-inner { padding:64px 36px 32px; grid-template-columns:1fr 1fr; gap:36px; }
-  .lush-footer-brand { grid-column:1/-1; }
+  /* Footer — base auto-fit handles columns; just pad the band. */
+  .lush-footer-inner { padding:64px 36px 32px; }
 
-  /* Booking grid — services list breathes into 2-col on tablet too,
-     not just desktop. */
+  /* Booking — services into 2-col on tablet too. (Shared .brk-* rule,
+     preserved from the prior block.) */
   .brk-booking-section { padding:36px 36px 64px; }
   .brk-booking-services { grid-template-columns:repeat(2,1fr); }
 }
