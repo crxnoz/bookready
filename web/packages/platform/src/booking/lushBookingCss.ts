@@ -1190,7 +1190,7 @@ export const LUSH_CSS = `
    big Cookie script heading on cream. */
 .lush-tab-header {
   max-width: 720px;
-  margin: 0 auto 48px;
+  margin: 0 auto 24px;
   padding: 56px 24px 0;
   text-align: center;
 }
