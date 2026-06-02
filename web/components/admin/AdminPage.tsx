@@ -24,6 +24,22 @@ export default function AdminPage() {
   const [tenants,   setTenants]   = useState<AdminTenantRow[]>([])
   const [loadErr,   setLoadErr]   = useState<string | null>(null)
 
+  // Pre-launch (#147): client-side search across the tenant list. Fast
+  // enough for thousands of rows at this shape — when we hit ~2k tenants
+  // we'll move to server-side ?q= but for now this avoids the round trip.
+  const [query, setQuery] = useState('')
+  const filteredTenants = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (q === '') return tenants
+    return tenants.filter(t =>
+      t.id.toLowerCase().includes(q) ||
+      (t.owner_name?.toLowerCase().includes(q) ?? false) ||
+      (t.owner_email?.toLowerCase().includes(q) ?? false) ||
+      (t.plan?.toLowerCase().includes(q) ?? false) ||
+      (t.domain?.toLowerCase().includes(q) ?? false)
+    )
+  }, [tenants, query])
+
   const [confirmTarget, setConfirmTarget] = useState<AdminTenantRow | null>(null)
 
   async function loadTenants() {
@@ -127,20 +143,41 @@ export default function AdminPage() {
     <Shell signedInAs={me?.email} onSignOut={signOut}>
       <StatsSection />
 
-      <header className="flex items-center justify-between gap-3 mb-3 mt-8">
+      <header className="flex items-center justify-between gap-3 mb-3 mt-8 flex-wrap">
         <div>
           <h1 className="text-xl font-bold text-near-black tracking-tight">Tenants</h1>
           <p className="text-xs text-muted-text">
-            {tenants.length} tenant{tenants.length === 1 ? '' : 's'} on BookReady. Click delete to drop a test tenant.
+            {query.trim() === ''
+              ? <>{tenants.length} tenant{tenants.length === 1 ? '' : 's'} on BookReady. Click delete to drop a test tenant.</>
+              : <>Showing {filteredTenants.length} of {tenants.length}.</>}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => loadTenants()}
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2 hover:border-near-black"
-        >
-          <RefreshCw size={11} /> Refresh
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search slug, owner, email, plan…"
+            className="bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-[12px] text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black w-64"
+          />
+          {query.trim() !== '' && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              title="Clear search"
+              className="w-8 h-8 inline-flex items-center justify-center border border-[rgba(18,18,18,0.15)] bg-white text-near-black hover:border-near-black"
+            >
+              <X size={12} />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => loadTenants()}
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2 hover:border-near-black"
+          >
+            <RefreshCw size={11} /> Refresh
+          </button>
+        </div>
       </header>
 
       {loadErr && (
@@ -150,9 +187,10 @@ export default function AdminPage() {
       )}
 
       <TenantTable
-        rows={tenants}
+        rows={filteredTenants}
         myTenantId={me?.tenant_id ?? null}
         onDelete={(t) => setConfirmTarget(t)}
+        emptyMessage={query.trim() !== '' ? `No tenants match "${query.trim()}".` : undefined}
       />
 
       <AnnouncementsAdminSection />
@@ -174,16 +212,19 @@ export default function AdminPage() {
 // ── Table ───────────────────────────────────────────────────────────────────
 
 function TenantTable({
-  rows, myTenantId, onDelete,
+  rows, myTenantId, onDelete, emptyMessage,
 }: {
-  rows:        AdminTenantRow[]
-  myTenantId:  string | null
-  onDelete:    (t: AdminTenantRow) => void
+  rows:         AdminTenantRow[]
+  myTenantId:   string | null
+  onDelete:     (t: AdminTenantRow) => void
+  emptyMessage?: string
 }) {
   if (rows.length === 0) {
     return (
       <Card>
-        <p className="text-[12px] text-muted-text">No tenants. (How are you even reading this?)</p>
+        <p className="text-[12px] text-muted-text">
+          {emptyMessage ?? 'No tenants. (How are you even reading this?)'}
+        </p>
       </Card>
     )
   }
