@@ -1,29 +1,32 @@
 import type { TemplateManifest } from '@bkrdy/platform'
 
 /**
- * The Fade Room — canonical BookReady editorial template.
+ * The Fade Room — late-night neon nail + lash studio template.
  *
- * Surfaces the full editor capability set: cover + avatar + announcement +
- * business_type + all social buttons in the header; all six footer toggles;
- * accent-style color picker.
+ * Dark editorial canvas with a bright neon accent. Built for nail and
+ * lash studios with after-hours energy — the kind of place where the
+ * client lingers in the chair for ninety minutes and rebooks before
+ * they leave.
  *
- * Palette mirrors the historical WebsiteHub `ACCENT_PALETTES['thefaderoom']`
- * — keep these in sync until WebsiteHub is migrated to load palettes via
- * manifest (Phase 4).
+ * Surfaces the full editor capability set: cover + avatar + announcement
+ * + business_type + all social buttons in the header; all six footer
+ * toggles; accent-style color picker against a constant dark canvas
+ * (the palette swatches set the neon highlight color — pink, cyan,
+ * lime, etc — rather than swapping the page background).
  */
 const manifest: TemplateManifest = {
   slug:    'thefaderoom',
   name:    'The Fade Room',
-  version: '1.0.0',
+  version: '2.0.0',
 
   color_role: 'accent',
   color_palette: [
     { hex: '#FF3DBE', label: 'Pink (default)' },
-    { hex: '#F9FAFB', label: 'White' },
-    { hex: '#22F5A3', label: 'Mint' },
-    { hex: '#FF3B5C', label: 'Red' },
-    { hex: '#FFD84D', label: 'Yellow' },
-    { hex: '#3DA9FC', label: 'Blue' },
+    { hex: '#00E5FF', label: 'Cyan' },
+    { hex: '#B5FF3D', label: 'Lime' },
+    { hex: '#C84FFF', label: 'Purple' },
+    { hex: '#FFC93D', label: 'Sunset' },
+    { hex: '#FF6B6B', label: 'Coral' },
   ],
 
   header_fields: [
