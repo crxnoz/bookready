@@ -446,7 +446,7 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
                   <span className="vt-note-num">{roman(i + 1).toLowerCase()}</span>
                   <div className="vt-note-body">
                     <h3 className="vt-note-title">{step.title ?? `Note ${i + 1}`}</h3>
-                    {step.content && <p>{step.content}</p>}
+                    {(step.body ?? step.content) && <p>{step.body ?? step.content}</p>}
                   </div>
                 </article>
               ))}
@@ -465,7 +465,7 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
                   <dt>{item.when ?? `Step ${i + 1}`}</dt>
                   <dd>
                     <h3 className="vt-diary-title">{item.title ?? ''}</h3>
-                    {item.content && <p>{item.content}</p>}
+                    {(item.body ?? item.content) && <p>{item.body ?? item.content}</p>}
                   </dd>
                 </div>
               ))}
@@ -668,9 +668,13 @@ function renderAbout(aboutBlock: any, displayName: string, p: Profile | null) {
       `Reach out through the form — we&rsquo;ll be in touch within the day.`,
     )
   }
+  // M3 / editor canonical path is about.images[]; the legacy
+  // image_N_url keys remain valid for older tenants.
   const imgs: string[] = [
-    aboutBlock?.image_1_url, aboutBlock?.image_2_url, aboutBlock?.image_3_url,
-  ].filter(Boolean)
+    aboutBlock?.image_1_url ?? aboutBlock?.images?.[0],
+    aboutBlock?.image_2_url ?? aboutBlock?.images?.[1],
+    aboutBlock?.image_3_url ?? aboutBlock?.images?.[2],
+  ].filter((s): s is string => typeof s === 'string' && s.length > 0)
   return (
     <div className="vt-about">
       {paragraphs.map((para, i) => {
@@ -696,7 +700,9 @@ function renderAbout(aboutBlock: any, displayName: string, p: Profile | null) {
 }
 
 function renderBeforeAfter(site: PublicSite) {
-  const items  = ((site as any).before_after ?? []).filter((i: any) => i.is_active !== false)
+  // M3 rename: canonical key is `results`; `before_after` remains for
+  // backward compat with payloads served before the rename shipped.
+  const items  = (((site as any).results ?? (site as any).before_after) ?? []).filter((i: any) => i.is_active !== false)
   if (items.length === 0) {
     return <p className="vt-empty-line">No transformations on file yet.</p>
   }
