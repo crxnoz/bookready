@@ -17,6 +17,7 @@
  * most of the work; everything else is type + spacing + rule.
  */
 
+import { useState, useRef } from 'react'
 import type { PublicSite } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 import { tokensToCss } from '@bkrdy/platform'
@@ -25,6 +26,25 @@ import BlacklineBooking from './BlacklineBooking'
 interface Props {
   site: PublicSite
   slug: string
+}
+
+type TabId = 'book' | 'gallery' | 'results' | 'about' | 'policy' | 'advice' | 'timeline'
+
+// Map website_sections.section_key → TabId. Accepts both canonical and
+// legacy keys (before_after, steps, before_appointment) so older tenants
+// who haven't been touched since the M3 rename still resolve correctly.
+const SECTION_KEY_TO_TAB: Record<string, TabId> = {
+  book: 'book',
+  gallery: 'gallery',
+  results: 'results',
+  before_after: 'results',
+  about: 'about',
+  policy: 'policy',
+  policies: 'policy',
+  advice: 'advice',
+  steps: 'advice',
+  timeline: 'timeline',
+  before_appointment: 'timeline',
 }
 
 export default function BlacklineTemplate({ site, slug }: Props) {
@@ -52,6 +72,42 @@ export default function BlacklineTemplate({ site, slug }: Props) {
   const rule = canvas === '#E8E2D7'
     ? 'rgba(10,10,10,0.14)'
     : 'rgba(232,226,215,0.14)'
+
+  // ── Tab state ──
+  const [active, setActive] = useState<TabId>('book')
+  const tabRailRef = useRef<HTMLDivElement>(null)
+
+  // Build enabledByTab from website_sections (default to all enabled when
+  // sections list is missing entirely — fresh tenants).
+  const enabledByTab: Record<TabId, boolean> = {
+    book: true, gallery: true, results: true, about: true,
+    policy: true, advice: true, timeline: true,
+  }
+  const sectionsList = site.template?.sections ?? []
+  if (sectionsList.length > 0) {
+    for (const s of sectionsList) {
+      const tabId = SECTION_KEY_TO_TAB[s.section_key]
+      if (tabId) enabledByTab[tabId] = s.is_enabled
+    }
+  }
+
+  const allTabs: { id: TabId; label: string }[] = [
+    { id: 'book',     label: tabs.book_label     ?? 'Reserve' },
+    { id: 'gallery',  label: tabs.gallery_label  ?? 'Work' },
+    { id: 'results',  label: tabs.results_label  ?? 'Before / After' },
+    { id: 'about',    label: tabs.about_label    ?? 'The Shop' },
+    { id: 'policy',   label: tabs.policy_label   ?? 'House Rules' },
+    { id: 'advice',   label: tabs.advice_label   ?? 'Notes' },
+    { id: 'timeline', label: tabs.timeline_label ?? 'Process' },
+  ]
+  // Book is always shown (the booking flow is the template's whole point);
+  // other tabs respect editor toggles.
+  const visibleTabs = allTabs.filter(t => t.id === 'book' || enabledByTab[t.id])
+
+  function goBook() {
+    setActive('book')
+    setTimeout(() => tabRailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30)
+  }
 
   return (
     <>
@@ -86,131 +142,184 @@ export default function BlacklineTemplate({ site, slug }: Props) {
           </div>
         </header>
 
-        {/* 3. Booking */}
-        <section className="blackline-section blackline-book" aria-label={tabs.book_label ?? 'Reserve'}>
-          <p className="blackline-eyebrow">Reserve</p>
-          <h2 className="blackline-section-title">{tabs.book_label ?? 'Book a chair'}</h2>
-          <BlacklineBooking
-            slug={slug}
-            services={services}
-            displayName={display}
-            availability={site.availability ?? null}
-            paymentSettings={site.payment_settings ?? null}
-            requirePolicyAgreement={site.policies?.require_policy_agreement ?? false}
-            serviceAddons={site.service_addons ?? []}
-            staffMembers={site.staff ?? []}
-            serviceCategories={site.service_categories ?? []}
-            bookingQuestions={site.booking_questions ?? []}
-          />
-        </section>
-
-        {/* 4. Gallery */}
-        <section className="blackline-section" aria-label={tabs.gallery_label ?? 'Gallery'}>
-          <p className="blackline-eyebrow">Work</p>
-          <h2 className="blackline-section-title">{tabs.gallery_label ?? 'Gallery'}</h2>
-          {gallery.length === 0 ? (
-            <p className="blackline-empty">No gallery items yet.</p>
-          ) : (
-            <ul className="blackline-grid">
-              {gallery.map(g => (
-                <li key={g.id}>
-                  <img src={g.image_url} alt={g.alt_text ?? ''} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        {/* 5. Results */}
-        <section className="blackline-section" aria-label={tabs.results_label ?? 'Results'}>
-          <p className="blackline-eyebrow">Before / After</p>
-          <h2 className="blackline-section-title">{tabs.results_label ?? 'Results'}</h2>
-          {results.length === 0 ? (
-            <p className="blackline-empty">No results yet.</p>
-          ) : (
-            <ul className="blackline-grid blackline-grid-2">
-              {results.map(r => (
-                <li key={r.id} className="blackline-ba">
-                  <img src={r.before_image_url} alt={r.before_alt_text ?? 'Before'} />
-                  <img src={r.after_image_url}  alt={r.after_alt_text  ?? 'After'} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        {/* 6. About */}
-        <section className="blackline-section blackline-about" aria-label={tabs.about_label ?? 'About'}>
-          {about.eyebrow && <p className="blackline-eyebrow">{about.eyebrow}</p>}
-          <h2 className="blackline-section-title">{about.heading ?? 'The Shop'}</h2>
-          {about.body && <p className="blackline-about-body">{about.body}</p>}
-          {Array.isArray(about.highlights) && about.highlights.length > 0 && (
-            <ul className="blackline-highlights">
-              {about.highlights.map((h: any, i: number) => (
-                <li key={i}>
-                  <h3>{h.title}</h3>
-                  <p>{h.body}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        {/* 7. Policies */}
-        <section className="blackline-section" aria-label={tabs.policy_label ?? 'House Rules'}>
-          <p className="blackline-eyebrow">House Rules</p>
-          <h2 className="blackline-section-title">{tabs.policy_label ?? 'Policy'}</h2>
-          <div className="blackline-policy-stack">
-            <PolicyRow label="Deposit"      body={policies.deposit_policy} />
-            <PolicyRow label="Cancellation" body={policies.cancellation_policy} />
-            <PolicyRow label="Late arrival" body={policies.late_policy} />
-            <PolicyRow label="No-show"      body={policies.no_show_policy} />
-            <PolicyRow label="Refund"       body={policies.refund_policy} />
-            <PolicyRow label="Guest"        body={policies.guest_policy} />
-            {Array.isArray(policies.custom_groups) && policies.custom_groups.map((g: any, i: number) => (
-              <PolicyRow key={`c${i}`} label={g.heading} body={g.body} />
+        {/* ── Sticky tab rail ── */}
+        <div className="blackline-tab-rail" ref={tabRailRef}>
+          <div className="blackline-tab-slider" role="tablist" aria-label="Sections">
+            {visibleTabs.map(t => (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={active === t.id}
+                className={`blackline-tab-pill${active === t.id ? ' is-active' : ''}`}
+                onClick={() => setActive(t.id)}
+              >
+                {t.label}
+              </button>
             ))}
           </div>
-        </section>
+        </div>
 
-        {/* 8. Advice */}
-        <section className="blackline-section" aria-label={tabs.advice_label ?? 'Advice'}>
-          <p className="blackline-eyebrow">Notes</p>
-          <h2 className="blackline-section-title">{settings.advice?.heading ?? 'Advice'}</h2>
-          {advice.length === 0 ? (
-            <p className="blackline-empty">No notes yet.</p>
-          ) : (
-            <ul className="blackline-note-list">
-              {advice.map((it: any, i: number) => (
-                <li key={i}>
-                  <h3>{it.title}</h3>
-                  <p>{it.body}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        {/* ── Tab panels — all rendered, only is-active visible (so tab
+            switching preserves form state inside the booking flow) ── */}
 
-        {/* 9. Timeline */}
-        <section className="blackline-section" aria-label={tabs.timeline_label ?? 'Process'}>
-          <p className="blackline-eyebrow">Process</p>
-          <h2 className="blackline-section-title">{settings.timeline?.heading ?? 'Timeline'}</h2>
-          {timeline.length === 0 ? (
-            <p className="blackline-empty">No timeline yet.</p>
-          ) : (
-            <ol className="blackline-timeline">
-              {timeline.map((it: any, i: number) => (
-                <li key={i}>
-                  <span className="blackline-timeline-num">{String(i + 1).padStart(2, '0')}</span>
-                  <div>
-                    <h3>{it.title}</h3>
-                    <p>{it.body}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
+        {/* 3. Reserve / Book */}
+        <div className={`blackline-tab-panel${active === 'book' ? ' is-active' : ''}`}
+             role="tabpanel" aria-hidden={active !== 'book'}>
+          <section className="blackline-section blackline-book" aria-label={tabs.book_label ?? 'Reserve'}>
+            <p className="blackline-eyebrow">Reserve</p>
+            <h2 className="blackline-section-title">{tabs.book_label ?? 'Book a chair'}</h2>
+            <BlacklineBooking
+              slug={slug}
+              services={services}
+              displayName={display}
+              availability={site.availability ?? null}
+              paymentSettings={site.payment_settings ?? null}
+              requirePolicyAgreement={site.policies?.require_policy_agreement ?? false}
+              serviceAddons={site.service_addons ?? []}
+              staffMembers={site.staff ?? []}
+              serviceCategories={site.service_categories ?? []}
+              bookingQuestions={site.booking_questions ?? []}
+            />
+          </section>
+        </div>
+
+        {/* 4. Gallery / Work */}
+        {enabledByTab.gallery && (
+          <div className={`blackline-tab-panel${active === 'gallery' ? ' is-active' : ''}`}
+               role="tabpanel" aria-hidden={active !== 'gallery'}>
+            <section className="blackline-section" aria-label={tabs.gallery_label ?? 'Gallery'}>
+              <p className="blackline-eyebrow">Work</p>
+              <h2 className="blackline-section-title">{tabs.gallery_label ?? 'Gallery'}</h2>
+              {gallery.length === 0 ? (
+                <p className="blackline-empty">No gallery items yet.</p>
+              ) : (
+                <ul className="blackline-grid">
+                  {gallery.map(g => (
+                    <li key={g.id}>
+                      <img src={g.image_url} alt={g.alt_text ?? ''} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+        )}
+
+        {/* 5. Results / Before & After */}
+        {enabledByTab.results && (
+          <div className={`blackline-tab-panel${active === 'results' ? ' is-active' : ''}`}
+               role="tabpanel" aria-hidden={active !== 'results'}>
+            <section className="blackline-section" aria-label={tabs.results_label ?? 'Results'}>
+              <p className="blackline-eyebrow">Before / After</p>
+              <h2 className="blackline-section-title">{tabs.results_label ?? 'Results'}</h2>
+              {results.length === 0 ? (
+                <p className="blackline-empty">No results yet.</p>
+              ) : (
+                <ul className="blackline-grid blackline-grid-2">
+                  {results.map(r => (
+                    <li key={r.id} className="blackline-ba">
+                      <img src={r.before_image_url} alt={r.before_alt_text ?? 'Before'} />
+                      <img src={r.after_image_url}  alt={r.after_alt_text  ?? 'After'} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+        )}
+
+        {/* 6. About / The Shop */}
+        {enabledByTab.about && (
+          <div className={`blackline-tab-panel${active === 'about' ? ' is-active' : ''}`}
+               role="tabpanel" aria-hidden={active !== 'about'}>
+            <section className="blackline-section blackline-about" aria-label={tabs.about_label ?? 'About'}>
+              {about.eyebrow && <p className="blackline-eyebrow">{about.eyebrow}</p>}
+              <h2 className="blackline-section-title">{about.heading ?? 'The Shop'}</h2>
+              {about.body && <p className="blackline-about-body">{about.body}</p>}
+              {Array.isArray(about.highlights) && about.highlights.length > 0 && (
+                <ul className="blackline-highlights">
+                  {about.highlights.map((h: any, i: number) => (
+                    <li key={i}>
+                      <h3>{h.title}</h3>
+                      <p>{h.body}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+        )}
+
+        {/* 7. Policy / House Rules */}
+        {enabledByTab.policy && (
+          <div className={`blackline-tab-panel${active === 'policy' ? ' is-active' : ''}`}
+               role="tabpanel" aria-hidden={active !== 'policy'}>
+            <section className="blackline-section" aria-label={tabs.policy_label ?? 'House Rules'}>
+              <p className="blackline-eyebrow">House Rules</p>
+              <h2 className="blackline-section-title">{tabs.policy_label ?? 'Policy'}</h2>
+              <div className="blackline-policy-stack">
+                <PolicyRow label="Deposit"      body={policies.deposit_policy} />
+                <PolicyRow label="Cancellation" body={policies.cancellation_policy} />
+                <PolicyRow label="Late arrival" body={policies.late_policy} />
+                <PolicyRow label="No-show"      body={policies.no_show_policy} />
+                <PolicyRow label="Refund"       body={policies.refund_policy} />
+                <PolicyRow label="Guest"        body={policies.guest_policy} />
+                {Array.isArray(policies.custom_groups) && policies.custom_groups.map((g: any, i: number) => (
+                  <PolicyRow key={`c${i}`} label={g.heading} body={g.body} />
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* 8. Advice / Notes */}
+        {enabledByTab.advice && (
+          <div className={`blackline-tab-panel${active === 'advice' ? ' is-active' : ''}`}
+               role="tabpanel" aria-hidden={active !== 'advice'}>
+            <section className="blackline-section" aria-label={tabs.advice_label ?? 'Notes'}>
+              <p className="blackline-eyebrow">Notes</p>
+              <h2 className="blackline-section-title">{settings.advice?.heading ?? 'Advice'}</h2>
+              {advice.length === 0 ? (
+                <p className="blackline-empty">No notes yet.</p>
+              ) : (
+                <ul className="blackline-note-list">
+                  {advice.map((it: any, i: number) => (
+                    <li key={i}>
+                      <h3>{it.title}</h3>
+                      <p>{it.body}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+        )}
+
+        {/* 9. Timeline / Process */}
+        {enabledByTab.timeline && (
+          <div className={`blackline-tab-panel${active === 'timeline' ? ' is-active' : ''}`}
+               role="tabpanel" aria-hidden={active !== 'timeline'}>
+            <section className="blackline-section" aria-label={tabs.timeline_label ?? 'Process'}>
+              <p className="blackline-eyebrow">Process</p>
+              <h2 className="blackline-section-title">{settings.timeline?.heading ?? 'Timeline'}</h2>
+              {timeline.length === 0 ? (
+                <p className="blackline-empty">No timeline yet.</p>
+              ) : (
+                <ol className="blackline-timeline">
+                  {timeline.map((it: any, i: number) => (
+                    <li key={i}>
+                      <span className="blackline-timeline-num">{String(i + 1).padStart(2, '0')}</span>
+                      <div>
+                        <h3>{it.title}</h3>
+                        <p>{it.body}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </section>
+          </div>
+        )}
 
         {/* 10. FAQ */}
         {additionals.faq?.enabled !== false
@@ -260,7 +369,7 @@ export default function BlacklineTemplate({ site, slug }: Props) {
           </section>
         )}
 
-        <Footer site={site} hours={hours} services={services} />
+        <Footer site={site} hours={hours} services={services} goBook={goBook} />
       </div>
     </>
   )
@@ -299,7 +408,7 @@ function SocialButtons({ header, profile }: { header: any; profile: any }) {
   )
 }
 
-function Footer({ site, hours, services }: { site: PublicSite; hours: any[]; services: any[] }) {
+function Footer({ site, hours, services, goBook }: { site: PublicSite; hours: any[]; services: any[]; goBook: () => void }) {
   const settings: any = site.template?.settings ?? {}
   const footer:   any = settings.footer ?? {}
   const p           = site.profile
@@ -339,7 +448,7 @@ function Footer({ site, hours, services }: { site: PublicSite; hours: any[]; ser
 
         {footer.show_quick_book !== false && services.length > 0 && (
           <div className="blackline-footer-col blackline-footer-cta-col">
-            <a className="blackline-footer-book" href="#book">Quick book</a>
+            <button type="button" className="blackline-footer-book" onClick={goBook}>Quick book</button>
           </div>
         )}
       </div>
@@ -466,13 +575,73 @@ const BLACKLINE_CSS = `
 .blackline-social-btn:last-child { border-right: none; }
 .blackline-social-btn:hover { color: var(--blackline-accent); }
 
-/* Section frame — generous editorial padding, container-narrow. */
+/* ── Tab rail ── */
+/* Sticky brass-edged rail beneath the hero. Horizontal scroll on narrow
+   viewports keeps every tab reachable without crowding desktop. */
+.blackline-tab-rail {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--blackline-bg);
+  border-top: 1px solid var(--blackline-rule);
+  border-bottom: 1px solid var(--blackline-rule);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.blackline-tab-rail::-webkit-scrollbar { display: none; }
+
+.blackline-tab-slider {
+  display: flex;
+  flex-wrap: nowrap;
+  max-width: var(--brk-container-narrow);
+  margin: 0 auto;
+  padding: 0 var(--brk-space-md);
+  gap: 0;
+}
+
+.blackline-tab-pill {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 18px 22px;
+  margin: 0;
+  font-family: var(--blackline-body);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--blackline-fg-muted);
+  cursor: pointer;
+  transition: color 160ms ease, border-color 160ms ease;
+  white-space: nowrap;
+}
+.blackline-tab-pill:hover { color: var(--blackline-fg); }
+.blackline-tab-pill.is-active {
+  color: var(--blackline-accent);
+  border-bottom-color: var(--blackline-accent);
+}
+.blackline-tab-pill:focus-visible {
+  outline: 2px solid var(--blackline-accent);
+  outline-offset: -2px;
+}
+
+/* Tab panels — keep all in DOM (preserves booking form state across tab
+   switches), but only is-active is visible. */
+.blackline-tab-panel { display: none; }
+.blackline-tab-panel.is-active { display: block; }
+
+/* Section frame — generous editorial padding, container-narrow.
+   Inside a tab panel, the first section drops its top border so the
+   tab rail's hairline doesn't double up with the section's. */
 .blackline-section {
   max-width: var(--brk-container-narrow);
   margin: 0 auto;
   padding: var(--brk-space-3xl) var(--brk-space-md);
   border-top: 1px solid var(--blackline-rule);
 }
+.blackline-tab-panel > .blackline-section:first-child { border-top: none; }
 .blackline-book { padding-top: var(--brk-space-3xl); }
 
 .blackline-empty {
