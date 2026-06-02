@@ -1425,46 +1425,43 @@ export const LUSH_CSS = `
   .lush-about-images > *:nth-child(2) { margin-top: 14px; }
 }
 
-/* Layered title — DM Serif Text backdrop at 14% opacity with the
-   Cookie script heading floated centered over top. Same compositional
-   idea as TFR's neon-on-serif layered title; the contrast between the
-   subtle museum-placard serif behind and the loose Cookie sign-painter
-   script in front gives the section voice. */
+/* Stacked editorial title — eyebrow on top, heading below, both Molle
+   italic in sage with a sharp hard-pixel drop shadow (no blur). Left
+   aligned so the section opens like a magazine column rather than a
+   centered masthead. Sharp shadow uses the same offset+0-blur pattern
+   the old Lush policy heading carried — it's the Lush signature for
+   Molle treatment. */
 .lush-layered-title {
-  position: relative;
-  display: inline-block;
+  display: block;
+  text-align: left;
   margin: 0 0 48px;
   line-height: 1;
-  max-width: 100%;
 }
 .lush-layered-eyebrow {
   display: block;
-  font-family: var(--lush-serif);
-  font-size: clamp(80px, 14vw, 140px);
-  line-height: 1;
-  opacity: 0.14;
-  margin: 0;
-  letter-spacing: -0.02em;
-  color: var(--lush-text);
-  white-space: nowrap;
-}
-/* Molle italic — quieter cursive than Cookie, with a slight handwritten
-   slant that pairs better against the big DM Serif backdrop. */
-.lush-layered-heading {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   font-family: var(--lush-molle);
   font-style: italic;
-  font-size: clamp(52px, 8vw, 76px);
   font-weight: 400;
-  letter-spacing: -0.005em;
+  font-size: clamp(28px, 5vw, 40px);
   line-height: 1;
+  margin: 0 0 6px;
+  letter-spacing: 0;
   color: var(--lush-pink);
+  text-shadow: 2px 2px 0 rgba(14, 17, 17, 0.18);
+  opacity: 1;
+}
+.lush-layered-heading {
+  display: block;
+  position: static;
+  font-family: var(--lush-molle);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(56px, 11vw, 92px);
+  line-height: 1;
+  letter-spacing: -0.005em;
   margin: 0;
-  white-space: nowrap;
+  color: var(--lush-pink);
+  text-shadow: 4px 4px 0 rgba(14, 17, 17, 0.18);
 }
 
 /* Body copy + drop cap. First paragraph gets a sage DM Serif drop cap
