@@ -112,7 +112,7 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
       {/* eslint-disable-next-line @next/next/no-page-custom-font */}
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap"
       />
       <style>{TFR_CSS}</style>
       <div
@@ -505,7 +505,18 @@ const TFR_CSS = `
   --tfr-card: #1A1228;
   /* --tfr-accent injected via inline style (tenant pick or pink default) */
   --tfr-display: 'Bricolage Grotesque', 'Outfit', 'Manrope', system-ui, sans-serif;
+  --tfr-script: 'Dancing Script', 'Pacifico', cursive;
   --tfr-body: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Sharp neon-sign text shadow (used on hero name + thanks title). The
+     four layers stack: tight white inner highlight → accent core → mid
+     halo → soft outer bloom. Gives real neon-tube definition rather
+     than the diffuse glow a single shadow produces. */
+  --tfr-neon-sign:
+    0 0 1px rgba(255, 255, 255, 1),
+    0 0 6px var(--tfr-accent),
+    0 0 14px var(--tfr-accent),
+    0 0 30px var(--tfr-accent),
+    0 0 56px color-mix(in srgb, var(--tfr-accent) 80%, transparent);
 
   background: var(--tfr-bg);
   color: var(--tfr-fg);
@@ -602,22 +613,57 @@ const TFR_CSS = `
   margin-top: var(--brk-space-2xl);
 }
 .tfr-avatar {
-  width: 96px;
-  height: 96px;
+  width: 124px;
+  height: 124px;
   border-radius: 999px;
   object-fit: cover;
-  border: 2px solid var(--tfr-accent);
-  box-shadow: 0 0 20px color-mix(in srgb, var(--tfr-accent) 40%, transparent);
+  border: 3px solid var(--tfr-accent);
+  box-shadow:
+    0 0 0 4px var(--tfr-bg),
+    0 0 0 5px color-mix(in srgb, var(--tfr-accent) 60%, transparent),
+    0 0 28px color-mix(in srgb, var(--tfr-accent) 55%, transparent),
+    0 0 60px color-mix(in srgb, var(--tfr-accent) 30%, transparent);
   margin: 0 0 var(--brk-space-md);
 }
+/* Hero name — Dancing Script in accent color with the sharp neon-sign
+   shadow stack. Sized large because script fonts read smaller than
+   their geometric counterparts at the same point size. */
 .tfr-name {
-  font-family: var(--tfr-display);
-  font-size: clamp(44px, 8vw, 88px);
-  font-weight: 800;
-  letter-spacing: -0.025em;
-  line-height: 0.95;
-  margin: 0 0 var(--brk-space-sm);
-  text-shadow: 0 0 24px color-mix(in srgb, var(--tfr-accent) 30%, transparent);
+  font-family: var(--tfr-script);
+  font-size: clamp(64px, 12vw, 144px);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.0;
+  margin: 0 0 var(--brk-space-md);
+  color: var(--tfr-accent);
+  text-shadow: var(--tfr-neon-sign);
+  /* Slight optical alignment — Dancing Script has long descenders. */
+  padding: 0.05em 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* Slow tube-warmup pulse — 3.5s, very subtle. Real neon signs don't
+     blink wildly, they breathe. */
+  .tfr-name {
+    animation: tfr-neon-breath 3.6s ease-in-out infinite;
+  }
+}
+@keyframes tfr-neon-breath {
+  0%, 100% {
+    text-shadow:
+      0 0 1px rgba(255, 255, 255, 1),
+      0 0 6px var(--tfr-accent),
+      0 0 14px var(--tfr-accent),
+      0 0 30px var(--tfr-accent),
+      0 0 56px color-mix(in srgb, var(--tfr-accent) 80%, transparent);
+  }
+  50% {
+    text-shadow:
+      0 0 2px rgba(255, 255, 255, 1),
+      0 0 9px var(--tfr-accent),
+      0 0 20px var(--tfr-accent),
+      0 0 44px var(--tfr-accent),
+      0 0 80px color-mix(in srgb, var(--tfr-accent) 90%, transparent);
+  }
 }
 .tfr-business-type {
   font-family: var(--tfr-body);
@@ -985,9 +1031,18 @@ const TFR_CSS = `
   margin: 0;
 }
 
-/* Thanks */
+/* Thanks — second "neon moment" of the page, mirroring the hero. */
 .tfr-thanks { text-align: center; padding-block: var(--brk-space-3xl); }
-.tfr-thanks-title { text-shadow: 0 0 24px color-mix(in srgb, var(--tfr-accent) 35%, transparent); }
+.tfr-thanks-title {
+  font-family: var(--tfr-script);
+  font-size: clamp(40px, 7vw, 80px);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.0;
+  color: var(--tfr-accent);
+  text-shadow: var(--tfr-neon-sign);
+  padding: 0.05em 0;
+}
 .tfr-thanks-body {
   max-width: 56ch;
   margin: 0 auto;
