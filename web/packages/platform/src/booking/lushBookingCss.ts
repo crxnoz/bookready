@@ -95,24 +95,23 @@ export const LUSH_CSS = `
 }
 
 /* ── Section frame ── Generic .lush-section base mirroring the trio's
-   .tfr-section / .blackline-section / .vt-section so Lush opts into
-   the same container width + padding rhythm those templates ship.
-   Uses the @bkrdy/platform tokens directly (--brk-container-narrow,
-   --brk-space-3xl, --brk-space-md). */
+   .tfr-section / .blackline-section / .vt-section. Uses literal pixel
+   values that match what --brk-space-3xl / --brk-space-md / etc resolve
+   to in the trio (64px / 16px / 720px / 48px) because Lush doesn't
+   inject tokensToCss() — the brk-* var references would resolve empty
+   here and the padding would silently disappear. */
 .lush-section {
-  max-width: var(--brk-container-narrow);
+  max-width: 720px;
   margin: 0 auto;
-  padding: var(--brk-space-3xl) var(--brk-space-md);
+  padding: 64px 16px;
 }
 /* .lush-book — modifier matching .tfr-book / .blackline-book / .vt-book.
-   Adds extra breathing room above the embedded booking flow to match
-   what TFR gets from its .tfr-booking-frame shim (16px) on top of the
-   section's 64px. Lush has no equivalent shim wrapping the platform
-   booking — instead, the modifier here compensates so the compound
-   padding above .brk-booking-section matches the trio (~80px). */
+   80px top compensates for the missing .tfr-booking-frame shim that TFR
+   uses to add 16px above the platform booking; 48px bottom keeps the
+   flow off the next section. */
 .lush-book {
-  padding-top: calc(var(--brk-space-3xl) + var(--brk-space-md));
-  padding-bottom: var(--brk-space-2xl);
+  padding-top: 80px;
+  padding-bottom: 48px;
 }
 
 /* ── Header ── */
@@ -475,44 +474,45 @@ export const LUSH_CSS = `
 /* ── Tabs ── */
 .lush-tabbed-section { width:100%; background:var(--lush-bg); }
 
-/* Sticky rail matched precisely to the trio's structural specs — same
-   max-width (--brk-container-narrow), same 16px sides (--brk-space-md),
-   same z-index:10, same 16/24 top/bottom rhythm as TFR. Drops the
+/* Sticky rail — keeps Lush's own rhythm (wider 1180px container, 24px
+   sides, 18/24 padding, z-index:20) per user feedback. The trio's exact
+   dimensions felt too tight for Lush's softer voice. Drops the
    mask-image fade edges (none of the others use them). */
 .lush-tab-rail {
-  position:sticky; top:0; z-index:10;
+  position:sticky; top:0; z-index:20;
   background:var(--lush-bg);
   border-top:1px solid var(--lush-dark-border);
   border-bottom:1px solid var(--lush-dark-border);
   overflow-x:auto;
   -webkit-overflow-scrolling:touch;
   scrollbar-width:none;
-  padding:16px 0 24px;
+  padding:18px 0 24px;
 }
 .lush-tab-rail::-webkit-scrollbar { display:none; }
 .lush-tab-slider {
   display:flex;
   flex-wrap:nowrap;
-  max-width:var(--brk-container-narrow);
+  max-width:1180px;
   margin:0 auto;
-  padding:0 var(--brk-space-md);
+  padding:0 24px;
   gap:8px;
   scroll-snap-type:x mandatory;
 }
-/* Rounded outlined pills — exact structural shape as TFR's pills
-   (11px/24px padding, 999px radius, uppercase 11px/0.18em). Lush's
-   vocabulary owns the COLORS + the active marker: hairline sage outline
-   at 30% opacity on cream, sparkle ✦ floats above on active. */
+/* Rounded outlined pills — hairline sage outline at 30% opacity on
+   cream, uppercase Roboto micro 11px/0.20em. Active state fills the
+   border to solid sage, swaps the label color to sage, and floats a
+   ✦ sparkle above the pill — Lush's signature marker, tied to the
+   same glyph used in ritual separators + before/after dividers. */
 .lush-tab-pill {
   position:relative; flex:0 0 auto;
   display:inline-flex; align-items:center; justify-content:center;
-  padding:11px 24px;
+  padding:12px 22px;
   background:transparent;
   border:1px solid rgba(var(--lush-pink-rgb),0.30);
   border-radius:999px;
   color:var(--lush-muted);
   font-family:var(--lush-ui); font-size:11px; font-weight:600;
-  letter-spacing:0.18em; text-transform:uppercase; line-height:1;
+  letter-spacing:0.20em; text-transform:uppercase; line-height:1;
   cursor:pointer; white-space:nowrap; scroll-snap-align:center;
   transition:color .22s ease, border-color .22s ease, background .22s ease;
 }
