@@ -454,6 +454,16 @@ export async function updateEditorBusiness(data: Partial<BusinessProfile>): Prom
   })
 }
 
+/**
+ * #130 — mark the onboarding wizard complete (or skipped). Idempotent
+ * on the backend. Returns the stamped timestamp.
+ */
+export async function completeOnboarding(): Promise<{ onboarding_completed_at: string }> {
+  return request<{ onboarding_completed_at: string }>('/editor/onboarding/complete', {
+    method: 'POST',
+  })
+}
+
 export async function getEditorServices(): Promise<Service[]> {
   return request<Service[]>('/editor/services')
 }

@@ -50,6 +50,11 @@ class BusinessProfileController extends Controller
                 'site_visibility'                      => $get($profile, 'site_visibility', 'public'),
                 // password_hash is intentionally NOT exposed; we just signal whether one is set
                 'site_password_set'                    => ! empty($get($profile, 'site_password_hash')),
+                // #130 onboarding wizard marker. null = wizard not yet
+                // completed/skipped → the editor redirects to /editor/onboard.
+                'onboarding_completed_at'              => $get($profile, 'onboarding_completed_at') instanceof \DateTimeInterface
+                    ? $get($profile, 'onboarding_completed_at')->toJSON()
+                    : $get($profile, 'onboarding_completed_at'),
                 'created_at'      => $profile->created_at?->toJSON(),
                 'updated_at'      => $profile->updated_at?->toJSON(),
             ];
@@ -76,6 +81,7 @@ class BusinessProfileController extends Controller
             'email_signature' => null,
             'site_visibility' => 'public',
             'site_password_set' => false,
+            'onboarding_completed_at' => null,
         ];
     }
 
@@ -154,5 +160,40 @@ class BusinessProfileController extends Controller
         tenancy()->end();
 
         return response()->json($result);
+    }
+
+    /**
+     * #130 — mark the onboarding wizard as completed (or explicitly
+     * skipped). Idempotent: stamps onboarding_completed_at once and is a
+     * no-op if already set. Guarded for tenants whose schema predates the
+     * column (older provisions before the #133/#130 migration).
+     *
+     * POST /editor/onboarding/complete
+     */
+    public function completeOnboarding(Request $request): JsonResponse
+    {
+        $tenant = Tenant::findOrFail($request->user()->tenant_id);
+        tenancy()->initialize($tenant);
+
+        $hasColumn = \Illuminate\Support\Facades\Schema::hasColumn('business_profiles', 'onboarding_completed_at');
+
+        $profile = BusinessProfile::first();
+        if (! $profile) {
+            // Shouldn't happen post-#133, but be safe: create a minimal row.
+            $profile = BusinessProfile::create([]);
+        }
+
+        if ($hasColumn && $profile->onboarding_completed_at === null) {
+            $profile->onboarding_completed_at = now();
+            $profile->save();
+        }
+
+        $completedAt = $hasColumn
+            ? ($profile->onboarding_completed_at?->toJSON() ?? now()->toJSON())
+            : now()->toJSON();
+
+        tenancy()->end();
+
+        return response()->json(['onboarding_completed_at' => $completedAt]);
     }
 }

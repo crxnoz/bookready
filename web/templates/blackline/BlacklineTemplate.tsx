@@ -569,10 +569,8 @@ const BLACKLINE_CSS = `
 .blackline-social {
   display: flex;
   flex-wrap: wrap;
-  gap: 0;
+  gap: 8px;
   margin-top: var(--brk-space-lg);
-  border-top: 1px solid var(--blackline-rule);
-  border-bottom: 1px solid var(--blackline-rule);
 }
 .blackline-social-btn {
   flex: 0 0 auto;
@@ -583,18 +581,12 @@ const BLACKLINE_CSS = `
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--blackline-fg);
-  border-right: 1px solid var(--blackline-rule);
-  transition: color 160ms ease;
+  border: 1px solid var(--blackline-rule);
+  transition: color 160ms ease, border-color 160ms ease;
 }
-.blackline-social-btn:last-child { border-right: none; }
-.blackline-social-btn:hover { color: var(--blackline-accent); }
-/* Mobile — buttons wrap onto multiple rows. Add top borders to every
-   button so each wrapped row has a clean visual separator. Drop the
-   outer top border on .blackline-social so the first row's buttons
-   provide the top edge instead. */
-@media (max-width: 720px) {
-  .blackline-social { border-top: none; }
-  .blackline-social-btn { border-top: 1px solid var(--blackline-rule); }
+.blackline-social-btn:hover {
+  color: var(--blackline-accent);
+  border-color: var(--blackline-accent);
 }
 
 /* ── Tab rail ── */

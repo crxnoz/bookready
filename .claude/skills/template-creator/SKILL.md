@@ -19,6 +19,33 @@ Five things happen, in this order:
 
 Don't reorder. The interview answers drive everything; you can't scaffold a manifest without knowing the slug and palette. Verification has to be last because it tests the produced output.
 
+## Gotchas that WILL bite you (read before writing any CSS)
+
+These are hard-won from shipping real templates. Every one of them produced either a broken build or a silently-broken page. Internalize them before you start.
+
+1. **Inject `tokensToCss()` or your `--brk-*` vars resolve to empty.** The design tokens (`--brk-space-md`, `--brk-container-narrow`, `--brk-font-h2`, etc.) are NOT global. They only exist where you declare them. Every template's scoped CSS block MUST open with `${tokensToCss()}` inside the root selector — exactly like `_example-blank` does:
+   ```ts
+   import { tokensToCss } from '@bkrdy/platform'
+   const X_CSS = `
+   .{prefix}-template {
+     ${tokensToCss()}
+     /* ...the rest... */
+   }`
+   ```
+   If you skip this and then write `padding: var(--brk-space-3xl)`, the value computes to nothing and the padding silently vanishes — no error, no warning, just a page with no spacing. (This bit Lush Studio: every `--brk-*` reference was dead because it never injected the tokens. The fix was either inject `tokensToCss()` or hardcode literal px.) **Rule: if you reference any `--brk-*` var anywhere in the template, inject `tokensToCss()` in the root selector. When in doubt, inject it.**
+
+2. **NEVER put a backtick inside the CSS template literal — not even in a comment.** Your CSS lives in a JS template literal (`` const X_CSS = `...` ``). A stray backtick *anywhere* inside — including inside a `/* comment with `code` */` — terminates the literal early and the build dies with `Expected a semicolon` pointing at a confusing line. Write comments in plain prose or single quotes. Refer to selectors as `.x-template button` (no backticks), not `` `.x-template button` ``.
+
+3. **Unicode escapes need a DOUBLE backslash in template-literal CSS.** `content: "\2726"` (a `✦`) must be written `content: "\\2726"`. JS consumes one backslash when it parses the template literal, so a single backslash either errors or emits the wrong glyph. Always double them: `"\\2726"`, `"\\201C"`, etc.
+
+4. **`overflow-x: hidden` on the template root KILLS `position: sticky`.** If you clip horizontal overflow on `.{prefix}-template` (common, to stop sub-pixel scrollbars), use `overflow-x: clip` instead. `hidden` establishes a scroll container, which makes it — not the viewport — the sticky boundary, so your sticky tab rail never sticks. `clip` does the same visual clipping without the scroll context. (This bit Lush: the tab rail wouldn't stick until we swapped `hidden`→`clip`.)
+
+5. **Universal element resets out-specify your single-class rules.** If you write `.{prefix}-template button { background: none; border: 0 }` (specificity 0,1,1) as a reset, it BEATS `.{prefix}-footer-book { background: gold }` (0,1,0) — your button paints transparent and looks invisible. Scope component rules with the root to win: `.{prefix}-template .{prefix}-footer-book { ... }`. Watch for this on any element that has both a reset and a styled variant (buttons, links).
+
+6. **Don't substring-match booking classes — you'll over-select.** When re-skinning the embedded booking flow, `[class*="brk-booking-service"]` matches the container (`.brk-booking-services`), the card (`.brk-booking-service-card`), AND the inner row (`.brk-booking-service-top`) all at once — so a "card surface" rule leaks onto the bare container and the inner row. Target the specific class you mean (`.brk-booking-service-card`) and leave the others alone.
+
+7. **A mysterious build failure after edits is usually a stale `.next` cache.** `ENOTEMPTY`, `pages-manifest.json not found`, phantom type errors on unchanged files → `rm -rf .next` and rebuild. On Windows the dev server can also hold a lock; the rebuild clears it.
+
 ## Step 1: Interview
 
 This is a friendly design conversation, not a form. Ask one or two questions at a time, confirm answers, then move on. Default to sensible answers and only press when the creator's choice would produce a worse result.
@@ -104,6 +131,29 @@ The 12 required sections (from `web/packages/platform/AUTHORING.md` §"Required 
 
 Every section must render — empty data shows an empty state, not nothing.
 
+#### What separates a *finished* template from a merely valid one
+
+A template that compiles isn't done. The four shipped templates (The Fade Room, Blackline, Velvet Theory, Lush Studio) converged on a shared structural skeleton — copy it, then dress it in your brand's vocabulary. Reviewers and creators expect these:
+
+- **Shared section-header pattern.** Every tab opens with the same pair: a small uppercase letter-spaced **eyebrow** + a large **display heading**. Build one `.{prefix}-tab-header` (or `.{prefix}-section` header) and reuse it on Gallery, Results, About, Policies, Advice, Timeline. This is the single biggest thing that makes the tabs read as one family instead of six unrelated pages.
+
+- **Sticky tab rail with a *distinct* active marker.** The rail is structurally identical across templates (sticky, top+bottom hairline, container-width slider, horizontal scroll on overflow, uppercase micro labels). What MUST differ per template is the active-state marker — it's the template's signature. The shipped four each picked a different one so they don't look like dupes:
+  - The Fade Room → a glowing "marquee" bar under the active pill
+  - Blackline → a flat accent underline
+  - Velvet Theory → a thin gold bar flush with the rail border (serif labels)
+  - Lush Studio → a small sparkle floating above the active pill
+  Invent your own; don't reuse one of these verbatim.
+
+- **3-band footer.** CTA band (one centered primary action) / content band (3 columns: brand+blurb / hours / contact, hairline dividers between on desktop, single stack on mobile) / credit band (© + "Powered by BookReady" hairline strip). All four templates use this exact shape; match it.
+
+- **Booking lives inside a section wrapper with matching padding.** Don't drop `<{Pascal}Booking>` flush against the tab rail. Wrap it: `<div className="{prefix}-section {prefix}-book">`. Give `.{prefix}-book` the same outer padding your other sections get (plus a little extra on top — the platform booking has no top padding of its own). The platform booking also hard-codes an `<h2>` ("Reserve Your Appointment") inside `.brk-booking-head`; you can't change that markup but you own the cascade — restyle it to your display font, or `display:none` it and let the section header carry the title.
+
+- **Announcement bar: static, not a marquee.** A centered single-line strip with small ornament bookends reads more premium and is consistent with the family. (Lush originally had a scrolling marquee and it was the odd one out.)
+
+- **Respect `prefers-reduced-motion`.** Gate every transform/animation behind `@media (prefers-reduced-motion: reduce) { ...: none }`.
+
+- **Auto-contrast on accent fills.** If a button fills with the accent color and the owner can swap the accent, the on-accent text can become unreadable. Compute a readable foreground from the accent's luminance (see Lush's `pickOnAccentColor` helper) rather than hardcoding white.
+
 ### 2c. `{Pascal}Booking.tsx`
 
 ```tsx
@@ -137,29 +187,55 @@ export default function {Pascal}Booking(props: Props) {
     <CustomerAuthProvider>
       <style>{PLATFORM_BOOKING_CSS}</style>
       <style>{ {Pascal}_BOOKING_FRAME_CSS }</style>
-      {/* M2c.2 will drop the .lush-template wrapper; until then it scopes the
-          platform CSS. Keep the {prefix}-booking class as the template's own
-          handle for variable overrides. */}
-      <div className="lush-template {prefix}-booking">
-        <PlatformBookingFlow {...props} />
+      {/* .lush-template scopes the platform's shared booking CSS (M2c.2 will
+          drop it). .{prefix}-booking-inner is your own handle for the variable
+          re-skin below. */}
+      <div className="{prefix}-booking-frame">
+        <div className="lush-template {prefix}-booking-inner">
+          <PlatformBookingFlow {...props} />
+        </div>
       </div>
     </CustomerAuthProvider>
   )
 }
+```
 
+The booking flow ships styled in the shared "Lush" variables. You re-skin it by overriding those `--lush-*` variables on `.{prefix}-booking-inner` to your brand tokens. This is the canonical, complete list — set ALL of them or the booking will read half-Lush:
+
+```ts
 const {Pascal}_BOOKING_FRAME_CSS = `
-  .{prefix}-booking {
-    /* CSS variable overrides go here once M2c.3 ships the --brk-booking-* hooks.
-       For now, override Lush's variables to re-skin colors:
-         --lush-pink:     {accent hex};
-         --lush-pink-rgb: {accent comma triplet};
-         --lush-bg:       {bg hex};
-         --lush-text:     {text hex};
-       (See web/templates/velvettheory/VelvetTheoryBooking.tsx for the full
-        variable-override pattern.) */
-  }
+.{prefix}-booking-frame {
+  width: 100%;
+  /* Match your section rhythm — the platform booking has no top padding. */
+  padding: var(--brk-space-md) 0 var(--brk-space-2xl);
+}
+.{prefix}-booking-inner {
+  --lush-bg:          transparent;            /* inherit page bg */
+  --lush-card:        {subtle surface tint};
+  --lush-text:        {ink};
+  --lush-muted:       {muted};
+  --lush-pink:        {accent hex};           /* the accent — drives CTAs, active states, step pills */
+  --lush-pink-rgb:    {accent R, G, B};       /* same color as a comma triplet for rgba() glows */
+  --lush-on-pink:     {readable text ON the accent fill};
+  --lush-pink-soft:   {accent at ~20% alpha};
+  --lush-dark-border: {hairline rule};
+  --lush-serif:       {your display serif stack};
+  --lush-sans:        {your body sans stack};
+  --lush-ui:          {your body sans stack};
+  background: transparent;
+}
+/* Restyle the platform's hard-coded "Reserve Your Appointment" h2: */
+.{prefix}-booking-inner.lush-template .brk-booking-head h2 {
+  font-family: {your display font} !important;
+  /* ...your title treatment... */
+}
 `
 ```
+
+Read `web/templates/velvettheory/VelvetTheoryBooking.tsx` for the full reference — it also shows three things you'll likely need:
+- **Differentiate booking step states.** Lush fills both `.is-active` AND `.is-done` step pills with `--lush-pink`; once you re-skin that to one accent, completed steps look identical to the current one. Give only `.is-active` a filled pill; outline `.is-done`.
+- **Don't substring-match service classes** (gotcha #6 above) — target `.brk-booking-service-card` specifically, not `[class*="brk-booking-service"]`.
+- **Force readable text on the account-CTA tile**, which keeps a light surface even on a dark page.
 
 ### 2d. `{Pascal}CustomerAuth.tsx`
 
@@ -286,16 +362,28 @@ Checks:
   Manifest validation: ✓ passed
   npm run build:       ✓ passed
 
-To preview locally:
-  cd web && npm run dev
-  Visit http://localhost:3000/site/{any-tenant} after running:
+To preview on a real tenant:
+  Point an existing tenant's template_settings at the new slug, then
+  load its public site. NOTE: tenant tables have NO `tenant_id` column —
+  tenancy()->initialize() switches the DB connection, so there's exactly
+  one template_settings row in the tenant DB. Do NOT filter by tenant_id
+  (that errors with "Unknown column 'tenant_id'").
     php artisan tinker --execute='
-      App\Models\Tenant::find("your-test-tenant");
-      tenancy()->initialize(App\Models\Tenant::find("your-test-tenant"));
-      DB::table("template_settings")
-        ->where("tenant_id", "your-test-tenant")
-        ->update(["template_slug" => "{slug}"]);
+      $t = App\Models\Tenant::find("your-test-tenant");
+      tenancy()->initialize($t);
+      DB::table("template_settings")->update(["template_slug" => "{slug}"]);
+      tenancy()->end();
     '
+  Then: curl -s https://{your-test-tenant}.bkrdy.me/ -o /dev/null -w "%{http_code}"
+
+To stand up a fresh DEMO tenant to show the template off (no login needed
+for the public site), create the tenant + domain + a template_settings row
+seeded from TemplateDefaults, then seed services/hours/gallery/etc. Seeding
+copy in PHP and piping it over SSH (`ssh root@... "cat > /tmp/seed.php" <
+local.php; ssh root@... "php artisan tinker --execute=\"require '/tmp/seed.php'\""`)
+avoids bash heredoc EOF parse errors on large blocks. To give the demo an
+owner login: `App\Models\User::create([... "tenant_id"=>"{slug}",
+"password"=>bcrypt("demo1234"), "terms_accepted_at"=>now()])`.
 
 Next steps before submitting to the marketplace:
   - Refine the hero + Book tab first (biggest visual impact)

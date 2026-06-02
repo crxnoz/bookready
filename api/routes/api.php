@@ -182,6 +182,9 @@ Route::prefix('v1')->group(function () {
         Route::get('business',  [BusinessProfileController::class, 'show']);
         Route::patch('business', [BusinessProfileController::class, 'update']);
 
+        // #130 — onboarding wizard completion marker.
+        Route::post('onboarding/complete', [BusinessProfileController::class, 'completeOnboarding']);
+
         // Categories + add-ons MUST come before /services/{service} so
         // the static segments aren't swallowed by the dynamic matcher.
         Route::get   ('services/categories',          [ServiceCategoriesController::class, 'index']);

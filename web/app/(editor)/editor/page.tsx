@@ -14,6 +14,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   Calendar, Clock, ExternalLink, Loader2, ChevronRight, CheckCircle2, Circle,
   Megaphone, DollarSign, Activity, Sparkles, AlertCircle, ArrowUpRight,
@@ -47,6 +48,12 @@ export default function DashboardPage() {
 }
 
 function DashboardBody() {
+  const router = useRouter()
+  // #130 — when a fresh tenant has never completed the onboarding wizard
+  // (onboarding_completed_at is null), redirect into it on first dashboard
+  // load. `redirecting` holds the full-page spinner so the dashboard never
+  // flashes behind the redirect.
+  const [redirecting, setRedirecting] = useState(false)
   const [user,     setUser]     = useState<AuthUser | null>(null)
   const [business, setBusiness] = useState<BusinessProfile | null>(null)
   const [services, setServices] = useState<Service[]>([])
@@ -74,8 +81,17 @@ function DashboardBody() {
     ])
       .then(([u, b, sv, hr, pol, st, ap, an]) => {
         if (cancelled) return
+        // First-run gate: send brand-new tenants to the onboarding wizard
+        // before showing the dashboard. Skipping/finishing the wizard stamps
+        // onboarding_completed_at, so this only fires once.
+        const profile = b as BusinessProfile | null
+        if (profile && profile.onboarding_completed_at == null) {
+          setRedirecting(true)
+          router.replace('/editor/onboard')
+          return
+        }
         setUser(u as AuthUser | null)
-        setBusiness(b as BusinessProfile | null)
+        setBusiness(profile)
         setServices(sv as Service[])
         setHours(hr as HoursEntry[])
         setPolicies(pol as BusinessPolicy | null)
@@ -126,11 +142,12 @@ function DashboardBody() {
 
   // ── Render ───────────────────────────────────────────────────────────────
 
-  if (loading) {
+  if (loading || redirecting) {
     return (
       <div className="w-full p-3 sm:p-5 md:p-6">
         <div className="flex items-center gap-2 text-xs text-muted-text px-1 py-8">
-          <Loader2 size={14} className="animate-spin" /> Loading your dashboard…
+          <Loader2 size={14} className="animate-spin" />
+          {redirecting ? 'Setting up your workspace…' : 'Loading your dashboard…'}
         </div>
       </div>
     )

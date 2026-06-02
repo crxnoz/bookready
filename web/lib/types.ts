@@ -352,6 +352,9 @@ export interface BusinessProfile {
   instagram_url: string | null
   booking_enabled: boolean
   site_status: string
+  /** #130 onboarding wizard marker. null = not yet completed/skipped →
+   *  the editor redirects to /editor/onboard on first load. */
+  onboarding_completed_at?: string | null
   // ── Preferences (migration #5 — owner-facing behavior settings) ──
   time_zone?: string | null
   /** 0=Sunday, 1=Monday */
