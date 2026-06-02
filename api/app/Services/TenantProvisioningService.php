@@ -252,7 +252,11 @@ class TenantProvisioningService
      */
     private function normalizeTemplateSlug(string $slug): string
     {
-        return str_replace('-', '', strtolower(trim($slug))) ?: TemplateDefaults::DEFAULT_TEMPLATE_SLUG;
+        // Delegate to the single source of truth, which also validates the
+        // slug against the set of templates that actually exist (so an
+        // unknown value like "cleanbeauty" degrades to the default instead
+        // of seeding a tenant with a slug no registry/template can render).
+        return TemplateDefaults::normalizeSlug($slug);
     }
 
     /**

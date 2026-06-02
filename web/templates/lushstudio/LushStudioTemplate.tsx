@@ -315,6 +315,10 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
     { id: 'before',    label: tabLabels.timeline_label ?? (tabLabels as any).before_appointment_label, key: 'timeline' },
   ]
 
+  // Resolved tab label keyed by tab id, so each section's eyebrow can show
+  // the editable tab label (renaming a tab in the editor renames the eyebrow).
+  const tabLabelById = Object.fromEntries(allTabs.map(t => [t.id, t.label])) as Record<string, string>
+
   const tabs = allTabs.filter(t => t.id === 'book' || enabledByTab[t.id])
 
   const [active, setActive] = useState<TabId>('book')
@@ -613,6 +617,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 items={site.gallery ?? []}
                 groups={site.gallery_groups ?? []}
                 displayName={displayName}
+                eyebrow={tabLabelById.gallery}
               />
             </div>
           )}
@@ -623,6 +628,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
               <ResultsPanel
                 items={site.results ?? site.before_after ?? []}
                 groups={site.results_groups ?? site.before_after_groups ?? []}
+                eyebrow={tabLabelById.results}
               />
             </div>
           )}
@@ -641,7 +647,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
           {/* ── Policy ── */}
           {enabledByTab.policies && (
             <div className={`lush-tab-panel${active === 'policies' ? ' is-active' : ''}`}>
-              <PoliciesPanel policies={policies} />
+              <PoliciesPanel policies={policies} eyebrow={tabLabelById.policies} />
             </div>
           )}
 
@@ -652,6 +658,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 items={(site.template?.settings as any)?.advice?.items ?? (site.template?.settings as any)?.steps?.items}
                 heading={(site.template?.settings as any)?.advice?.heading ?? (site.template?.settings as any)?.steps?.heading}
                 cardKicker={(site.template?.settings as any)?.advice?.card_kicker ?? (site.template?.settings as any)?.steps?.card_kicker}
+                eyebrow={tabLabelById.aftercare}
               />
             </div>
           )}
@@ -663,6 +670,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 items={(site.template?.settings as any)?.timeline?.items ?? (site.template?.settings as any)?.before_appointment?.items}
                 heading={(site.template?.settings as any)?.timeline?.heading ?? (site.template?.settings as any)?.before_appointment?.heading}
                 cardKicker={(site.template?.settings as any)?.timeline?.card_kicker ?? (site.template?.settings as any)?.before_appointment?.card_kicker}
+                eyebrow={tabLabelById.before}
               />
             </div>
           )}
@@ -854,17 +862,19 @@ function GalleryPanel({
   items,
   groups,
   displayName,
+  eyebrow,
 }: {
   items: PublicGalleryItem[]
   groups: PublicGroup[]
   displayName: string
+  eyebrow?: string
 }) {
   // No items at all → polished placeholders (lifted from the original layout)
   if (items.length === 0 && groups.length === 0) {
     return (
       <section className="lush-gallery-section">
         <header className="lush-tab-header">
-          <p className="lush-eyebrow">Gallery</p>
+          <p className="lush-eyebrow">{eyebrow ?? 'Gallery'}</p>
           <h2 className="lush-section-title">Recent work</h2>
         </header>
         {GALLERY_GROUPS.map(g => (
@@ -902,7 +912,7 @@ function GalleryPanel({
   return (
     <section className="lush-gallery-section">
       <header className="lush-tab-header">
-        <p className="lush-eyebrow">Gallery</p>
+        <p className="lush-eyebrow">{eyebrow ?? 'Gallery'}</p>
         <h2 className="lush-section-title">Recent work</h2>
       </header>
       {sortedGroups.map(g => {
@@ -969,10 +979,11 @@ interface PublicBeforeAfterItem {
 }
 
 function ResultsPanel({
-  items, groups,
+  items, groups, eyebrow,
 }: {
   items: PublicBeforeAfterItem[]
   groups: PublicGroup[]
+  eyebrow?: string
 }) {
   // Real items take precedence over placeholders
   if (items.length > 0) {
@@ -1006,7 +1017,7 @@ function ResultsPanel({
     return (
       <section className="lush-before-after-section">
         <header className="lush-tab-header">
-          <p className="lush-eyebrow">Results</p>
+          <p className="lush-eyebrow">{eyebrow ?? 'Results'}</p>
           <h2 className="lush-section-title">Before &amp; after</h2>
         </header>
         {buckets.map(b => (
@@ -1057,7 +1068,7 @@ function ResultsPanel({
   return (
     <section className="lush-before-after-section">
       <header className="lush-tab-header">
-        <p className="lush-eyebrow">Results</p>
+        <p className="lush-eyebrow">{eyebrow ?? 'Results'}</p>
         <h2 className="lush-section-title">Before &amp; after</h2>
       </header>
       <div className="lush-ba-stack">
@@ -1204,7 +1215,7 @@ const FALLBACK_POLICIES = [
   { label: 'No-Show',      text: 'No-shows may be charged a no-show fee. Repeated no-shows may result in prepayment requirements for future bookings.' },
 ]
 
-function PoliciesPanel({ policies }: { policies: PublicSite['policies'] }) {
+function PoliciesPanel({ policies, eyebrow }: { policies: PublicSite['policies']; eyebrow?: string }) {
   const activeReal = policies
     ? POLICY_KEYS.filter(([key]) => (policies as unknown as Record<string, string | null>)[key])
     : []
@@ -1234,7 +1245,7 @@ function PoliciesPanel({ policies }: { policies: PublicSite['policies'] }) {
   return (
     <section className="lush-policy-section">
       <header className="lush-tab-header">
-        <p className="lush-eyebrow">Policies</p>
+        <p className="lush-eyebrow">{eyebrow ?? 'Policies'}</p>
         <h2 className="lush-section-title">House rules</h2>
       </header>
 
@@ -1289,6 +1300,7 @@ function BeforePanel({
   items,
   heading,
   cardKicker,
+  eyebrow,
 }: {
   items?: { title: string; body: string }[]
   heading?: string
@@ -1296,13 +1308,14 @@ function BeforePanel({
    *  numbered timeline node stays regardless (it carries the structural
    *  meaning of "step 1 of N"). */
   cardKicker?: string
+  eyebrow?: string
 }) {
   const steps = items && items.length > 0 ? items : BEFORE_STEPS
   const kicker = (cardKicker ?? '').trim()
   return (
     <section className="lush-before-appointment-section">
       <header className="lush-tab-header">
-        <p className="lush-eyebrow">Timeline</p>
+        <p className="lush-eyebrow">{eyebrow ?? 'Timeline'}</p>
         <h2 className="lush-section-title">{heading ?? 'Before you arrive'}</h2>
       </header>
       <ol className="lush-before-timeline">
@@ -1336,6 +1349,7 @@ function AftercarePanel({
   items,
   heading,
   cardKicker,
+  eyebrow,
 }: {
   items?: { title: string; body: string }[]
   heading?: string
@@ -1344,6 +1358,7 @@ function AftercarePanel({
    *  just the heading + body. Replaces the old auto-numbered
    *  "Step 01/02/03" treatment. */
   cardKicker?: string
+  eyebrow?: string
 }) {
   const cards = items && items.length > 0 ? items : AFTERCARE_CARDS
   const kicker = (cardKicker ?? '').trim()
@@ -1356,7 +1371,7 @@ function AftercarePanel({
   return (
     <section className="lush-aftercare-section">
       <header className="lush-tab-header">
-        <p className="lush-eyebrow">Advice</p>
+        <p className="lush-eyebrow">{eyebrow ?? 'Advice'}</p>
         <h2 className="lush-section-title">{heading ?? 'Care notes'}</h2>
       </header>
       <ul className="lush-ritual" aria-label={heading ?? 'Advice'}>

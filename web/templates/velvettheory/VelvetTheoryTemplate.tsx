@@ -383,7 +383,7 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
         <section ref={bookPanelRef} className={`vt-panel${active === 'book' ? ' is-active' : ''}`}>
           {site.booking_settings && site.booking_settings.booking_enabled === false ? (
             <div className="vt-section vt-empty">
-              <p className="vt-eyebrow">Reserve</p>
+              <p className="vt-eyebrow">{tabLabels.book_label ?? 'Reserve'}</p>
               <h2 className="vt-h2">Bookings are paused.</h2>
               <p className="vt-prose">
                 Online booking is currently unavailable. Please reach out directly — we&rsquo;ll find a time.
@@ -434,7 +434,7 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
                 <img src={(aboutBlock as any).images?.[0] ?? (aboutBlock as any).image_1_url} alt="" />
               </figure>
             )}
-            <p className="vt-eyebrow">Introduction</p>
+            <p className="vt-eyebrow">{(aboutBlock as any).eyebrow?.trim() || (tabLabels.about_label ?? 'Introduction')}</p>
             <h2 className="vt-h2">{(aboutBlock as any).eyebrow ?? `On ${signatureWord(displayName)}.`}</h2>
             {renderAbout(aboutBlock as any, displayName, p)}
             {/* Highlights — editor-editable bullet list. Sits after the
@@ -464,13 +464,16 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
         {/* ── Notes (advice cards) ── */}
         <section className={`vt-panel${active === 'aftercare' ? ' is-active' : ''}`}>
           <div className="vt-section vt-section-narrow">
-            <p className="vt-eyebrow">{tabLabels.steps_label}</p>
-            <h2 className="vt-h2">Care, prolonged.</h2>
+            <p className="vt-eyebrow">{(tabLabels as any).advice_label ?? tabLabels.steps_label ?? 'Notes'}</p>
+            <h2 className="vt-h2">{typeof settings.advice?.heading === 'string' && settings.advice.heading.trim() !== '' ? settings.advice.heading : 'Care, prolonged.'}</h2>
             <div className="vt-notes">
               {(stepsList.length > 0 ? stepsList : DEFAULT_STEPS).map((step: any, i: number) => (
                 <article key={i} className="vt-note">
                   <span className="vt-note-num">{roman(i + 1).toLowerCase()}</span>
                   <div className="vt-note-body">
+                    {typeof settings.advice?.card_kicker === 'string' && settings.advice.card_kicker.trim() !== '' && (
+                      <span className="vt-card-kicker">{settings.advice.card_kicker}</span>
+                    )}
                     <h3 className="vt-note-title">{step.title ?? `Note ${i + 1}`}</h3>
                     {(step.body ?? step.content) && <p>{step.body ?? step.content}</p>}
                   </div>
@@ -483,13 +486,16 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
         {/* ── Itinerary (diary timeline) ── */}
         <section className={`vt-panel${active === 'before' ? ' is-active' : ''}`}>
           <div className="vt-section vt-section-narrow">
-            <p className="vt-eyebrow">{tabLabels.before_appointment_label}</p>
-            <h2 className="vt-h2">Before your visit.</h2>
+            <p className="vt-eyebrow">{(tabLabels as any).timeline_label ?? tabLabels.before_appointment_label ?? 'Itinerary'}</p>
+            <h2 className="vt-h2">{typeof settings.timeline?.heading === 'string' && settings.timeline.heading.trim() !== '' ? settings.timeline.heading : 'Before your visit.'}</h2>
             <dl className="vt-diary">
               {(beforeList.length > 0 ? beforeList : DEFAULT_BEFORE).map((item: any, i: number) => (
                 <div key={i} className="vt-diary-entry">
                   <dt>{item.when ?? `Step ${i + 1}`}</dt>
                   <dd>
+                    {typeof settings.timeline?.card_kicker === 'string' && settings.timeline.card_kicker.trim() !== '' && (
+                      <span className="vt-card-kicker">{settings.timeline.card_kicker}</span>
+                    )}
                     <h3 className="vt-diary-title">{item.title ?? ''}</h3>
                     {(item.body ?? item.content) && <p>{item.body ?? item.content}</p>}
                   </dd>
@@ -528,7 +534,7 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
               {additionals.thank_you_body && (
                 <p className="vt-thanks-body">{additionals.thank_you_body}</p>
               )}
-              <span className="vt-thanks-sign">&mdash;&nbsp;{signatureWord(displayName)}</span>
+              <span className="vt-thanks-sign">&mdash;&nbsp;{(additionals.thank_you_signature ?? '').trim() || signatureWord(displayName)}</span>
             </div>
           )}
 
@@ -598,7 +604,7 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
           <div className="vt-footer-inner">
             <div className="vt-footer-col vt-footer-brand">
               <p className="vt-eyebrow">The Studio</p>
-              <p className="vt-footer-name">{displayName}</p>
+              <p className="vt-footer-name">{(footerSettings.business_name_override ?? '').trim() || displayName}</p>
               {footerSettings.subtext && (
                 <p className="vt-footer-subtext">{footerSettings.subtext}</p>
               )}
@@ -1278,6 +1284,19 @@ const VT_CSS = `
   font-size: 15px;
   line-height: 1.7;
   opacity: 0.85;
+}
+
+/* Shared kicker label rendered above each card title in the Notes /
+   Itinerary blocks. Uppercase gold micro-label in VT's eyebrow vocabulary. */
+.vt-card-kicker {
+  display: block;
+  font-family: var(--vt-body);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--vt-accent);
+  margin-bottom: 8px;
 }
 
 /* ── Itinerary / diary ── */

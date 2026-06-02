@@ -13,6 +13,29 @@ class TemplateDefaults
 {
     public const DEFAULT_TEMPLATE_SLUG = 'thefaderoom';
 
+    /**
+     * The canonical, dash-less slugs of every template that actually
+     * exists (matches the keys in web/templates/registry.ts). Anything
+     * outside this set is not a real template and must fall back to the
+     * default rather than seeding a tenant with a broken slug.
+     */
+    public const KNOWN_SLUGS = ['thefaderoom', 'lushstudio', 'velvettheory', 'blackline', 'opaline'];
+
+    /**
+     * Map any signup/registry template value to a canonical, KNOWN slug.
+     * Strips dashes/spaces/underscores and lowercases ("The Fade Room",
+     * "the-fade-room" → "thefaderoom"), then validates against KNOWN_SLUGS.
+     * Unknown / empty input (e.g. the long-gone "cleanbeauty") degrades to
+     * DEFAULT_TEMPLATE_SLUG so a tenant never lands on a non-existent template.
+     */
+    public static function normalizeSlug(?string $slug): string
+    {
+        $normalized = str_replace([' ', '-', '_'], '', strtolower(trim((string) $slug)));
+        return in_array($normalized, self::KNOWN_SLUGS, true)
+            ? $normalized
+            : self::DEFAULT_TEMPLATE_SLUG;
+    }
+
     public static function settingsFor(string $templateSlug): array
     {
         return match ($templateSlug) {

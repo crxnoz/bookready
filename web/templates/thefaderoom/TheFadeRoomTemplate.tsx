@@ -20,12 +20,47 @@
  * plus always-visible FAQ + Reviews + Thank-you + Footer below.
  */
 
-import { useState, useRef } from 'react'
-import { CalendarPlus, Phone, Mail, Instagram, MapPin, type LucideIcon } from 'lucide-react'
+import { useState, useRef, type ComponentType } from 'react'
+import { CalendarPlus, Phone, Mail, Instagram, MapPin, MessageSquare, Youtube, Facebook } from 'lucide-react'
 import type { PublicSite } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 import { tokensToCss } from '@bkrdy/platform'
 import TheFadeRoomBooking from './TheFadeRoomBooking'
+
+// ── Brand glyphs lucide doesn't ship (sized to match the lucide icons
+//    in the social pills — see SocialButtons). ──
+function TikTokGlyph({ size = 14 }: { size?: number; strokeWidth?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5.8 20.1a6.34 6.34 0 0 0 10.86-4.43V8.91a8.16 8.16 0 0 0 4.77 1.52V7a4.85 4.85 0 0 1-1.84-.31z"/>
+    </svg>
+  )
+}
+function PinterestGlyph({ size = 14 }: { size?: number; strokeWidth?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12.04 2C6.5 2 2 6.5 2 12.04c0 4.25 2.65 7.88 6.39 9.34-.09-.79-.17-2 .03-2.86.18-.78 1.17-4.97 1.17-4.97s-.3-.6-.3-1.48c0-1.39.81-2.43 1.81-2.43.85 0 1.27.64 1.27 1.41 0 .86-.55 2.14-.83 3.34-.24 1 .5 1.81 1.49 1.81 1.79 0 3.17-1.89 3.17-4.62 0-2.42-1.74-4.11-4.22-4.11-2.87 0-4.56 2.15-4.56 4.38 0 .87.33 1.8.75 2.31a.3.3 0 0 1 .07.29c-.08.32-.26 1.04-.29 1.18-.05.2-.16.24-.36.15-1.34-.62-2.17-2.59-2.17-4.16 0-3.39 2.46-6.5 7.09-6.5 3.72 0 6.61 2.65 6.61 6.19 0 3.7-2.33 6.68-5.57 6.68-1.09 0-2.11-.57-2.46-1.24l-.67 2.55c-.24.93-.89 2.1-1.33 2.81.99.31 2.04.47 3.13.47 5.54 0 10.04-4.5 10.04-10.04C22.08 6.5 17.58 2 12.04 2z"/>
+    </svg>
+  )
+}
+function WhatsAppGlyph({ size = 14 }: { size?: number; strokeWidth?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M17.47 14.38c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.47-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.47.13-.62.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51l-.57-.01c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.49 0 1.47 1.07 2.88 1.22 3.08.15.2 2.1 3.2 5.07 4.49.71.31 1.27.49 1.7.62.71.23 1.36.2 1.87.12.57-.08 1.77-.72 2.02-1.42.25-.7.25-1.3.17-1.42-.07-.13-.27-.2-.57-.35zM12.04 2C6.5 2 2 6.5 2 12.04c0 1.94.55 3.74 1.5 5.27L2 22l4.84-1.46a10.05 10.05 0 0 0 5.2 1.46c5.54 0 10.04-4.5 10.04-10.04S17.58 2 12.04 2zm0 18.13a8.07 8.07 0 0 1-4.4-1.27l-.31-.19-2.87.87.86-2.8-.2-.32a8.07 8.07 0 0 1-1.27-4.38c0-4.47 3.63-8.1 8.1-8.1s8.1 3.63 8.1 8.1-3.63 8.09-8.09 8.09z"/>
+    </svg>
+  )
+}
+
+// Normalize a bare phone number into an sms: URI (mirrors VT/Lush's
+// safeContactHref(url, 'sms')). Already-schemed values pass through to
+// safeHref, which enforces the allowlist (sms:/tel:/mailto:/http(s):).
+function smsHref(raw: string | null | undefined): string | null {
+  if (typeof raw !== 'string') return null
+  const v = raw.trim()
+  if (!v) return null
+  if (/^[a-z][a-z0-9+.\-]*:/i.test(v) || v.startsWith('//')) return v
+  return `sms:${v.replace(/[^\d+]/g, '')}`
+}
 
 interface Props {
   site: PublicSite
@@ -98,6 +133,11 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
     { id: 'timeline', label: tabs.timeline_label ?? 'Process' },
   ]
   const visibleTabs = allTabs.filter(t => t.id === 'book' || enabledByTab[t.id])
+
+  // Reuse the exact resolved tab labels for each tabbed section's eyebrow,
+  // so editing a tab name in the editor updates both the rail pill and the
+  // section's small uppercase eyebrow.
+  const tabLabel = Object.fromEntries(allTabs.map(t => [t.id, t.label])) as Record<TabId, string>
 
   function goBook() {
     setActive('book')
@@ -201,7 +241,7 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
           <div className={`tfr-tab-panel${active === 'gallery' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'gallery'}>
             <section className="tfr-section" aria-label={tabs.gallery_label ?? 'Work'}>
-              <p className="tfr-eyebrow">Work</p>
+              <p className="tfr-eyebrow">{tabLabel.gallery}</p>
               <h2 className="tfr-section-title">{tabs.gallery_label ?? 'Gallery'}</h2>
               {gallery.length === 0 ? (
                 <p className="tfr-empty">No gallery items yet.</p>
@@ -223,7 +263,7 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
           <div className={`tfr-tab-panel${active === 'results' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'results'}>
             <section className="tfr-section" aria-label={tabs.results_label ?? 'Results'}>
-              <p className="tfr-eyebrow">Before / After</p>
+              <p className="tfr-eyebrow">{tabLabel.results}</p>
               <h2 className="tfr-section-title">{tabs.results_label ?? 'Results'}</h2>
               {results.length === 0 ? (
                 <p className="tfr-empty">No results yet.</p>
@@ -259,17 +299,24 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
               )}
 
               {/* Layered title: DM Serif backdrop eyebrow at 80px low-opacity,
-                  Dancing Script neon heading at 30px overlaid centered. */}
-              {(about.eyebrow || about.heading) && (
-                <div className="tfr-layered-title">
-                  {about.eyebrow && (
-                    <span className="tfr-layered-eyebrow" aria-hidden="true">{about.eyebrow}</span>
-                  )}
-                  {about.heading && (
-                    <h2 className="tfr-layered-heading">{about.heading}</h2>
-                  )}
-                </div>
-              )}
+                  Dancing Script neon heading at 30px overlaid centered.
+                  Eyebrow stays editable via about.eyebrow; falls back to the
+                  resolved About tab label rather than a hardcoded string. */}
+              {(() => {
+                const aboutEyebrow = (typeof about.eyebrow === 'string' && about.eyebrow.trim())
+                  ? about.eyebrow.trim()
+                  : tabLabel.about
+                return (aboutEyebrow || about.heading) ? (
+                  <div className="tfr-layered-title">
+                    {aboutEyebrow && (
+                      <span className="tfr-layered-eyebrow" aria-hidden="true">{aboutEyebrow}</span>
+                    )}
+                    {about.heading && (
+                      <h2 className="tfr-layered-heading">{about.heading}</h2>
+                    )}
+                  </div>
+                ) : null
+              })()}
 
               {about.body && <p className="tfr-about-body">{about.body}</p>}
               {Array.isArray(about.highlights) && about.highlights.length > 0 && (
@@ -291,7 +338,7 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
           <div className={`tfr-tab-panel${active === 'policy' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'policy'}>
             <section className="tfr-section" aria-label={tabs.policy_label ?? 'House Rules'}>
-              <p className="tfr-eyebrow">House Rules</p>
+              <p className="tfr-eyebrow">{tabLabel.policy}</p>
               <h2 className="tfr-section-title">{tabs.policy_label ?? 'Policy'}</h2>
               <div className="tfr-policy-stack">
                 <PolicyRow label="Deposit"      body={policies.deposit_policy} />
@@ -312,7 +359,7 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
           <div className={`tfr-tab-panel${active === 'advice' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'advice'}>
             <section className="tfr-section" aria-label={tabs.advice_label ?? 'Notes'}>
-              <p className="tfr-eyebrow">Notes</p>
+              <p className="tfr-eyebrow">{tabLabel.advice}</p>
               <h2 className="tfr-section-title">{settings.advice?.heading ?? 'Advice'}</h2>
               {advice.length === 0 ? (
                 <p className="tfr-empty">No notes yet.</p>
@@ -338,7 +385,7 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
           <div className={`tfr-tab-panel${active === 'timeline' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'timeline'}>
             <section className="tfr-section" aria-label={tabs.timeline_label ?? 'Process'}>
-              <p className="tfr-eyebrow">Process</p>
+              <p className="tfr-eyebrow">{tabLabel.timeline}</p>
               <h2 className="tfr-section-title">{settings.timeline?.heading ?? 'Timeline'}</h2>
               {timeline.length === 0 ? (
                 <p className="tfr-empty">No timeline yet.</p>
@@ -388,18 +435,27 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
             <p className="tfr-eyebrow"><span aria-hidden="true">✦</span> Reviews</p>
             <h2 className="tfr-section-title">{additionals.reviews.heading ?? 'In the chair'}</h2>
             <ul className="tfr-reviews">
-              {additionals.reviews.items.map((rv: any, i: number) => (
-                <li key={i}>
-                  <blockquote>
-                    <span className="tfr-quote-glyph" aria-hidden="true">"</span>
-                    {rv.body ?? rv.quote}
-                  </blockquote>
-                  <p className="tfr-review-attr">
-                    {rv.author ?? rv.name}
-                    {rv.location && <span> · {rv.location}</span>}
-                  </p>
-                </li>
-              ))}
+              {additionals.reviews.items.map((rv: any, i: number) => {
+                const rating = typeof rv.rating === 'number' ? Math.round(rv.rating) : null
+                const showStars = rating !== null && rating >= 1 && rating <= 5
+                return (
+                  <li key={i}>
+                    <blockquote>
+                      <span className="tfr-quote-glyph" aria-hidden="true">"</span>
+                      {rv.body ?? rv.quote}
+                    </blockquote>
+                    {showStars && (
+                      <p className="tfr-review-stars" aria-label={`${rating} out of 5 stars`}>
+                        <span aria-hidden="true">{'★'.repeat(rating!)}</span>
+                      </p>
+                    )}
+                    <p className="tfr-review-attr">
+                      {rv.author ?? rv.name}
+                      {rv.location && <span> · {rv.location}</span>}
+                    </p>
+                  </li>
+                )
+              })}
             </ul>
           </section>
         )}
@@ -410,8 +466,9 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
             <p className="tfr-eyebrow"><span aria-hidden="true">✦</span> Outro <span aria-hidden="true">✦</span></p>
             <h2 className="tfr-section-title tfr-thanks-title">{additionals.thank_you_title}</h2>
             {additionals.thank_you_body && <p className="tfr-thanks-body">{additionals.thank_you_body}</p>}
-            {/* Studio signature — borrowed from VT's outro. */}
-            <p className="tfr-thanks-sign">— {display}</p>
+            {/* Studio signature — borrowed from VT's outro. Uses the editable
+                thank_you_signature when set, otherwise the business name. */}
+            <p className="tfr-thanks-sign">— {(typeof additionals.thank_you_signature === 'string' && additionals.thank_you_signature.trim()) ? additionals.thank_you_signature.trim() : display}</p>
           </section>
         )}
 
@@ -437,20 +494,45 @@ function PolicyRow({ label, body }: { label: string; body?: string | null }) {
 // the destination it points at — Insta's iconic pink→orange→purple,
 // Call's WhatsApp green, Email's mail blue, Directions' Maps green,
 // Reserve's tenant-accent gradient.
-const SOCIAL_STYLES: Record<string, { Icon: LucideIcon; gradient: string }> = {
-  book:       { Icon: CalendarPlus, gradient: 'linear-gradient(135deg, var(--tfr-accent), color-mix(in srgb, var(--tfr-accent) 55%, #fff))' },
-  call:       { Icon: Phone,        gradient: 'linear-gradient(135deg, #25D366, #128C7E)' },
-  email:      { Icon: Mail,         gradient: 'linear-gradient(135deg, #4F8BFF, #2D5FCF)' },
-  instagram:  { Icon: Instagram,    gradient: 'linear-gradient(135deg, #F58529 0%, #DD2A7B 45%, #8134AF 100%)' },
-  directions: { Icon: MapPin,       gradient: 'linear-gradient(135deg, #34A853, #16713C)' },
+// Glyph can be a lucide icon or one of the inline brand-glyph components
+// above — both accept size/strokeWidth and paint with currentColor.
+// ComponentType keeps the union unambiguously callable in JSX.
+// Accepts both lucide icons (whose props type is broader — size?: string |
+// number, plus ref/propTypes) and the inline brand-glyph components above.
+// `any` props avoids the lucide vs custom-glyph propTypes variance clash
+// while staying callable as <Icon size={…} strokeWidth={…} /> in JSX.
+type SocialGlyph = ComponentType<any>
+const SOCIAL_STYLES: Record<string, { Icon: SocialGlyph; gradient: string }> = {
+  book:       { Icon: CalendarPlus,  gradient: 'linear-gradient(135deg, var(--tfr-accent), color-mix(in srgb, var(--tfr-accent) 55%, #fff))' },
+  call:       { Icon: Phone,         gradient: 'linear-gradient(135deg, #25D366, #128C7E)' },
+  email:      { Icon: Mail,          gradient: 'linear-gradient(135deg, #4F8BFF, #2D5FCF)' },
+  message:    { Icon: MessageSquare, gradient: 'linear-gradient(135deg, #34B7F1, #0A7CC4)' },
+  instagram:  { Icon: Instagram,     gradient: 'linear-gradient(135deg, #F58529 0%, #DD2A7B 45%, #8134AF 100%)' },
+  tiktok:     { Icon: TikTokGlyph,   gradient: 'linear-gradient(135deg, #25F4EE 0%, #1A1228 45%, #FE2C55 100%)' },
+  youtube:    { Icon: Youtube,       gradient: 'linear-gradient(135deg, #FF0000, #C4302B)' },
+  facebook:   { Icon: Facebook,      gradient: 'linear-gradient(135deg, #1877F2, #0B5FCC)' },
+  pinterest:  { Icon: PinterestGlyph, gradient: 'linear-gradient(135deg, #E60023, #AD081B)' },
+  whatsapp:   { Icon: WhatsAppGlyph, gradient: 'linear-gradient(135deg, #25D366, #128C7E)' },
+  directions: { Icon: MapPin,        gradient: 'linear-gradient(135deg, #34A853, #16713C)' },
 }
 
 function SocialButtons({ header, profile, goBook }: { header: any; profile: any; goBook: () => void }) {
+  // href resolution mirrors the canonical VT/Lush header buttons. safeHref
+  // (applied uniformly in the render below) enforces the scheme allowlist;
+  // message normalizes a bare number to sms: first via smsHref. Brand
+  // socials (tiktok/youtube/facebook/pinterest/whatsapp) have no profile
+  // fallback — they only render when the tenant sets a URL override.
   const btns: { key: string; href: string | null; label: string }[] = [
     { key: 'book',       href: header.book_button_url || '#book', label: 'Reserve' },
     { key: 'call',       href: header.call_button_url       || (profile?.public_phone ? `tel:${profile.public_phone}` : null), label: 'Call' },
     { key: 'email',      href: header.email_button_url      || (profile?.public_email ? `mailto:${profile.public_email}` : null), label: 'Email' },
+    { key: 'message',    href: smsHref(header.message_button_url), label: 'Message' },
     { key: 'instagram',  href: header.instagram_button_url  || profile?.instagram_url || null, label: 'Instagram' },
+    { key: 'tiktok',     href: header.tiktok_button_url     || null, label: 'TikTok' },
+    { key: 'youtube',    href: header.youtube_button_url    || null, label: 'YouTube' },
+    { key: 'facebook',   href: header.facebook_button_url   || null, label: 'Facebook' },
+    { key: 'pinterest',  href: header.pinterest_button_url  || null, label: 'Pinterest' },
+    { key: 'whatsapp',   href: header.whatsapp_button_url   || null, label: 'WhatsApp' },
     { key: 'directions', href: header.directions_button_url || null, label: 'Directions' },
   ]
   const visible = btns.filter(b => header[`show_${b.key}_button`] !== false && b.href)
@@ -1304,6 +1386,19 @@ const TFR_CSS = `
 /* Hide the inline glyph from the markup — the corner watermark is
    the new quote treatment. */
 .tfr-quote-glyph { display: none; }
+/* Star rating — accent glyphs with the same neon halo as the rest of
+   the review card. Sits above the attribution, layered over the corner
+   quote watermark. */
+.tfr-review-stars {
+  margin: 0 0 8px;
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  color: var(--tfr-accent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--tfr-accent) 45%, transparent);
+  position: relative;
+  z-index: 1;
+}
 .tfr-review-attr {
   font-family: var(--tfr-body);
   font-size: 11px;

@@ -311,6 +311,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('website/template',                [WebsiteTemplateController::class, 'show']);
         Route::patch('website/template',              [WebsiteTemplateController::class, 'update']);
+        Route::put('website/template/active',         [WebsiteTemplateController::class, 'setTemplate']);
         Route::get('website/sections',                [WebsiteSectionsController::class, 'index']);
         Route::post('website/sections',               [WebsiteSectionsController::class, 'store']);
         Route::patch('website/sections/{section}',    [WebsiteSectionsController::class, 'update']);

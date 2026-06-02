@@ -1164,6 +1164,20 @@ export async function getEditorTemplateSettings(): Promise<TemplateSettingsRespo
   return request<TemplateSettingsResponse>('/editor/website/template')
 }
 
+/**
+ * Switch the tenant's ACTIVE template (the one that drives the public site).
+ * Used by the post-signup checkout picker so the chosen template actually
+ * sticks — provisioning seeds a default and the Stripe webhook only records
+ * the pick in the central subscriptions table, so this PUT is what makes the
+ * selection take effect on the tenant's site.
+ */
+export async function selectActiveTemplate(templateSlug: string): Promise<{ template_slug: string }> {
+  return request<{ template_slug: string }>('/editor/website/template/active', {
+    method: 'PUT',
+    body: JSON.stringify({ template_slug: templateSlug }),
+  })
+}
+
 export async function updateEditorTemplateSettings(
   settings: Partial<TemplateSettings>,
 ): Promise<TemplateSettingsResponse> {

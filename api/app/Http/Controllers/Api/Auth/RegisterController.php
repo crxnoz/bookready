@@ -33,7 +33,11 @@ class RegisterController extends Controller
             'email'          => ['required', 'email', 'unique:users,email'],
             'password'       => ['required', 'string', 'min:8', 'confirmed'],
             'business_name'  => ['required', 'string', 'max:100'],
-            'template'       => ['sometimes', 'string', 'in:the-fade-room'],
+            // Accept any of the real template slugs (dash-less canonical or
+            // the legacy "the-fade-room" form). Provisioning normalizes +
+            // re-validates via TemplateDefaults::normalizeSlug, so an unknown
+            // value still degrades safely to the default.
+            'template'       => ['sometimes', 'string', 'in:the-fade-room,thefaderoom,lushstudio,velvettheory,blackline,opaline'],
             // Explicit ToS acceptance — must be a truthy (1/true/yes/on)
             // boolean. Laravel's "accepted" rule covers all of these.
             'terms_accepted' => ['required', 'accepted'],

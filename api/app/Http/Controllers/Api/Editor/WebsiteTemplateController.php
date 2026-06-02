@@ -95,4 +95,68 @@ class WebsiteTemplateController extends Controller
             'settings'      => $merged,
         ]);
     }
+
+    /**
+     * PUT /editor/website/template/active
+     *
+     * Switch the tenant's active template. The post-signup checkout picker
+     * calls this so the template the owner selects actually drives the
+     * public site — provisioning seeds a default template_settings row at
+     * registration, and the Stripe webhook only records the choice in the
+     * central tenant_subscriptions table (which the public site never
+     * reads), so without this the picker was a no-op.
+     *
+     * When the slug actually changes we reseed settings_json + the
+     * website_sections skeleton from that template's defaults. A tenant
+     * switching templates is, in practice, a brand-new signup with no
+     * customizations to preserve, and a different template implies a
+     * different default layout + section set.
+     */
+    public function setTemplate(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'template_slug' => 'required|string|max:40',
+        ]);
+        $slug = TemplateDefaults::normalizeSlug($validated['template_slug']);
+
+        $tenant = Tenant::findOrFail($request->user()->tenant_id);
+        tenancy()->initialize($tenant);
+
+        $row         = $this->loadOrSeedRow();
+        $currentSlug = $row->template_slug ?: TemplateDefaults::DEFAULT_TEMPLATE_SLUG;
+
+        if ($currentSlug !== $slug) {
+            DB::table('template_settings')
+                ->where('id', $row->id)
+                ->update([
+                    'template_slug' => $slug,
+                    'settings_json' => json_encode(TemplateDefaults::settingsFor($slug)),
+                    'updated_at'    => now(),
+                ]);
+
+            // Reseed the section skeleton for the new template (single
+            // template per tenant, so it's safe to clear + reinsert).
+            $now  = now();
+            $rows = array_map(fn (array $s) => [
+                'template_slug' => $slug,
+                'section_key'   => $s['section_key'],
+                'section_type'  => $s['section_type'],
+                'title'         => $s['title'],
+                'subtitle'      => null,
+                'content_json'  => null,
+                'is_enabled'    => true,
+                'is_locked'     => $s['is_locked'],
+                'sort_order'    => $s['sort_order'],
+                'created_at'    => $now,
+                'updated_at'    => $now,
+            ], TemplateDefaults::sectionsFor($slug));
+
+            DB::table('website_sections')->delete();
+            DB::table('website_sections')->insert($rows);
+        }
+
+        tenancy()->end();
+
+        return response()->json(['template_slug' => $slug]);
+    }
 }

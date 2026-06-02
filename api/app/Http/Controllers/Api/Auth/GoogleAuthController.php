@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\PlatformMailer;
 use App\Services\TenantProvisioningService;
 use App\Support\AuthCookie;
+use App\Support\TemplateDefaults;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -230,10 +231,10 @@ class GoogleAuthController extends Controller
 
         $payload = $this->decodePayload($rawPayload);
         $businessName = trim((string) ($payload['business_name'] ?? ''));
-        $template     = (string) ($payload['template'] ?? 'the-fade-room');
-        if (! in_array($template, ['the-fade-room'], true)) {
-            $template = 'the-fade-room';
-        }
+        // Honor whatever template the user picked before "Continue with
+        // Google" (forwarded in the OAuth payload). normalizeSlug accepts
+        // every real template and degrades unknown values to the default.
+        $template     = TemplateDefaults::normalizeSlug($payload['template'] ?? null);
 
         // No business_name in the payload means the user clicked "Continue
         // with Google" from /register without typing one first. Stash the
@@ -354,10 +355,9 @@ class GoogleAuthController extends Controller
         }
 
         $businessName = trim($validated['business_name']);
-        $template     = (string) ($identity['template'] ?? 'the-fade-room');
-        if (! in_array($template, ['the-fade-room'], true)) {
-            $template = 'the-fade-room';
-        }
+        // Template chosen pre-OAuth was stashed in the handoff cache; accept
+        // any real slug, degrade unknown to the default.
+        $template     = TemplateDefaults::normalizeSlug($identity['template'] ?? null);
 
         $ownerName = trim((string) ($identity['name'] ?? ''))
             ?: explode('@', $email, 2)[0];

@@ -485,6 +485,10 @@ export const LUSH_CSS = `
   border-bottom:1px solid var(--lush-dark-border);
   overflow-x:auto;
   -webkit-overflow-scrolling:touch;
+  /* Keep the horizontal tab-scroll from bleeding into the browser's
+     back/forward swipe gesture on mobile (was a big part of the rail
+     "not working properly" on phones). */
+  overscroll-behavior-x:contain;
   scrollbar-width:none;
   padding:18px 0 24px;
 }
@@ -496,7 +500,13 @@ export const LUSH_CSS = `
   margin:0 auto;
   padding:0 24px;
   gap:8px;
-  scroll-snap-type:x mandatory;
+  /* proximity (not mandatory): mandatory snapping fought taps and
+     free-scroll on mobile (7 pills overflow a phone width), re-centering
+     pills mid-gesture so the strip felt stuck. proximity only snaps when
+     you're already near a snap point. scroll-padding keeps the first/last
+     pill off the very edge when snapped/scrolled into view. */
+  scroll-snap-type:x proximity;
+  scroll-padding-inline:24px;
 }
 /* Rounded outlined pills — hairline sage outline at 30% opacity on
    cream, uppercase Roboto micro 11px/0.20em. Active state fills the

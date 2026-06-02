@@ -77,6 +77,11 @@ function RegisterForm() {
         password: form.password,
         password_confirmation: form.password_confirmation,
         business_name: form.business_name,
+        // Seed the tenant with the template the user arrived with. The
+        // checkout step can still change it (and re-applies via
+        // selectActiveTemplate), but this makes the default correct when the
+        // user came in from a template gallery link (?template=…).
+        template: templateSlug,
         terms_accepted: termsAccepted,
       })
       setToken()

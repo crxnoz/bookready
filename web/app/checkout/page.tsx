@@ -2,17 +2,20 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { createCheckoutSession } from '@/lib/api'
+import { createCheckoutSession, selectActiveTemplate } from '@/lib/api'
 import { isLoggedIn } from '@/lib/auth'
 import { BillingCycle } from '@/lib/types'
 
 const TEMPLATE_KEY = 'br_template'
 
+// Must stay in sync with web/templates/registry.ts (the slugs that
+// actually render) and TemplateDefaults::KNOWN_SLUGS on the backend.
 const TEMPLATES = [
   { slug: 'velvettheory', label: 'Velvet Theory', desc: 'Editorial luxury — sharp, refined, deep tones', color: '#2D0F19' },
   { slug: 'thefaderoom', label: 'The Fade Room', desc: 'Dark editorial barbershop', color: '#0A0A0A' },
-  { slug: 'lushstudio', label: 'Lush Studio', desc: 'Clean feminine salon aesthetic', color: '#F3E8F0' },
-  { slug: 'cleanbeauty', label: 'Clean Beauty', desc: 'Minimal spa-inspired look', color: '#F8F8F6' },
+  { slug: 'blackline', label: 'Blackline', desc: 'Industrial editorial — stark, brutalist lines', color: '#141414' },
+  { slug: 'lushstudio', label: 'Lush Studio', desc: 'Soft feminine salon — sage & cream', color: '#F3E8F0' },
+  { slug: 'opaline', label: 'Opaline', desc: 'Luminous luxury spa — airy & pearlescent', color: '#E7EEF0' },
 ]
 
 const BILLING: {
@@ -60,6 +63,16 @@ function CheckoutForm() {
     setError('')
     setLoading(true)
     try {
+      // Apply the chosen template to the tenant's site BEFORE leaving for
+      // Stripe. Provisioning seeded a default at signup and the webhook only
+      // records the pick centrally, so this is what makes the selection
+      // actually drive the public site. Best-effort: a failure here must not
+      // block checkout (the template can still be changed in the editor).
+      try {
+        await selectActiveTemplate(template)
+      } catch {
+        /* non-fatal — proceed to checkout regardless */
+      }
       const { checkout_url } = await createCheckoutSession(billing, template)
       window.location.href = checkout_url
     } catch (err: unknown) {

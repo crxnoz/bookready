@@ -23,6 +23,26 @@ import { safeHref } from '@/lib/safeHref'
 import { tokensToCss } from '@bkrdy/platform'
 import BlacklineBooking from './BlacklineBooking'
 
+// ── Contact-href helper ──────────────────────────────────────────────────────
+// Mirrors Velvet Theory: normalize a bare phone/email/sms value to a scheme,
+// then run it through safeHref's allowlist. Used by the Message button (sms),
+// which has no profile fallback.
+const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i
+function ensureScheme(raw: string | null | undefined, fallback: 'tel' | 'mailto' | 'sms'): string | null {
+  if (!raw) return null
+  const v = raw.trim()
+  if (!v) return null
+  if (SCHEME_RE.test(v)) return v
+  if (v.startsWith('//')) return `https:${v}`
+  if (fallback === 'mailto' && v.includes('@')) return `mailto:${v}`
+  if (fallback === 'tel') return `tel:${v.replace(/[^\d+]/g, '')}`
+  if (fallback === 'sms') return `sms:${v.replace(/[^\d+]/g, '')}`
+  return v
+}
+function safeContactHref(raw: string | null | undefined, fallback: 'tel' | 'mailto' | 'sms'): string | null {
+  return safeHref(ensureScheme(raw, fallback)) ?? null
+}
+
 interface Props {
   site: PublicSite
   slug: string
@@ -103,6 +123,10 @@ export default function BlacklineTemplate({ site, slug }: Props) {
   // Book is always shown (the booking flow is the template's whole point);
   // other tabs respect editor toggles.
   const visibleTabs = allTabs.filter(t => t.id === 'book' || enabledByTab[t.id])
+
+  // Resolved tab labels keyed by TabId — reused as each tabbed section's
+  // eyebrow so editing a tab name in the editor renames its eyebrow too.
+  const tabLabel = allTabs.reduce((acc, t) => { acc[t.id] = t.label; return acc }, {} as Record<TabId, string>)
 
   function goBook() {
     setActive('book')
@@ -187,7 +211,7 @@ export default function BlacklineTemplate({ site, slug }: Props) {
           <div className={`blackline-tab-panel${active === 'gallery' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'gallery'}>
             <section className="blackline-section" aria-label={tabs.gallery_label ?? 'Gallery'}>
-              <p className="blackline-eyebrow">Work</p>
+              <p className="blackline-eyebrow">{tabLabel.gallery}</p>
               <h2 className="blackline-section-title">{tabs.gallery_label ?? 'Gallery'}</h2>
               {gallery.length === 0 ? (
                 <p className="blackline-empty">No gallery items yet.</p>
@@ -209,7 +233,7 @@ export default function BlacklineTemplate({ site, slug }: Props) {
           <div className={`blackline-tab-panel${active === 'results' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'results'}>
             <section className="blackline-section" aria-label={tabs.results_label ?? 'Results'}>
-              <p className="blackline-eyebrow">Before / After</p>
+              <p className="blackline-eyebrow">{tabLabel.results}</p>
               <h2 className="blackline-section-title">{tabs.results_label ?? 'Results'}</h2>
               {results.length === 0 ? (
                 <p className="blackline-empty">No results yet.</p>
@@ -232,7 +256,7 @@ export default function BlacklineTemplate({ site, slug }: Props) {
           <div className={`blackline-tab-panel${active === 'about' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'about'}>
             <section className="blackline-section blackline-about" aria-label={tabs.about_label ?? 'About'}>
-              {about.eyebrow && <p className="blackline-eyebrow">{about.eyebrow}</p>}
+              <p className="blackline-eyebrow">{about.eyebrow || tabLabel.about}</p>
               <h2 className="blackline-section-title">{about.heading ?? 'The Shop'}</h2>
               {about.body && <p className="blackline-about-body">{about.body}</p>}
               {Array.isArray(about.highlights) && about.highlights.length > 0 && (
@@ -254,7 +278,7 @@ export default function BlacklineTemplate({ site, slug }: Props) {
           <div className={`blackline-tab-panel${active === 'policy' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'policy'}>
             <section className="blackline-section" aria-label={tabs.policy_label ?? 'House Rules'}>
-              <p className="blackline-eyebrow">House Rules</p>
+              <p className="blackline-eyebrow">{tabLabel.policy}</p>
               <h2 className="blackline-section-title">{tabs.policy_label ?? 'Policy'}</h2>
               <div className="blackline-policy-stack">
                 <PolicyRow label="Deposit"      body={policies.deposit_policy} />
@@ -276,7 +300,7 @@ export default function BlacklineTemplate({ site, slug }: Props) {
           <div className={`blackline-tab-panel${active === 'advice' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'advice'}>
             <section className="blackline-section" aria-label={tabs.advice_label ?? 'Notes'}>
-              <p className="blackline-eyebrow">Notes</p>
+              <p className="blackline-eyebrow">{tabLabel.advice}</p>
               <h2 className="blackline-section-title">{settings.advice?.heading ?? 'Advice'}</h2>
               {advice.length === 0 ? (
                 <p className="blackline-empty">No notes yet.</p>
@@ -299,7 +323,7 @@ export default function BlacklineTemplate({ site, slug }: Props) {
           <div className={`blackline-tab-panel${active === 'timeline' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'timeline'}>
             <section className="blackline-section" aria-label={tabs.timeline_label ?? 'Process'}>
-              <p className="blackline-eyebrow">Process</p>
+              <p className="blackline-eyebrow">{tabLabel.timeline}</p>
               <h2 className="blackline-section-title">{settings.timeline?.heading ?? 'Timeline'}</h2>
               {timeline.length === 0 ? (
                 <p className="blackline-empty">No timeline yet.</p>
@@ -365,8 +389,9 @@ export default function BlacklineTemplate({ site, slug }: Props) {
             <p className="blackline-eyebrow">Outro</p>
             <h2 className="blackline-section-title">{additionals.thank_you_title}</h2>
             {additionals.thank_you_body && <p>{additionals.thank_you_body}</p>}
-            {/* Studio signature — borrowed from VT's outro pattern. */}
-            <p className="blackline-thanks-sign">— {display}</p>
+            {/* Studio signature — borrowed from VT's outro pattern. Editable
+                via additionals.thank_you_signature; falls back to the name. */}
+            <p className="blackline-thanks-sign">— {(typeof additionals.thank_you_signature === 'string' && additionals.thank_you_signature.trim()) || display}</p>
           </section>
         )}
 
@@ -393,7 +418,13 @@ function SocialButtons({ header, profile, goBook }: { header: any; profile: any;
     { key: 'book',       href: header.book_button_url || '#book', label: 'Reserve' },
     { key: 'call',       href: header.call_button_url       || (profile?.public_phone ? `tel:${profile.public_phone}` : null), label: 'Call' },
     { key: 'email',      href: header.email_button_url      || (profile?.public_email ? `mailto:${profile.public_email}` : null), label: 'Email' },
+    { key: 'message',    href: safeContactHref(header.message_button_url, 'sms'), label: 'Message' },
     { key: 'instagram',  href: header.instagram_button_url  || profile?.instagram_url || null, label: 'Instagram' },
+    { key: 'tiktok',     href: safeHref(header.tiktok_button_url)    ?? null, label: 'TikTok' },
+    { key: 'youtube',    href: safeHref(header.youtube_button_url)   ?? null, label: 'YouTube' },
+    { key: 'facebook',   href: safeHref(header.facebook_button_url)  ?? null, label: 'Facebook' },
+    { key: 'pinterest',  href: safeHref(header.pinterest_button_url) ?? null, label: 'Pinterest' },
+    { key: 'whatsapp',   href: safeHref(header.whatsapp_button_url)  ?? null, label: 'WhatsApp' },
     { key: 'directions', href: header.directions_button_url || null, label: 'Directions' },
   ]
   const visible = btns.filter(b => header[`show_${b.key}_button`] !== false && b.href)
