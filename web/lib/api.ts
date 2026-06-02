@@ -352,18 +352,75 @@ export async function rescheduleManageBooking(
 
 // ── Billing ───────────────────────────────────────────────────────────────────
 
+/**
+ * Create a Stripe Checkout Session. Accepts the new 18-SKU model
+ * (plan + sms_mult + billing_cycle); legacy callers without plan
+ * still work via the env-var fallback on the backend.
+ */
 export async function createCheckoutSession(
   billingCycle: BillingCycle,
   templateSlug: string,
+  opts?: { plan?: 'solo' | 'studio' | 'salon'; smsMult?: 1 | 2 | 3 },
 ): Promise<CheckoutResponse> {
   return request<CheckoutResponse>('/billing/checkout', {
     method: 'POST',
-    body: JSON.stringify({ billing_cycle: billingCycle, template_slug: templateSlug }),
+    body: JSON.stringify({
+      billing_cycle: billingCycle,
+      template_slug: templateSlug,
+      plan:          opts?.plan,
+      sms_mult:      opts?.smsMult,
+    }),
   })
 }
 
 export async function getCheckoutSession(sessionId: string): Promise<CheckoutSessionData> {
   return request<CheckoutSessionData>(`/billing/checkout-session/${sessionId}`)
+}
+
+/**
+ * Plan catalog — drives the editor billing UI + the upgrade dialog.
+ * Same shape as config/plans.php on the backend.
+ */
+export interface BillingPlan {
+  label:                string
+  description:          string
+  sms_base:             number
+  staff_seats:          number
+  allow_custom_domain:  boolean
+  monthly_base_cents:   number
+  annual_base_cents:    number
+  featured?:            boolean
+  waitlist?:            boolean
+}
+
+export interface BillingPlansResponse {
+  plans:             Record<'solo' | 'studio' | 'salon', BillingPlan>
+  sms_multipliers:   Record<'1' | '2' | '3', { uplift_cents: number; label: string; sms_factor: number }>
+  cycles:            Record<'monthly' | 'annual', { interval: string; interval_count: number; label: string }>
+  sms_overage_cents: number
+}
+
+export async function getBillingPlans(): Promise<BillingPlansResponse> {
+  return request<BillingPlansResponse>('/billing/plans')
+}
+
+export interface BillingSubscription {
+  subscribed:     boolean
+  on_trial:       boolean
+  trial_ends:     string | null
+  subscription:   { id: string; stripe_id: string; stripe_status: string; ends_at: string | null } | null
+  plan:           'solo' | 'studio' | 'salon' | null
+  sms_mult:       1 | 2 | 3 | null
+  sms_included:   number
+  billing_cycle:  'monthly' | 'annual' | null
+}
+
+export async function getBillingSubscription(): Promise<BillingSubscription> {
+  return request<BillingSubscription>('/billing/subscription')
+}
+
+export async function getBillingPortalUrl(): Promise<{ url: string }> {
+  return request<{ url: string }>('/billing/portal')
 }
 
 // ── Editor ────────────────────────────────────────────────────────────────────

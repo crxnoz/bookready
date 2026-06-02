@@ -165,11 +165,12 @@ Route::prefix('v1')->group(function () {
     });
 
     // ── Billing / subscription management ─────────────────────────────────
-    // Note: `plans` was previously wired here but BillingController::plans
-    // was never implemented (every request 500'd with a method-not-found).
-    // No frontend code calls it, so the route is removed rather than left
-    // as a noisy honeypot. Re-add it when there's an actual implementation.
     Route::middleware(['auth:sanctum', 'verified_email', 'tenant_owner'])->prefix('billing')->group(function () {
+        // Plan catalog — pulls from config/plans.php (3 plans × 3 SMS mults
+        // × 2 cycles = 18 SKUs). Returned to the editor billing page +
+        // the upgrade dialog so the same shape drives both the marketing
+        // site and the in-app picker.
+        Route::get('plans',                              [BillingController::class, 'plans']);
         Route::post('checkout',                          [BillingController::class, 'checkout']);
         Route::get('checkout-session/{sessionId}',       [BillingController::class, 'checkoutSession']);
         Route::get('portal',                             [BillingController::class, 'portal']);
