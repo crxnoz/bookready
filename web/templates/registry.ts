@@ -19,6 +19,7 @@ const REGISTRY: Record<string, TemplateLoader> = {
   thefaderoom:  () => import('./thefaderoom/TheFadeRoomTemplate'),
   lushstudio:   () => import('./lushstudio/LushStudioTemplate'),
   velvettheory: () => import('./velvettheory/VelvetTheoryTemplate'),
+  blackline:    () => import('./blackline/BlacklineTemplate'),
 }
 
 /**
@@ -32,6 +33,7 @@ const MANIFESTS: Record<string, ManifestLoader> = {
   thefaderoom:  () => import('./thefaderoom/manifest'),
   lushstudio:   () => import('./lushstudio/manifest'),
   velvettheory: () => import('./velvettheory/manifest'),
+  blackline:    () => import('./blackline/manifest'),
 }
 
 export function resolveTemplate(site: PublicSite): TemplateLoader | null {

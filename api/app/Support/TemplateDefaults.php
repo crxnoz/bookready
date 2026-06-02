@@ -19,6 +19,7 @@ class TemplateDefaults
             'thefaderoom'  => self::theFadeRoomSettings(),
             'lushstudio'   => self::lushStudioSettings(),
             'velvettheory' => self::velvetTheorySettings(),
+            'blackline'    => self::blacklineSettings(),
             default        => self::theFadeRoomSettings(),
         };
     }
@@ -29,6 +30,7 @@ class TemplateDefaults
             'thefaderoom'  => self::theFadeRoomSections(),
             'lushstudio'   => self::lushStudioSections(),
             'velvettheory' => self::velvetTheorySections(),
+            'blackline'    => self::blacklineSections(),
             default        => self::theFadeRoomSections(),
         };
     }
@@ -260,6 +262,63 @@ class TemplateDefaults
     }
 
     private static function velvetTheorySections(): array
+    {
+        return self::theFadeRoomSections();
+    }
+
+    // ─── Blackline ──────────────────────────────────────────────────────────────
+    //
+    // Sleek industrial-modern barbershop. Voice: clipped, technical, no
+    // nostalgia. Heavy canvas (onyx default) with a brass-hardware accent.
+
+    private static function blacklineSettings(): array
+    {
+        $base = self::theFadeRoomSettings();
+        $base['header']['announcement_text'] = 'Walk-ins by request. Booking is the cleanest path.';
+        $base['tabs'] = [
+            'book_label'     => 'Reserve',
+            'gallery_label'  => 'Work',
+            'policy_label'   => 'House Rules',
+            'about_label'    => 'The Shop',
+            'results_label'  => 'Before / After',
+            'advice_label'   => 'Notes',
+            'timeline_label' => 'Process',
+        ];
+        $base['about'] = [
+            'heading'    => 'The Shop',
+            'eyebrow'    => 'The Floor',
+            'body'       => 'We cut by appointment in a quiet room with sharp tools and a steady chair. No mood music, no upsell — just the work, done clean.',
+            'highlights' => [
+                ['title' => 'Sharp tools',  'body' => 'Straight razors and clippers tuned for the cut, sterilized between every chair.'],
+                ['title' => 'Steady chair', 'body' => 'Single barber, single client at a time. We move at the pace the work asks for.'],
+            ],
+            'images'     => [null, null, null],
+        ];
+        $base['advice'] = [
+            'heading'     => 'Notes',
+            'card_kicker' => '',
+            'items'       => [
+                ['title' => 'Come clean',        'body' => 'Wash your hair the morning of. Product-free cuts cleanest.'],
+                ['title' => 'Bring a photo',     'body' => 'A reference — even a rough one — gets us aligned in seconds.'],
+                ['title' => 'Stay between visits','body' => 'A quick maintenance trim every 3 weeks keeps the line clean.'],
+                ['title' => 'Book the cadence',  'body' => 'Standing slots open first. Hold yours by booking the next one before you leave.'],
+            ],
+        ];
+        $base['timeline'] = [
+            'heading'     => 'Process',
+            'card_kicker' => '',
+            'items'       => [
+                ['title' => 'Pick the service',  'body' => 'Choose the cut you want.'],
+                ['title' => 'Lock the time',     'body' => 'Available slots only — no waitlist guesswork.'],
+                ['title' => 'Send the brief',    'body' => 'Drop your contact and any notes on the cut.'],
+                ['title' => 'Take the seat',     'body' => 'Confirmation lands in your inbox. Show up ready.'],
+            ],
+        ];
+        $base['footer']['subtext'] = 'By appointment. Doors at the hour, not before.';
+        return $base;
+    }
+
+    private static function blacklineSections(): array
     {
         return self::theFadeRoomSections();
     }
