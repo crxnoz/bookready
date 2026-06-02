@@ -1052,7 +1052,7 @@ const TFR_CSS = `
 }
 .tfr-policy h3 {
   background: color-mix(in srgb, var(--tfr-accent) 14%, transparent);
-  color: var(--tfr-accent);
+  color: var(--tfr-fg);
   padding: 18px 24px;
   margin: 0;
   font-family: var(--tfr-body);
@@ -1063,8 +1063,7 @@ const TFR_CSS = `
   display: flex;
   align-items: center;
   white-space: nowrap;
-  /* Subtle right divider between the tag and the body — replaces the
-     solid-pink-block boundary with a hairline accent at low opacity. */
+  /* Hairline accent divider between the tag and body. */
   border-right: 1px solid color-mix(in srgb, var(--tfr-accent) 24%, transparent);
 }
 .tfr-policy p {
