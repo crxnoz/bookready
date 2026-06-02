@@ -581,60 +581,70 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
           )}
         </section>
 
-        {/* ── Footer: Reserve CTA, contact info, colophon ── */}
+        {/* ── Footer: 3-band layout mirroring TFR + Blackline.
+              Top band — CTA. Middle band — 3 columns (brand/hours/contact).
+              Bottom band — Powered by BookReady. VT keeps its own
+              typography vocabulary (Fraunces serif + gold accent +
+              uppercase eyebrows) inside that shared structure. ── */}
         <footer className="vt-footer">
+          {footerSettings.show_quick_book !== false && services.length > 0 && (
+            <div className="vt-footer-cta-band">
+              <button type="button" className="vt-footer-book" onClick={goBook}>
+                Reserve a chair
+              </button>
+            </div>
+          )}
+
           <div className="vt-footer-inner">
+            <div className="vt-footer-col vt-footer-brand">
+              <p className="vt-eyebrow">The Studio</p>
+              <p className="vt-footer-name">{displayName}</p>
+              {footerSettings.subtext && (
+                <p className="vt-footer-subtext">{footerSettings.subtext}</p>
+              )}
+            </div>
 
-            {/* Book CTA — same typography as the hero CTA */}
-            <button type="button" className="vt-link-cta vt-footer-cta" onClick={goBook}>
-              Reserve
-            </button>
-
-            {/* Hours — moved into the footer so business info reads as one
-                contiguous block at the bottom of the page rather than two
-                competing sections. */}
-            {hours.length > 0 && (
-              <dl className="vt-footer-hours">
-                {hours.map((h: any) => (
-                  <div key={h.id} className="vt-footer-hours-row">
-                    <dt>{h.day_name}</dt>
-                    <dd>
-                      {h.is_open && h.open_time && h.close_time
-                        ? `${fmt12(h.open_time)} — ${fmt12(h.close_time)}`
-                        : 'Closed'}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            )}
-
-            {/* Contact info strip */}
-            {(address || p?.public_phone || p?.public_email) && (
-              <div className="vt-footer-contact">
-                {address && <span>{address}</span>}
-                {p?.public_phone && (() => {
-                  const tel = `tel:${p.public_phone.replace(/[^\d+]/g, '')}`
-                  return <a href={tel}>{p.public_phone}</a>
-                })()}
-                {p?.public_email && (
-                  <a href={`mailto:${p.public_email}`}>{p.public_email}</a>
-                )}
+            {footerSettings.show_hours !== false && hours.length > 0 && (
+              <div className="vt-footer-col vt-footer-col--hours">
+                <p className="vt-eyebrow">Hours</p>
+                <dl className="vt-footer-hours">
+                  {hours.map((h: any) => (
+                    <div key={h.id} className="vt-footer-hours-row">
+                      <dt>{h.day_name}</dt>
+                      <dd>
+                        {h.is_open && h.open_time && h.close_time
+                          ? `${fmt12(h.open_time)} — ${fmt12(h.close_time)}`
+                          : 'Closed'}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
               </div>
             )}
 
-            {/* Colophon */}
-            <div className="vt-footer-meta">
-              <span>Velvet Theory</span>
-              <span className="vt-footer-dot">·</span>
-              <span>&copy; {new Date().getFullYear()} {displayName}</span>
-              {footerSettings.show_powered_by !== false && (
-                <>
-                  <span className="vt-footer-dot">·</span>
-                  <span>Powered by BookReady</span>
-                </>
-              )}
-            </div>
+            {footerSettings.show_contact_links !== false
+              && (address || p?.public_phone || p?.public_email) && (
+              <div className="vt-footer-col">
+                <p className="vt-eyebrow">Contact</p>
+                <ul className="vt-footer-contact">
+                  {address && <li>{address}</li>}
+                  {p?.public_phone && (() => {
+                    const tel = `tel:${p.public_phone.replace(/[^\d+]/g, '')}`
+                    return <li><a href={tel}>{p.public_phone}</a></li>
+                  })()}
+                  {p?.public_email && (
+                    <li><a href={`mailto:${p.public_email}`}>{p.public_email}</a></li>
+                  )}
+                </ul>
+              </div>
+            )}
           </div>
+
+          {footerSettings.show_powered_by !== false && (
+            <div className="vt-footer-credit-band">
+              <p>Powered by BookReady</p>
+            </div>
+          )}
         </footer>
       </div>
     </>
@@ -1491,86 +1501,149 @@ const VT_CSS = `
 .vt-review-location { opacity: 0.62; }
 .vt-review-location::before { content: "·"; margin-right: 8px; opacity: 0.6; }
 
-/* ── Footer: Reserve CTA + hours + contact info + colophon ── */
+/* ── Footer: 3-band layout (CTA band / 3-col content / credit band)
+   mirrors the structure TFR + Blackline use, dressed in VT's vocabulary:
+   Fraunces serif business name, uppercase Inter eyebrows, gold hairline
+   between bands, ALL CAPS Reserve CTA with gold underline. ── */
 .vt-footer {
   border-top: 1px solid var(--vt-rule);
-  padding: 56px 24px 32px;
   margin-top: 32px;
 }
+
+/* Top band — gold-on-burgundy Reserve action, centered. */
+.vt-footer-cta-band {
+  padding: 56px 24px;
+  text-align: center;
+  border-bottom: 1px solid var(--vt-rule);
+}
+.vt-footer-book {
+  display: inline-flex;
+  align-items: center;
+  padding: 18px 44px;
+  font-family: var(--vt-body);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  background: var(--vt-accent);
+  color: var(--vt-bg);
+  border: 1px solid var(--vt-accent);
+  cursor: pointer;
+  transition: opacity 160ms ease;
+}
+.vt-footer-book:hover { opacity: 0.86; }
+
+/* Middle band — 3 information columns. Sharp edges + gold hairline
+   dividers on PC, single column stack on mobile. */
 .vt-footer-inner {
   max-width: 1080px;
   margin: 0 auto;
+  padding: 72px 24px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 48px;
+}
+@media (min-width: 720px) {
+  .vt-footer-inner {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0;
+  }
+  .vt-footer-col {
+    padding: 0 40px;
+  }
+  .vt-footer-col:first-child { padding-left: 0; }
+  .vt-footer-col:last-child  { padding-right: 0; }
+  .vt-footer-col + .vt-footer-col {
+    border-left: 1px solid var(--vt-rule);
+  }
+}
+.vt-footer-col {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 36px;
-  text-align: center;
+  gap: 14px;
 }
-.vt-footer-cta {
-  /* Inherits the gold-underlined Fraunces styling from .vt-link-cta. */
+.vt-footer-brand { gap: 10px; }
+.vt-footer-col--hours { min-width: 260px; }
+.vt-footer-name {
+  font-family: var(--vt-display);
+  font-style: italic;
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  margin: 0;
+  color: var(--vt-fg);
 }
+.vt-footer-subtext {
+  margin: 0;
+  color: var(--vt-fg-muted);
+  font-family: var(--vt-body);
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 32ch;
+}
+
+/* Hours column — day / time grid rows divided by gold hairlines. */
 .vt-footer-hours {
-  width: 100%;
-  max-width: 480px;
   display: flex;
   flex-direction: column;
-  text-align: left;
+  margin: 0;
 }
 .vt-footer-hours-row {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 16px;
-  padding: 12px 0;
+  padding: 10px 0;
   border-top: 1px solid var(--vt-rule);
   font-family: var(--vt-body);
   font-size: 12px;
   letter-spacing: 0.04em;
 }
-.vt-footer-hours-row:first-child { border-top: 0; }
+.vt-footer-hours-row:first-child { border-top: 0; padding-top: 0; }
 .vt-footer-hours-row dt {
   font-weight: 500;
   color: var(--vt-fg);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-size: 11px;
+  margin: 0;
 }
 .vt-footer-hours-row dd {
   color: var(--vt-fg-muted);
+  margin: 0;
 }
+
+/* Contact column — same lookup-list rhythm as hours. */
 .vt-footer-contact {
+  list-style: none;
+  padding: 0;
+  margin: 0;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px 28px;
-  width: 100%;
-  padding: 28px 0;
-  border-top: 1px solid var(--vt-rule);
-  border-bottom: 1px solid var(--vt-rule);
+  flex-direction: column;
+  gap: 8px;
   font-family: var(--vt-body);
-  font-size: 12px;
-  line-height: 1.7;
+  font-size: 13px;
   color: var(--vt-fg);
-  opacity: 0.85;
 }
 .vt-footer-contact a {
   color: var(--vt-fg);
   transition: color 160ms ease;
 }
 .vt-footer-contact a:hover { color: var(--vt-accent); }
-.vt-footer-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
+
+/* Bottom band — Powered by BookReady hairline strip. */
+.vt-footer-credit-band {
+  padding: 18px 24px;
+  border-top: 1px solid var(--vt-rule);
+  text-align: center;
+}
+.vt-footer-credit-band p {
+  margin: 0;
   font-family: var(--vt-body);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.22em;
+  font-size: 11px;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--vt-fg-muted);
 }
-.vt-footer-dot { color: var(--vt-accent); }
 
 /* Mobile tweaks (tab-specific rules live in the .vt-tabs block above) */
 @media (max-width: 640px) {

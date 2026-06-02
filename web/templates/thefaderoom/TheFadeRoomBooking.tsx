@@ -64,6 +64,26 @@ const TFR_BOOKING_CSS = `
   padding: 0;
 }
 
+/* "Reserve Your Appointment" headline from the platform booking flow.
+   Pull it into TFR's vocabulary: white Dancing Script with the same
+   neon halo every other section title carries. The h2 lives inside
+   .brk-booking-head from the platform shim — we don't control the
+   markup, but we own the cascade. */
+.tfr-booking-inner.lush-template .brk-booking-head h2 {
+  font-family: 'Dancing Script', 'Pacifico', cursive !important;
+  font-weight: 700 !important;
+  font-size: clamp(40px, 5vw, 64px) !important;
+  line-height: 1.05 !important;
+  letter-spacing: 0 !important;
+  color: #fff !important;
+  text-shadow:
+    0 0 6px var(--tfr-accent),
+    0 0 14px var(--tfr-accent),
+    0 0 30px var(--tfr-accent),
+    0 0 56px color-mix(in srgb, var(--tfr-accent) 80%, transparent) !important;
+  text-transform: none !important;
+}
+
 /* Auth widgets — tight to the form body. */
 .tfr-booking-inner.lush-template .lush-account-widget,
 .tfr-booking-inner.lush-template .brk-booking-auth-thin {
