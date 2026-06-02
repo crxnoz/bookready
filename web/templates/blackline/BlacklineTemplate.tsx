@@ -415,8 +415,16 @@ function Footer({ site, hours, services, goBook }: { site: PublicSite; hours: an
   const name        = footer.business_name_override ?? p?.business_name ?? site.business_name ?? site.slug
   return (
     <footer className="blackline-footer">
+      {footer.show_quick_book !== false && services.length > 0 && (
+        <div className="blackline-footer-cta-band">
+          <button type="button" className="blackline-footer-book" onClick={goBook}>
+            Reserve the chair
+          </button>
+        </div>
+      )}
+
       <div className="blackline-footer-inner">
-        <div className="blackline-footer-brand">
+        <div className="blackline-footer-col blackline-footer-brand">
           <p className="blackline-eyebrow">The Shop</p>
           <p className="blackline-footer-name">{name}</p>
           {footer.subtext && <p className="blackline-footer-subtext">{footer.subtext}</p>}
@@ -445,16 +453,12 @@ function Footer({ site, hours, services, goBook }: { site: PublicSite; hours: an
             </ul>
           </div>
         )}
-
-        {footer.show_quick_book !== false && services.length > 0 && (
-          <div className="blackline-footer-col blackline-footer-cta-col">
-            <button type="button" className="blackline-footer-book" onClick={goBook}>Quick book</button>
-          </div>
-        )}
       </div>
 
       {footer.show_powered_by !== false && (
-        <p className="blackline-footer-credit">Powered by BookReady</p>
+        <div className="blackline-footer-credit-band">
+          <p>Powered by BookReady</p>
+        </div>
       )}
     </footer>
   )
@@ -885,45 +889,75 @@ const BLACKLINE_CSS = `
   line-height: 1.65;
 }
 
-/* Footer */
+/* ── Footer ── */
+/* Banded layout: brass CTA band → informational columns → credit band.
+   Each band spans full width; the columns inside content-band live in
+   the standard container-narrow. Hairline brass between bands and
+   between columns gives the editorial structure. */
 .blackline-footer {
-  border-top: 1px solid var(--blackline-rule);
-  padding: var(--brk-space-3xl) var(--brk-space-md) var(--brk-space-xl);
   margin-top: var(--brk-space-3xl);
+  border-top: 1px solid var(--blackline-rule);
 }
+
+/* CTA band — bold brass action centered above the columns. Replaces the
+   old "Quick Book pill jammed into a narrow right column" arrangement
+   which read as a layout afterthought. */
+.blackline-footer-cta-band {
+  padding: var(--brk-space-2xl) var(--brk-space-md);
+  text-align: center;
+  border-bottom: 1px solid var(--blackline-rule);
+}
+
+/* Informational columns. auto-fit so 1, 2, or 3 visible columns always
+   share the container width evenly without leaving phantom gaps.
+   Hairline brass left-border between adjacent columns gives the band
+   structure without relying on each column having identical content
+   heights. */
 .blackline-footer-inner {
   max-width: var(--brk-container-narrow);
   margin: 0 auto;
+  padding: var(--brk-space-3xl) var(--brk-space-md);
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--brk-space-2xl);
 }
 @media (min-width: 720px) {
-  .blackline-footer-inner { grid-template-columns: 2fr 1fr 1fr 1fr; }
+  .blackline-footer-inner {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0;
+  }
+  .blackline-footer-col {
+    padding-right: var(--brk-space-2xl);
+  }
+  .blackline-footer-col + .blackline-footer-col {
+    padding-left: var(--brk-space-2xl);
+    padding-right: 0;
+    border-left: 1px solid var(--blackline-rule);
+  }
 }
-.blackline-footer-brand {
+.blackline-footer-col {
   display: flex;
   flex-direction: column;
-  gap: var(--brk-space-sm);
+  gap: var(--brk-space-md);
 }
+.blackline-footer-brand { gap: var(--brk-space-sm); }
 .blackline-footer-name {
   font-family: var(--blackline-display);
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 500;
+  letter-spacing: -0.015em;
   margin: 0;
 }
 .blackline-footer-subtext {
   margin: 0;
   color: var(--blackline-fg-muted);
-  max-width: 36ch;
+  max-width: 32ch;
+  line-height: 1.55;
 }
-.blackline-footer-col {
-  display: flex;
-  flex-direction: column;
-  gap: var(--brk-space-sm);
-}
-.blackline-footer-cta-col { justify-content: flex-end; align-items: flex-start; }
-.blackline-footer-hours, .blackline-footer-contact {
+
+/* Hours + contact lists */
+.blackline-footer-hours,
+.blackline-footer-contact {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -934,44 +968,54 @@ const BLACKLINE_CSS = `
 .blackline-footer-hours li {
   display: flex;
   justify-content: space-between;
+  gap: var(--brk-space-md);
   font-size: 13px;
   color: var(--blackline-fg-muted);
+  font-variant-numeric: tabular-nums;
 }
 .blackline-footer-hours li > span:last-child {
   font-family: var(--blackline-display);
   letter-spacing: 0.04em;
   color: var(--blackline-fg);
 }
-.blackline-footer-contact a { color: var(--blackline-fg); transition: color 160ms ease; }
+.blackline-footer-contact { font-size: 14px; }
+.blackline-footer-contact a {
+  color: var(--blackline-fg);
+  transition: color 160ms ease;
+}
 .blackline-footer-contact a:hover { color: var(--blackline-accent); }
 
+/* Brass CTA button — sized for the band (large hit area, generous padding). */
 .blackline-footer-book {
-  display: inline-block;
-  padding: 14px 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 18px 44px;
   font-family: var(--blackline-body);
   font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.28em;
   text-transform: uppercase;
   background: var(--blackline-accent);
   color: var(--blackline-bg);
+  border: 1px solid var(--blackline-accent);
+  cursor: pointer;
   transition: opacity 160ms ease;
 }
 .blackline-footer-book:hover { opacity: 0.86; }
 
-.blackline-footer-credit {
+/* Credit band — final hairline-bordered strip with the Powered By line. */
+.blackline-footer-credit-band {
+  padding: var(--brk-space-md);
+  border-top: 1px solid var(--blackline-rule);
+  text-align: center;
+}
+.blackline-footer-credit-band p {
   font-family: var(--blackline-body);
   font-size: 11px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--blackline-fg-muted);
-  text-align: center;
-  margin: var(--brk-space-2xl) 0 0;
-  padding-top: var(--brk-space-lg);
-  border-top: 1px solid var(--blackline-rule);
-  max-width: var(--brk-container-narrow);
-  margin-left: auto;
-  margin-right: auto;
+  margin: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
