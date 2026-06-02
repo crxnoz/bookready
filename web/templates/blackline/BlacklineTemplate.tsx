@@ -138,7 +138,7 @@ export default function BlacklineTemplate({ site, slug }: Props) {
             {p?.business_type && (
               <p className="blackline-business-type">{p.business_type}</p>
             )}
-            <SocialButtons header={header} profile={p} />
+            <SocialButtons header={header} profile={p} goBook={goBook} />
           </div>
         </header>
 
@@ -387,7 +387,7 @@ function PolicyRow({ label, body }: { label: string; body?: string | null }) {
   )
 }
 
-function SocialButtons({ header, profile }: { header: any; profile: any }) {
+function SocialButtons({ header, profile, goBook }: { header: any; profile: any; goBook: () => void }) {
   const btns: { key: string; href: string | null; label: string }[] = [
     { key: 'book',       href: header.book_button_url || '#book', label: 'Reserve' },
     { key: 'call',       href: header.call_button_url       || (profile?.public_phone ? `tel:${profile.public_phone}` : null), label: 'Call' },
@@ -399,11 +399,20 @@ function SocialButtons({ header, profile }: { header: any; profile: any }) {
   if (visible.length === 0) return null
   return (
     <nav className="blackline-social" aria-label="Contact">
-      {visible.map(b => (
-        <a key={b.key} href={safeHref(b.href!)} className="blackline-social-btn">
-          {b.label}
-        </a>
-      ))}
+      {visible.map(b => {
+        // The Reserve button isn't a real anchor — there's no element with
+        // id="book" in the DOM. The tab pill IS the canonical "switch to
+        // Book" trigger. Intercept the click so the header button drives
+        // setActive + scroll into the tab rail.
+        const onClick = b.key === 'book' && !header.book_button_url
+          ? (e: React.MouseEvent<HTMLAnchorElement>) => { e.preventDefault(); goBook() }
+          : undefined
+        return (
+          <a key={b.key} href={safeHref(b.href!)} className="blackline-social-btn" onClick={onClick}>
+            {b.label}
+          </a>
+        )
+      })}
     </nav>
   )
 }
@@ -926,12 +935,16 @@ const BLACKLINE_CSS = `
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 0;
   }
+  /* Every column gets symmetric horizontal padding so middle columns
+     have breathing room on BOTH sides of the brass dividers. First
+     column drops its left pad (sits at the container edge); last column
+     drops its right pad. */
   .blackline-footer-col {
-    padding-right: var(--brk-space-2xl);
+    padding: 0 var(--brk-space-2xl);
   }
+  .blackline-footer-col:first-child { padding-left: 0; }
+  .blackline-footer-col:last-child  { padding-right: 0; }
   .blackline-footer-col + .blackline-footer-col {
-    padding-left: var(--brk-space-2xl);
-    padding-right: 0;
     border-left: 1px solid var(--blackline-rule);
   }
 }
