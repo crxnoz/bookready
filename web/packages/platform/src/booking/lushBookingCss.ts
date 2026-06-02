@@ -1183,7 +1183,37 @@ export const LUSH_CSS = `
 .brk-booking-success-note { font-size:12px; color:var(--lush-muted); margin:0; }
 
 /* ── Gallery ── */
-.lush-gallery-section { width:100%; padding:0 0 clamp(64px,8vw,110px); background:var(--lush-bg); overflow:hidden; }
+/* ── Shared tab header ── Every Lush tab opens with the same eyebrow +
+   Cookie script section title pair so the tabs read as a consistent
+   family. Mirrors the trio's eyebrow + h2 pattern (TFR/Blackline/VT all
+   ship this) but in Lush vocabulary: sage Roboto micro caps eyebrow +
+   big Cookie script heading on cream. */
+.lush-tab-header {
+  max-width: 720px;
+  margin: 0 auto 48px;
+  padding: 56px 24px 0;
+  text-align: center;
+}
+.lush-eyebrow {
+  margin: 0;
+  font-family: var(--lush-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--lush-pink);
+}
+.lush-section-title {
+  margin: 14px 0 0;
+  font-family: var(--lush-script);
+  font-weight: 400;
+  font-size: clamp(52px, 8vw, 72px);
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--lush-text);
+}
+
+.lush-gallery-section { width:100%; max-width:1080px; margin:0 auto; padding:0 24px clamp(64px,8vw,110px); background:var(--lush-bg); }
 .lush-gallery-group { width:min(100%,396px); margin:0 auto; padding:36px 30px 0; }
 .lush-gallery-group+.lush-gallery-group { padding-top:30px; }
 .lush-gallery-group h2 {
@@ -1250,7 +1280,10 @@ export const LUSH_CSS = `
 }
 
 /* ── Before & After ── */
-.lush-before-after-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:36px 0 70px; }
+.lush-before-after-section { width:100%; max-width:1080px; margin:0 auto; background:var(--lush-bg); padding:0 24px 80px; }
+/* Hide the deprecated big-Molle "Amazing/results" heading — the new
+   shared .lush-tab-header carries the title now. */
+.lush-results-heading { display:none !important; }
 /* "Amazing" + "results" are both Molle italic in highlight-color sage
    with a hard sharp shadow (no blur). Big word on TOP (h2 = "Amazing"),
    small word BELOW (backdrop = "results") translated up so they sit
@@ -1494,7 +1527,9 @@ export const LUSH_CSS = `
 }
 
 /* ── Policy ── */
-.lush-policy-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:36px 14px 64px; }
+.lush-policy-section { width:100%; max-width:720px; margin:0 auto; background:var(--lush-bg); padding:0 24px 80px; }
+/* Deprecated — replaced by the shared .lush-tab-header on each panel. */
+.lush-policy-heading { display:none !important; }
 /* Policy heading is a Molle twin-line kicker pattern:
    small "Booking" kicker on top, big "Policies" heading underneath
    (translated up to close the gap). */
@@ -1522,22 +1557,27 @@ export const LUSH_CSS = `
    DM Serif rule title, Roboto body. Hairline sage divider between
    policies. Replaces the previous box grid (which read as generic
    SaaS rather than spa). */
+/* House Rules — divided editorial list, no numerals. Each row carries
+   a ✦ sparkle marker on the left (Lush's signature glyph), DM Serif
+   title, Roboto body. Sage hairline rule between rows. Reads as a
+   quiet brand-book rather than a numbered grid. */
 .lush-policy-list {
   list-style:none; margin:0; padding:0;
   display:flex; flex-direction:column;
   border-top:1px solid var(--lush-dark-border);
 }
 .lush-policy-row {
-  display:grid; grid-template-columns:56px 1fr; gap:18px;
+  display:grid; grid-template-columns:32px 1fr; gap:18px;
   padding:24px 4px 28px;
   border-bottom:1px solid var(--lush-dark-border);
+  align-items:flex-start;
 }
-.lush-policy-num {
-  font-family:var(--lush-serif); font-weight:400;
-  font-size:44px; line-height:0.9; letter-spacing:-0.04em;
+.lush-policy-mark {
   color:var(--lush-pink);
-  align-self:flex-start;
-  padding-top:4px;
+  font-size:18px;
+  line-height:1;
+  padding-top:10px;
+  text-align:center;
 }
 .lush-policy-body { min-width:0; }
 .lush-policy-title {
@@ -1552,6 +1592,9 @@ export const LUSH_CSS = `
   font-size:14px; font-weight:400; line-height:1.6;
   color:var(--lush-text);
 }
+/* Deprecated number column — kept hidden in case any legacy markup
+   still emits it. */
+.lush-policy-num { display:none !important; }
 .lush-policy-custom-group { margin-top:48px; }
 .lush-policy-custom-heading {
   margin:0 0 18px; font-family:var(--lush-script); font-weight:400;
@@ -1560,8 +1603,9 @@ export const LUSH_CSS = `
 }
 
 /* ── Before appointment / Aftercare ── */
-.lush-before-appointment-section { width:min(100%,395px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:36px 16px 60px; }
-.lush-before-appointment-section h2 { margin:0 0 38px; color:var(--lush-text); text-align:center; font-size:clamp(40px,9vw,52px); font-family:var(--lush-script); font-weight:400; line-height:1; letter-spacing:0; }
+.lush-before-appointment-section { width:100%; max-width:720px; margin:0 auto; background:var(--lush-bg); padding:0 24px 80px; }
+/* Legacy direct-h2 inside the section is replaced by .lush-tab-header. */
+.lush-before-appointment-section > h2 { display:none !important; }
 .lush-before-timeline { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:26px; position:relative; }
 /* No connector line between steps — the alternating sage nodes carry
    the rhythm on their own. (Previous dashed line was removed per
@@ -1598,8 +1642,9 @@ export const LUSH_CSS = `
   font-size:10px; font-weight:600; letter-spacing:0.18em; text-transform:uppercase;
 }
 
-.lush-aftercare-section { width:min(100%,396px); margin:0 auto; background:var(--lush-bg); overflow:hidden; padding:36px 14px 60px; }
-.lush-aftercare-section h2 { margin:0 0 30px; color:var(--lush-text); text-align:center; font-size:clamp(42px,10vw,56px); font-family:var(--lush-script); font-weight:400; line-height:1; letter-spacing:0; }
+.lush-aftercare-section { width:100%; max-width:720px; margin:0 auto; background:var(--lush-bg); padding:0 24px 80px; }
+/* Legacy direct-h2 inside the section is replaced by .lush-tab-header. */
+.lush-aftercare-section > h2 { display:none !important; }
 
 /* "The Ritual" — Steps as a vertical ceremony, no boxes. Each step
    is an editorial pane with a big serif numeral, a Cookie kicker

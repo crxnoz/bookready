@@ -863,6 +863,10 @@ function GalleryPanel({
   if (items.length === 0 && groups.length === 0) {
     return (
       <section className="lush-gallery-section">
+        <header className="lush-tab-header">
+          <p className="lush-eyebrow">Gallery</p>
+          <h2 className="lush-section-title">Recent work</h2>
+        </header>
         {GALLERY_GROUPS.map(g => (
           <div key={g.label} className="lush-gallery-group">
             <h2>{g.label}</h2>
@@ -897,6 +901,10 @@ function GalleryPanel({
 
   return (
     <section className="lush-gallery-section">
+      <header className="lush-tab-header">
+        <p className="lush-eyebrow">Gallery</p>
+        <h2 className="lush-section-title">Recent work</h2>
+      </header>
       {sortedGroups.map(g => {
         const list = (byGroup.get(g.id) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
         if (list.length === 0) return null
@@ -997,10 +1005,10 @@ function ResultsPanel({
     let runningIndex = 0
     return (
       <section className="lush-before-after-section">
-        <div className="lush-results-heading">
-          <h2>Amazing</h2>
-          <div className="lush-results-backdrop">results</div>
-        </div>
+        <header className="lush-tab-header">
+          <p className="lush-eyebrow">Results</p>
+          <h2 className="lush-section-title">Before &amp; after</h2>
+        </header>
         {buckets.map(b => (
           <div key={b.key} className="lush-ba-bucket">
             {b.heading && buckets.length > 1 && (
@@ -1048,10 +1056,10 @@ function ResultsPanel({
   // Placeholder fallback when no real items exist (same diptych layout)
   return (
     <section className="lush-before-after-section">
-      <div className="lush-results-heading">
-        <h2>Amazing</h2>
-        <div className="lush-results-backdrop">results</div>
-      </div>
+      <header className="lush-tab-header">
+        <p className="lush-eyebrow">Results</p>
+        <h2 className="lush-section-title">Before &amp; after</h2>
+      </header>
       <div className="lush-ba-stack">
         {BA_PAIRS.map((pair, i) => (
           <article key={i} className="lush-ba-diptych">
@@ -1212,30 +1220,34 @@ function PoliciesPanel({ policies }: { policies: PublicSite['policies'] }) {
 
   return (
     <section className="lush-policy-section">
-      <div className="lush-policy-heading">
-        <span>House</span>
-        <h2>Rules</h2>
-      </div>
+      <header className="lush-tab-header">
+        <p className="lush-eyebrow">Policies</p>
+        <h2 className="lush-section-title">House rules</h2>
+      </header>
 
-      <ol className="lush-policy-list" aria-label="Booking policies">
+      {/* Editorial divided list — no numerals. Each row carries a ✦
+          sparkle marker on the left (Lush's signature glyph), DM Serif
+          title, Roboto body, and sage hairline rule above. Reads as a
+          quiet brand-book rather than a numbered grid. */}
+      <ul className="lush-policy-list" aria-label="Booking policies">
         {allPolicies.map((p, i) => (
           <li key={i} className="lush-policy-row">
-            <span className="lush-policy-num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+            <span className="lush-policy-mark" aria-hidden="true">&#x2726;&#xFE0E;</span>
             <div className="lush-policy-body">
               <h3 className="lush-policy-title">{p.label}</h3>
               <p className="lush-policy-text" style={{ whiteSpace: 'pre-wrap' }}>{p.body}</p>
             </div>
           </li>
         ))}
-      </ol>
+      </ul>
 
       {customGroups.map((g, gi) => (
         <div key={`cg-${gi}`} className="lush-policy-custom-group">
           <h3 className="lush-policy-custom-heading">{g.heading}</h3>
-          <ol className="lush-policy-list">
+          <ul className="lush-policy-list">
             {g.items.map((it, ii) => (
               <li key={ii} className="lush-policy-row">
-                <span className="lush-policy-num" aria-hidden="true">{String(ii + 1).padStart(2, '0')}</span>
+                <span className="lush-policy-mark" aria-hidden="true">&#x2726;&#xFE0E;</span>
                 <div className="lush-policy-body">
                   <h3 className="lush-policy-title">{it.title.trim()}</h3>
                   {it.content?.trim() && (
@@ -1244,7 +1256,7 @@ function PoliciesPanel({ policies }: { policies: PublicSite['policies'] }) {
                 </div>
               </li>
             ))}
-          </ol>
+          </ul>
         </div>
       ))}
     </section>
@@ -1276,7 +1288,10 @@ function BeforePanel({
   const kicker = (cardKicker ?? '').trim()
   return (
     <section className="lush-before-appointment-section">
-      <h2>{heading ?? 'Before Your Appointment'}</h2>
+      <header className="lush-tab-header">
+        <p className="lush-eyebrow">Timeline</p>
+        <h2 className="lush-section-title">{heading ?? 'Before you arrive'}</h2>
+      </header>
       <ol className="lush-before-timeline">
         {steps.map((s, i) => (
           <li key={i} className="lush-before-step">
@@ -1327,8 +1342,11 @@ function AftercarePanel({
   // Before-Your-Appointment timeline (which is genuinely ordered).
   return (
     <section className="lush-aftercare-section">
-      <h2>{heading ?? 'Steps'}</h2>
-      <ul className="lush-ritual" aria-label={heading ?? 'Steps'}>
+      <header className="lush-tab-header">
+        <p className="lush-eyebrow">Advice</p>
+        <h2 className="lush-section-title">{heading ?? 'Care notes'}</h2>
+      </header>
+      <ul className="lush-ritual" aria-label={heading ?? 'Advice'}>
         {cards.map((c, i) => {
           const isLast = i === cards.length - 1
           return (
