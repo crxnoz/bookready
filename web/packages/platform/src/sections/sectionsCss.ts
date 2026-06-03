@@ -259,6 +259,70 @@ export const SECTIONS_CSS = `
   color: var(--brk-color-muted, inherit);
 }
 
+/* ── Instructions (Advice / Timeline) ── */
+.brk-empty {
+  text-align: center;
+  color: var(--brk-color-muted, inherit);
+  font-style: italic;
+  font-family: var(--brk-family-display, serif);
+  font-size: 19px;
+  padding: 28px 0;
+}
+.brk-instructions { list-style: none; margin: 0 auto; padding: 0; max-width: 720px; }
+.brk-instruction {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 18px;
+  padding: 28px 0;
+  border-top: 1px solid var(--brk-color-rule, rgba(0,0,0,0.12));
+  align-items: start;
+}
+.brk-instruction:last-child { border-bottom: 1px solid var(--brk-color-rule, rgba(0,0,0,0.12)); }
+.brk-instruction-mark {
+  color: var(--brk-color-accent, currentColor);
+  font-size: 13px;
+  line-height: 1.9;
+  text-align: center;
+}
+.brk-instructions--numbered .brk-instruction {
+  grid-template-columns: auto 1fr;
+  gap: 26px;
+  padding: 30px 0;
+  align-items: baseline;
+}
+.brk-instructions--numbered .brk-instruction-mark {
+  font-family: var(--brk-family-display, serif);
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.brk-instruction-kicker {
+  display: block;
+  margin: 0 0 6px;
+  font-family: var(--brk-family-body, sans-serif);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--brk-color-accent, currentColor);
+}
+.brk-instruction-body h3 {
+  margin: 0 0 6px;
+  font-family: var(--brk-family-display, serif);
+  font-weight: 500;
+  font-size: 24px;
+  color: var(--brk-color-text, inherit);
+}
+.brk-instructions--numbered .brk-instruction-body h3 { font-size: 25px; }
+.brk-instruction-body p {
+  margin: 0;
+  font-family: var(--brk-family-body, sans-serif);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--brk-color-muted, inherit);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .brk-faq summary::after,
   .brk-footer-book,

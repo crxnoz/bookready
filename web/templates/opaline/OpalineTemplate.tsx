@@ -28,7 +28,7 @@ import { useState, useRef } from 'react'
 import type { PublicSite } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 import { tokensToCss } from '@bkrdy/platform'
-import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, SECTIONS_CSS } from '@bkrdy/platform/sections'
+import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, InstructionsSection, SECTIONS_CSS } from '@bkrdy/platform/sections'
 import OpalineBooking from './OpalineBooking'
 
 // ── Contact-href helper ──────────────────────────────────────────────────────
@@ -387,27 +387,15 @@ export default function OpalineTemplate({ site, slug }: Props) {
         {enabledByTab.advice && (
           <div className={`opaline-tab-panel${active === 'advice' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'advice'}>
-            <section className="opaline-section" aria-label={tabs.advice_label ?? 'Care'}>
-              <SectionHeader eyebrow={tabs.advice_label ?? 'Care'} title={settings.advice?.heading ?? 'Care notes'} />
-              {advice.length === 0 ? (
-                <p className="opaline-empty">Aftercare guidance will appear here.</p>
-              ) : (
-                <ul className="opaline-care-list">
-                  {advice.map((it: any, i: number) => (
-                    <li key={i} className="opaline-care">
-                      <span className="opaline-care-mark" aria-hidden="true">&#9670;</span>
-                      <div>
-                        {settings.advice?.card_kicker && (
-                          <span className="opaline-card-kicker">{settings.advice.card_kicker}</span>
-                        )}
-                        {it.title && <h3>{it.title}</h3>}
-                        {it.body && <p>{it.body}</p>}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            <InstructionsSection
+              items={advice}
+              heading={settings.advice?.heading ?? 'Care notes'}
+              eyebrow={tabs.advice_label ?? 'Care'}
+              cardKicker={settings.advice?.card_kicker}
+              markGlyph="◆"
+              emptyText="Aftercare guidance will appear here."
+              ariaLabel={tabs.advice_label ?? 'Care'}
+            />
           </div>
         )}
 
@@ -415,27 +403,15 @@ export default function OpalineTemplate({ site, slug }: Props) {
         {enabledByTab.timeline && (
           <div className={`opaline-tab-panel${active === 'timeline' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'timeline'}>
-            <section className="opaline-section" aria-label={tabs.timeline_label ?? 'Visit'}>
-              <SectionHeader eyebrow={tabs.timeline_label ?? 'Visit'} title={settings.timeline?.heading ?? 'Your visit'} />
-              {timeline.length === 0 ? (
-                <p className="opaline-empty">A simple step-by-step of your visit will appear here.</p>
-              ) : (
-                <ol className="opaline-timeline">
-                  {timeline.map((it: any, i: number) => (
-                    <li key={i}>
-                      <span className="opaline-timeline-num">{String(i + 1).padStart(2, '0')}</span>
-                      <div className="opaline-timeline-body">
-                        {settings.timeline?.card_kicker && (
-                          <span className="opaline-card-kicker">{settings.timeline.card_kicker}</span>
-                        )}
-                        {it.title && <h3>{it.title}</h3>}
-                        {it.body && <p>{it.body}</p>}
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </section>
+            <InstructionsSection
+              items={timeline}
+              heading={settings.timeline?.heading ?? 'Your visit'}
+              eyebrow={tabs.timeline_label ?? 'Visit'}
+              cardKicker={settings.timeline?.card_kicker}
+              numbered
+              emptyText="A simple step-by-step of your visit will appear here."
+              ariaLabel={tabs.timeline_label ?? 'Visit'}
+            />
           </div>
         )}
 
@@ -982,274 +958,9 @@ const OPALINE_CSS = `
 }
 .opaline-policy-text { margin: 0; font-size: 15px; line-height: 1.75; color: var(--opaline-muted); }
 
-/* ── Advice / Care ── */
-.opaline-care-list { list-style: none; margin: 0 auto; padding: 0; max-width: 720px; display: grid; gap: 0; }
-.opaline-care {
-  display: grid;
-  grid-template-columns: 28px 1fr;
-  gap: 18px;
-  padding: 28px 0;
-  border-top: 1px solid var(--opaline-rule);
-  align-items: start;
-}
-.opaline-care:last-child { border-bottom: 1px solid var(--opaline-rule); }
-.opaline-care-mark { color: var(--opaline-accent); font-size: 13px; line-height: 1.9; text-align: center; }
-
-/* Small tracked-uppercase kicker label above an advice/timeline item title
-   (rendered from settings.advice.card_kicker / settings.timeline.card_kicker). */
-.opaline-card-kicker {
-  display: block;
-  margin: 0 0 6px;
-  font-family: var(--opaline-body);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: var(--opaline-accent);
-}
-.opaline-care h3 {
-  margin: 0 0 6px;
-  font-family: var(--opaline-display);
-  font-weight: 500;
-  font-size: 24px;
-  color: var(--opaline-ink);
-}
-.opaline-care p { margin: 0; font-size: 15px; line-height: 1.7; color: var(--opaline-muted); }
-
-/* ── Timeline / Visit ── */
-.opaline-timeline { list-style: none; margin: 0 auto; padding: 0; max-width: 720px; }
-.opaline-timeline > li {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 26px;
-  padding: 30px 0;
-  border-top: 1px solid var(--opaline-rule);
-  align-items: baseline;
-}
-.opaline-timeline > li:last-child { border-bottom: 1px solid var(--opaline-rule); }
-.opaline-timeline-num {
-  font-family: var(--opaline-display);
-  font-weight: 400;
-  font-size: 40px;
-  line-height: 1;
-  color: var(--opaline-accent);
-  font-variant-numeric: tabular-nums;
-}
-.opaline-timeline-body h3 {
-  margin: 0 0 8px;
-  font-family: var(--opaline-display);
-  font-weight: 500;
-  font-size: 25px;
-  color: var(--opaline-ink);
-}
-.opaline-timeline-body p { margin: 0; font-size: 15px; line-height: 1.7; color: var(--opaline-muted); }
-
-/* ── FAQ ── */
-.opaline-faq-list { max-width: 760px; margin: 0 auto; border-top: 1px solid var(--opaline-rule); }
-.opaline-faq { border-bottom: 1px solid var(--opaline-rule); }
-.opaline-faq summary {
-  list-style: none;
-  cursor: pointer;
-  padding: 26px 40px 26px 0;
-  position: relative;
-  font-family: var(--opaline-display);
-  font-weight: 500;
-  font-size: 22px;
-  color: var(--opaline-ink);
-}
-.opaline-faq summary::-webkit-details-marker { display: none; }
-.opaline-faq summary::after {
-  content: '+';
-  position: absolute;
-  right: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-family: var(--opaline-body);
-  font-size: 22px;
-  font-weight: 300;
-  color: var(--opaline-accent);
-  transition: transform 200ms ease;
-}
-.opaline-faq[open] summary::after { content: '\\2013'; }
-.opaline-faq p {
-  margin: 0;
-  padding: 0 40px 28px 0;
-  font-size: 15px;
-  line-height: 1.75;
-  color: var(--opaline-muted);
-}
-
-/* ── Reviews ── editorial quote cards. */
-.opaline-reviews {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 24px;
-  max-width: 1000px;
-  margin: 0 auto;
-}
-@media (min-width: 821px) { .opaline-reviews { grid-template-columns: repeat(2, 1fr); } }
-.opaline-review {
-  position: relative;
-  padding: 40px 36px 32px;
-  background: var(--opaline-surface);
-  border: 1px solid var(--opaline-rule);
-  border-radius: 4px;
-}
-.opaline-review-quote {
-  position: absolute;
-  top: 6px;
-  left: 22px;
-  font-family: var(--opaline-display);
-  font-size: 72px;
-  line-height: 1;
-  color: var(--opaline-accent);
-  opacity: 0.32;
-}
-.opaline-review-stars { color: var(--opaline-accent); font-size: 11px; letter-spacing: 0.3em; margin: 0 0 14px; }
-.opaline-review blockquote {
-  margin: 0 0 18px;
-  font-family: var(--opaline-display);
-  font-style: italic;
-  font-size: 22px;
-  line-height: 1.5;
-  color: var(--opaline-ink);
-}
-.opaline-review-attr {
-  margin: 0;
-  font-family: var(--opaline-body);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--opaline-muted);
-}
-
-/* ── Thank-you ── */
-.opaline-thanks { text-align: center; max-width: 680px; }
-.opaline-thanks-title {
-  margin: 14px 0 0;
-  font-family: var(--opaline-display);
-  font-weight: 500;
-  font-size: clamp(40px, 6vw, 64px);
-  line-height: 1.06;
-  color: var(--opaline-ink);
-}
-.opaline-thanks-body {
-  margin: 22px auto 0;
-  max-width: 52ch;
-  font-size: 17px;
-  line-height: 1.8;
-  color: var(--opaline-muted);
-}
-.opaline-thanks-sign {
-  margin: 30px 0 0;
-  font-family: var(--opaline-display);
-  font-style: italic;
-  font-size: 24px;
-  color: var(--opaline-accent);
-}
-
-/* ── Footer — 3-band ── */
-.opaline-footer { border-top: 1px solid var(--opaline-rule); background: var(--opaline-surface); }
-.opaline-footer-cta-band {
-  padding: clamp(48px, 6vw, 72px) 24px;
-  text-align: center;
-  border-bottom: 1px solid var(--opaline-rule);
-}
-.opaline-footer-book {
-  display: inline-flex;
-  align-items: center;
-  padding: 17px 44px;
-  background: var(--opaline-accent);
-  color: var(--opaline-on-accent);
-  border: 1px solid var(--opaline-accent);
-  border-radius: 2px;
-  font-family: var(--opaline-body);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: filter 180ms ease;
-}
-.opaline-footer-book:hover { filter: brightness(1.05); }
-.opaline-footer-inner {
-  max-width: var(--brk-container-standard);
-  margin: 0 auto;
-  padding: clamp(56px, 7vw, 80px) var(--brk-space-md);
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 44px;
-}
-@media (min-width: 720px) {
-  .opaline-footer-inner { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0; }
-  .opaline-footer-col { padding: 0 44px; }
-  .opaline-footer-col:first-child { padding-left: 0; }
-  .opaline-footer-col:last-child { padding-right: 0; }
-  .opaline-footer-col + .opaline-footer-col { border-left: 1px solid var(--opaline-rule); }
-}
-.opaline-footer-col { display: flex; flex-direction: column; gap: 14px; }
-.opaline-footer-brand { gap: 12px; }
-.opaline-footer-col--hours { min-width: 250px; }
-.opaline-footer-name {
-  margin: 0;
-  font-family: var(--opaline-display);
-  font-weight: 500;
-  font-size: 34px;
-  line-height: 1;
-  color: var(--opaline-ink);
-}
-.opaline-footer-subtext {
-  margin: 4px 0 0;
-  font-size: 14px;
-  line-height: 1.65;
-  color: var(--opaline-muted);
-  max-width: 34ch;
-}
-.opaline-footer-hours { margin: 0; display: flex; flex-direction: column; }
-.opaline-footer-hours-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 16px;
-  padding: 9px 0;
-  border-top: 1px solid var(--opaline-rule);
-  font-size: 13px;
-}
-.opaline-footer-hours-row:first-child { border-top: 0; padding-top: 0; }
-.opaline-footer-hours-row dt {
-  margin: 0;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-size: 11px;
-  color: var(--opaline-ink);
-}
-.opaline-footer-hours-row dd { margin: 0; color: var(--opaline-muted); font-variant-numeric: tabular-nums; }
-.opaline-footer-contact { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; font-size: 14px; }
-.opaline-footer-contact a { color: var(--opaline-ink); transition: color 180ms ease; }
-.opaline-footer-contact a:hover { color: var(--opaline-accent); }
-.opaline-footer-credit-band {
-  padding: 18px 24px;
-  border-top: 1px solid var(--opaline-rule);
-  text-align: center;
-}
-.opaline-footer-credit-band p {
-  margin: 0;
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--opaline-muted);
-}
-
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   .opaline-tab-pill,
-  .opaline-social-btn,
-  .opaline-faq summary::after,
-  .opaline-footer-book,
-  .opaline-footer-contact a { transition: none !important; }
+  .opaline-social-btn { transition: none !important; }
 }
 `
