@@ -116,7 +116,11 @@ export const LUSH_CSS = `
 
 /* ── Header ── */
 .lush-header-section {
-  width:100%; min-height:100vh; background:var(--lush-bg);
+  /* Size to content. The old min-height:100vh was overridden to auto on
+     mobile but still applied on tablet/desktop, forcing the header to a
+     full viewport height and leaving a big empty gap before the tab rail
+     on PC. */
+  width:100%; min-height:auto; background:var(--lush-bg);
   overflow:hidden; position:relative;
 }
 /* ── Customer-account widget (BookReady house style) ──
