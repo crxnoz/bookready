@@ -28,6 +28,7 @@ import { useState, useRef } from 'react'
 import type { PublicSite } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 import { tokensToCss } from '@bkrdy/platform'
+import { FaqSection, SECTIONS_CSS } from '@bkrdy/platform/sections'
 import OpalineBooking from './OpalineBooking'
 
 // ── Contact-href helper ──────────────────────────────────────────────────────
@@ -205,6 +206,7 @@ export default function OpalineTemplate({ site, slug }: Props) {
   return (
     <>
       <style>{OPALINE_CSS}</style>
+      <style>{SECTIONS_CSS}</style>
       <div
         className="opaline-template"
         style={{
@@ -445,21 +447,17 @@ export default function OpalineTemplate({ site, slug }: Props) {
           </div>
         )}
 
-        {/* 10. FAQ */}
-        {additionals.faq?.enabled !== false
-          && Array.isArray(additionals.faq?.items)
-          && additionals.faq.items.length > 0 && (
-          <section className="opaline-section" aria-label="FAQ">
-            <SectionHeader eyebrow="Questions" title={additionals.faq.heading ?? 'Frequently asked'} />
-            <div className="opaline-faq-list">
-              {additionals.faq.items.map((f: any, i: number) => (
-                <details key={i} className="opaline-faq">
-                  <summary>{f.q ?? f.question}</summary>
-                  <p>{f.a ?? f.answer}</p>
-                </details>
-              ))}
-            </div>
-          </section>
+        {/* 10. FAQ — first section migrated to the shared, theme-tokenized
+            platform component (@bkrdy/platform/sections). Opaline's palette
+            is bridged onto the canonical --brk-* tokens above, so this
+            renders identically to the old inline .opaline-faq markup.
+            See web/templates/ARCHITECTURE.md. */}
+        {additionals.faq?.enabled !== false && (
+          <FaqSection
+            items={additionals.faq?.items}
+            heading={additionals.faq?.heading}
+            eyebrow="Questions"
+          />
         )}
 
         {/* 11. Reviews */}
@@ -649,6 +647,20 @@ const OPALINE_CSS = `
   --opaline-on-accent: #2A2620;
   --opaline-display: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
   --opaline-body: 'Jost', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Bridge Opaline's palette onto the canonical theme tokens consumed by
+     the shared section components (@bkrdy/platform/sections). Aliasing in
+     CSS means the runtime accent override on --opaline-accent flows through
+     automatically. */
+  --brk-color-bg: var(--opaline-bg);
+  --brk-color-surface: var(--opaline-surface);
+  --brk-color-text: var(--opaline-ink);
+  --brk-color-muted: var(--opaline-muted);
+  --brk-color-rule: var(--opaline-rule);
+  --brk-color-accent: var(--opaline-accent);
+  --brk-color-on-accent: var(--opaline-on-accent);
+  --brk-family-display: var(--opaline-display);
+  --brk-family-body: var(--opaline-body);
 
   background: var(--opaline-bg);
   color: var(--opaline-ink);

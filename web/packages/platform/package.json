@@ -15,6 +15,10 @@
       "types": "./src/booking/index.ts",
       "default": "./src/booking/index.ts"
     },
+    "./sections": {
+      "types": "./src/sections/index.ts",
+      "default": "./src/sections/index.ts"
+    },
     "./booking/lushBookingCss": {
       "types": "./src/booking/lushBookingCss.ts",
       "default": "./src/booking/lushBookingCss.ts"

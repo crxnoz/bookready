@@ -17,6 +17,7 @@
       "@/*": ["./*"],
       "@bkrdy/platform": ["./packages/platform/src/index"],
       "@bkrdy/platform/booking": ["./packages/platform/src/booking/index"],
+      "@bkrdy/platform/sections": ["./packages/platform/src/sections/index"],
       "@bkrdy/platform/*": ["./packages/platform/src/*"]
     }
   },
