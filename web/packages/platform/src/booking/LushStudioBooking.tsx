@@ -1319,11 +1319,12 @@ export default function LushStudioBooking({
                 Unchecked by default. Required for TCR compliance:
                 outbound appointment SMS only goes to customers who
                 have explicitly opted in PER booking. The label is
-                the canonical TCR / 10DLC consent string — exact
-                wording referenced in the Telnyx campaign description,
-                so reviewers can verify the deployed UI matches the
-                claim on file. Consent is never a condition of
-                completing the booking. */}
+                the canonical TCR / 10DLC consent string — names the
+                BookReady brand (carrier requirement) and exactly
+                matches the wording in the Twilio A2P campaign's consent
+                description, so reviewers can verify the deployed UI
+                matches the claim on file. Consent is never a condition
+                of completing the booking. */}
             {phone.trim() !== '' && (
               <label className="brk-booking-sms-consent">
                 <input
@@ -1332,7 +1333,7 @@ export default function LushStudioBooking({
                   onChange={e => setSmsConsent(e.target.checked)}
                 />
                 <span>
-                  Send me SMS reminders for this appointment. Msg &amp;
+                  Send me appointment reminders from BookReady. Msg &amp;
                   data rates may apply. Msg frequency varies. Reply STOP
                   to opt out, HELP for help. View our{' '}
                   <a
