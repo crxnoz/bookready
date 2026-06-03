@@ -28,7 +28,7 @@ import { useState, useRef } from 'react'
 import type { PublicSite } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 import { tokensToCss } from '@bkrdy/platform'
-import { FaqSection, SECTIONS_CSS } from '@bkrdy/platform/sections'
+import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, SECTIONS_CSS } from '@bkrdy/platform/sections'
 import OpalineBooking from './OpalineBooking'
 
 // ── Contact-href helper ──────────────────────────────────────────────────────
@@ -133,14 +133,6 @@ function pickOnAccent(hex: string | null | undefined): string {
   const b = (n & 0xff) / 255
   const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
   return lum > 0.45 ? '#2A2620' : '#FBF8F2'
-}
-
-function fmt12(t?: string | null): string {
-  if (!t) return ''
-  const [h, m] = t.split(':').map(Number)
-  if (Number.isNaN(h)) return t
-  const hr = h % 12 || 12
-  return `${hr}:${String(m ?? 0).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`
 }
 
 export default function OpalineTemplate({ site, slug }: Props) {
@@ -461,42 +453,40 @@ export default function OpalineTemplate({ site, slug }: Props) {
         )}
 
         {/* 11. Reviews */}
-        {additionals.reviews?.enabled !== false
-          && Array.isArray(additionals.reviews?.items)
-          && additionals.reviews.items.length > 0 && (
-          <section className="opaline-section" aria-label="Reviews">
-            <SectionHeader eyebrow="Kind Words" title={additionals.reviews.heading ?? 'What clients say'} />
-            <ul className="opaline-reviews">
-              {additionals.reviews.items.map((rv: any, i: number) => (
-                <li key={i} className="opaline-review">
-                  <span className="opaline-review-quote" aria-hidden="true">&#8220;</span>
-                  {typeof rv.rating === 'number' && rv.rating > 0 && (
-                    <div className="opaline-review-stars" aria-label={`${rv.rating} of 5`}>
-                      {'♦'.repeat(Math.max(0, Math.min(5, Math.round(rv.rating))))}
-                    </div>
-                  )}
-                  <blockquote>{rv.body ?? rv.quote}</blockquote>
-                  <p className="opaline-review-attr">
-                    {rv.author ?? rv.name}
-                    {rv.location && <span> &middot; {rv.location}</span>}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </section>
+        {additionals.reviews?.enabled !== false && (
+          <ReviewsSection
+            items={additionals.reviews?.items}
+            heading={additionals.reviews?.heading}
+            eyebrow="Kind Words"
+            starGlyph="♦"
+          />
         )}
 
         {/* 12. Thank-you */}
-        {additionals.show_thank_you !== false && additionals.thank_you_title && (
-          <section className="opaline-section opaline-thanks" aria-label="Thank you">
-            <p className="opaline-eyebrow">With Gratitude</p>
-            <h2 className="opaline-thanks-title">{additionals.thank_you_title}</h2>
-            {additionals.thank_you_body && <p className="opaline-thanks-body">{additionals.thank_you_body}</p>}
-            <p className="opaline-thanks-sign">&mdash; {(typeof additionals.thank_you_signature === 'string' && additionals.thank_you_signature.trim()) || display}</p>
-          </section>
-        )}
+        <ThanksSection
+          show={additionals.show_thank_you}
+          title={additionals.thank_you_title}
+          body={additionals.thank_you_body}
+          signature={additionals.thank_you_signature}
+          fallbackSignature={display}
+          eyebrow="With Gratitude"
+        />
 
-        <Footer site={site} hours={hours} services={services} goBook={goBook} />
+        <SiteFooter
+          businessName={(settings.footer?.business_name_override ?? '').trim() || display}
+          subtext={settings.footer?.subtext}
+          hours={hours}
+          phone={p?.public_phone}
+          email={p?.public_email}
+          servicesCount={services.length}
+          onBook={goBook}
+          show={{
+            quickBook: settings.footer?.show_quick_book,
+            hours: settings.footer?.show_hours,
+            contact: settings.footer?.show_contact_links,
+            poweredBy: settings.footer?.show_powered_by,
+          }}
+        />
       </div>
     </>
   )
@@ -565,69 +555,6 @@ function SocialButtons({ header, profile, goBook }: { header: any; profile: any;
         )
       })}
     </nav>
-  )
-}
-
-function Footer({ site, hours, services, goBook }: { site: PublicSite; hours: any[]; services: any[]; goBook: () => void }) {
-  const settings: any = site.template?.settings ?? {}
-  const footer:   any = settings.footer ?? {}
-  const p           = site.profile
-  const name        = footer.business_name_override ?? p?.business_name ?? site.business_name ?? site.slug
-  const sorted = hours
-    ? [...hours.filter((h: any) => h.day_of_week !== 0), ...hours.filter((h: any) => h.day_of_week === 0)]
-    : []
-  return (
-    <footer className="opaline-footer">
-      {footer.show_quick_book !== false && services.length > 0 && (
-        <div className="opaline-footer-cta-band">
-          <button type="button" className="opaline-footer-book" onClick={goBook}>
-            Reserve your appointment
-          </button>
-        </div>
-      )}
-
-      <div className="opaline-footer-inner">
-        <div className="opaline-footer-col opaline-footer-brand">
-          <p className="opaline-eyebrow">The Studio</p>
-          <p className="opaline-footer-name">{name}</p>
-          {footer.subtext && <p className="opaline-footer-subtext">{footer.subtext}</p>}
-        </div>
-
-        {footer.show_hours !== false && sorted.length > 0 && (
-          <div className="opaline-footer-col opaline-footer-col--hours">
-            <p className="opaline-eyebrow">Hours</p>
-            <dl className="opaline-footer-hours">
-              {sorted.map((h: any) => (
-                <div key={h.day_of_week ?? h.id} className="opaline-footer-hours-row">
-                  <dt>{h.day_name}</dt>
-                  <dd>
-                    {h.is_open && h.open_time && h.close_time
-                      ? `${fmt12(h.open_time)} – ${fmt12(h.close_time)}`
-                      : 'Closed'}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        )}
-
-        {footer.show_contact_links !== false && (p?.public_phone || p?.public_email) && (
-          <div className="opaline-footer-col">
-            <p className="opaline-eyebrow">Contact</p>
-            <ul className="opaline-footer-contact">
-              {p?.public_phone && <li><a href={`tel:${p.public_phone.replace(/[^\d+]/g, '')}`}>{p.public_phone}</a></li>}
-              {p?.public_email && <li><a href={`mailto:${p.public_email}`}>{p.public_email}</a></li>}
-            </ul>
-          </div>
-        )}
-      </div>
-
-      {footer.show_powered_by !== false && (
-        <div className="opaline-footer-credit-band">
-          <p>Powered by BookReady</p>
-        </div>
-      )}
-    </footer>
   )
 }
 

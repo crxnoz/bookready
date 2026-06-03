@@ -14,5 +14,11 @@
 
 export * from './theme'
 export { SECTIONS_CSS } from './sectionsCss'
-export { FaqSection, default as FaqSectionDefault } from './FaqSection'
+export { FaqSection } from './FaqSection'
 export type { FaqItem, FaqSectionProps } from './FaqSection'
+export { ReviewsSection } from './ReviewsSection'
+export type { ReviewItem, ReviewsSectionProps } from './ReviewsSection'
+export { ThanksSection } from './ThanksSection'
+export type { ThanksSectionProps } from './ThanksSection'
+export { SiteFooter } from './SiteFooter'
+export type { FooterHoursRow, SiteFooterProps } from './SiteFooter'
