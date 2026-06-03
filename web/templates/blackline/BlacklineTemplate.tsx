@@ -370,15 +370,25 @@ export default function BlacklineTemplate({ site, slug }: Props) {
             <p className="blackline-eyebrow">Reviews</p>
             <h2 className="blackline-section-title">{additionals.reviews.heading ?? 'On the chair'}</h2>
             <ul className="blackline-reviews">
-              {additionals.reviews.items.map((rv: any, i: number) => (
-                <li key={i}>
-                  <blockquote>{rv.body ?? rv.quote}</blockquote>
-                  <p className="blackline-review-attr">
-                    {rv.author ?? rv.name}
-                    {rv.location && <span> · {rv.location}</span>}
-                  </p>
-                </li>
-              ))}
+              {additionals.reviews.items.map((rv: any, i: number) => {
+                const rating = typeof rv.rating === 'number'
+                  ? Math.max(0, Math.min(5, Math.round(rv.rating)))
+                  : 0
+                return (
+                  <li key={i}>
+                    {rating > 0 && (
+                      <div className="blackline-review-stars" aria-label={`${rating} out of 5 stars`}>
+                        {'★'.repeat(rating)}
+                      </div>
+                    )}
+                    <blockquote>{rv.body ?? rv.quote}</blockquote>
+                    <p className="blackline-review-attr">
+                      {rv.author ?? rv.name}
+                      {rv.location && <span> · {rv.location}</span>}
+                    </p>
+                  </li>
+                )
+              })}
             </ul>
           </section>
         )}
@@ -902,6 +912,13 @@ const BLACKLINE_CSS = `
     padding-left: var(--brk-space-xl);
     border-left: 1px solid var(--blackline-rule);
   }
+}
+.blackline-review-stars {
+  font-size: 13px;
+  letter-spacing: 4px;
+  line-height: 1;
+  color: var(--blackline-accent);
+  margin: 0 0 var(--brk-space-sm);
 }
 .blackline-reviews blockquote {
   font-family: var(--blackline-display);
