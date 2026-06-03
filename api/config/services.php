@@ -52,10 +52,11 @@ return [
         'messaging_service_sid' => env('TWILIO_MESSAGING_SERVICE_SID', ''),
 
         // Marginal cost per outbound segment, in cents, recorded on every
-        // send for the cost dashboard. Twilio US A2P long-code is ~$0.0079
-        // + carrier fees as of late 2026. Override via env if pricing
-        // shifts so we don't have to redeploy.
-        'cost_cents_per_message' => (float) env('TWILIO_COST_CENTS', 0.79),
+        // send for the cost dashboard. Twilio A2P all-in (message + carrier
+        // fees) is ~$0.0083 = 0.83¢ as of late 2026. Drives the bundle
+        // uplift margin math in config/plans.php. Override via env if
+        // pricing shifts so we don't have to redeploy.
+        'cost_cents_per_message' => (float) env('TWILIO_COST_CENTS', 0.83),
 
         // Live mode requires the Account SID, Auth Token, AND a sender
         // (either a Messaging Service SID or a From number). When any is
