@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import {
-  Heart, Phone, Mail, MapPin, Dot, CalendarCheck,
+  Heart, Dot, CalendarCheck,
 } from 'lucide-react'
 
 // Brand glyphs that lucide doesn't ship.
@@ -109,6 +109,8 @@ import {
   CustomerAccountWidget as LushCustomerAccountWidget,
   PLATFORM_BOOKING_CSS as LUSH_CSS,
 } from '@bkrdy/platform/booking'
+import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, SECTIONS_CSS } from '@bkrdy/platform/sections'
+import { tokensToCss } from '@bkrdy/platform'
 import type { PublicSite, Service } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 
@@ -161,11 +163,6 @@ function initials(name: string) {
   return parts.length >= 2
     ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
     : name.slice(0, 2).toUpperCase()
-}
-
-function fmt12(t: string) {
-  const [h, m] = t.split(':').map(Number)
-  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`
 }
 
 // User-entered URL overrides may be raw phone numbers or email addresses
@@ -366,6 +363,8 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
   return (
     <>
       <style>{LUSH_CSS}</style>
+      <style>{SECTIONS_CSS}</style>
+      <style>{LUSH_SECTIONS_SKIN}</style>
       <LushCustomerAuthProvider>
       {/* `lush-femme` is the marker that scopes the feminine-luxury
           decorations (scalloped hero edge, sparkle field, polaroid before/
@@ -689,111 +688,61 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
 
         </section>
 
-        {/* ── FAQ ── */}
-        {(() => {
-          const faq = site.template?.settings.additionals?.faq
-          if (!faq?.enabled) return null
-          const items = (faq.items ?? []).filter(i => i.question?.trim() && i.answer?.trim())
-          if (items.length === 0) return null
-          return (
-            <section className="lush-faq-section" aria-label="Frequently asked questions">
-              <div className="lush-faq-inner">
-                <span className="lush-faq-eyebrow">Things people ask</span>
-                <h2 className="lush-faq-heading">{faq.heading || 'Frequently asked'}</h2>
-                <div className="lush-faq-list">
-                  {items.map((it, i) => (
-                    <details key={i} className="lush-faq-item">
-                      <summary>{it.question}</summary>
-                      <p>{it.answer}</p>
-                    </details>
-                  ))}
-                </div>
-              </div>
-            </section>
-          )
-        })()}
-
-        {/* ── Reviews ── */}
-        {(() => {
-          const r = site.template?.settings.additionals?.reviews
-          if (!r?.enabled) return null
-          const items = (r.items ?? []).filter(it => it.body?.trim() && it.author?.trim())
-          if (items.length === 0) return null
-          return (
-            <section className="lush-reviews-section" aria-label="Reviews">
-              <div className="lush-reviews-inner">
-                <span className="lush-reviews-eyebrow">From the chair</span>
-                <h2 className="lush-reviews-heading">{r.heading || 'What clients say'}</h2>
-                <div className="lush-reviews-grid">
-                  {items.map((it, i) => (
-                    <div key={i} className="lush-review-card">
-                      {/* Stars rendered as a row of sage ✦ — softer than ★ and
-                          ties to the rest of the Lush spark vocabulary. The
-                          ✦ glyph (U+2726) followed by U+FE0E stays a text
-                          glyph on iOS instead of upgrading to a color emoji. */}
-                      {typeof it.rating === 'number' && it.rating > 0 && (
-                        <div className="lush-review-stars" aria-label={`${it.rating} of 5 stars`}>
-                          {'✦︎'.repeat(Math.max(0, Math.min(5, Math.round(it.rating))))}
-                        </div>
-                      )}
-                      <p className="lush-review-body">&ldquo;{it.body}&rdquo;</p>
-                      <p className="lush-review-author">
-                        {it.author}
-                        {it.location && <span className="lush-review-loc">{it.location}</span>}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-          )
-        })()}
-
-        {/* ── Thanks outro ── */}
-        {(site.template?.settings.additionals?.show_thank_you ?? true) && (
-          <section className="lush-thanks-section" aria-label="Thank you">
-            <div className="lush-thanks-inner">
-              <span className="lush-thanks-eyebrow">From us, with love</span>
-              {site.template?.settings.additionals?.thank_you_title
-                ? <h2>{site.template.settings.additionals.thank_you_title}</h2>
-                : <h2>Thank you<br />for choosing <em>{displayName}</em></h2>
-              }
-              {site.template?.settings.additionals?.thank_you_body && (
-                <p style={{
-                  fontFamily: 'var(--lush-ui)', fontSize: 15,
-                  lineHeight: 1.55, color: 'var(--lush-muted)',
-                  maxWidth: 540, margin: 0,
-                }}>
-                  {site.template.settings.additionals.thank_you_body}
-                </p>
-              )}
-              <div className="lush-thanks-sig">
-                <span className="lush-thanks-line" />
-                <em>{
-                  // Owner-overridden signature wins; otherwise drop leading
-                  // articles from the business name so "The Fade Room" signs
-                  // as "Fade" instead of "The".
-                  site.template?.settings.additionals?.thank_you_signature?.trim()
-                    || signatureWord(displayName)
-                }</em>
-                <span className="lush-thanks-line" />
-              </div>
-            </div>
-          </section>
+        {/* ── FAQ ── shared platform section; Lush skin re-applies the
+            DM Serif italic summary + rotating ✦ marker + sage wash. */}
+        {site.template?.settings.additionals?.faq?.enabled !== false && (
+          <FaqSection
+            items={site.template?.settings.additionals?.faq?.items}
+            heading={site.template?.settings.additionals?.faq?.heading ?? 'Frequently asked'}
+            eyebrow="Things people ask"
+          />
         )}
 
-        {/* ── Footer ── */}
-        <Footer
-          profile={p}
-          hours={hours}
-          displayName={footerSettings.business_name_override?.trim() || displayName}
-          address={address}
-          onBook={goBook}
-          showPoweredBy={footerSettings.show_powered_by}
+        {/* ── Reviews ── shared platform section; Lush skin restyles the
+            cards to DM Serif italic bodies, Cookie author names, the Molle
+            quote glyph + sage ✦ stars (starGlyph). */}
+        {site.template?.settings.additionals?.reviews?.enabled !== false && (
+          <ReviewsSection
+            items={site.template?.settings.additionals?.reviews?.items}
+            heading={site.template?.settings.additionals?.reviews?.heading ?? 'What clients say'}
+            eyebrow="From the chair"
+            starGlyph="✦︎"
+          />
+        )}
+
+        {/* ── Thanks outro ── shared platform section; Lush skin gives the
+            Cookie title + sage signature flanked by hairlines. */}
+        <ThanksSection
+          show={site.template?.settings.additionals?.show_thank_you}
+          title={site.template?.settings.additionals?.thank_you_title}
+          body={site.template?.settings.additionals?.thank_you_body}
+          signature={site.template?.settings.additionals?.thank_you_signature}
+          fallbackSignature={signatureWord(displayName)}
+          eyebrow="From us, with love"
+        />
+
+        {/* ── Footer ── shared platform section; Lush skin restores the
+            sage pill CTA + Lush typography over the 3-band base. */}
+        <SiteFooter
+          businessName={footerSettings.business_name_override?.trim() || displayName}
           subtext={footerSettings.subtext ?? null}
-          showHours={footerSettings.show_hours ?? true}
-          showQuickBook={footerSettings.show_quick_book ?? true}
-          showContactLinks={footerSettings.show_contact_links ?? true}
+          hours={hours}
+          phone={p?.public_phone}
+          email={p?.public_email}
+          servicesCount={services.length}
+          onBook={goBook}
+          ctaLabel="Reserve your chair"
+          brandLabel="The Studio"
+          hoursLabel="Hours"
+          contactLabel="Contact"
+          show={{
+            quickBook: footerSettings.show_quick_book,
+            hours: footerSettings.show_hours,
+            contact: footerSettings.show_contact_links,
+            poweredBy: footerSettings.show_powered_by,
+          }}
+          copyrightName={displayName}
+          year={new Date().getFullYear()}
         />
 
       </div>
@@ -1407,131 +1356,277 @@ function AftercarePanel({
   )
 }
 
-// ── Footer ────────────────────────────────────────────────────────────────────
-
-function Footer({
-  profile: p,
-  hours,
-  displayName,
-  address,
-  onBook,
-  showPoweredBy = true,
-  subtext = null,
-  showHours = true,
-  showQuickBook = true,
-  showContactLinks = true,
-}: {
-  profile: Profile | null
-  hours: PublicSite['hours']
-  displayName: string
-  address: string
-  onBook: () => void
-  showPoweredBy?: boolean
-  subtext?: string | null
-  showHours?: boolean
-  showQuickBook?: boolean
-  showContactLinks?: boolean
-}) {
-  const sorted = hours
-    ? [...hours.filter(h => h.day_of_week !== 0), ...hours.filter(h => h.day_of_week === 0)]
-    : []
-  const blurb = subtext && subtext.trim().length > 0
-    ? subtext
-    : 'Booking by appointment. Walk-ins welcome when available.'
-
-  // 3-band footer matching the structure TFR + Blackline + VT use.
-  //   1. CTA band  — Reserve action, centered on cream.
-  //   2. 3-col grid — Brand (script tagline) / Hours / Contact, with
-  //      hairline sage dividers between columns on PC, single stack on
-  //      mobile.
-  //   3. Credit band — © year + Powered by BookReady.
-  // Keeps every Lush typography token (DM Serif name, Cookie script
-  // tagline, Roboto micro labels, sage pink accent).
-  return (
-    <footer className="lush-footer">
-      {showQuickBook && (
-        <div className="lush-footer-cta-band">
-          <button type="button" className="lush-footer-book" onClick={onBook}>
-            Reserve your chair
-          </button>
-        </div>
-      )}
-
-      <div className="lush-footer-inner">
-        <div className="lush-footer-col lush-footer-brand">
-          <span className="lush-footer-label">The Studio</span>
-          <span className="lush-footer-mark">{displayName}</span>
-          {p?.tagline && <p className="lush-footer-tag">{p.tagline}</p>}
-          <p className="lush-footer-blurb">{blurb}</p>
-        </div>
-
-        {showHours && sorted.length > 0 && (
-          <div className="lush-footer-col lush-footer-col--hours">
-            <span className="lush-footer-label">Hours</span>
-            <ul className="lush-footer-hours-list">
-              {sorted.map(h => (
-                <li key={h.day_of_week} className="lush-footer-hour">
-                  <span>{h.day_name}</span>
-                  <span>
-                    {h.is_open && h.open_time && h.close_time
-                      ? `${fmt12(h.open_time)} – ${fmt12(h.close_time)}`
-                      : 'Closed'}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {showContactLinks && (p?.public_phone || p?.public_email || address) && (
-          <div className="lush-footer-col">
-            <span className="lush-footer-label">Contact</span>
-            <ul className="lush-footer-contact-list">
-              {p?.public_phone && (
-                <li>
-                  <a className="lush-footer-item" href={`tel:${p.public_phone.replace(/[^\d+]/g, '')}`}>
-                    <Phone size={14} /> {p.public_phone}
-                  </a>
-                </li>
-              )}
-              {p?.public_email && (
-                <li>
-                  <a className="lush-footer-item" href={`mailto:${p.public_email}`}>
-                    <Mail size={14} /> {p.public_email}
-                  </a>
-                </li>
-              )}
-              {address && (
-                <li>
-                  <a
-                    className="lush-footer-item"
-                    href={`https://maps.google.com/?q=${encodeURIComponent(address)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <MapPin size={14} /> {address}
-                  </a>
-                </li>
-              )}
-            </ul>
-          </div>
-        )}
-      </div>
-
-      <div className="lush-footer-credit-band">
-        <p>
-          © {new Date().getFullYear()} {displayName}
-          {showPoweredBy && (
-            <>
-              <span className="lush-footer-dot" aria-hidden="true">·</span>
-              Powered by <strong>BookReady</strong>
-            </>
-          )}
-        </p>
-      </div>
-    </footer>
-  )
+// ════════════════════════════════════════════════════════════════════════════
+// LUSH SKIN over the shared platform sections (@bkrdy/platform/sections)
+// ────────────────────────────────────────────────────────────────────────────
+// The FAQ / Reviews / Thank-you / Footer now render the canonical .brk-*
+// markup. These rules (scoped under .lush-template, injected AFTER
+// SECTIONS_CSS) re-apply Lush's signatures over the shared base:
+//   - the Cookie-script section titles + sage Roboto eyebrows,
+//   - DM Serif italic FAQ summaries with the rotating ✦ chevron + sage wash,
+//   - DM Serif italic review bodies, Cookie author names, the big Molle
+//     quote glyph + sage ✦ stars, hairline cards,
+//   - the Cookie thank-you title with the script signature flanked by
+//     hairlines,
+//   - the sage pill footer CTA + Lush footer typography.
+//
+// LUSH_CSS lives in the SHARED booking module (lushBookingCss.ts) and is NOT
+// edited here. It does NOT inject tokensToCss(), so the shared sections'
+// --brk-* SIZE tokens would resolve empty — hence ${tokensToCss()} below,
+// alongside the color/font aliases that bridge Lush's --lush-* onto the
+// canonical --brk-* roles. Lush injects --lush-pink/-rgb/-on-pink inline on
+// the root via accentVars; the remaining --lush-* tokens come from LUSH_CSS.
+//
+// This is a real template literal (not CSS embedded inside another literal),
+// so the single ${tokensToCss()} interpolation below is intentional and the
+// ONLY interpolation — no other ${} or nested backticks.
+const LUSH_SECTIONS_SKIN = `
+.lush-template {
+  ${tokensToCss()}
+  --brk-color-bg: var(--lush-bg);
+  --brk-color-surface: var(--lush-card);
+  --brk-color-text: var(--lush-text);
+  --brk-color-muted: var(--lush-muted);
+  --brk-color-rule: var(--lush-dark-border);
+  --brk-color-accent: var(--lush-pink);
+  --brk-color-on-accent: var(--lush-on-pink);
+  --brk-family-display: var(--lush-serif);
+  --brk-family-body: var(--lush-ui);
+  --brk-family-script: var(--lush-script);
 }
+
+/* ── Shared section header → Lush voice ──
+   Title: Cookie script (NOT the display serif), sage-on-cream metrics.
+   Eyebrow: Roboto micro-caps in sage with Lush's wider tracking. */
+.lush-template .brk-section-title {
+  font-family: var(--lush-script);
+  font-weight: 400;
+  font-size: clamp(48px, 9vw, 68px);
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--lush-text);
+}
+.lush-template .brk-eyebrow {
+  font-family: var(--lush-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--lush-pink);
+}
+
+/* ── FAQ skin — DM Serif italic summary, space-between row, rotating ✦
+   chevron marker, soft sage wash on open. Matches the old .lush-faq-item. */
+.lush-template .brk-faq[open] { background: rgba(var(--lush-pink-rgb), 0.04); }
+.lush-template .brk-faq summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 18px;
+  font-family: var(--lush-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(17px, 2.4vw, 20px);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--lush-text);
+}
+.lush-template .brk-faq summary::after {
+  content: "\\2726\\FE0E";
+  position: static;
+  transform: none;
+  flex-shrink: 0;
+  font-family: var(--lush-ui);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--lush-pink);
+  transition: transform .25s ease;
+}
+.lush-template .brk-faq[open] summary::after {
+  content: "\\2726\\FE0E";
+  transform: rotate(45deg);
+}
+.lush-template .brk-faq p {
+  padding: 0 18px 22px 18px;
+  font-family: var(--lush-ui);
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--lush-muted);
+}
+
+/* ── Reviews skin — hairline editorial cards (transparent, sage rule),
+   DM Serif italic body, Cookie author name, Molle quote glyph, sage ✦
+   stars. Matches the old .lush-review-card. ── */
+.lush-template .brk-reviews { gap: 0; max-width: 960px; }
+@media (min-width: 821px) {
+  .lush-template .brk-reviews {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0;
+    border-top: 1px solid var(--lush-dark-border);
+    border-left: 1px solid var(--lush-dark-border);
+  }
+}
+.lush-template .brk-review {
+  position: relative;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--lush-dark-border);
+  border-radius: 0;
+  padding: 32px 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+@media (min-width: 821px) {
+  .lush-template .brk-review {
+    border-right: 1px solid var(--lush-dark-border);
+    border-bottom: 1px solid var(--lush-dark-border);
+    border-top: none;
+    border-left: none;
+  }
+}
+.lush-template .brk-review-quote {
+  top: 14px;
+  left: 18px;
+  font-family: var(--lush-molle);
+  font-style: italic;
+  font-size: 72px;
+  line-height: 0.6;
+  color: var(--lush-pink);
+  opacity: 0.85;
+  text-shadow: 2px 2px 0 rgba(14, 17, 17, 0.14);
+}
+.lush-template .brk-review-stars {
+  align-self: flex-start;
+  margin: 24px 0 0;
+  color: var(--lush-pink);
+  font-family: var(--lush-ui);
+  font-size: 12px;
+  letter-spacing: 6px;
+}
+.lush-template .brk-review blockquote {
+  margin: 0;
+  font-family: var(--lush-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 17px;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+  color: var(--lush-text);
+}
+.lush-template .brk-review-attr {
+  margin: auto 0 0;
+  padding-top: 8px;
+  font-family: var(--lush-script);
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--lush-text);
+}
+.lush-template .brk-review-attr span {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--lush-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lush-muted);
+}
+
+/* ── Thanks skin — Cookie title, sage script signature flanked by
+   hairlines. Matches the old .lush-thanks-* block. ── */
+.lush-template .brk-thanks { border-top: 1px solid var(--lush-dark-border); padding-top: 80px; padding-bottom: 88px; }
+.lush-template .brk-thanks .brk-eyebrow { letter-spacing: 0.24em; }
+.lush-template .brk-thanks-title {
+  font-family: var(--lush-script);
+  font-weight: 400;
+  font-size: clamp(48px, 10vw, 72px);
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--lush-text);
+}
+.lush-template .brk-thanks-body {
+  font-family: var(--lush-ui);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--lush-muted);
+  max-width: 540px;
+}
+.lush-template .brk-thanks-sign {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  margin: 30px auto 0;
+  font-family: var(--lush-script);
+  font-style: italic;
+  font-size: 28px;
+  color: var(--lush-pink);
+}
+.lush-template .brk-thanks-sign::before,
+.lush-template .brk-thanks-sign::after {
+  content: "";
+  width: 56px;
+  height: 1px;
+  background: var(--lush-pink);
+  opacity: 0.5;
+}
+
+/* ── Footer skin — sage pill CTA + Lush typography over the 3-band base.
+   Matches the old .lush-footer-* block. ── */
+.lush-template .brk-footer { background: var(--lush-bg); }
+.lush-template .brk-footer-book {
+  gap: 10px;
+  padding: 18px 44px;
+  background: var(--lush-pink);
+  color: var(--lush-on-pink);
+  border: none;
+  border-radius: 999px;
+  font-family: var(--lush-ui);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.lush-template .brk-footer-book:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.lush-template .brk-footer-name {
+  font-family: var(--lush-serif);
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--lush-text);
+}
+.lush-template .brk-footer-subtext {
+  font-family: var(--lush-ui);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--lush-muted);
+  max-width: 32ch;
+}
+.lush-template .brk-footer-hours-row dt {
+  font-family: var(--lush-ui);
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: var(--lush-text);
+}
+.lush-template .brk-footer-hours-row dd { color: var(--lush-muted); }
+.lush-template .brk-footer-contact a { color: var(--lush-text); }
+.lush-template .brk-footer-contact a:hover { color: var(--lush-pink); }
+.lush-template .brk-footer-credit-band p {
+  font-family: var(--lush-ui);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lush-muted);
+}
+`
 
 // ── Scoped CSS ────────────────────────────────────────────────────────────────
 

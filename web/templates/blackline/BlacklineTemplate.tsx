@@ -21,6 +21,7 @@ import { useState, useRef } from 'react'
 import type { PublicSite } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 import { tokensToCss } from '@bkrdy/platform'
+import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, SECTIONS_CSS } from '@bkrdy/platform/sections'
 import BlacklineBooking from './BlacklineBooking'
 
 // ── Contact-href helper ──────────────────────────────────────────────────────
@@ -146,6 +147,7 @@ export default function BlacklineTemplate({ site, slug }: Props) {
   return (
     <>
       <style>{BLACKLINE_CSS}</style>
+      <style>{SECTIONS_CSS}</style>
       <div
         className="blackline-template"
         style={{
@@ -354,68 +356,67 @@ export default function BlacklineTemplate({ site, slug }: Props) {
           </div>
         )}
 
-        {/* 10. FAQ */}
-        {additionals.faq?.enabled !== false
-          && Array.isArray(additionals.faq?.items)
-          && additionals.faq.items.length > 0 && (
-          <section className="blackline-section" aria-label="FAQ">
-            <p className="blackline-eyebrow">FAQ</p>
-            <h2 className="blackline-section-title">{additionals.faq.heading ?? 'Questions'}</h2>
-            <div className="blackline-faq-stack">
-              {additionals.faq.items.map((f: any, i: number) => (
-                <details key={i} className="blackline-faq">
-                  <summary>{f.q ?? f.question}</summary>
-                  <p>{f.a ?? f.answer}</p>
-                </details>
-              ))}
-            </div>
-          </section>
+        {/* 10. FAQ (always visible below tabs) — migrated to the shared,
+            theme-tokenized platform component. Blackline's palette is
+            bridged onto the canonical --brk-* tokens above; the
+            .blackline-* skin at the end of BLACKLINE_CSS re-applies the
+            sharp dividers + brass +/− marker. */}
+        {additionals.faq?.enabled !== false && (
+          <FaqSection
+            items={additionals.faq?.items}
+            heading={additionals.faq?.heading ?? 'Questions'}
+            eyebrow="FAQ"
+          />
         )}
 
-        {/* 11. Reviews */}
-        {additionals.reviews?.enabled !== false
-          && Array.isArray(additionals.reviews?.items)
-          && additionals.reviews.items.length > 0 && (
-          <section className="blackline-section" aria-label="Reviews">
-            <p className="blackline-eyebrow">Reviews</p>
-            <h2 className="blackline-section-title">{additionals.reviews.heading ?? 'On the chair'}</h2>
-            <ul className="blackline-reviews">
-              {additionals.reviews.items.map((rv: any, i: number) => {
-                const rating = typeof rv.rating === 'number'
-                  ? Math.max(0, Math.min(5, Math.round(rv.rating)))
-                  : 0
-                return (
-                  <li key={i}>
-                    {rating > 0 && (
-                      <div className="blackline-review-stars" aria-label={`${rating} out of 5 stars`}>
-                        {'★'.repeat(rating)}
-                      </div>
-                    )}
-                    <blockquote>{rv.body ?? rv.quote}</blockquote>
-                    <p className="blackline-review-attr">
-                      {rv.author ?? rv.name}
-                      {rv.location && <span> · {rv.location}</span>}
-                    </p>
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
+        {/* 11. Reviews — shared component. Blackline's flat divided 2-col
+            grid (no cards, brass ★) is reproduced by the skin. */}
+        {additionals.reviews?.enabled !== false && (
+          <ReviewsSection
+            items={additionals.reviews?.items}
+            heading={additionals.reviews?.heading ?? 'On the chair'}
+            eyebrow="Reviews"
+            starGlyph="★"
+          />
         )}
 
-        {/* 12. Thank-you */}
-        {additionals.show_thank_you !== false && additionals.thank_you_title && (
-          <section className="blackline-section blackline-thanks" aria-label="Thank you">
-            <p className="blackline-eyebrow">Outro</p>
-            <h2 className="blackline-section-title">{additionals.thank_you_title}</h2>
-            {additionals.thank_you_body && <p>{additionals.thank_you_body}</p>}
-            {/* Studio signature — borrowed from VT's outro pattern. Editable
-                via additionals.thank_you_signature; falls back to the name. */}
-            <p className="blackline-thanks-sign">— {(typeof additionals.thank_you_signature === 'string' && additionals.thank_you_signature.trim()) || display}</p>
-          </section>
-        )}
+        {/* 12. Thank-you — shared component. Plain centered block; the
+            shared gate (show !== false && title) matches the old inline
+            condition. Signature falls back to the business name. */}
+        <ThanksSection
+          show={additionals.show_thank_you}
+          title={additionals.thank_you_title}
+          body={additionals.thank_you_body}
+          signature={additionals.thank_you_signature}
+          fallbackSignature={display}
+          eyebrow="Outro"
+        />
 
-        <Footer site={site} hours={hours} services={services} goBook={goBook} />
+        {/* Footer — shared 3-band component. Mirrors the old local Footer
+            exactly: businessName = override || display, eyebrow labels
+            The Shop / Hours / Contact, CTA "Reserve the chair", credit
+            band is "Powered by BookReady" only (no copyright prefix →
+            copyrightName omitted). The sharp brass CTA is restored by the
+            skin. */}
+        <SiteFooter
+          businessName={(settings.footer?.business_name_override ?? '').trim() || display}
+          subtext={settings.footer?.subtext}
+          hours={hours}
+          phone={p?.public_phone}
+          email={p?.public_email}
+          servicesCount={services.length}
+          onBook={goBook}
+          ctaLabel="Reserve the chair"
+          brandLabel="The Shop"
+          hoursLabel="Hours"
+          contactLabel="Contact"
+          show={{
+            quickBook: settings.footer?.show_quick_book,
+            hours: settings.footer?.show_hours,
+            contact: settings.footer?.show_contact_links,
+            poweredBy: settings.footer?.show_powered_by,
+          }}
+        />
       </div>
     </>
   )
@@ -469,62 +470,6 @@ function SocialButtons({ header, profile, goBook }: { header: any; profile: any;
   )
 }
 
-function Footer({ site, hours, services, goBook }: { site: PublicSite; hours: any[]; services: any[]; goBook: () => void }) {
-  const settings: any = site.template?.settings ?? {}
-  const footer:   any = settings.footer ?? {}
-  const p           = site.profile
-  const name        = footer.business_name_override ?? p?.business_name ?? site.business_name ?? site.slug
-  return (
-    <footer className="blackline-footer">
-      {footer.show_quick_book !== false && services.length > 0 && (
-        <div className="blackline-footer-cta-band">
-          <button type="button" className="blackline-footer-book" onClick={goBook}>
-            Reserve the chair
-          </button>
-        </div>
-      )}
-
-      <div className="blackline-footer-inner">
-        <div className="blackline-footer-col blackline-footer-brand">
-          <p className="blackline-eyebrow">The Shop</p>
-          <p className="blackline-footer-name">{name}</p>
-          {footer.subtext && <p className="blackline-footer-subtext">{footer.subtext}</p>}
-        </div>
-
-        {footer.show_hours !== false && hours.length > 0 && (
-          <div className="blackline-footer-col blackline-footer-col--hours">
-            <p className="blackline-eyebrow">Hours</p>
-            <ul className="blackline-footer-hours">
-              {hours.map((h: any) => (
-                <li key={h.id}>
-                  <span>{h.day_name}</span>
-                  <span>{h.is_open && h.open_time && h.close_time ? `${h.open_time}–${h.close_time}` : 'Closed'}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {footer.show_contact_links !== false && (p?.public_phone || p?.public_email) && (
-          <div className="blackline-footer-col">
-            <p className="blackline-eyebrow">Contact</p>
-            <ul className="blackline-footer-contact">
-              {p?.public_phone && <li><a href={`tel:${p.public_phone}`}>{p.public_phone}</a></li>}
-              {p?.public_email && <li><a href={`mailto:${p.public_email}`}>{p.public_email}</a></li>}
-            </ul>
-          </div>
-        )}
-      </div>
-
-      {footer.show_powered_by !== false && (
-        <div className="blackline-footer-credit-band">
-          <p>Powered by BookReady</p>
-        </div>
-      )}
-    </footer>
-  )
-}
-
 // ─── Scoped CSS ────────────────────────────────────────────────────────────────
 
 const BLACKLINE_CSS = `
@@ -537,6 +482,24 @@ const BLACKLINE_CSS = `
   --blackline-accent: #B8966B;
   --blackline-display: 'Space Grotesk', system-ui, -apple-system, sans-serif;
   --blackline-body: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* Bridge Blackline's palette + fonts onto the canonical --brk-* tokens
+     the shared section components (@bkrdy/platform/sections) are styled
+     against. Blackline binds --blackline-bg/-fg/-fg-muted/-rule via an
+     INLINE style on the root div (computed from theme.accent_color, which
+     Blackline treats as the CANVAS), so these aliases let the runtime
+     canvas flow straight through to the shared sections. The brass accent
+     is constant. The .blackline-* skin at the end of this file then
+     re-applies Blackline's industrial signatures over the shared base. */
+  --brk-color-bg: var(--blackline-bg);
+  --brk-color-surface: var(--blackline-bg);
+  --brk-color-text: var(--blackline-fg);
+  --brk-color-muted: var(--blackline-fg-muted);
+  --brk-color-rule: var(--blackline-rule);
+  --brk-color-accent: var(--blackline-accent);
+  --brk-color-on-accent: var(--blackline-bg);
+  --brk-family-display: var(--blackline-display);
+  --brk-family-body: var(--blackline-body);
 
   background: var(--blackline-bg);
   color: var(--blackline-fg);
@@ -1110,4 +1073,187 @@ const BLACKLINE_CSS = `
     animation-duration: 0.01ms !important;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   BLACKLINE SKIN over the shared platform sections (@bkrdy/platform/sections)
+   ────────────────────────────────────────────────────────────────────
+   The FAQ / Reviews / Thank-you / Footer now render the canonical
+   .brk-* markup. These overrides (scoped under .blackline-template, AFTER
+   SECTIONS_CSS) re-apply Blackline's industrial signatures over the
+   shared base: sharp corners (zero radius), flat surfaces (no card
+   chrome), hairline brass rules, Space Grotesk titles, and the constant
+   brass accent. All colors/fonts come from the bridged tokens. The old
+   .blackline-faq/.blackline-reviews/.blackline-thanks/.blackline-footer
+   rules above are now dead (left inert).
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Blackline runs a tighter editorial single column (shared default is
+   wider) and is LEFT-aligned, not centered. */
+.blackline-template .brk-section { max-width: var(--brk-container-narrow); }
+.blackline-template .brk-section-head { text-align: left; margin-left: 0; max-width: none; }
+
+/* Section title — Space Grotesk, restrained tracking, sharp (no neon). */
+.blackline-template .brk-section-title {
+  font-family: var(--blackline-display);
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.08;
+  color: var(--blackline-fg);
+}
+/* Eyebrow — tracked uppercase brass, matching .blackline-eyebrow. */
+.blackline-template .brk-eyebrow {
+  font-family: var(--blackline-body);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--blackline-accent);
+}
+
+/* ── FAQ skin — sharp hairline dividers + brass +/− marker, display-font
+   summary on a space-between row. Matches .blackline-faq. ── */
+.blackline-template .brk-faq summary {
+  font-family: var(--blackline-display);
+  font-size: 18px;
+  font-weight: 500;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--brk-space-md);
+  padding: var(--brk-space-lg) 0;
+}
+/* Replace the shared absolutely-positioned +/− with Blackline's inline
+   brass marker (the flex summary above handles placement). */
+.blackline-template .brk-faq summary::after {
+  position: static;
+  transform: none;
+  font-family: var(--blackline-display);
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--blackline-accent);
+  line-height: 1;
+}
+.blackline-template .brk-faq[open] summary::after { content: '\\2212'; }
+.blackline-template .brk-faq p {
+  padding: var(--brk-space-md) 0 var(--brk-space-lg);
+  line-height: 1.65;
+}
+
+/* ── Reviews skin — Blackline's flat divided 2-col grid (NOT cards):
+   transparent cells, zero radius, hairline brass dividers, brass stars,
+   display-font blockquote. No quote watermark. Matches .blackline-reviews. ── */
+.blackline-template .brk-reviews { gap: 0; }
+@media (min-width: 720px) {
+  .blackline-template .brk-reviews { grid-template-columns: repeat(2, 1fr); gap: 0; }
+}
+/* On the shared component the 821px breakpoint promotes 2 cols; force
+   single col below Blackline's own 720px breakpoint so the dividers read
+   correctly on tablet/mobile. */
+@media (max-width: 719px) {
+  .blackline-template .brk-reviews { grid-template-columns: 1fr; }
+}
+.blackline-template .brk-review {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  border-top: 1px solid var(--blackline-rule);
+  padding: var(--brk-space-xl) 0;
+}
+.blackline-template .brk-review:nth-last-child(-n+1) {
+  border-bottom: 1px solid var(--blackline-rule);
+}
+@media (min-width: 720px) {
+  .blackline-template .brk-review:nth-child(odd) { padding-right: var(--brk-space-xl); }
+  .blackline-template .brk-review:nth-child(even) {
+    padding-left: var(--brk-space-xl);
+    border-left: 1px solid var(--blackline-rule);
+  }
+}
+/* Blackline had no big quote watermark — hide the shared ornament. */
+.blackline-template .brk-review-quote { display: none; }
+.blackline-template .brk-review-stars {
+  font-size: 13px;
+  letter-spacing: 4px;
+  line-height: 1;
+  color: var(--blackline-accent);
+  margin: 0 0 var(--brk-space-sm);
+}
+.blackline-template .brk-review blockquote {
+  font-family: var(--blackline-display);
+  font-style: normal;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: var(--blackline-fg);
+}
+.blackline-template .brk-review-attr {
+  font-family: var(--blackline-body);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--blackline-fg-muted);
+}
+
+/* ── Thank-you skin — plain centered block (no frame, no neon). Space
+   Grotesk title, muted body, brass uppercase signature. Matches
+   .blackline-thanks. ── */
+.blackline-template .brk-thanks-title {
+  font-family: var(--blackline-display);
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.08;
+  color: var(--blackline-fg);
+}
+.blackline-template .brk-thanks-body {
+  max-width: 56ch;
+  line-height: 1.65;
+  color: var(--blackline-fg-muted);
+}
+.blackline-template .brk-thanks-sign {
+  font-family: var(--blackline-body);
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--blackline-accent);
+}
+
+/* ── Footer skin — sharp-cornered brass CTA + flat columns (no dividers),
+   matching .blackline-footer*. ── */
+.blackline-template .brk-footer { background: transparent; }
+.blackline-template .brk-footer-inner { max-width: var(--brk-container-narrow); }
+/* Per Blackline's design, columns sit on bare canvas — drop the shared
+   inter-column divider. */
+@media (min-width: 720px) {
+  .blackline-template .brk-footer-col + .brk-footer-col { border-left: 0; }
+}
+/* Sharp brass CTA — zero radius, opacity hover (not brightness). */
+.blackline-template .brk-footer-book {
+  border-radius: 0;
+  padding: 18px 44px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  transition: opacity 160ms ease;
+}
+.blackline-template .brk-footer-book:hover { filter: none; opacity: 0.86; }
+.blackline-template .brk-footer-name {
+  font-family: var(--blackline-display);
+  font-weight: 500;
+  font-size: 28px;
+  letter-spacing: -0.015em;
+}
+/* Hours value in display font with light tracking, matching the old
+   .blackline-footer-hours li > span:last-child treatment. */
+.blackline-template .brk-footer-hours-row dd {
+  font-family: var(--blackline-display);
+  letter-spacing: 0.04em;
+  color: var(--blackline-fg);
+}
+.blackline-template .brk-footer-credit-band p { letter-spacing: 0.2em; }
 `

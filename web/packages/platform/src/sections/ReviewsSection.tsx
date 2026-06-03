@@ -7,13 +7,13 @@
  * own scoped `.brk-review*` skin for signature flourishes).
  */
 export interface ReviewItem {
-  body?: string
-  author?: string
+  body?: string | null
+  author?: string | null
   location?: string | null
-  rating?: number
+  rating?: number | null
   /** Legacy aliases. */
-  quote?: string
-  name?: string
+  quote?: string | null
+  name?: string | null
 }
 
 export interface ReviewsSectionProps {

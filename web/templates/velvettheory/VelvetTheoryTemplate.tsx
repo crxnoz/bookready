@@ -5,6 +5,8 @@ import { Phone, Mail, Instagram, MapPin, MessageSquare, Youtube, Facebook } from
 import VelvetTheoryBooking from './VelvetTheoryBooking'
 import type { PublicSite, Service } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
+import { tokensToCss } from '@bkrdy/platform'
+import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, SECTIONS_CSS } from '@bkrdy/platform/sections'
 
 // ── Brand glyphs lucide doesn't ship ─────────────────────────────────────────
 
@@ -54,11 +56,6 @@ function signatureWord(name: string): string {
   const STOP = new Set(['the', 'a', 'an'])
   const real = parts.find(p => ! STOP.has(p.toLowerCase()))
   return real ?? parts[0]
-}
-
-function fmt12(t: string) {
-  const [h, m] = t.split(':').map(Number)
-  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`
 }
 
 // Roman numerals for policy/about sections — first 20 covers any realistic list.
@@ -260,6 +257,7 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
   return (
     <>
       <style>{VT_CSS}</style>
+      <style>{SECTIONS_CSS}</style>
       <div className="vt-template" style={variantVars}>
 
         {/* ── Masthead announcement (above hero, above image) ── */}
@@ -521,144 +519,76 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
           </div>
         </section>
 
-        {/* ── Additionals: thank-you opens it, then FAQs ── */}
+        {/* ── Additionals: thank-you opens it, then FAQs + Reviews ──
+            All four now render the canonical .brk-* markup from the shared
+            platform sections (@bkrdy/platform/sections). VT's burgundy/gold
+            palette is bridged onto the --brk-* tokens above; the .vt-* skin
+            at the end of VT_CSS re-applies the editorial-luxe treatment
+            (serif titles, gold ornaments, hairline rules). The old VT-scoped
+            thanks/FAQ/review CSS is now dead (left inert). */}
         <section className="vt-additionals">
-          {/* Thank-you note — first impression at the bottom of every tab.
-              Editorial treatment: italic Fraunces title, italic body, gold
-              signature line. Reads as a handwritten note from the studio. */}
-          {additionals.show_thank_you !== false
-            && (additionals.thank_you_title || additionals.thank_you_body) && (
-            <div className="vt-section vt-section-narrow vt-thanks">
-              <p className="vt-eyebrow vt-thanks-eyebrow">A note</p>
-              {/* U+FE0E (text variation selector) forces iOS/Android to
-                  render the asterisk as a text glyph instead of an emoji
-                  upgrade. Without it, U+2733 ✳ gets a color emoji
-                  treatment on mobile that breaks the editorial mark. */}
-              <span className="vt-thanks-mark" aria-hidden="true">&#x2733;&#xFE0E;</span>
-              <h2 className="vt-thanks-title">
-                {additionals.thank_you_title ?? 'Thank you.'}
-              </h2>
-              {additionals.thank_you_body && (
-                <p className="vt-thanks-body">{additionals.thank_you_body}</p>
-              )}
-              <span className="vt-thanks-sign">&mdash;&nbsp;{(additionals.thank_you_signature ?? '').trim() || signatureWord(displayName)}</span>
-            </div>
+          {/* Thank-you — editorial note. Title keeps VT's 'Thank you.'
+              fallback; signature falls back to the studio's signature word
+              (not the full display name). Eyebrow "A note". */}
+          <ThanksSection
+            show={additionals.show_thank_you}
+            title={additionals.thank_you_title ?? 'Thank you.'}
+            body={additionals.thank_you_body}
+            signature={additionals.thank_you_signature}
+            fallbackSignature={signatureWord(displayName)}
+            eyebrow="A note"
+          />
+
+          {/* FAQ — shared component. Heading fallback 'Frequently asked.',
+              eyebrow "Questions". The +/× toggle mark is restyled by the
+              skin to VT's gold 45°-rotate asterisk. */}
+          {additionals.faq?.enabled !== false && (
+            <FaqSection
+              items={additionals.faq?.items}
+              heading={additionals.faq?.heading ?? 'Frequently asked.'}
+              eyebrow="Questions"
+            />
           )}
 
-          {/* FAQs — only render when present + enabled. The backend shape is
-              additionals.faq.{ enabled, heading, items[{q,a}] }. */}
-          {additionals.faq?.enabled !== false
-            && Array.isArray(additionals.faq?.items)
-            && additionals.faq.items.length > 0 && (
-            <div className="vt-section vt-section-narrow">
-              <p className="vt-eyebrow">Questions</p>
-              <h2 className="vt-h2">{additionals.faq.heading ?? 'Frequently asked.'}</h2>
-              <div className="vt-faqs">
-                {additionals.faq.items.map((f: any, i: number) => (
-                  <details key={i} className="vt-faq">
-                    <summary>{f.q ?? f.question ?? ''}</summary>
-                    <p>{f.a ?? f.answer ?? ''}</p>
-                  </details>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Reviews — M5 compliance. VT previously ignored
-              additionals.reviews.* entirely; now it renders them in an
-              editorial column scoped to .vt-section-narrow. Same data
-              shape as TFR ({ body, author, rating, location }). */}
-          {additionals.reviews?.enabled !== false
-            && Array.isArray(additionals.reviews?.items)
-            && additionals.reviews.items.length > 0 && (
-            <div className="vt-section vt-section-narrow">
-              <p className="vt-eyebrow">Reviews</p>
-              <h2 className="vt-h2">{additionals.reviews.heading ?? 'What guests say.'}</h2>
-              <div className="vt-reviews">
-                {additionals.reviews.items.map((rv: any, i: number) => (
-                  <figure key={i} className="vt-review">
-                    {typeof rv.rating === 'number' && rv.rating > 0 && (
-                      <span className="vt-review-stars" aria-label={`${rv.rating} of 5 stars`}>
-                        {'★'.repeat(Math.max(0, Math.min(5, Math.round(rv.rating))))}
-                      </span>
-                    )}
-                    <blockquote className="vt-review-body">{rv.body ?? rv.quote ?? ''}</blockquote>
-                    <figcaption className="vt-review-attr">
-                      {(rv.author ?? rv.name) && <span className="vt-review-author">{rv.author ?? rv.name}</span>}
-                      {rv.location && <span className="vt-review-location">{rv.location}</span>}
-                    </figcaption>
-                  </figure>
-                ))}
-              </div>
-            </div>
+          {/* Reviews — shared component. Heading fallback 'What guests say.',
+              eyebrow "Reviews", gold ★ rating. The skin flattens the cards
+              (no surface/border), restores the ✻ corner ornament, and keeps
+              the italic serif blockquote + uppercase attribution. */}
+          {additionals.reviews?.enabled !== false && (
+            <ReviewsSection
+              items={additionals.reviews?.items}
+              heading={additionals.reviews?.heading ?? 'What guests say.'}
+              eyebrow="Reviews"
+              starGlyph="★"
+            />
           )}
         </section>
 
-        {/* ── Footer: 3-band layout mirroring TFR + Blackline.
-              Top band — CTA. Middle band — 3 columns (brand/hours/contact).
-              Bottom band — Powered by BookReady. VT keeps its own
-              typography vocabulary (Fraunces serif + gold accent +
-              uppercase eyebrows) inside that shared structure. ── */}
-        <footer className="vt-footer">
-          {footerSettings.show_quick_book !== false && services.length > 0 && (
-            <div className="vt-footer-cta-band">
-              <button type="button" className="vt-footer-book" onClick={goBook}>
-                Reserve a chair
-              </button>
-            </div>
-          )}
-
-          <div className="vt-footer-inner">
-            <div className="vt-footer-col vt-footer-brand">
-              <p className="vt-eyebrow">The Studio</p>
-              <p className="vt-footer-name">{(footerSettings.business_name_override ?? '').trim() || displayName}</p>
-              {footerSettings.subtext && (
-                <p className="vt-footer-subtext">{footerSettings.subtext}</p>
-              )}
-            </div>
-
-            {footerSettings.show_hours !== false && hours.length > 0 && (
-              <div className="vt-footer-col vt-footer-col--hours">
-                <p className="vt-eyebrow">Hours</p>
-                <dl className="vt-footer-hours">
-                  {hours.map((h: any) => (
-                    <div key={h.id} className="vt-footer-hours-row">
-                      <dt>{h.day_name}</dt>
-                      <dd>
-                        {h.is_open && h.open_time && h.close_time
-                          ? `${fmt12(h.open_time)} — ${fmt12(h.close_time)}`
-                          : 'Closed'}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
-            )}
-
-            {footerSettings.show_contact_links !== false
-              && (address || p?.public_phone || p?.public_email) && (
-              <div className="vt-footer-col">
-                <p className="vt-eyebrow">Contact</p>
-                <ul className="vt-footer-contact">
-                  {address && <li>{address}</li>}
-                  {p?.public_phone && (() => {
-                    const tel = `tel:${p.public_phone.replace(/[^\d+]/g, '')}`
-                    return <li><a href={tel}>{p.public_phone}</a></li>
-                  })()}
-                  {p?.public_email && (
-                    <li><a href={`mailto:${p.public_email}`}>{p.public_email}</a></li>
-                  )}
-                </ul>
-              </div>
-            )}
-          </div>
-
-          {footerSettings.show_powered_by !== false && (
-            <div className="vt-footer-credit-band">
-              <p>Powered by BookReady</p>
-            </div>
-          )}
-        </footer>
+        {/* ── Footer — shared 3-band component. Mirrors the old local
+              vt-footer: businessName = override || displayName, eyebrow
+              labels The Studio / Hours / Contact, CTA "Reserve a chair",
+              credit band is "Powered by BookReady" only (no © prefix →
+              copyrightName omitted). VT's gold-edged CTA + serif name are
+              restored by the skin. NOTE: the shared footer renders only
+              phone/email in the contact column — VT's old address line is
+              intentionally dropped (matches the TFR migration). ── */}
+        <SiteFooter
+          businessName={(footerSettings.business_name_override ?? '').trim() || displayName}
+          subtext={footerSettings.subtext}
+          hours={hours}
+          phone={p?.public_phone}
+          email={p?.public_email}
+          servicesCount={services.length}
+          onBook={goBook}
+          brandLabel="The Studio"
+          ctaLabel="Reserve a chair"
+          show={{
+            quickBook: footerSettings.show_quick_book,
+            hours: footerSettings.show_hours,
+            contact: footerSettings.show_contact_links,
+            poweredBy: footerSettings.show_powered_by,
+          }}
+        />
       </div>
     </>
   )
@@ -835,6 +765,7 @@ const VT_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500;600&display=swap');
 
 .vt-template {
+  ${tokensToCss()}
   --vt-bg: #2D0F19;
   --vt-fg: #F5EFE6;
   --vt-fg-muted: rgba(245,239,230,0.62);
@@ -842,6 +773,23 @@ const VT_CSS = `
   --vt-accent: #C9A876;
   --vt-display: 'Fraunces', 'Cormorant Garamond', Georgia, serif;
   --vt-body:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Bridge VT's burgundy/gold palette + serif fonts onto the canonical
+     --brk-* tokens the shared section components (@bkrdy/platform/sections)
+     are styled against. CSS aliasing means VT's background-variant overrides
+     (set on --vt-bg/--vt-fg/etc. by the inline style) flow through to the
+     shared sections automatically. The .vt-* skin at the end of this file
+     then re-applies VT's editorial-luxe signatures over the base. */
+  --brk-color-bg: var(--vt-bg);
+  --brk-color-surface: var(--vt-bg);
+  --brk-color-text: var(--vt-fg);
+  --brk-color-muted: var(--vt-fg-muted);
+  --brk-color-rule: var(--vt-rule);
+  --brk-color-accent: var(--vt-accent);
+  --brk-color-on-accent: var(--vt-bg);
+  --brk-family-display: var(--vt-display);
+  --brk-family-body: var(--vt-body);
+
   font-family: var(--vt-body);
   font-weight: 400;
   color: var(--vt-fg);
@@ -1681,4 +1629,261 @@ const VT_CSS = `
   .vt-hero-contacts { gap: 14px; }
   .vt-strip img { aspect-ratio: 1.5 / 1; }
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   VT SKIN over the shared platform sections (@bkrdy/platform/sections)
+   ────────────────────────────────────────────────────────────────────
+   FAQ / Reviews / Thank-you / Footer now render the canonical .brk-*
+   markup. These overrides (scoped under .vt-template, AFTER SECTIONS_CSS)
+   re-apply Velvet Theory's editorial-luxe signatures: upright serif
+   section titles, gold uppercase eyebrows, FLAT hairline-divided review
+   rows with the gold ✻ corner ornament + italic serif quote, the
+   centered thank-you note with its ✳ mark + gold-rule signature, and the
+   sharp gold footer CTA + italic serif business name. All colors/fonts
+   come from the bridged --brk-* tokens. The old .vt-thanks/.vt-faq*/
+   .vt-review*/.vt-footer* rules above are now dead (left inert).
+   ════════════════════════════════════════════════════════════════════ */
+
+/* VT's additionals sat in the narrow (720px) editorial column. */
+.vt-template .brk-section { max-width: 720px; }
+
+/* FAQ + Reviews keep VT's LEFT-aligned editorial header (the shared
+   default is centered). Thank-you doesn't use .brk-section-head, so it
+   stays centered via .brk-thanks. */
+.vt-template .brk-section-head {
+  text-align: left;
+  margin: 0 0 36px;
+  max-width: none;
+}
+/* Match .vt-eyebrow — gold, tracked, uppercase micro-label. */
+.vt-template .brk-eyebrow {
+  font-family: var(--vt-body);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--vt-accent);
+}
+/* Match .vt-h2 — upright serif display title (no italic, no neon). */
+.vt-template .brk-section-title {
+  margin: 24px 0 0;
+  font-family: var(--vt-display);
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: -0.014em;
+  color: var(--vt-fg);
+}
+
+/* ── FAQ skin — match .vt-faq: rule ABOVE each row (none on first), serif
+   summary, gold + marker that rotates to × on open. ── */
+.vt-template .brk-faq-list { border-top: 0; }
+.vt-template .brk-faq {
+  border-bottom: 0;
+  border-top: 1px solid var(--vt-rule);
+}
+.vt-template .brk-faq:first-child { border-top: 0; }
+.vt-template .brk-faq summary {
+  font-family: var(--vt-display);
+  font-size: 18px;
+  font-weight: 400;
+  padding: 20px 40px 20px 0;
+}
+.vt-template .brk-faq summary::after {
+  content: '+';
+  font-family: var(--vt-display);
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--vt-accent);
+  right: 0;
+}
+/* VT rotates the + into an × on open (rather than swapping the glyph). */
+.vt-template .brk-faq[open] summary::after {
+  content: '+';
+  transform: translateY(-50%) rotate(45deg);
+}
+.vt-template .brk-faq p {
+  padding: 14px 40px 22px 0;
+  font-family: var(--vt-body);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--vt-fg);
+  opacity: 0.85;
+}
+
+/* ── Reviews skin — FLAT hairline-divided rows (no card bg/border), gold ✻
+   corner ornament, italic serif blockquote, uppercase attribution. The
+   shared inline quote glyph is hidden. Matches .vt-review*. ── */
+.vt-template .brk-reviews {
+  gap: 0;
+  max-width: none;
+}
+@media (min-width: 720px) {
+  .vt-template .brk-reviews { grid-template-columns: 1fr 1fr; gap: 0 48px; }
+}
+@media (min-width: 821px) {
+  .vt-template .brk-reviews { grid-template-columns: 1fr 1fr; }
+}
+.vt-template .brk-review {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  border-top: 1px solid var(--vt-rule);
+  padding: 32px 0 28px;
+}
+.vt-template .brk-review:first-child {
+  border-top: 0;
+  padding-top: 8px;
+}
+@media (min-width: 720px) {
+  .vt-template .brk-review:nth-child(2) {
+    border-top: 0;
+    padding-top: 8px;
+  }
+}
+/* Hide the shared oversized quotation mark — VT uses no quote glyph. */
+.vt-template .brk-review-quote { display: none; }
+/* Gold ✻ ornament in the top-right of each review (matches .vt-review::after). */
+.vt-template .brk-review::after {
+  content: '\\273B';
+  position: absolute;
+  top: 28px;
+  right: 4px;
+  color: var(--vt-accent);
+  font-family: var(--vt-display);
+  font-size: 13px;
+  opacity: 0.75;
+}
+.vt-template .brk-review blockquote {
+  font-family: var(--vt-display);
+  font-style: italic;
+  font-size: 19px;
+  line-height: 1.55;
+  color: var(--vt-fg);
+  opacity: 0.94;
+  margin: 0 0 18px;
+}
+.vt-template .brk-review-stars {
+  font-family: var(--vt-body);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--vt-accent);
+  margin: 0 0 12px;
+}
+.vt-template .brk-review-attr {
+  font-family: var(--vt-body);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--vt-fg);
+}
+/* The location span (rendered as " · {location}") reads back muted. */
+.vt-template .brk-review-attr span {
+  font-weight: 400;
+  opacity: 0.62;
+}
+
+/* ── Thank-you skin — centered editorial note. ✳ mark above the title,
+   italic serif title + body, gold-rule signature. Matches .vt-thanks*. ── */
+.vt-template .brk-thanks {
+  max-width: 720px;
+  padding-top: 112px;
+  padding-bottom: 112px;
+}
+.vt-template .brk-thanks .brk-eyebrow { margin-bottom: 20px; }
+/* The ✳ mark VT rendered as its own span, reproduced above the title.
+   U+FE0E forces a text glyph (not a color-emoji) on mobile. */
+.vt-template .brk-thanks-title::before {
+  content: '\\2733\\FE0E';
+  display: block;
+  font-family: var(--vt-display);
+  font-size: 32px;
+  line-height: 1;
+  color: var(--vt-accent);
+  margin-bottom: 24px;
+}
+.vt-template .brk-thanks-title {
+  font-family: var(--vt-display);
+  font-style: italic;
+  font-weight: 300;
+  font-size: clamp(40px, 6vw, 64px);
+  line-height: 1.06;
+  letter-spacing: -0.018em;
+  color: var(--vt-fg);
+  max-width: 640px;
+  margin: 0 auto 28px;
+}
+.vt-template .brk-thanks-body {
+  font-family: var(--vt-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(17px, 1.8vw, 21px);
+  line-height: 1.6;
+  color: var(--vt-fg);
+  opacity: 0.92;
+  max-width: 560px;
+  margin: 0 auto 48px;
+}
+.vt-template .brk-thanks-sign {
+  display: inline-block;
+  font-family: var(--vt-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 17px;
+  color: var(--vt-accent);
+  padding-top: 28px;
+  border-top: 1px solid var(--vt-rule);
+  min-width: 240px;
+  margin: 0;
+}
+
+/* ── Footer skin — sharp gold CTA + italic serif name + VT hairline cols.
+   Matches .vt-footer*. ── */
+.vt-template .brk-footer {
+  background: transparent;
+  margin-top: 32px;
+}
+.vt-template .brk-footer-cta-band { padding: 56px 24px; }
+/* VT's footer CTA is a SHARP gold rectangle (not a pill). */
+.vt-template .brk-footer-book {
+  border-radius: 0;
+  font-family: var(--vt-body);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  transition: opacity 160ms ease;
+}
+.vt-template .brk-footer-book:hover {
+  filter: none;
+  opacity: 0.86;
+}
+.vt-template .brk-footer-inner {
+  max-width: 1080px;
+  padding: 72px 24px;
+}
+.vt-template .brk-footer-name {
+  font-family: var(--vt-display);
+  font-style: italic;
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  color: var(--vt-fg);
+}
+.vt-template .brk-footer-subtext {
+  font-family: var(--vt-body);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.vt-template .brk-footer-hours-row {
+  font-size: 12px;
+  padding: 10px 0;
+}
+.vt-template .brk-footer-hours-row dt { letter-spacing: 0.08em; }
+.vt-template .brk-footer-contact {
+  font-size: 13px;
+  gap: 8px;
+}
+.vt-template .brk-footer-contact a:hover { color: var(--vt-accent); }
+.vt-template .brk-footer-credit-band p { letter-spacing: 0.2em; }
 `
