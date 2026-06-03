@@ -790,6 +790,11 @@ class PublicBookingController extends Controller
         if (! $paymentRequired) {
             AppointmentMailer::sendBookingRequest($appt, $businessName, $ownerEmail, $notify);
 
+            // Transactional confirmation SMS — only for clients who ticked
+            // the SMS consent box at booking ($smsConsent). Best-effort: a
+            // send failure is logged and swallowed, never breaks the booking.
+            \App\Services\Sms\AppointmentSmsNotifier::confirmation($appt, $businessName, $smsConsent);
+
             // First-booking celebration runs alongside the regular request
             // email. Payment-required path fires this from the webhook so
             // it doesn't celebrate a pending_payment that never clears.

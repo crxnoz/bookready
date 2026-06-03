@@ -303,6 +303,14 @@ class AppointmentPaymentWebhookController extends Controller
             // intentionally held back when the booking was created.
             AppointmentMailer::sendBookingRequest($appt, $businessName, $ownerEmail, $notify);
 
+            // Confirmation SMS for deposit bookings — fired now that payment
+            // cleared, only if the client opted in at booking. Best-effort.
+            \App\Services\Sms\AppointmentSmsNotifier::confirmation(
+                $appt,
+                $businessName,
+                property_exists($updated, 'sms_consent_at') && $updated->sms_consent_at,
+            );
+
             // Celebrate the first booking (deposit just cleared, so it's real).
             if ($isFirstBooking) {
                 PlatformMailer::sendFirstBookingCelebration(

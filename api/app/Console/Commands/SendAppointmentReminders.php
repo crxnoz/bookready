@@ -93,6 +93,7 @@ class SendAppointmentReminders extends Command
                         'id'               => (int) $row->id,
                         'customer_name'    => $row->customer_name,
                         'customer_email'   => $row->customer_email,
+                        'customer_phone'   => property_exists($row, 'customer_phone') ? $row->customer_phone : null,
                         'service_name'     => $row->service_name,
                         'appointment_date' => $row->appointment_date,
                         'start_time'       => substr($row->start_time, 0, 5),
@@ -108,6 +109,18 @@ class SendAppointmentReminders extends Command
                     ]);
 
                     AppointmentMailer::sendReminder($appt, $businessName, $hoursBefore, $notify);
+
+                    // Reminder SMS for clients who opted in at booking and
+                    // have a phone on file. Best-effort — never aborts the
+                    // reminder run. (Phone-only bookings with no email are
+                    // excluded by the customer_email filter on the query
+                    // above; broadening that is a future enhancement.)
+                    \App\Services\Sms\AppointmentSmsNotifier::reminder(
+                        $appt,
+                        $businessName,
+                        property_exists($row, 'sms_consent_at') && $row->sms_consent_at,
+                    );
+
                     $sentTotal++;
                 }
 
