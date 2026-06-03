@@ -36,42 +36,41 @@ return [
         'redirect'      => env('GOOGLE_REDIRECT_URI', 'https://api.bkrdy.me/api/v1/auth/google/callback'),
     ],
 
-    'telnyx' => [
-        // V2 API key generated under Auth → V2 API Keys in the Telnyx portal.
-        'api_key'              => env('TELNYX_API_KEY', ''),
+    'twilio' => [
+        // Account SID + Auth Token from the Twilio Console dashboard.
+        // The Auth Token also keys the webhook X-Twilio-Signature HMAC,
+        // so a single value gates both outbound sends and inbound
+        // callback verification.
+        'account_sid' => env('TWILIO_ACCOUNT_SID', ''),
+        'auth_token'  => env('TWILIO_AUTH_TOKEN', ''),
 
-        // Ed25519 public key for verifying webhook signatures. Shown on
-        // the same page as the API key. Must be the PEM-formatted full
-        // string from the portal (begins with -----BEGIN PUBLIC KEY-----).
-        'public_key'           => env('TELNYX_PUBLIC_KEY', ''),
+        // Sender. Prefer a Messaging Service SID (MGxxxx) — it handles
+        // A2P 10DLC number pooling, sticky sender, and opt-out
+        // compliance. Falls back to a single E.164 From number
+        // ("+13125551234") when no service SID is set.
+        'from'                  => env('TWILIO_FROM_NUMBER', ''),
+        'messaging_service_sid' => env('TWILIO_MESSAGING_SERVICE_SID', ''),
 
-        // Default E.164 sender — the 10DLC number assigned to the
-        // platform messaging profile. e.g. "+13125551234".
-        'from'                 => env('TELNYX_FROM_NUMBER', ''),
+        // Marginal cost per outbound segment, in cents, recorded on every
+        // send for the cost dashboard. Twilio US A2P long-code is ~$0.0079
+        // + carrier fees as of late 2026. Override via env if pricing
+        // shifts so we don't have to redeploy.
+        'cost_cents_per_message' => (float) env('TWILIO_COST_CENTS', 0.79),
 
-        // UUID of the messaging profile that owns the sender number.
-        // Telnyx will route through whichever number in the profile has
-        // capacity, so the explicit 'from' above is optional once this
-        // is set. We pass both for clarity.
-        'messaging_profile_id' => env('TELNYX_MESSAGING_PROFILE_ID', ''),
+        // Live mode requires the Account SID, Auth Token, AND a sender
+        // (either a Messaging Service SID or a From number). When any is
+        // missing we operate in dry-run mode: messages get logged to
+        // notification_send_log with status='dry_run' and no API call is
+        // made. Lets us build and deploy the code before Twilio A2P
+        // onboarding is complete.
+        'live' => env('TWILIO_ACCOUNT_SID', '') !== ''
+            && env('TWILIO_AUTH_TOKEN', '') !== ''
+            && (env('TWILIO_MESSAGING_SERVICE_SID', '') !== '' || env('TWILIO_FROM_NUMBER', '') !== ''),
 
-        // Hard-coded marginal cost per outbound message, in cents.
-        // Telnyx US 10DLC pricing as of late 2026 is ~$0.0040; we
-        // record this on every send for cost dashboards. Override via
-        // env if Telnyx pricing shifts so we don't have to redeploy.
-        'cost_cents_per_message' => (float) env('TELNYX_COST_CENTS', 0.4),
-
-        // Live mode requires BOTH an API key AND a sender number. When
-        // either is missing we operate in dry-run mode: messages get
-        // logged to notification_send_log with status='dry_run' and
-        // no API call is made. Lets us build and deploy the code
-        // before Telnyx onboarding is complete.
-        'live' => env('TELNYX_API_KEY', '') !== '' && env('TELNYX_FROM_NUMBER', '') !== '',
-
-        // Webhook signature freshness window — reject any callback
-        // whose Telnyx-Timestamp header is older than this many seconds.
-        // 5 minutes matches Stripe's webhook recommendation.
-        'webhook_max_age_seconds' => 300,
+        // Optional override for the public base URL Twilio calls back on,
+        // used to reconstruct the exact URL for X-Twilio-Signature
+        // verification. Defaults to app.url when blank.
+        'webhook_base_url' => env('TWILIO_WEBHOOK_BASE_URL', ''),
     ],
 
 ];

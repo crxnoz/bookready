@@ -32,7 +32,7 @@ export default function RefundPage() {
           governed by your own business policies — see Section 7 below).
         </li>
         <li>
-          Fees charged by third parties such as Stripe, Telnyx, Resend, or any
+          Fees charged by third parties such as Stripe, Twilio, Resend, or any
           payment-processing, SMS, or email provider, which are non-refundable
           by us.
         </li>

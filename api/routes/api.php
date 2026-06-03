@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminTenantsController;
-use App\Http\Controllers\Api\TelnyxWebhookController;
+use App\Http\Controllers\Api\TwilioWebhookController;
 use App\Http\Controllers\Api\PlatformAnnouncementsController;
 use App\Http\Controllers\Api\AppointmentPaymentWebhookController;
 use App\Http\Controllers\Api\Auth\AuthController;
@@ -450,26 +450,17 @@ Route::prefix('v1')->group(function () {
     // Signature verified manually with STRIPE_APPOINTMENT_WEBHOOK_SECRET.
     Route::post('webhooks/stripe/appointments', [AppointmentPaymentWebhookController::class, 'handle']);
 
-    // ── Telnyx SMS webhooks (no auth — Ed25519-signed) ───────────────────
-    // Telnyx's Messaging Profile only takes ONE primary webhook URL +
-    // ONE failover URL, and it sends ALL events (status updates AND
-    // inbound replies) to both. /sms and /sms-failover are Telnyx's
-    // own default path convention — both call the unified handler
-    // which routes by event_type.
-    //
-    // /status and /inbound are kept as separate optional URLs in case
-    // a future tenant wants to split inbound from delivery callbacks
-    // (e.g. for shorter retention on one or the other).
-    //
-    // All four verify Telnyx-Signature-Ed25519 against TELNYX_PUBLIC_KEY
-    // before doing anything. Throttled defensively even though signature
-    // verification is the real gate.
-    Route::post('webhooks/telnyx/sms',           [TelnyxWebhookController::class, 'handle'])
+    // ── Twilio SMS webhooks (no auth — X-Twilio-Signature HMAC-SHA1) ──────
+    // Twilio uses two distinct webhooks (unlike Telnyx's single URL):
+    //   /status  ← StatusCallback URL (set per-message by SmsService) for
+    //              delivery receipts (sent / delivered / undelivered / failed).
+    //   /inbound ← the "A message comes in" URL on the number / Messaging
+    //              Service, for replies (STOP / START / HELP + free text).
+    // Both verify X-Twilio-Signature against TWILIO_AUTH_TOKEN before
+    // doing anything. Throttled defensively even though the signature is
+    // the real gate.
+    Route::post('webhooks/twilio/status',  [TwilioWebhookController::class, 'status'])
         ->middleware('throttle:120,1');
-    Route::post('webhooks/telnyx/sms-failover',  [TelnyxWebhookController::class, 'handle'])
-        ->middleware('throttle:120,1');
-    Route::post('webhooks/telnyx/status',        [TelnyxWebhookController::class, 'status'])
-        ->middleware('throttle:120,1');
-    Route::post('webhooks/telnyx/inbound',       [TelnyxWebhookController::class, 'inbound'])
+    Route::post('webhooks/twilio/inbound', [TwilioWebhookController::class, 'inbound'])
         ->middleware('throttle:120,1');
 });

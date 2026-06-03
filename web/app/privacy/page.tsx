@@ -673,7 +673,7 @@ export default function PrivacyPage() {
         information with third parties or affiliates for marketing or
         promotional purposes. We do not sell SMS opt-in data. Information may be
         shared only with subcontractors that support our messaging
-        infrastructure (for example, our SMS delivery provider, Telnyx) and
+        infrastructure (for example, our SMS delivery provider, Twilio) and
         solely for the purpose of delivering the transactional messages you have
         consented to receive.
       </p>

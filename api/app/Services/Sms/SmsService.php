@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Single entry point for sending SMS through Telnyx.
+ * Single entry point for sending SMS through Twilio.
  *
  * Usage:
  *   $r = SmsService::send(
@@ -23,15 +23,18 @@ use Illuminate\Support\Facades\Log;
  *
  *   1. Normalize phone to E.164. Reject if it can't be normalized.
  *   2. Check sms_optouts. If opted out, log + return optedOut().
- *   3. If Telnyx is configured (live mode): POST /v2/messages, log the
- *      provider id, return queued().
- *   4. If Telnyx is NOT configured (dry-run mode): log status=dry_run,
+ *   3. If Twilio is configured (live mode): POST to the Messages REST
+ *      endpoint, log the provider Message SID, return queued().
+ *   4. If Twilio is NOT configured (dry-run mode): log status=dry_run,
  *      return dryRun(). Lets the rest of the codebase wire SMS into
  *      booking flows BEFORE we have credentials, without surprises.
  *
- * Webhook callbacks (handled by TelnyxWebhookController) flip the
+ * Webhook callbacks (handled by TwilioWebhookController) flip the
  * notification_send_log.status from 'queued' to 'sent' / 'delivered'
- * / 'undelivered' / 'failed' once Telnyx confirms downstream state.
+ * / 'undelivered' / 'failed' once Twilio confirms downstream state.
+ *
+ * Raw HTTP, no SDK — keeps the dependency surface small and matches the
+ * rest of the codebase (Stripe + uploads are all raw HTTP too).
  *
  * Stateless — fine to call from controllers, jobs, or services. No
  * shared mutable state.
@@ -55,7 +58,7 @@ class SmsService
             return SmsSendResult::invalidPhone($to);
         }
 
-        // 2. Opt-out check. We never call Telnyx for a number on the
+        // 2. Opt-out check. We never call Twilio for a number on the
         //    list — would be a TCPA violation. Log it so support can
         //    explain "your customer texted STOP" if the owner asks.
         if (SmsOptout::where('phone', $normalized)->exists()) {
@@ -64,7 +67,7 @@ class SmsService
                 'channel'      => 'sms',
                 'template_key' => $templateKey,
                 'recipient'    => $normalized,
-                'provider'     => 'telnyx',
+                'provider'     => 'twilio',
                 'status'       => 'opted_out',
                 'cost_cents'   => 0,
                 'context'      => $context,
@@ -74,20 +77,20 @@ class SmsService
 
         // 3. Dry-run path. Service is callable without credentials so
         //    the rest of the codebase can integrate SMS into booking
-        //    flows during Telnyx onboarding. The log row tells us
+        //    flows during Twilio onboarding. The log row tells us
         //    what WOULD have been sent.
-        if (! config('services.telnyx.live')) {
+        if (! config('services.twilio.live')) {
             $logId = NotificationSendLog::create([
                 'tenant_id'    => $tenantId,
                 'channel'      => 'sms',
                 'template_key' => $templateKey,
                 'recipient'    => $normalized,
-                'provider'     => 'telnyx',
+                'provider'     => 'twilio',
                 'status'       => 'dry_run',
                 'cost_cents'   => 0,
                 'context'      => array_merge($context, [
                     'body_preview' => mb_substr($body, 0, 160),
-                    'reason'       => 'TELNYX_API_KEY or TELNYX_FROM_NUMBER not set',
+                    'reason'       => 'TWILIO_ACCOUNT_SID/AUTH_TOKEN or sender not set',
                 ]),
             ])->id;
             Log::info('sms.dry_run', [
@@ -99,26 +102,39 @@ class SmsService
             return SmsSendResult::dryRun($logId);
         }
 
-        // 4. Live send. Telnyx REST v2 — direct HTTP, no SDK needed.
-        $apiKey    = (string) config('services.telnyx.api_key');
-        $from      = (string) config('services.telnyx.from');
-        $profileId = (string) config('services.telnyx.messaging_profile_id');
-        $costCents = (int) round((float) config('services.telnyx.cost_cents_per_message'));
+        // 4. Live send. Twilio REST API (2010-04-01) — direct HTTP, no
+        //    SDK needed. Auth is HTTP Basic (AccountSid : AuthToken), the
+        //    body is form-encoded, and the message SID comes back as
+        //    `sid`. Prefer a Messaging Service SID (A2P number pool) over
+        //    a bare From number when both are configured.
+        $sid       = (string) config('services.twilio.account_sid');
+        $token     = (string) config('services.twilio.auth_token');
+        $from      = (string) config('services.twilio.from');
+        $msgSvc    = (string) config('services.twilio.messaging_service_sid');
+        $costCents = (int) round((float) config('services.twilio.cost_cents_per_message'));
 
         $payload = [
-            'from' => $from,
-            'to'   => $normalized,
-            'text' => $body,
+            'To'   => $normalized,
+            'Body' => $body,
         ];
-        if ($profileId !== '') {
-            $payload['messaging_profile_id'] = $profileId;
+        if ($msgSvc !== '') {
+            $payload['MessagingServiceSid'] = $msgSvc;
+        } else {
+            $payload['From'] = $from;
+        }
+        // Ask Twilio to POST delivery receipts back so the webhook can
+        // flip queued → sent / delivered / undelivered / failed.
+        $base = rtrim((string) (config('services.twilio.webhook_base_url') ?: config('app.url')), '/');
+        if ($base !== '') {
+            $payload['StatusCallback'] = $base . '/api/v1/webhooks/twilio/status';
         }
 
         try {
-            $resp = Http::withToken($apiKey)
+            $resp = Http::withBasicAuth($sid, $token)
+                ->asForm()
                 ->acceptJson()
                 ->timeout(15)
-                ->post('https://api.telnyx.com/v2/messages', $payload);
+                ->post("https://api.twilio.com/2010-04-01/Accounts/{$sid}/Messages.json", $payload);
         } catch (\Throwable $e) {
             // Network failure — log and bail. Caller decides whether
             // to retry; for booking confirmation we don't, the email
@@ -132,7 +148,7 @@ class SmsService
                 'channel'      => 'sms',
                 'template_key' => $templateKey,
                 'recipient'    => $normalized,
-                'provider'     => 'telnyx',
+                'provider'     => 'twilio',
                 'status'       => 'failed',
                 'error'        => 'network: ' . $e->getMessage(),
                 'context'      => $context,
@@ -141,34 +157,41 @@ class SmsService
         }
 
         if (! $resp->successful()) {
-            $err = $resp->json('errors.0.title') ?? $resp->json('errors.0.detail') ?? $resp->status();
+            // Twilio error shape: { "code": 21610, "message": "...",
+            // "more_info": "...", "status": 400 }.
+            $err  = $resp->json('message') ?? $resp->status();
+            $code = $resp->json('code');
             $logId = NotificationSendLog::create([
                 'tenant_id'    => $tenantId,
                 'channel'      => 'sms',
                 'template_key' => $templateKey,
                 'recipient'    => $normalized,
-                'provider'     => 'telnyx',
+                'provider'     => 'twilio',
                 'status'       => 'failed',
                 'error'        => is_string($err) ? $err : json_encode($err),
                 'context'      => array_merge($context, [
-                    'http_status' => $resp->status(),
+                    'http_status'  => $resp->status(),
+                    'twilio_code'  => $code,
                 ]),
             ])->id;
             Log::warning('sms.send.api_error', [
                 'tenant_id'    => $tenantId,
                 'http_status'  => $resp->status(),
+                'twilio_code'  => $code,
                 'error'        => $err,
             ]);
-            return SmsSendResult::failed(is_string($err) ? $err : 'telnyx error', $logId);
+            return SmsSendResult::failed(is_string($err) ? $err : 'twilio error', $logId);
         }
 
-        $providerId = (string) ($resp->json('data.id') ?? '');
+        // Twilio success: the message SID is `sid`; `status` is the
+        // initial state (queued / accepted / sending).
+        $providerId = (string) ($resp->json('sid') ?? '');
         $logId = NotificationSendLog::create([
             'tenant_id'    => $tenantId,
             'channel'      => 'sms',
             'template_key' => $templateKey,
             'recipient'    => $normalized,
-            'provider'     => 'telnyx',
+            'provider'     => 'twilio',
             'provider_id'  => $providerId !== '' ? $providerId : null,
             'status'       => 'queued',
             'cost_cents'   => $costCents,
