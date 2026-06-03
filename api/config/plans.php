@@ -39,21 +39,23 @@ return [
 
     // ── SMS bundle uplift ────────────────────────────────────────────
     // Single source of truth for the additional-SMS bundle pricing.
-    // Twilio A2P send cost rose to ~$0.0083/SMS; we charge $0.015/SMS
-    // extra for the bundle uplift, giving ~44.7% gross margin (above the
-    // 40% floor). $0.015 is the cheapest whole-dollar-friendly rate that
-    // clears 40% — the SMS deltas are multiples of 400, so a $0.0025-step
-    // rate keeps every bundle price on an integer dollar (no rounding
-    // drift / no accidental underwater price). Scales per plan
-    // automatically: uplift_cents =
-    // (sms_factor - 1) × plan.sms_base × per_sms_uplift_dollars × 100.
+    // Twilio A2P send cost is ~$0.0083/SMS. We charge $0.01/SMS for the
+    // bundle uplift — a deliberately gentle launch price (~17% gross
+    // margin, still above cost so never underwater) to keep add-on SMS
+    // approachable for brand-new businesses. NOTE: only ~$0.0017 headroom
+    // per SMS, so watch the Twilio cost — if it climbs much past $0.0083
+    // this gets thin. Easy to raise later (existing subscribers keep their
+    // locked-in Stripe price; only new checkouts get the new rate).
+    // $0.01 is a $0.0025-step rate, so every bundle lands on a whole
+    // dollar (no rounding drift). Scales per plan automatically:
+    // uplift_cents = (sms_factor - 1) × plan.sms_base × per_sms_uplift × 100.
     //
     // Same value used by: CreateStripeProducts command (when creating
     // prices), BillingController::plans (returned to frontend), and
     // bookready-marketing/pricing.js (kept in lock-step manually).
     // If you change this, re-run `php artisan stripe:create-products`
     // to drift-detect and recreate the affected Stripe prices.
-    'per_sms_uplift_dollars' => 0.015,
+    'per_sms_uplift_dollars' => 0.01,
 
     // ── Plans ────────────────────────────────────────────────────────
     'plans' => [
