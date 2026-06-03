@@ -741,8 +741,6 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
             contact: footerSettings.show_contact_links,
             poweredBy: footerSettings.show_powered_by,
           }}
-          copyrightName={displayName}
-          year={new Date().getFullYear()}
         />
 
       </div>
