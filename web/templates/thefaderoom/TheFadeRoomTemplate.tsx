@@ -25,6 +25,7 @@ import { CalendarPlus, Phone, Mail, Instagram, MapPin, MessageSquare, Youtube, F
 import type { PublicSite } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 import { tokensToCss } from '@bkrdy/platform'
+import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, SECTIONS_CSS } from '@bkrdy/platform/sections'
 import TheFadeRoomBooking from './TheFadeRoomBooking'
 
 // ── Brand glyphs lucide doesn't ship (sized to match the lucide icons
@@ -163,6 +164,7 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
         href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=DM+Serif+Text:ital@0;1&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap"
       />
       <style>{TFR_CSS}</style>
+      <style>{SECTIONS_CSS}</style>
       <div
         className="tfr-template"
         style={{
@@ -416,70 +418,63 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
           </div>
         )}
 
-        {/* 10. FAQ (always visible below tabs) */}
-        {additionals.faq?.enabled !== false
-          && Array.isArray(additionals.faq?.items)
-          && additionals.faq.items.length > 0 && (
-          <section className="tfr-section" aria-label="FAQ">
-            <p className="tfr-eyebrow">FAQ</p>
-            <h2 className="tfr-section-title">{additionals.faq.heading ?? 'Questions'}</h2>
-            <div className="tfr-faq-stack">
-              {additionals.faq.items.map((f: any, i: number) => (
-                <details key={i} className="tfr-faq">
-                  <summary>{f.q ?? f.question}</summary>
-                  <p>{f.a ?? f.answer}</p>
-                </details>
-              ))}
-            </div>
-          </section>
+        {/* 10. FAQ (always visible below tabs) — migrated to the shared,
+            theme-tokenized platform component. TFR's palette is bridged onto
+            the canonical --brk-* tokens above; the .tfr-* skin at the end of
+            TFR_CSS re-applies the neon title + accent marker. */}
+        {additionals.faq?.enabled !== false && (
+          <FaqSection
+            items={additionals.faq?.items}
+            heading={additionals.faq?.heading ?? 'Questions'}
+            eyebrow="FAQ"
+          />
         )}
 
-        {/* 11. Reviews */}
-        {additionals.reviews?.enabled !== false
-          && Array.isArray(additionals.reviews?.items)
-          && additionals.reviews.items.length > 0 && (
-          <section className="tfr-section" aria-label="Reviews">
-            <p className="tfr-eyebrow"><span aria-hidden="true">✦</span> Reviews</p>
-            <h2 className="tfr-section-title">{additionals.reviews.heading ?? 'In the chair'}</h2>
-            <ul className="tfr-reviews">
-              {additionals.reviews.items.map((rv: any, i: number) => {
-                const rating = typeof rv.rating === 'number' ? Math.round(rv.rating) : null
-                const showStars = rating !== null && rating >= 1 && rating <= 5
-                return (
-                  <li key={i}>
-                    <blockquote>
-                      <span className="tfr-quote-glyph" aria-hidden="true">"</span>
-                      {rv.body ?? rv.quote}
-                    </blockquote>
-                    {showStars && (
-                      <p className="tfr-review-stars" aria-label={`${rating} out of 5 stars`}>
-                        <span aria-hidden="true">{'★'.repeat(rating!)}</span>
-                      </p>
-                    )}
-                    <p className="tfr-review-attr">
-                      {rv.author ?? rv.name}
-                      {rv.location && <span> · {rv.location}</span>}
-                    </p>
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
+        {/* 11. Reviews — shared component. The ✦ before the "Reviews"
+            eyebrow is reproduced by the skin (.brk-reviews-section
+            .brk-eyebrow::before), not passed as a prop. */}
+        {additionals.reviews?.enabled !== false && (
+          <ReviewsSection
+            items={additionals.reviews?.items}
+            heading={additionals.reviews?.heading ?? 'In the chair'}
+            eyebrow="Reviews"
+            starGlyph="★"
+          />
         )}
 
-        {/* 12. Thank-you */}
-        {additionals.show_thank_you !== false && additionals.thank_you_title && (
-          <section className="tfr-section tfr-thanks" aria-label="Thank you">
-            <p className="tfr-eyebrow"><span aria-hidden="true">✦</span> Outro <span aria-hidden="true">✦</span></p>
-            <h2 className="tfr-section-title tfr-thanks-title">{additionals.thank_you_title}</h2>
-            {additionals.thank_you_body && <p className="tfr-thanks-body">{additionals.thank_you_body}</p>}
-            {/* Studio signature — borrowed from VT's outro. Uses the editable
-                thank_you_signature when set, otherwise the business name. */}
-            <p className="tfr-thanks-sign">— {(typeof additionals.thank_you_signature === 'string' && additionals.thank_you_signature.trim()) ? additionals.thank_you_signature.trim() : display}</p>
-          </section>
-        )}
+        {/* 12. Thank-you — shared component. The ✦ flanking the "Outro"
+            eyebrow is reproduced by the skin (.brk-thanks .brk-eyebrow
+            ::before/::after), not passed as a prop. */}
+        <ThanksSection
+          show={additionals.show_thank_you}
+          title={additionals.thank_you_title}
+          body={additionals.thank_you_body}
+          signature={additionals.thank_you_signature}
+          fallbackSignature={display}
+          eyebrow="Outro"
+        />
 
-        <Footer site={site} hours={hours} services={services} goBook={goBook} />
+        {/* Footer — shared 3-band component. Mirrors the old local Footer
+            exactly: businessName = override || display, eyebrow labels The
+            Studio / Hours / Contact, CTA "Reserve the chair", credit band is
+            "Powered by BookReady" only (no copyright prefix → copyrightName
+            omitted). The neon CTA pill is restored by the skin. */}
+        <SiteFooter
+          businessName={(settings.footer?.business_name_override ?? '').trim() || display}
+          subtext={settings.footer?.subtext}
+          hours={hours}
+          phone={p?.public_phone}
+          email={p?.public_email}
+          servicesCount={services.length}
+          onBook={goBook}
+          ctaLabel="Reserve the chair"
+          show={{
+            quickBook: settings.footer?.show_quick_book,
+            hours: settings.footer?.show_hours,
+            contact: settings.footer?.show_contact_links,
+            poweredBy: settings.footer?.show_powered_by,
+          }}
+        />
       </div>
     </>
   )
@@ -571,62 +566,6 @@ function SocialButtons({ header, profile, goBook }: { header: any; profile: any;
   )
 }
 
-function Footer({ site, hours, services, goBook }: { site: PublicSite; hours: any[]; services: any[]; goBook: () => void }) {
-  const settings: any = site.template?.settings ?? {}
-  const footer:   any = settings.footer ?? {}
-  const p           = site.profile
-  const name        = footer.business_name_override ?? p?.business_name ?? site.business_name ?? site.slug
-  return (
-    <footer className="tfr-footer">
-      {footer.show_quick_book !== false && services.length > 0 && (
-        <div className="tfr-footer-cta-band">
-          <button type="button" className="tfr-footer-book" onClick={goBook}>
-            Reserve the chair
-          </button>
-        </div>
-      )}
-
-      <div className="tfr-footer-inner">
-        <div className="tfr-footer-col tfr-footer-brand">
-          <p className="tfr-eyebrow">The Studio</p>
-          <p className="tfr-footer-name">{name}</p>
-          {footer.subtext && <p className="tfr-footer-subtext">{footer.subtext}</p>}
-        </div>
-
-        {footer.show_hours !== false && hours.length > 0 && (
-          <div className="tfr-footer-col tfr-footer-col--hours">
-            <p className="tfr-eyebrow">Hours</p>
-            <ul className="tfr-footer-hours">
-              {hours.map((h: any) => (
-                <li key={h.id}>
-                  <span>{h.day_name}</span>
-                  <span>{h.is_open && h.open_time && h.close_time ? `${h.open_time}–${h.close_time}` : 'Closed'}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {footer.show_contact_links !== false && (p?.public_phone || p?.public_email) && (
-          <div className="tfr-footer-col">
-            <p className="tfr-eyebrow">Contact</p>
-            <ul className="tfr-footer-contact">
-              {p?.public_phone && <li><a href={`tel:${p.public_phone}`}>{p.public_phone}</a></li>}
-              {p?.public_email && <li><a href={`mailto:${p.public_email}`}>{p.public_email}</a></li>}
-            </ul>
-          </div>
-        )}
-      </div>
-
-      {footer.show_powered_by !== false && (
-        <div className="tfr-footer-credit-band">
-          <p>Powered by BookReady</p>
-        </div>
-      )}
-    </footer>
-  )
-}
-
 // ─── Scoped CSS ────────────────────────────────────────────────────────────────
 
 const TFR_CSS = `
@@ -657,6 +596,22 @@ const TFR_CSS = `
     0 0 4px var(--tfr-accent),
     0 0 10px var(--tfr-accent),
     0 0 22px var(--tfr-accent);
+
+  /* Bridge TFR's palette + fonts onto the canonical --brk-* tokens the
+     shared section components (@bkrdy/platform/sections) are styled
+     against. CSS aliasing means the runtime accent override on
+     --tfr-accent flows through automatically. The .tfr-* skin at the end
+     of this file then re-applies TFR's neon signatures over the base. */
+  --brk-color-bg: var(--tfr-bg);
+  --brk-color-surface: var(--tfr-card);
+  --brk-color-text: var(--tfr-fg);
+  --brk-color-muted: var(--tfr-fg-muted);
+  --brk-color-rule: var(--tfr-rule);
+  --brk-color-accent: var(--tfr-accent);
+  --brk-color-on-accent: var(--tfr-bg);
+  --brk-family-display: var(--tfr-display);
+  --brk-family-body: var(--tfr-body);
+  --brk-family-script: var(--tfr-script);
 
   background: var(--tfr-bg);
   color: var(--tfr-fg);
@@ -1609,5 +1564,227 @@ const TFR_CSS = `
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   TFR SKIN over the shared platform sections (@bkrdy/platform/sections)
+   ────────────────────────────────────────────────────────────────────
+   The FAQ / Reviews / Thank-you / Footer now render the canonical
+   .brk-* markup. These overrides (scoped under .tfr-template, AFTER
+   SECTIONS_CSS) re-apply TFR's neon signatures: Dancing Script titles
+   with the neon halo, accent-glow eyebrows + ✦ flourishes, polaroid
+   review cards with the giant script quote watermark, the hung-neon-sign
+   thank-you frame, and the glowing footer CTA pill. All colors/fonts
+   come from the bridged tokens. The old .tfr-faq/.tfr-reviews/
+   .tfr-thanks/.tfr-footer rules above are now dead (left inert).
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Keep TFR's tighter editorial column (shared default is wider). */
+.tfr-template .brk-section { max-width: var(--brk-container-narrow); }
+
+/* Shared header is centered; TFR titles read fine centered here. Match
+   .tfr-section-title: Dancing Script, white, full neon halo. */
+.tfr-template .brk-section-title {
+  font-family: var(--tfr-script);
+  font-size: clamp(38px, 5.5vw, 64px);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.1;
+  color: var(--tfr-fg);
+  text-shadow: var(--tfr-neon-shadow);
+  padding: 0.05em 0;
+}
+/* Match .tfr-eyebrow: tracked uppercase accent with a subtle glow. */
+.tfr-template .brk-eyebrow {
+  font-family: var(--tfr-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--tfr-accent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--tfr-accent) 40%, transparent);
+}
+/* ✦ flourishes — Reviews leads with one, Outro is flanked by two. */
+.tfr-template .brk-reviews-section .brk-eyebrow::before { content: '\\2726\\00a0'; font-size: 0.78em; }
+.tfr-template .brk-thanks .brk-eyebrow::before { content: '\\2726\\00a0'; font-size: 0.78em; }
+.tfr-template .brk-thanks .brk-eyebrow::after  { content: '\\00a0\\2726'; font-size: 0.78em; }
+
+/* ── FAQ skin — match .tfr-faq: display-font summary, space-between row,
+   glowing +/− marker. ── */
+.tfr-template .brk-faq summary {
+  font-family: var(--tfr-display);
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--brk-space-md);
+  padding: var(--brk-space-lg) 0;
+}
+/* Replace the shared absolutely-positioned +/− with TFR's inline glowing
+   marker (the flex summary above handles placement). */
+.tfr-template .brk-faq summary::after {
+  position: static;
+  transform: none;
+  font-family: var(--tfr-display);
+  font-size: 24px;
+  font-weight: 400;
+  color: var(--tfr-accent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--tfr-accent) 40%, transparent);
+  line-height: 1;
+}
+.tfr-template .brk-faq[open] summary::after { content: '\\2212'; }
+.tfr-template .brk-faq p {
+  padding: var(--brk-space-md) 0 var(--brk-space-lg);
+  line-height: 1.65;
+}
+
+/* ── Reviews skin — polaroid cards on a dark wall: accent border + glow,
+   alternating tilt, giant Dancing Script quote watermark, neon stars +
+   attribution. Matches .tfr-reviews. ── */
+.tfr-template .brk-reviews { gap: 28px; }
+@media (min-width: 720px) {
+  .tfr-template .brk-reviews { grid-template-columns: repeat(2, 1fr); gap: 32px; }
+}
+.tfr-template .brk-review {
+  padding: var(--brk-space-xl);
+  border: 1px solid color-mix(in srgb, var(--tfr-accent) 28%, var(--tfr-rule));
+  border-radius: 18px;
+  box-shadow:
+    0 0 28px color-mix(in srgb, var(--tfr-accent) 14%, transparent),
+    0 12px 24px rgba(0, 0, 0, 0.32);
+  transition: transform 220ms ease, box-shadow 250ms ease;
+}
+.tfr-template .brk-review:nth-child(odd)  { transform: rotate(-1.2deg); }
+.tfr-template .brk-review:nth-child(even) { transform: rotate(1.2deg); }
+.tfr-template .brk-review:hover {
+  transform: rotate(0deg) translateY(-6px);
+  box-shadow:
+    0 0 40px color-mix(in srgb, var(--tfr-accent) 28%, transparent),
+    0 16px 32px rgba(0, 0, 0, 0.4);
+}
+/* The shared .brk-review-quote glyph becomes TFR's oversized low-opacity
+   corner watermark in Dancing Script. */
+.tfr-template .brk-review-quote {
+  top: -28px;
+  left: auto;
+  right: 20px;
+  font-family: var(--tfr-script);
+  font-size: 140px;
+  line-height: 1;
+  color: var(--tfr-accent);
+  opacity: 0.5;
+  text-shadow: 0 0 28px color-mix(in srgb, var(--tfr-accent) 60%, transparent);
+  pointer-events: none;
+}
+.tfr-template .brk-review blockquote {
+  font-family: var(--tfr-display);
+  font-style: normal;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+  color: var(--tfr-fg);
+  position: relative;
+  z-index: 1;
+}
+.tfr-template .brk-review-stars {
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  color: var(--tfr-accent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--tfr-accent) 45%, transparent);
+  position: relative;
+  z-index: 1;
+}
+.tfr-template .brk-review-attr {
+  font-family: var(--tfr-body);
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  color: var(--tfr-accent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--tfr-accent) 30%, transparent);
+  position: relative;
+  z-index: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tfr-template .brk-review,
+  .tfr-template .brk-review:hover { transform: none; }
+}
+
+/* ── Thank-you skin — hung neon sign: accent tube border, rounded, with
+   corner ✦ sparkles sitting on the border line, and a big script title.
+   Matches .tfr-thanks. ── */
+.tfr-template .brk-thanks {
+  position: relative;
+  max-width: min(680px, calc(100% - 64px));
+  padding: var(--brk-space-3xl) clamp(28px, 5vw, 56px) var(--brk-space-2xl);
+  border: 2px solid var(--tfr-accent);
+  border-radius: 22px;
+}
+.tfr-template .brk-thanks::before,
+.tfr-template .brk-thanks::after {
+  content: '\\2726';
+  position: absolute;
+  font-size: 22px;
+  color: var(--tfr-accent);
+  line-height: 1;
+}
+.tfr-template .brk-thanks::before { top: -12px; left: 28px; }
+.tfr-template .brk-thanks::after  { bottom: -12px; right: 28px; }
+.tfr-template .brk-thanks-title {
+  font-family: var(--tfr-script);
+  font-size: clamp(40px, 7vw, 80px);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.0;
+  color: var(--tfr-fg);
+  text-shadow: var(--tfr-neon-shadow);
+  padding: 0.05em 0;
+}
+.tfr-template .brk-thanks-body { line-height: 1.65; }
+.tfr-template .brk-thanks-sign {
+  font-family: var(--tfr-body);
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--tfr-accent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--tfr-accent) 36%, transparent);
+}
+
+/* ── Footer skin — neon pill CTA + TFR column treatment. Matches
+   .tfr-footer*. ── */
+.tfr-template .brk-footer { background: transparent; }
+.tfr-template .brk-footer-inner { max-width: var(--brk-container-narrow); }
+.tfr-template .brk-footer-book {
+  border-radius: 999px;
+  letter-spacing: 0.24em;
+  padding: 18px 44px;
+  box-shadow: 0 0 20px color-mix(in srgb, var(--tfr-accent) 35%, transparent);
+  transition: box-shadow 220ms ease, transform 120ms ease;
+}
+.tfr-template .brk-footer-book:hover {
+  filter: none;
+  box-shadow: 0 0 32px color-mix(in srgb, var(--tfr-accent) 65%, transparent);
+}
+.tfr-template .brk-footer-book:active { transform: scale(0.98); }
+.tfr-template .brk-footer-name {
+  font-family: var(--tfr-display);
+  font-weight: 700;
+  font-size: 28px;
+  letter-spacing: -0.018em;
+}
+.tfr-template .brk-footer-hours-row dd {
+  font-family: var(--tfr-display);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--tfr-fg);
+}
+.tfr-template .brk-footer-contact a {
+  transition: color 160ms ease, text-shadow 200ms ease;
+}
+.tfr-template .brk-footer-contact a:hover {
+  color: var(--tfr-accent);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--tfr-accent) 36%, transparent);
 }
 `
