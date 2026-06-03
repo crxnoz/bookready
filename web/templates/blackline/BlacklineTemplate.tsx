@@ -21,7 +21,7 @@ import { useState, useRef } from 'react'
 import type { PublicSite } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 import { tokensToCss } from '@bkrdy/platform'
-import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, SECTIONS_CSS } from '@bkrdy/platform/sections'
+import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, InstructionsSection, SECTIONS_CSS } from '@bkrdy/platform/sections'
 import BlacklineBooking from './BlacklineBooking'
 
 // ── Contact-href helper ──────────────────────────────────────────────────────
@@ -307,52 +307,42 @@ export default function BlacklineTemplate({ site, slug }: Props) {
           </div>
         )}
 
-        {/* 8. Advice / Notes */}
+        {/* 8. Advice / Notes — migrated to the shared InstructionsSection.
+            Blackline's advice was a plain divided list with NO per-item
+            marker, so showMark={false} (numbered defaults false). The
+            .blackline-template .brk-instruction* skin below re-applies the
+            Space Grotesk titles + muted bodies + hairline brass rules. */}
         {enabledByTab.advice && (
           <div className={`blackline-tab-panel${active === 'advice' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'advice'}>
-            <section className="blackline-section" aria-label={tabs.advice_label ?? 'Notes'}>
-              <p className="blackline-eyebrow">{tabLabel.advice}</p>
-              <h2 className="blackline-section-title">{settings.advice?.heading ?? 'Advice'}</h2>
-              {advice.length === 0 ? (
-                <p className="blackline-empty">No notes yet.</p>
-              ) : (
-                <ul className="blackline-note-list">
-                  {advice.map((it: any, i: number) => (
-                    <li key={i}>
-                      <h3>{it.title}</h3>
-                      <p>{it.body}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            <InstructionsSection
+              items={advice}
+              heading={settings.advice?.heading ?? 'Advice'}
+              eyebrow={tabLabel.advice}
+              cardKicker={settings.advice?.card_kicker}
+              showMark={false}
+              emptyText="No notes yet."
+              ariaLabel={tabs.advice_label ?? 'Notes'}
+            />
           </div>
         )}
 
-        {/* 9. Timeline / Process */}
+        {/* 9. Timeline / Process — migrated to the shared InstructionsSection.
+            numbered → zero-padded ordinals (01, 02…). The skin below restyles
+            the shared 40px serif ordinal back to Blackline's compact brass
+            Space Grotesk number in its 56px column. */}
         {enabledByTab.timeline && (
           <div className={`blackline-tab-panel${active === 'timeline' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'timeline'}>
-            <section className="blackline-section" aria-label={tabs.timeline_label ?? 'Process'}>
-              <p className="blackline-eyebrow">{tabLabel.timeline}</p>
-              <h2 className="blackline-section-title">{settings.timeline?.heading ?? 'Timeline'}</h2>
-              {timeline.length === 0 ? (
-                <p className="blackline-empty">No timeline yet.</p>
-              ) : (
-                <ol className="blackline-timeline">
-                  {timeline.map((it: any, i: number) => (
-                    <li key={i}>
-                      <span className="blackline-timeline-num">{String(i + 1).padStart(2, '0')}</span>
-                      <div>
-                        <h3>{it.title}</h3>
-                        <p>{it.body}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </section>
+            <InstructionsSection
+              items={timeline}
+              heading={settings.timeline?.heading ?? 'Timeline'}
+              eyebrow={tabLabel.timeline}
+              cardKicker={settings.timeline?.card_kicker}
+              numbered
+              emptyText="No timeline yet."
+              ariaLabel={tabs.timeline_label ?? 'Process'}
+            />
           </div>
         )}
 
@@ -780,55 +770,11 @@ const BLACKLINE_CSS = `
   line-height: 1.65;
 }
 
-/* Advice notes */
-.blackline-note-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.blackline-note-list > li {
-  padding: var(--brk-space-xl) 0;
-  border-top: 1px solid var(--blackline-rule);
-}
-.blackline-note-list > li:last-child { border-bottom: 1px solid var(--blackline-rule); }
-.blackline-note-list h3 {
-  font-family: var(--blackline-display);
-  font-size: 22px;
-  font-weight: 500;
-  margin: 0 0 var(--brk-space-xs);
-}
-.blackline-note-list p { margin: 0; color: var(--blackline-fg-muted); }
-
-/* Timeline */
-.blackline-timeline {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  counter-reset: timeline;
-}
-.blackline-timeline > li {
-  display: grid;
-  grid-template-columns: 56px 1fr;
-  gap: var(--brk-space-lg);
-  padding: var(--brk-space-xl) 0;
-  border-top: 1px solid var(--blackline-rule);
-  align-items: baseline;
-}
-.blackline-timeline > li:last-child { border-bottom: 1px solid var(--blackline-rule); }
-.blackline-timeline-num {
-  font-family: var(--blackline-display);
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.18em;
-  color: var(--blackline-accent);
-}
-.blackline-timeline h3 {
-  font-family: var(--blackline-display);
-  font-size: 22px;
-  font-weight: 500;
-  margin: 0 0 var(--brk-space-xs);
-}
-.blackline-timeline p { margin: 0; color: var(--blackline-fg-muted); }
+/* Advice notes + Timeline now render via the shared InstructionsSection
+   (@bkrdy/platform/sections). Their Blackline skin lives in the SKIN block
+   at the end of this file (.blackline-template .brk-instruction*). The old
+   .blackline-note-list / .blackline-timeline / .blackline-timeline-num rules
+   were deleted in that migration. */
 
 @media (prefers-reduced-motion: reduce) {
   .blackline-template *,
@@ -1021,4 +967,70 @@ const BLACKLINE_CSS = `
   color: var(--blackline-fg);
 }
 .blackline-template .brk-footer-credit-band p { letter-spacing: 0.2em; }
+
+/* ── Advice + Timeline skin (shared InstructionsSection) ──
+   Blackline is FLAT, SHARP, brass. The shared divided list already matches
+   Blackline's old note-list closely (hairline rules via the bridged
+   --brk-color-rule). These overrides re-apply Blackline's exact type +
+   spacing and convert the shared 40px serif ordinal into Blackline's compact
+   brass Space Grotesk number. No neon, no circular node, no card chrome. */
+
+/* Left-aligned, muted, flat empty state (the shared default is centered
+   italic serif). Matches the old .blackline-empty. */
+.blackline-template .brk-instructions-section .brk-empty {
+  text-align: left;
+  font-style: normal;
+  font-family: var(--blackline-body);
+  font-size: 14px;
+  color: var(--blackline-fg-muted);
+  padding: 0;
+}
+
+/* Full-width divided rows — drop the shared 720px cap so the list spans the
+   narrow container like Blackline's note-list / timeline did. */
+.blackline-template .brk-instructions { max-width: none; }
+
+/* Row rhythm — Blackline's --brk-space-xl vertical padding + hairline rules
+   (rules already come from the shared base via --brk-color-rule). */
+.blackline-template .brk-instruction {
+  padding: var(--brk-space-xl) 0;
+  gap: var(--brk-space-lg);
+}
+
+/* Titles + bodies — Space Grotesk 22px / 500 title, muted body, matching the
+   old .blackline-note-list / .blackline-timeline treatment. */
+.blackline-template .brk-instruction-body h3 {
+  font-family: var(--blackline-display);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin: 0 0 var(--brk-space-xs);
+  color: var(--blackline-fg);
+}
+.blackline-template .brk-instruction-body p {
+  color: var(--blackline-fg-muted);
+  line-height: 1.65;
+}
+
+/* Advice (plain, no marker column) — single column, baseline rhythm above. */
+
+/* Timeline (numbered) — Blackline's compact brass ordinal in a 56px column,
+   baseline-aligned. Replaces the shared 40px serif number; sharp, no node. */
+.blackline-template .brk-instructions--numbered .brk-instruction {
+  grid-template-columns: 56px 1fr;
+  gap: var(--brk-space-lg);
+  padding: var(--brk-space-xl) 0;
+  align-items: baseline;
+}
+.blackline-template .brk-instructions--numbered .brk-instruction-mark {
+  font-family: var(--blackline-display);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  line-height: 1.55;
+  text-align: left;
+  color: var(--blackline-accent);
+  font-variant-numeric: normal;
+}
+.blackline-template .brk-instructions--numbered .brk-instruction-body h3 { font-size: 22px; }
 `

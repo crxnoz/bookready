@@ -278,6 +278,7 @@ export const SECTIONS_CSS = `
   align-items: start;
 }
 .brk-instruction:last-child { border-bottom: 1px solid var(--brk-color-rule, rgba(0,0,0,0.12)); }
+.brk-instructions--plain .brk-instruction { grid-template-columns: 1fr; }
 .brk-instruction-mark {
   color: var(--brk-color-accent, currentColor);
   font-size: 13px;

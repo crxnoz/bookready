@@ -25,7 +25,7 @@ import { CalendarPlus, Phone, Mail, Instagram, MapPin, MessageSquare, Youtube, F
 import type { PublicSite } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 import { tokensToCss } from '@bkrdy/platform'
-import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, SECTIONS_CSS } from '@bkrdy/platform/sections'
+import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, InstructionsSection, SECTIONS_CSS } from '@bkrdy/platform/sections'
 import TheFadeRoomBooking from './TheFadeRoomBooking'
 
 // ── Brand glyphs lucide doesn't ship (sized to match the lucide icons
@@ -363,58 +363,41 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
           </div>
         )}
 
-        {/* 8. Advice / Notes */}
+        {/* 8. Advice / Notes — migrated to the shared InstructionsSection.
+            showMark={false} drops the marker column (.brk-instructions--plain)
+            so the TFR skin can render the items as alternating-tilt sticky
+            notes. Eyebrow uses the resolved Advice tab label (matches the
+            other tabbed sections); heading + card_kicker stay editable. */}
         {enabledByTab.advice && (
           <div className={`tfr-tab-panel${active === 'advice' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'advice'}>
-            <section className="tfr-section" aria-label={tabs.advice_label ?? 'Notes'}>
-              <p className="tfr-eyebrow">{tabLabel.advice}</p>
-              <h2 className="tfr-section-title">{settings.advice?.heading ?? 'Advice'}</h2>
-              {advice.length === 0 ? (
-                <p className="tfr-empty">No notes yet.</p>
-              ) : (
-                <ul className="tfr-note-list">
-                  {advice.map((it: any, i: number) => (
-                    <li key={i}>
-                      {settings.advice?.card_kicker && (
-                        <span className="tfr-card-kicker">{settings.advice.card_kicker}</span>
-                      )}
-                      <h3>{it.title}</h3>
-                      <p>{it.body}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            <InstructionsSection
+              items={advice}
+              heading={settings.advice?.heading ?? 'Advice'}
+              eyebrow={tabs.advice_label ?? 'Notes'}
+              cardKicker={settings.advice?.card_kicker}
+              showMark={false}
+              emptyText="No notes yet."
+              ariaLabel={tabs.advice_label ?? 'Notes'}
+            />
           </div>
         )}
 
-        {/* 9. Timeline / Process */}
+        {/* 9. Timeline / Process — shared InstructionsSection, numbered.
+            The TFR skin restyles .brk-instructions--numbered as the neon
+            spine + circular numbered nodes. */}
         {enabledByTab.timeline && (
           <div className={`tfr-tab-panel${active === 'timeline' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'timeline'}>
-            <section className="tfr-section" aria-label={tabs.timeline_label ?? 'Process'}>
-              <p className="tfr-eyebrow">{tabLabel.timeline}</p>
-              <h2 className="tfr-section-title">{settings.timeline?.heading ?? 'Timeline'}</h2>
-              {timeline.length === 0 ? (
-                <p className="tfr-empty">No timeline yet.</p>
-              ) : (
-                <ol className="tfr-timeline">
-                  {timeline.map((it: any, i: number) => (
-                    <li key={i}>
-                      <span className="tfr-timeline-num">{String(i + 1).padStart(2, '0')}</span>
-                      <div>
-                        {settings.timeline?.card_kicker && (
-                          <span className="tfr-card-kicker">{settings.timeline.card_kicker}</span>
-                        )}
-                        <h3>{it.title}</h3>
-                        <p>{it.body}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </section>
+            <InstructionsSection
+              items={timeline}
+              heading={settings.timeline?.heading ?? 'Timeline'}
+              eyebrow={tabs.timeline_label ?? 'Process'}
+              cardKicker={settings.timeline?.card_kicker}
+              numbered
+              emptyText="No timeline yet."
+              ariaLabel={tabs.timeline_label ?? 'Process'}
+            />
           </div>
         )}
 
@@ -1026,21 +1009,6 @@ const TFR_CSS = `
   pointer-events: none;
 }
 
-/* Card kicker — small tracked uppercase label above each advice /
-   timeline item. Editor surfaces a single shared kicker per list
-   (e.g., "NOTE", "STEP"). Rendered above the item's title. */
-.tfr-card-kicker {
-  display: inline-block;
-  font-family: var(--tfr-body);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  color: var(--tfr-accent);
-  text-shadow: 0 0 8px color-mix(in srgb, var(--tfr-accent) 36%, transparent);
-  margin: 0 0 8px;
-}
-
 .tfr-about-body {
   font-size: 18px;
   line-height: 1.65;
@@ -1136,119 +1104,6 @@ const TFR_CSS = `
   display: flex;
   align-items: center;
 }
-
-/* Notes — sticky-note style cards with subtle tilt. Each note feels
-   like a post-it on a board. Two-up on desktop with alternating tilt
-   so they don't read as a strict grid. Distinct from Blackline's
-   stacked hairline-divided pattern. */
-.tfr-note-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 20px;
-}
-@media (min-width: 720px) {
-  .tfr-note-list { grid-template-columns: repeat(2, 1fr); gap: 28px; }
-}
-.tfr-note-list > li {
-  position: relative;
-  background: var(--tfr-card);
-  border: 1px solid color-mix(in srgb, var(--tfr-accent) 24%, var(--tfr-rule));
-  border-radius: 14px;
-  padding: var(--brk-space-lg) var(--brk-space-xl);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
-  transition: transform 220ms ease, box-shadow 250ms ease;
-}
-.tfr-note-list > li:nth-child(odd)  { transform: rotate(-0.8deg); }
-.tfr-note-list > li:nth-child(even) { transform: rotate(0.9deg); }
-.tfr-note-list > li:hover {
-  transform: rotate(0deg) translateY(-3px);
-  box-shadow:
-    0 12px 24px rgba(0, 0, 0, 0.4),
-    0 0 24px color-mix(in srgb, var(--tfr-accent) 18%, transparent);
-}
-.tfr-note-list h3 {
-  font-family: var(--tfr-display);
-  font-size: 22px;
-  font-weight: 700;
-  margin: 0 0 8px;
-  color: var(--tfr-fg);
-}
-.tfr-note-list p { margin: 0; color: var(--tfr-fg-muted); line-height: 1.55; }
-@media (prefers-reduced-motion: reduce) {
-  .tfr-note-list > li,
-  .tfr-note-list > li:hover { transform: none; }
-}
-
-/* Timeline — vertical neon spine with circular node "buttons" punching
-   through. The spine is a glowing accent line; each step number sits
-   in an accent-bordered circle anchored to the spine. Distinct from
-   Blackline's number-column + hairline-rule pattern. */
-.tfr-timeline {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  position: relative;
-}
-/* The vertical accent spine running down the left side of the list.
-   Fades in/out at the ends so it doesn't terminate flush against the
-   container edges. */
-.tfr-timeline::before {
-  content: '';
-  position: absolute;
-  left: 21px;
-  top: 28px;
-  bottom: 28px;
-  width: 2px;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    var(--tfr-accent) 8%,
-    var(--tfr-accent) 92%,
-    transparent 100%
-  );
-  box-shadow: 0 0 10px color-mix(in srgb, var(--tfr-accent) 50%, transparent);
-}
-.tfr-timeline > li {
-  display: grid;
-  grid-template-columns: 44px 1fr;
-  gap: 20px;
-  padding: 0 0 var(--brk-space-2xl);
-  align-items: start;
-  position: relative;
-}
-.tfr-timeline > li:last-child { padding-bottom: 0; }
-/* Step numbers as circular nodes — bg matches page so the spine
-   appears to punch through behind them. Accent border + glow. */
-.tfr-timeline-num {
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  background: var(--tfr-bg);
-  border: 2px solid var(--tfr-accent);
-  color: var(--tfr-accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--tfr-display);
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  position: relative;
-  z-index: 1;
-  box-shadow: 0 0 14px color-mix(in srgb, var(--tfr-accent) 40%, transparent);
-  text-shadow: 0 0 6px color-mix(in srgb, var(--tfr-accent) 50%, transparent);
-}
-.tfr-timeline > li > div { padding-top: 6px; }
-.tfr-timeline h3 {
-  font-family: var(--tfr-display);
-  font-size: 22px;
-  font-weight: 700;
-  margin: 0 0 6px;
-  color: var(--tfr-fg);
-}
-.tfr-timeline p { margin: 0; color: var(--tfr-fg-muted); line-height: 1.55; }
 
 @media (prefers-reduced-motion: reduce) {
   .tfr-template *,
@@ -1479,5 +1334,158 @@ const TFR_CSS = `
 .tfr-template .brk-footer-contact a:hover {
   color: var(--tfr-accent);
   text-shadow: 0 0 10px color-mix(in srgb, var(--tfr-accent) 36%, transparent);
+}
+
+/* ── Advice skin (Notes) — sticky-note cards over the shared
+   .brk-instructions--plain base. The base makes it a 1-col grid with a
+   marker column dropped and a hairline border-top per row; TFR turns
+   each row into a tilted post-it card. Two-up on desktop with
+   alternating tilt so they don't read as a strict grid. Matches the old
+   .tfr-note-list. Header is centered (shared default) — the one parity
+   shift from the old left-aligned eyebrow + title. ── */
+.tfr-template .brk-instructions--plain {
+  max-width: var(--brk-container-narrow);
+  display: grid;
+  gap: 20px;
+}
+@media (min-width: 720px) {
+  .tfr-template .brk-instructions--plain { grid-template-columns: repeat(2, 1fr); gap: 28px; }
+}
+.tfr-template .brk-instructions--plain .brk-instruction {
+  display: block;
+  position: relative;
+  border-top: 0;
+  background: var(--tfr-card);
+  border: 1px solid color-mix(in srgb, var(--tfr-accent) 24%, var(--tfr-rule));
+  border-radius: 14px;
+  padding: var(--brk-space-lg) var(--brk-space-xl);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+  transition: transform 220ms ease, box-shadow 250ms ease;
+}
+/* Cancel the shared :last-child bottom hairline — cards have full borders. */
+.tfr-template .brk-instructions--plain .brk-instruction:last-child { border-bottom: 1px solid color-mix(in srgb, var(--tfr-accent) 24%, var(--tfr-rule)); }
+.tfr-template .brk-instructions--plain .brk-instruction:nth-child(odd)  { transform: rotate(-0.8deg); }
+.tfr-template .brk-instructions--plain .brk-instruction:nth-child(even) { transform: rotate(0.9deg); }
+.tfr-template .brk-instructions--plain .brk-instruction:hover {
+  transform: rotate(0deg) translateY(-3px);
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.4),
+    0 0 24px color-mix(in srgb, var(--tfr-accent) 18%, transparent);
+}
+.tfr-template .brk-instructions--plain .brk-instruction-kicker {
+  display: inline-block;
+  font-family: var(--tfr-body);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--tfr-accent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--tfr-accent) 36%, transparent);
+  margin: 0 0 8px;
+}
+.tfr-template .brk-instructions--plain .brk-instruction-body h3 {
+  font-family: var(--tfr-display);
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--tfr-fg);
+}
+.tfr-template .brk-instructions--plain .brk-instruction-body p {
+  margin: 0;
+  font-size: 15px;
+  color: var(--tfr-fg-muted);
+  line-height: 1.55;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tfr-template .brk-instructions--plain .brk-instruction,
+  .tfr-template .brk-instructions--plain .brk-instruction:hover { transform: none; }
+}
+
+/* ── Timeline skin (Process) — vertical neon spine with circular node
+   "buttons" punching through, over .brk-instructions--numbered. The
+   shared base gives an auto/1fr two-column row; TFR pins the mark column
+   to 44px, runs a glowing accent spine down its center, and turns each
+   .brk-instruction-mark into an accent-bordered circular node with a
+   neon halo. Matches the old .tfr-timeline / .tfr-timeline-num. ── */
+.tfr-template .brk-instructions--numbered {
+  max-width: var(--brk-container-narrow);
+  position: relative;
+}
+/* The vertical accent spine running down behind the node column. Fades
+   in/out at the ends so it doesn't terminate flush. left:21px = center
+   of the 44px node column. */
+.tfr-template .brk-instructions--numbered::before {
+  content: '';
+  position: absolute;
+  left: 21px;
+  top: 28px;
+  bottom: 28px;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--tfr-accent) 8%,
+    var(--tfr-accent) 92%,
+    transparent 100%
+  );
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tfr-accent) 50%, transparent);
+}
+.tfr-template .brk-instructions--numbered .brk-instruction {
+  grid-template-columns: 44px 1fr;
+  gap: 20px;
+  padding: 0 0 var(--brk-space-2xl);
+  border-top: 0;
+  align-items: start;
+}
+.tfr-template .brk-instructions--numbered .brk-instruction:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+/* Step numbers as circular nodes — bg matches the page so the spine
+   appears to punch through behind them. Accent border + neon glow. */
+.tfr-template .brk-instructions--numbered .brk-instruction-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--tfr-bg);
+  border: 2px solid var(--tfr-accent);
+  color: var(--tfr-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--tfr-display);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--tfr-accent) 40%, transparent);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--tfr-accent) 50%, transparent);
+}
+.tfr-template .brk-instructions--numbered .brk-instruction-body { padding-top: 6px; }
+.tfr-template .brk-instructions--numbered .brk-instruction-kicker {
+  display: inline-block;
+  font-family: var(--tfr-body);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--tfr-accent);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--tfr-accent) 36%, transparent);
+  margin: 0 0 8px;
+}
+.tfr-template .brk-instructions--numbered .brk-instruction-body h3 {
+  font-family: var(--tfr-display);
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  color: var(--tfr-fg);
+}
+.tfr-template .brk-instructions--numbered .brk-instruction-body p {
+  margin: 0;
+  font-size: 15px;
+  color: var(--tfr-fg-muted);
+  line-height: 1.55;
 }
 `

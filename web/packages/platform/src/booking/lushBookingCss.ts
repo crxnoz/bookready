@@ -1629,90 +1629,12 @@ export const LUSH_CSS = `
   color:var(--lush-text); text-align:center;
 }
 
-/* ── Before appointment / Aftercare ── */
-.lush-before-appointment-section { width:100%; max-width:720px; margin:0 auto; background:var(--lush-bg); padding:0 24px 80px; }
-/* Legacy direct-h2 inside the section is replaced by .lush-tab-header. */
-.lush-before-appointment-section > h2 { display:none !important; }
-.lush-before-timeline { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:26px; position:relative; }
-/* No connector line between steps — the alternating sage nodes carry
-   the rhythm on their own. (Previous dashed line was removed per
-   design feedback — felt too noisy on the cream bg.) */
-.lush-before-step { display:grid; grid-template-columns:52px 1fr; gap:14px; align-items:flex-start; }
-/* Alternating nodes echo the Steps section: odd = solid sage with
-   white numeral; even = outlined sage with sage numeral. */
-.lush-before-node {
-  width:52px; height:52px;
-  display:flex; align-items:center; justify-content:center;
-  border-radius:999px;
-  border:2px solid var(--lush-pink); background:var(--lush-bg);
-  flex-shrink:0;
-}
-.lush-before-step:nth-child(odd) .lush-before-node {
-  background:var(--lush-pink); border-color:var(--lush-pink);
-}
-.lush-before-node-num { font-family:var(--lush-ui); font-weight:700; font-size:16px; letter-spacing:0.04em; color:var(--lush-pink); }
-.lush-before-step:nth-child(odd) .lush-before-node-num { color:#FFFFFF; }
-.lush-before-step-body { padding:4px 4px 14px 6px; border-bottom:1px dashed var(--lush-dark-border); }
-/* Spa-themed accent: a sage 4-point sparkle (Unicode ✦) before each
-   title, scaled smaller than the title so it reads as decoration. */
-.lush-before-step-body h3 { margin:0 0 8px; color:var(--lush-text); font-family:var(--lush-serif); font-weight:400; font-size:22px; line-height:1.1; letter-spacing:-0.02em; }
-.lush-before-step-body h3::before {
-  content:"\\2726";
-  display:inline-block; margin-right:8px;
-  color:var(--lush-pink); font-size:0.65em;
-  vertical-align:0.1em;
-}
-.lush-before-step-body p { margin:0; color:var(--lush-muted); font-family:var(--lush-ui); font-size:13px; font-weight:400; line-height:1.55; }
-.lush-before-step-kicker {
-  display:block; margin-bottom:4px;
-  color:var(--lush-pink); font-family:var(--lush-ui);
-  font-size:10px; font-weight:600; letter-spacing:0.18em; text-transform:uppercase;
-}
-
-.lush-aftercare-section { width:100%; max-width:720px; margin:0 auto; background:var(--lush-bg); padding:0 24px 80px; }
-/* Legacy direct-h2 inside the section is replaced by .lush-tab-header. */
-.lush-aftercare-section > h2 { display:none !important; }
-
-/* "The Ritual" — Steps as a vertical ceremony, no boxes. Each step
-   is an editorial pane with a big serif numeral, a Cookie kicker
-   ("First", "Then", "Last"), DM Serif title, Roboto body. A single
-   sage ✦ centered between steps reads as a separator without the
-   visual weight of card chrome. The previous alternating sage cards
-   read as transactional; this reads as something you're walked
-   through. */
-.lush-ritual {
-  list-style:none; margin:0; padding:0;
-  display:flex; flex-direction:column; gap:0;
-}
-.lush-ritual-step {
-  padding:14px 4px 18px;
-  position:relative;
-}
-.lush-ritual-body { min-width:0; }
-.lush-ritual-kicker {
-  display:block; margin-bottom:4px;
-  font-family:var(--lush-script); font-weight:400;
-  font-size:24px; line-height:1; letter-spacing:0;
-  color:var(--lush-pink);
-}
-.lush-ritual-step h3 {
-  margin:0 0 10px;
-  font-family:var(--lush-serif); font-weight:400;
-  font-size:22px; line-height:1.1; letter-spacing:-0.02em;
-  color:var(--lush-text);
-}
-.lush-ritual-step p {
-  margin:0;
-  font-family:var(--lush-ui);
-  font-size:14px; font-weight:400; line-height:1.6;
-  color:var(--lush-text);
-}
-.lush-ritual-sep {
-  display:block; text-align:center;
-  font-family:var(--lush-ui);
-  font-size:16px; line-height:1; color:var(--lush-pink);
-  padding:14px 0 4px;
-}
+/* ── Advice / Timeline ── These two tab sections now render the shared
+   @bkrdy/platform InstructionsSection (.brk-instructions*); the Lush
+   look (un-numbered ✦-separated "Ritual" advice + alternating circular
+   sage timeline nodes) lives in LUSH_SECTIONS_SKIN inside
+   LushStudioTemplate.tsx. The former .lush-ritual* / .lush-before-*
+   rules were removed here. ── */
 
 /* ── Contact cards ── */
 .lush-contact-card {
@@ -1802,24 +1724,8 @@ export const LUSH_CSS = `
   .lush-policy-text { font-size:15px; line-height:1.65; }
   .lush-policy-custom-heading { font-size:42px; }
 
-  /* Timeline (Before You Arrive) — centered single track, larger nodes. */
-  .lush-before-appointment-section { max-width:900px; padding:8px 40px 110px; }
-  .lush-before-timeline { max-width:640px; margin:0 auto; gap:34px; }
-  .lush-before-step { grid-template-columns:68px 1fr; gap:26px; }
-  .lush-before-node { width:64px; height:64px; }
-  .lush-before-node-num { font-size:18px; }
-  .lush-before-step-body { padding:8px 0 22px 6px; }
-  .lush-before-step-body h3 { font-size:26px; }
-  .lush-before-step-body p { font-size:15px; line-height:1.65; }
-
-  /* Aftercare ritual — centered reading column. */
-  .lush-aftercare-section { max-width:900px; padding:8px 40px 110px; }
-  .lush-ritual { max-width:680px; margin:0 auto; }
-  .lush-ritual-step { padding:20px 4px 24px; }
-  .lush-ritual-kicker { font-size:28px; }
-  .lush-ritual-step h3 { font-size:26px; }
-  .lush-ritual-step p { font-size:15px; line-height:1.7; }
-  .lush-ritual-sep { font-size:18px; padding:16px 0 6px; }
+  /* Advice + Timeline desktop scale-ups now live in LUSH_SECTIONS_SKIN
+     (LushStudioTemplate.tsx) on the shared .brk-instructions* markup. */
 
   /* Booking — services breathe into 2-col within the shared section.
      (Shared .brk-* rule, preserved from the prior block so the other
@@ -1872,15 +1778,8 @@ export const LUSH_CSS = `
   .lush-policy-section { max-width:680px; padding:8px 36px 96px; }
   .lush-policy-title { font-size:24px; }
 
-  /* Timeline / Aftercare — centered columns. */
-  .lush-before-appointment-section { max-width:760px; padding:8px 36px 88px; }
-  .lush-before-timeline { max-width:560px; margin:0 auto; gap:30px; }
-  .lush-before-step { grid-template-columns:60px 1fr; gap:22px; }
-  .lush-before-node { width:58px; height:58px; }
-  .lush-before-step-body h3 { font-size:24px; }
-  .lush-aftercare-section { max-width:760px; padding:8px 36px 96px; }
-  .lush-ritual { max-width:560px; margin:0 auto; }
-  .lush-ritual-step h3 { font-size:24px; }
+  /* Advice + Timeline tablet scale-ups now live in LUSH_SECTIONS_SKIN
+     (LushStudioTemplate.tsx) on the shared .brk-instructions* markup. */
 
   /* Booking — services into 2-col on tablet too. (Shared .brk-* rule,
      preserved from the prior block.) */

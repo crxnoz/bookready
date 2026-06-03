@@ -28,6 +28,9 @@ export interface InstructionsSectionProps {
   numbered?: boolean
   /** Glyph for the un-numbered marker. */
   markGlyph?: string
+  /** Un-numbered only: set false to drop the marker column entirely
+   *  (for templates whose advice list has no per-item glyph). */
+  showMark?: boolean
   /** Placeholder shown (with the header) when there are no items. */
   emptyText?: string
   ariaLabel?: string
@@ -40,6 +43,7 @@ export function InstructionsSection({
   cardKicker,
   numbered = false,
   markGlyph = '◆',
+  showMark = true,
   emptyText,
   ariaLabel,
 }: InstructionsSectionProps) {
@@ -49,6 +53,10 @@ export function InstructionsSection({
   if (valid.length === 0 && !emptyText) return null
 
   const Tag = numbered ? 'ol' : 'ul'
+  const renderMark = numbered || showMark !== false
+  const listVariant = numbered
+    ? ' brk-instructions--numbered'
+    : (showMark === false ? ' brk-instructions--plain' : '')
 
   return (
     <section className="brk-section brk-instructions-section" aria-label={ariaLabel ?? heading}>
@@ -59,12 +67,14 @@ export function InstructionsSection({
       {valid.length === 0 ? (
         <p className="brk-empty">{emptyText}</p>
       ) : (
-        <Tag className={`brk-instructions${numbered ? ' brk-instructions--numbered' : ''}`}>
+        <Tag className={`brk-instructions${listVariant}`}>
           {valid.map((it, i) => (
             <li key={i} className="brk-instruction">
-              <span className="brk-instruction-mark" aria-hidden="true">
-                {numbered ? String(i + 1).padStart(2, '0') : markGlyph}
-              </span>
+              {renderMark && (
+                <span className="brk-instruction-mark" aria-hidden="true">
+                  {numbered ? String(i + 1).padStart(2, '0') : markGlyph}
+                </span>
+              )}
               <div className="brk-instruction-body">
                 {(cardKicker ?? '').trim() && <span className="brk-instruction-kicker">{cardKicker}</span>}
                 {(it.title ?? '').trim() && <h3>{it.title}</h3>}

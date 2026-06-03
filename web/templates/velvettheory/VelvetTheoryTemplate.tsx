@@ -6,7 +6,7 @@ import VelvetTheoryBooking from './VelvetTheoryBooking'
 import type { PublicSite, Service } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 import { tokensToCss } from '@bkrdy/platform'
-import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, SECTIONS_CSS } from '@bkrdy/platform/sections'
+import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, InstructionsSection, SECTIONS_CSS } from '@bkrdy/platform/sections'
 
 // ── Brand glyphs lucide doesn't ship ─────────────────────────────────────────
 
@@ -466,47 +466,43 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
           </div>
         </section>
 
-        {/* ── Notes (advice cards) ── */}
+        {/* ── Notes (advice) — shared InstructionsSection (un-numbered).
+            VT decorates each row with a lowercase Roman numeral; that
+            ornament is reproduced in the skin via a CSS counter on
+            .brk-instruction-mark (markGlyph is left empty so the counter
+            supplies the glyph). Items normalize legacy `content` → body so
+            DEFAULT_STEPS + older payloads still render. ── */}
         <section className={`vt-panel${active === 'aftercare' ? ' is-active' : ''}`}>
           <div className="vt-section vt-section-narrow">
-            <p className="vt-eyebrow">{(tabLabels as any).advice_label ?? tabLabels.steps_label ?? 'Notes'}</p>
-            <h2 className="vt-h2">{typeof settings.advice?.heading === 'string' && settings.advice.heading.trim() !== '' ? settings.advice.heading : 'Care, prolonged.'}</h2>
-            <div className="vt-notes">
-              {(stepsList.length > 0 ? stepsList : DEFAULT_STEPS).map((step: any, i: number) => (
-                <article key={i} className="vt-note">
-                  <span className="vt-note-num">{roman(i + 1).toLowerCase()}</span>
-                  <div className="vt-note-body">
-                    {typeof settings.advice?.card_kicker === 'string' && settings.advice.card_kicker.trim() !== '' && (
-                      <span className="vt-card-kicker">{settings.advice.card_kicker}</span>
-                    )}
-                    <h3 className="vt-note-title">{step.title ?? `Note ${i + 1}`}</h3>
-                    {(step.body ?? step.content) && <p>{step.body ?? step.content}</p>}
-                  </div>
-                </article>
-              ))}
-            </div>
+            <InstructionsSection
+              items={(stepsList.length > 0 ? stepsList : DEFAULT_STEPS).map((s: any) => ({ title: s.title, body: s.body ?? s.content }))}
+              heading={typeof settings.advice?.heading === 'string' && settings.advice.heading.trim() !== '' ? settings.advice.heading : 'Care, prolonged.'}
+              eyebrow={(tabLabels as any).advice_label ?? tabLabels.steps_label ?? 'Notes'}
+              cardKicker={settings.advice?.card_kicker}
+              markGlyph=""
+              emptyText="Care notes will appear here."
+              ariaLabel={(tabLabels as any).advice_label ?? tabLabels.steps_label ?? 'Notes'}
+            />
           </div>
         </section>
 
-        {/* ── Itinerary (diary timeline) ── */}
+        {/* ── Itinerary (timeline) — shared InstructionsSection (numbered).
+            The old diary keyed each entry by a `when` label (T-7 DAYS, …)
+            in the <dt>; `when` is NOT a canonical field, so migrating to the
+            numbered shared list drops it (the arabic ordinal takes its place,
+            per the shared-structure principle). Items normalize legacy
+            `content` → body. ── */}
         <section className={`vt-panel${active === 'before' ? ' is-active' : ''}`}>
           <div className="vt-section vt-section-narrow">
-            <p className="vt-eyebrow">{(tabLabels as any).timeline_label ?? tabLabels.before_appointment_label ?? 'Itinerary'}</p>
-            <h2 className="vt-h2">{typeof settings.timeline?.heading === 'string' && settings.timeline.heading.trim() !== '' ? settings.timeline.heading : 'Before your visit.'}</h2>
-            <dl className="vt-diary">
-              {(beforeList.length > 0 ? beforeList : DEFAULT_BEFORE).map((item: any, i: number) => (
-                <div key={i} className="vt-diary-entry">
-                  <dt>{item.when ?? `Step ${i + 1}`}</dt>
-                  <dd>
-                    {typeof settings.timeline?.card_kicker === 'string' && settings.timeline.card_kicker.trim() !== '' && (
-                      <span className="vt-card-kicker">{settings.timeline.card_kicker}</span>
-                    )}
-                    <h3 className="vt-diary-title">{item.title ?? ''}</h3>
-                    {(item.body ?? item.content) && <p>{item.body ?? item.content}</p>}
-                  </dd>
-                </div>
-              ))}
-            </dl>
+            <InstructionsSection
+              items={(beforeList.length > 0 ? beforeList : DEFAULT_BEFORE).map((it: any) => ({ title: it.title, body: it.body ?? it.content }))}
+              heading={typeof settings.timeline?.heading === 'string' && settings.timeline.heading.trim() !== '' ? settings.timeline.heading : 'Before your visit.'}
+              eyebrow={(tabLabels as any).timeline_label ?? tabLabels.before_appointment_label ?? 'Itinerary'}
+              cardKicker={settings.timeline?.card_kicker}
+              numbered
+              emptyText="Your visit timeline will appear here."
+              ariaLabel={(tabLabels as any).timeline_label ?? tabLabels.before_appointment_label ?? 'Itinerary'}
+            />
           </div>
         </section>
 
@@ -1206,92 +1202,6 @@ const VT_CSS = `
   .vt-ba-pair { grid-template-columns: 1fr; gap: 16px; }
 }
 
-/* ── Notes ── */
-.vt-notes {
-  display: flex;
-  flex-direction: column;
-  gap: 48px;
-  margin-top: 16px;
-}
-.vt-note {
-  display: grid;
-  grid-template-columns: 56px 1fr;
-  gap: 24px;
-  padding-top: 24px;
-  border-top: 1px solid var(--vt-rule);
-}
-.vt-note:first-child { border-top: 0; padding-top: 0; }
-.vt-note-num {
-  font-family: var(--vt-display);
-  font-style: italic;
-  font-size: 28px;
-  color: var(--vt-accent);
-  line-height: 1;
-}
-.vt-note-title {
-  font-family: var(--vt-display);
-  font-size: 22px;
-  font-weight: 400;
-  margin-bottom: 10px;
-}
-.vt-note-body p {
-  font-family: var(--vt-body);
-  font-size: 15px;
-  line-height: 1.7;
-  opacity: 0.85;
-}
-
-/* Shared kicker label rendered above each card title in the Notes /
-   Itinerary blocks. Uppercase gold micro-label in VT's eyebrow vocabulary. */
-.vt-card-kicker {
-  display: block;
-  font-family: var(--vt-body);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--vt-accent);
-  margin-bottom: 8px;
-}
-
-/* ── Itinerary / diary ── */
-.vt-diary {
-  display: flex;
-  flex-direction: column;
-}
-.vt-diary-entry {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 32px;
-  padding: 28px 0;
-  border-top: 1px solid var(--vt-rule);
-}
-.vt-diary-entry:first-child { border-top: 0; }
-.vt-diary-entry dt {
-  font-family: var(--vt-body);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--vt-accent);
-  padding-top: 8px;
-}
-.vt-diary-title {
-  font-family: var(--vt-display);
-  font-size: 20px;
-  font-weight: 400;
-  margin-bottom: 8px;
-}
-.vt-diary-entry dd p {
-  font-family: var(--vt-body);
-  font-size: 15px;
-  line-height: 1.7;
-  opacity: 0.85;
-}
-@media (max-width: 640px) {
-  .vt-diary-entry { grid-template-columns: 1fr; gap: 12px; }
-}
-
 /* ── Manifesto / Roman-numeral policies ── */
 .vt-manifesto {
   counter-reset: vt-manifesto;
@@ -1587,4 +1497,76 @@ const VT_CSS = `
 }
 .vt-template .brk-footer-contact a:hover { color: var(--vt-accent); }
 .vt-template .brk-footer-credit-band p { letter-spacing: 0.2em; }
+
+/* ── Instructions skin (Notes + Itinerary) ──────────────────────────────
+   Both tab panels now render the shared InstructionsSection. These
+   overrides re-apply Velvet Theory's editorial-luxe treatment: gold
+   ornaments, upright/italic Fraunces serif, and the gold uppercase kicker.
+
+   • Notes (un-numbered, markGlyph=""): VT decorated each row with a
+     lowercase Roman numeral. Reproduced here with a CSS counter on the
+     (empty) .brk-instruction-mark — :not(--numbered) scopes it to Notes
+     only. Wider 56px marker column matches the old .vt-note grid.
+   • Itinerary (numbered): the base ordinal is restyled to VT's italic gold
+     serif numeral. ── */
+
+/* Kicker — match the old .vt-card-kicker (gold uppercase micro-label). */
+.vt-template .brk-instruction-kicker {
+  font-family: var(--vt-body);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  color: var(--vt-accent);
+  margin-bottom: 8px;
+}
+/* Body title — upright Fraunces serif (matches .vt-note-title). */
+.vt-template .brk-instruction-body h3 {
+  font-family: var(--vt-display);
+  font-weight: 400;
+  font-size: 22px;
+  color: var(--vt-fg);
+  margin-bottom: 10px;
+}
+.vt-template .brk-instruction-body p {
+  font-family: var(--vt-body);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--vt-fg);
+  opacity: 0.85;
+}
+.vt-template .brk-instruction {
+  border-top: 1px solid var(--vt-rule);
+}
+.vt-template .brk-instruction:last-child { border-bottom: 0; }
+
+/* ── Notes only — lowercase Roman numeral marker via CSS counter ── */
+.vt-template .brk-instructions:not(.brk-instructions--numbered) {
+  counter-reset: vt-advice;
+}
+.vt-template .brk-instructions:not(.brk-instructions--numbered) .brk-instruction {
+  grid-template-columns: 56px 1fr;
+  gap: 24px;
+  align-items: start;
+  counter-increment: vt-advice;
+}
+.vt-template .brk-instructions:not(.brk-instructions--numbered) .brk-instruction-mark {
+  font-family: var(--vt-display);
+  font-style: italic;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--vt-accent);
+  text-align: left;
+}
+.vt-template .brk-instructions:not(.brk-instructions--numbered) .brk-instruction-mark::before {
+  content: counter(vt-advice, lower-roman);
+}
+
+/* ── Itinerary only — italic gold serif ordinal (matches VT's numerals) ── */
+.vt-template .brk-instructions--numbered .brk-instruction-mark {
+  font-family: var(--vt-display);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--vt-accent);
+}
+.vt-template .brk-instructions--numbered .brk-instruction-body h3 { font-size: 20px; }
 `

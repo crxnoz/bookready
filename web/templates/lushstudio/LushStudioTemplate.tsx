@@ -109,7 +109,7 @@ import {
   CustomerAccountWidget as LushCustomerAccountWidget,
   PLATFORM_BOOKING_CSS as LUSH_CSS,
 } from '@bkrdy/platform/booking'
-import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, SECTIONS_CSS } from '@bkrdy/platform/sections'
+import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, InstructionsSection, SECTIONS_CSS } from '@bkrdy/platform/sections'
 import { tokensToCss } from '@bkrdy/platform'
 import type { PublicSite, Service } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
@@ -662,26 +662,38 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
             </div>
           )}
 
-          {/* ── Steps (aftercare) ── */}
+          {/* ── Advice (aftercare) ── shared platform section. Lush skin
+              (LUSH_SECTIONS_SKIN) restores the editorial un-numbered
+              "Ritual" look: no per-item glyph (showMark={false}), a sage
+              ✦ separator between rows, Cookie kicker + DM Serif title. */}
           {enabledByTab.aftercare && (
             <div className={`lush-tab-panel${active === 'aftercare' ? ' is-active' : ''}`}>
-              <AftercarePanel
+              <InstructionsSection
                 items={(site.template?.settings as any)?.advice?.items ?? (site.template?.settings as any)?.steps?.items}
-                heading={(site.template?.settings as any)?.advice?.heading ?? (site.template?.settings as any)?.steps?.heading}
+                heading={(site.template?.settings as any)?.advice?.heading ?? (site.template?.settings as any)?.steps?.heading ?? 'Care notes'}
+                eyebrow={tabLabelById.aftercare ?? 'Advice'}
                 cardKicker={(site.template?.settings as any)?.advice?.card_kicker ?? (site.template?.settings as any)?.steps?.card_kicker}
-                eyebrow={tabLabelById.aftercare}
+                numbered={false}
+                showMark={false}
+                emptyText="Aftercare guidance will appear here."
+                ariaLabel={tabLabelById.aftercare ?? 'Advice'}
               />
             </div>
           )}
 
-          {/* ── Before Your Appointment ── */}
+          {/* ── Timeline (before your appointment) ── shared platform
+              section. Lush skin restyles the numbered marks into the
+              alternating circular sage nodes + dashed-rule bodies. */}
           {enabledByTab.before && (
             <div className={`lush-tab-panel${active === 'before' ? ' is-active' : ''}`}>
-              <BeforePanel
+              <InstructionsSection
                 items={(site.template?.settings as any)?.timeline?.items ?? (site.template?.settings as any)?.before_appointment?.items}
-                heading={(site.template?.settings as any)?.timeline?.heading ?? (site.template?.settings as any)?.before_appointment?.heading}
+                heading={(site.template?.settings as any)?.timeline?.heading ?? (site.template?.settings as any)?.before_appointment?.heading ?? 'Before you arrive'}
+                eyebrow={tabLabelById.before ?? 'Timeline'}
                 cardKicker={(site.template?.settings as any)?.timeline?.card_kicker ?? (site.template?.settings as any)?.before_appointment?.card_kicker}
-                eyebrow={tabLabelById.before}
+                numbered
+                emptyText="A simple step-by-step of your visit will appear here."
+                ariaLabel={tabLabelById.before ?? 'Timeline'}
               />
             </div>
           )}
@@ -1246,114 +1258,6 @@ function PoliciesPanel({ policies, eyebrow }: { policies: PublicSite['policies']
   )
 }
 
-// ── Before Your Appointment panel ─────────────────────────────────────────────
-
-const BEFORE_STEPS = [
-  { title: 'Arrive softly',          body: 'Plan to arrive five minutes early. Give yourself a moment to settle in before your treatment begins.' },
-  { title: 'Skip the heavy makeup',  body: 'Especially for facials — we will cleanse you anyway, but coming bare lets us spend the time on your skin instead.' },
-  { title: 'Hydrate the day before', body: 'Well-hydrated skin and muscles respond better to every treatment. Drink water; skip the cocktail.' },
-  { title: 'Tell us what\'s going on', body: 'Allergies, sensitivities, recent treatments, mood — share everything at check-in. The more we know, the better the work.' },
-]
-
-function BeforePanel({
-  items,
-  heading,
-  cardKicker,
-  eyebrow,
-}: {
-  items?: { title: string; body: string }[]
-  heading?: string
-  /** Phase 8 — optional kicker rendered above each step's title. The
-   *  numbered timeline node stays regardless (it carries the structural
-   *  meaning of "step 1 of N"). */
-  cardKicker?: string
-  eyebrow?: string
-}) {
-  const steps = items && items.length > 0 ? items : BEFORE_STEPS
-  const kicker = (cardKicker ?? '').trim()
-  return (
-    <section className="lush-before-appointment-section">
-      <header className="lush-tab-header">
-        <p className="lush-eyebrow">{eyebrow ?? 'Timeline'}</p>
-        <h2 className="lush-section-title">{heading ?? 'Before you arrive'}</h2>
-      </header>
-      <ol className="lush-before-timeline">
-        {steps.map((s, i) => (
-          <li key={i} className="lush-before-step">
-            <div className="lush-before-node">
-              <span className="lush-before-node-num">{i + 1}</span>
-            </div>
-            <div className="lush-before-step-body">
-              {kicker && <span className="lush-before-step-kicker">{kicker}</span>}
-              <h3>{s.title}</h3>
-              <p>{s.body}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
-    </section>
-  )
-}
-
-// ── Aftercare panel ───────────────────────────────────────────────────────────
-
-const AFTERCARE_CARDS = [
-  { title: 'Hydrate quietly',     body: 'Drink water, skip alcohol for 24 hours. Your skin and your nervous system will thank you.' },
-  { title: 'Skip the workout',    body: 'Let the body settle for twelve hours. Come back to the gym tomorrow.' },
-  { title: 'Mind the products',   body: 'No retinol or actives tonight. Tomorrow morning is fine.' },
-  { title: 'Sleep on it',         body: 'The results bloom overnight. You will see them in the mirror in the morning.' },
-]
-
-function AftercarePanel({
-  items,
-  heading,
-  cardKicker,
-  eyebrow,
-}: {
-  items?: { title: string; body: string }[]
-  heading?: string
-  /** Phase 8 — optional shared label rendered above every card's title
-   *  ("Aftercare Advice", "How To..."). Blank/missing = no label row,
-   *  just the heading + body. Replaces the old auto-numbered
-   *  "Step 01/02/03" treatment. */
-  cardKicker?: string
-  eyebrow?: string
-}) {
-  const cards = items && items.length > 0 ? items : AFTERCARE_CARDS
-  const kicker = (cardKicker ?? '').trim()
-  // Aftercare — vertical un-numbered list. Each card is its own
-  // editorial pane (DM Serif title, Roboto body) separated by a sage
-  // ✦. No numerals and no auto-ordinal kicker: aftercare is a set of
-  // PARALLEL care tips, not a sequence — numbering made it read like a
-  // procedural to-do list. The only sequence in the template is the
-  // Before-Your-Appointment timeline (which is genuinely ordered).
-  return (
-    <section className="lush-aftercare-section">
-      <header className="lush-tab-header">
-        <p className="lush-eyebrow">{eyebrow ?? 'Advice'}</p>
-        <h2 className="lush-section-title">{heading ?? 'Care notes'}</h2>
-      </header>
-      <ul className="lush-ritual" aria-label={heading ?? 'Advice'}>
-        {cards.map((c, i) => {
-          const isLast = i === cards.length - 1
-          return (
-            <li key={i} className="lush-ritual-step">
-              <div className="lush-ritual-body">
-                {kicker && <span className="lush-ritual-kicker">{kicker}</span>}
-                <h3>{c.title}</h3>
-                <p>{c.body}</p>
-              </div>
-              {!isLast && (
-                <span className="lush-ritual-sep" aria-hidden="true">&#x2726;&#xFE0E;</span>
-              )}
-            </li>
-          )
-        })}
-      </ul>
-    </section>
-  )
-}
-
 // ════════════════════════════════════════════════════════════════════════════
 // LUSH SKIN over the shared platform sections (@bkrdy/platform/sections)
 // ────────────────────────────────────────────────────────────────────────────
@@ -1622,6 +1526,127 @@ const LUSH_SECTIONS_SKIN = `
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  color: var(--lush-muted);
+}
+
+/* ── Advice skin (.brk-instructions--plain) — "The Ritual": an
+   un-numbered editorial list with NO divider rules; instead a single
+   centered sage ✦ floats BETWEEN rows (was .lush-ritual-sep, now a
+   ::before on every row after the first). Cookie kicker, DM Serif
+   title, Roboto body. Matches the old .lush-ritual* block. ── */
+.lush-template .brk-instructions--plain { gap: 0; }
+.lush-template .brk-instructions--plain .brk-instruction {
+  border-top: none;
+  padding: 14px 4px 18px;
+}
+.lush-template .brk-instructions--plain .brk-instruction:last-child { border-bottom: none; }
+/* Sage ✦ separator before every row except the first. The plain list
+   is a single 1fr column, so this ::before stacks above the body. */
+.lush-template .brk-instructions--plain .brk-instruction + .brk-instruction::before {
+  content: "\\2726\\FE0E";
+  display: block;
+  text-align: center;
+  font-family: var(--lush-ui);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--lush-pink);
+  padding: 0 0 18px;
+}
+.lush-template .brk-instructions--plain .brk-instruction-kicker {
+  font-family: var(--lush-script);
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--lush-pink);
+  margin-bottom: 4px;
+}
+.lush-template .brk-instructions--plain .brk-instruction-body h3 {
+  margin: 0 0 10px;
+  font-family: var(--lush-serif);
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--lush-text);
+}
+.lush-template .brk-instructions--plain .brk-instruction-body p {
+  font-family: var(--lush-ui);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--lush-text);
+}
+
+/* ── Timeline skin (.brk-instructions--numbered) — the numbered mark
+   becomes a circular sage node. Alternating fill: odd rows are solid
+   sage with a white numeral, even rows are outlined sage with a sage
+   numeral. Bodies carry a dashed hairline rule + a small ✦ before the
+   DM Serif title. Matches the old .lush-before-* block. ── */
+.lush-template .brk-instructions--numbered .brk-instruction {
+  grid-template-columns: 52px 1fr;
+  gap: 14px;
+  padding: 13px 0;
+  align-items: start;
+}
+.lush-template .brk-instructions--numbered .brk-instruction-mark {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 2px solid var(--lush-pink);
+  background: var(--lush-bg);
+  font-family: var(--lush-ui);
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: var(--lush-pink);
+}
+.lush-template .brk-instructions--numbered .brk-instruction:nth-child(odd) .brk-instruction-mark {
+  background: var(--lush-pink);
+  border-color: var(--lush-pink);
+  color: #FFFFFF;
+}
+.lush-template .brk-instructions--numbered .brk-instruction-body {
+  padding: 4px 4px 14px 6px;
+  border-bottom: 1px dashed var(--lush-dark-border);
+}
+.lush-template .brk-instructions--numbered .brk-instruction-kicker {
+  font-family: var(--lush-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--lush-pink);
+  margin-bottom: 4px;
+}
+.lush-template .brk-instructions--numbered .brk-instruction-body h3 {
+  margin: 0 0 8px;
+  font-family: var(--lush-serif);
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--lush-text);
+}
+.lush-template .brk-instructions--numbered .brk-instruction-body h3::before {
+  content: "\\2726";
+  display: inline-block;
+  margin-right: 8px;
+  color: var(--lush-pink);
+  font-size: 0.65em;
+  vertical-align: 0.1em;
+}
+.lush-template .brk-instructions--numbered .brk-instruction-body p {
+  margin: 0;
+  font-family: var(--lush-ui);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.55;
   color: var(--lush-muted);
 }
 `
