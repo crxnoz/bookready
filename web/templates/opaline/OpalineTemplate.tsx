@@ -851,8 +851,13 @@ const OPALINE_CSS = `
 .opaline-tab-slider {
   display: flex;
   flex-wrap: nowrap;
-  justify-content: center;
-  max-width: var(--brk-container-standard);
+  /* width:max-content + margin:0 auto centers the strip when the tabs fit
+     and lets it scroll from the START when they overflow. The old
+     justify-content:center on an overflow-x:auto rail pushed the first tab
+     to a negative, unreachable scroll offset — so it was cut off at the
+     start on narrower viewports. */
+  width: max-content;
+  max-width: 100%;
   margin: 0 auto;
   padding: 12px var(--brk-space-md);
   gap: 6px;

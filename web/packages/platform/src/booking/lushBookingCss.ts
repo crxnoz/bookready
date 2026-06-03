@@ -2059,6 +2059,9 @@ export const LUSH_CSS = `
      shadow, but the cap + radius make the shadow read as a floating panel
      instead of the full-width "halo" the old block was fighting. */
   .lush-header-cover { height:38vh; min-height:400px; }
+  /* A little breathing room below the floating header card before the
+     sticky tab rail (the card's soft shadow needs room too). */
+  .lush-header-section { padding-bottom:36px; }
   .lush-header-content {
     max-width:1040px;
     margin:-76px auto 0;
