@@ -177,10 +177,16 @@ class TemplateDefaults
         return [
             ['section_key' => 'header',             'section_type' => 'header',        'title' => 'Header',                  'is_locked' => true,  'sort_order' => 1],
             ['section_key' => 'book',               'section_type' => 'booking',       'title' => 'Book',                    'is_locked' => true,  'sort_order' => 2],
+            // sort_order encodes the template's DESIGNED tab order (the
+            // order the rail renders by default). Templates sort their tabs
+            // by these values, so this must match TheFadeRoom's allTabs
+            // order: Gallery, Results, About, Policy, Advice, Timeline.
+            // Blackline + Opaline reuse this (same designed order); Lush +
+            // Velvet override below with their own orders.
             ['section_key' => 'gallery',            'section_type' => 'gallery',       'title' => 'Gallery',                 'is_locked' => false, 'sort_order' => 3],
-            ['section_key' => 'policy',             'section_type' => 'policy',        'title' => 'Policy',                  'is_locked' => false, 'sort_order' => 4],
+            ['section_key' => 'results',  'section_type' => 'results',       'title' => 'Results',  'is_locked' => false, 'sort_order' => 4],
             ['section_key' => 'about',              'section_type' => 'about',         'title' => 'About',                   'is_locked' => false, 'sort_order' => 5],
-            ['section_key' => 'results',  'section_type' => 'results',       'title' => 'Results',  'is_locked' => false, 'sort_order' => 6],
+            ['section_key' => 'policy',             'section_type' => 'policy',        'title' => 'Policy',                  'is_locked' => false, 'sort_order' => 6],
             ['section_key' => 'advice',   'section_type' => 'instructions',  'title' => 'Advice',   'is_locked' => false, 'sort_order' => 7],
             ['section_key' => 'timeline', 'section_type' => 'instructions',  'title' => 'Timeline', 'is_locked' => false, 'sort_order' => 8],
             ['section_key' => 'footer',             'section_type' => 'footer',        'title' => 'Footer',                  'is_locked' => true,  'sort_order' => 99],
@@ -235,9 +241,16 @@ class TemplateDefaults
 
     private static function lushStudioSections(): array
     {
-        // Same section taxonomy as TFR — Lush surfaces the same set of
-        // tabs, just styled differently.
-        return self::theFadeRoomSections();
+        // Same section taxonomy as TFR, but Lush's designed tab order is
+        // Gallery, Policy, About, Results, Advice, Timeline — so override
+        // the content sort_orders to match (templates render by sort_order).
+        $sections = self::theFadeRoomSections();
+        $order = ['gallery' => 3, 'policy' => 4, 'about' => 5, 'results' => 6, 'advice' => 7, 'timeline' => 8];
+        foreach ($sections as &$s) {
+            if (isset($order[$s['section_key']])) $s['sort_order'] = $order[$s['section_key']];
+        }
+        unset($s);
+        return $sections;
     }
 
     // ─── Velvet Theory ──────────────────────────────────────────────────────────
@@ -288,7 +301,15 @@ class TemplateDefaults
 
     private static function velvetTheorySections(): array
     {
-        return self::theFadeRoomSections();
+        // Velvet's designed tab order is Gallery, About, Results, Advice,
+        // Timeline, Policy — override the content sort_orders to match.
+        $sections = self::theFadeRoomSections();
+        $order = ['gallery' => 3, 'about' => 4, 'results' => 5, 'advice' => 6, 'timeline' => 7, 'policy' => 8];
+        foreach ($sections as &$s) {
+            if (isset($order[$s['section_key']])) $s['sort_order'] = $order[$s['section_key']];
+        }
+        unset($s);
+        return $sections;
     }
 
     // ─── Blackline ──────────────────────────────────────────────────────────────

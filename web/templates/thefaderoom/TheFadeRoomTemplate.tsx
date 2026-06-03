@@ -132,7 +132,14 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
     { id: 'advice',   label: tabs.advice_label   ?? 'Notes' },
     { id: 'timeline', label: tabs.timeline_label ?? 'Process' },
   ]
-  const visibleTabs = allTabs.filter(t => t.id === 'book' || enabledByTab[t.id])
+  const orderByTab: Record<string, number> = {}
+  for (const s of (site.template?.sections ?? [])) {
+    const tid = SECTION_KEY_TO_TAB[s.section_key]
+    if (tid) orderByTab[tid] = s.sort_order
+  }
+  const visibleTabs = allTabs
+    .filter(t => t.id === 'book' || enabledByTab[t.id])
+    .sort((a, b) => (orderByTab[a.id] ?? 999) - (orderByTab[b.id] ?? 999))
 
   // Reuse the exact resolved tab labels for each tabbed section's eyebrow,
   // so editing a tab name in the editor updates both the rail pill and the

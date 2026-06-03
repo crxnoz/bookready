@@ -5,18 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createCheckoutSession, selectActiveTemplate } from '@/lib/api'
 import { isLoggedIn } from '@/lib/auth'
 import { BillingCycle } from '@/lib/types'
+import { SITE_TEMPLATES as TEMPLATES } from '@/lib/templates'
 
 const TEMPLATE_KEY = 'br_template'
-
-// Must stay in sync with web/templates/registry.ts (the slugs that
-// actually render) and TemplateDefaults::KNOWN_SLUGS on the backend.
-const TEMPLATES = [
-  { slug: 'velvettheory', label: 'Velvet Theory', desc: 'Editorial luxury — sharp, refined, deep tones', color: '#2D0F19' },
-  { slug: 'thefaderoom', label: 'The Fade Room', desc: 'Dark editorial barbershop', color: '#0A0A0A' },
-  { slug: 'blackline', label: 'Blackline', desc: 'Industrial editorial — stark, brutalist lines', color: '#141414' },
-  { slug: 'lushstudio', label: 'Lush Studio', desc: 'Soft feminine salon — sage & cream', color: '#F3E8F0' },
-  { slug: 'opaline', label: 'Opaline', desc: 'Luminous luxury spa — airy & pearlescent', color: '#E7EEF0' },
-]
 
 const BILLING: {
   id: BillingCycle

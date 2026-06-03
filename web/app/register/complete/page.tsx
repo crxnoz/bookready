@@ -1,10 +1,11 @@
 'use client'
 
-import { Suspense, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { completeGoogleSignup } from '@/lib/api'
 import { setToken, setTenantId } from '@/lib/auth'
+import { SITE_TEMPLATES, normalizeTemplateSlug } from '@/lib/templates'
 import AuthShell from '@/components/auth/AuthShell'
 
 const TEMPLATE_KEY = 'br_template'
@@ -37,8 +38,16 @@ function CompleteInner() {
   // email flow; the Google flow returns here without going through
   // that page, so we re-collect on this screen.
   const [termsAccepted, setTermsAccepted] = useState(false)
+  // Template the user picks here. Seed from whatever was chosen before
+  // OAuth (stored in localStorage on /register), default to The Fade Room.
+  const [template, setTemplate] = useState('thefaderoom')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const stored = localStorage.getItem(TEMPLATE_KEY)
+    if (stored) setTemplate(normalizeTemplateSlug(stored))
+  }, [])
 
   const slugPreview = useMemo(
     () => businessName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'yourbusiness',
@@ -82,13 +91,13 @@ function CompleteInner() {
         handoff,
         business_name: businessName.trim(),
         terms_accepted: termsAccepted,
+        template,
       })
       setToken()
       const tenantId = res.tenant_id ?? res.user.tenant_id
       setTenantId(tenantId)
-      // Default to The Fade Room template — only template available right now.
-      localStorage.setItem(TEMPLATE_KEY, 'thefaderoom')
-      router.push('/checkout?template=thefaderoom')
+      localStorage.setItem(TEMPLATE_KEY, template)
+      router.push(`/checkout?template=${template}`)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Could not finish signup.')
     } finally {
@@ -147,6 +156,43 @@ function CompleteInner() {
             placeholder="Lush Studio"
           />
         </Field>
+
+        {/* Template picker — lets Google signups choose their site look
+            here (the email flow picks it on /checkout). The selection is
+            sent to complete-signup, which seeds template_settings, and is
+            re-applied on /checkout via selectActiveTemplate. */}
+        <div>
+          <label className={labelCls}>Template</label>
+          <div className="space-y-1.5">
+            {SITE_TEMPLATES.map(t => (
+              <button
+                key={t.slug}
+                type="button"
+                onClick={() => setTemplate(t.slug)}
+                className={`w-full text-left flex items-center gap-3 px-3 py-2.5 border transition-colors ${
+                  template === t.slug
+                    ? 'border-near-black bg-white'
+                    : 'border-[rgba(18,18,18,0.12)] bg-white hover:bg-cream'
+                }`}
+              >
+                <span
+                  className="w-6 h-6 flex-shrink-0 border border-[rgba(18,18,18,0.10)]"
+                  style={{ background: t.color }}
+                />
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-semibold text-near-black leading-tight">{t.label}</span>
+                  <span className="block text-[11px] text-muted-text truncate">{t.desc}</span>
+                </span>
+                {template === t.slug && (
+                  <span className="text-[9px] font-bold tracking-[0.06em] uppercase bg-near-black text-white px-1.5 py-0.5 flex-shrink-0">
+                    Selected
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[11px] text-muted-text">You can change this anytime in the editor.</p>
+        </div>
 
         {/* Pre-launch (#117): explicit ToS checkbox on the Google
             deferred-name completion page. Mirrors the email signup

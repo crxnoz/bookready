@@ -178,6 +178,12 @@ export default function OpalineTemplate({ site, slug }: Props) {
     }
   }
 
+  const orderByTab: Record<string, number> = {}
+  for (const s of (site.template?.sections ?? [])) {
+    const tid = SECTION_KEY_TO_TAB[s.section_key]
+    if (tid) orderByTab[tid] = s.sort_order
+  }
+
   const allTabs: { id: TabId; label: string }[] = [
     { id: 'book',     label: tabs.book_label     ?? 'Reserve' },
     { id: 'gallery',  label: tabs.gallery_label  ?? 'Gallery' },
@@ -187,7 +193,9 @@ export default function OpalineTemplate({ site, slug }: Props) {
     { id: 'advice',   label: tabs.advice_label   ?? 'Care' },
     { id: 'timeline', label: tabs.timeline_label ?? 'Visit' },
   ]
-  const visibleTabs = allTabs.filter(t => t.id === 'book' || enabledByTab[t.id])
+  const visibleTabs = allTabs
+    .filter(t => t.id === 'book' || enabledByTab[t.id])
+    .sort((a, b) => (orderByTab[a.id] ?? 999) - (orderByTab[b.id] ?? 999))
 
   function goBook() {
     setActive('book')

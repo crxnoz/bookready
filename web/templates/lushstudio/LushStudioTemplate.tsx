@@ -319,7 +319,19 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
   // the editable tab label (renaming a tab in the editor renames the eyebrow).
   const tabLabelById = Object.fromEntries(allTabs.map(t => [t.id, t.label])) as Record<string, string>
 
-  const tabs = allTabs.filter(t => t.id === 'book' || enabledByTab[t.id])
+  // Map each tab id → its website_sections.sort_order so the rail renders in
+  // the order the owner arranged sections in the editor. Tabs without a
+  // matching section (or when sections are missing) fall back to 999 so they
+  // sort after ordered tabs while keeping their registry order via the stable sort.
+  const orderByTab: Record<string, number> = {}
+  for (const s of sectionsList) {
+    const tid = SECTION_KEY_TO_TAB[s.section_key]
+    if (tid) orderByTab[tid] = s.sort_order
+  }
+
+  const tabs = allTabs
+    .filter(t => t.id === 'book' || enabledByTab[t.id])
+    .sort((a, b) => (orderByTab[a.id] ?? 999) - (orderByTab[b.id] ?? 999))
 
   const [active, setActive] = useState<TabId>('book')
   const tabRailRef = useRef<HTMLDivElement>(null)

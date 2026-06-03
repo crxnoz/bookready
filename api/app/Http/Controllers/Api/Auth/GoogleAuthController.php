@@ -333,6 +333,10 @@ class GoogleAuthController extends Controller
             // /register form, so we must collect consent on this screen
             // too. See web/app/register/complete/page.tsx.
             'terms_accepted' => ['required', 'accepted'],
+            // Optional template chosen on /register/complete. normalizeSlug
+            // validates it; an unknown value falls back to the cached pick
+            // (then the default), so a loose rule here is safe.
+            'template'       => ['sometimes', 'string', 'max:40'],
         ]);
 
         $cacheKey = "google_signup:{$validated['handoff']}";
@@ -355,9 +359,12 @@ class GoogleAuthController extends Controller
         }
 
         $businessName = trim($validated['business_name']);
-        // Template chosen pre-OAuth was stashed in the handoff cache; accept
-        // any real slug, degrade unknown to the default.
-        $template     = TemplateDefaults::normalizeSlug($identity['template'] ?? null);
+        // Prefer the template the user picked on /register/complete; fall
+        // back to the one stashed in the handoff cache pre-OAuth, then the
+        // default. normalizeSlug validates + degrades unknown values.
+        $template     = TemplateDefaults::normalizeSlug(
+            $validated['template'] ?? ($identity['template'] ?? null)
+        );
 
         $ownerName = trim((string) ($identity['name'] ?? ''))
             ?: explode('@', $email, 2)[0];

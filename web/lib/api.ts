@@ -133,6 +133,8 @@ export async function completeGoogleSignup(payload: {
    * /register, so consent is collected on /register/complete.
    */
   terms_accepted: boolean
+  /** Template chosen on /register/complete; overrides the cached pick. */
+  template?: string
 }): Promise<AuthResponse> {
   return request<AuthResponse>('/auth/google/complete-signup', {
     method: 'POST',

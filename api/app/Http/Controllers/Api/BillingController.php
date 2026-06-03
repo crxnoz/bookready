@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
+use App\Support\TemplateDefaults;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Laravel\Cashier\Cashier;
 
 class BillingController extends Controller
@@ -44,7 +46,10 @@ class BillingController extends Controller
             'plan'           => ['nullable', 'string', 'in:solo,studio,salon'],
             'billing_cycle'  => ['required', 'string', 'in:monthly,annual,quarterly'],
             'sms_mult'       => ['nullable', 'integer', 'in:1,2,3'],
-            'template_slug'  => ['required', 'string', 'regex:/^[a-z0-9]+$/'],
+            // Validate against the set of templates that actually exist
+            // (single source of truth) rather than any lowercase string —
+            // so a bad/stale slug can't be stored in Stripe metadata.
+            'template_slug'  => ['required', 'string', Rule::in(TemplateDefaults::KNOWN_SLUGS)],
         ]);
 
         // Salon is currently waitlist-only on the marketing site; do not

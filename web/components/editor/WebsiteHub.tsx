@@ -269,6 +269,32 @@ export default function WebsiteHub() {
     setPreviewKey(k => k + 1)
   }
 
+  // Reorder a section among the NON-locked ones by swapping its sort_order
+  // with the adjacent movable section. Locked sections (header/book/footer)
+  // keep their fixed positions. Templates render their content tabs in
+  // sort_order, so this changes the public site's section order.
+  async function reorderSection(id: number, direction: 'up' | 'down'): Promise<void> {
+    const ordered = [...sections].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
+    const movable = ordered.filter(s => !s.is_locked)
+    const idx = movable.findIndex(s => s.id === id)
+    if (idx < 0) return
+    const swapWith = direction === 'up' ? movable[idx - 1] : movable[idx + 1]
+    if (!swapWith) return
+    const current = movable[idx]
+    // If the two share a sort_order (legacy data), nudge to guarantee a
+    // visible swap rather than a no-op.
+    const currentOrder = current.sort_order
+    const swapOrder = swapWith.sort_order === currentOrder
+      ? (direction === 'up' ? currentOrder - 1 : currentOrder + 1)
+      : swapWith.sort_order
+    const [a, b] = await Promise.all([
+      updateEditorWebsiteSection(current.id, { sort_order: swapOrder }),
+      updateEditorWebsiteSection(swapWith.id, { sort_order: currentOrder }),
+    ])
+    setSections(prev => prev.map(s => (s.id === a.id ? a : s.id === b.id ? b : s)))
+    setPreviewKey(k => k + 1)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh] bg-cream">
@@ -322,6 +348,7 @@ export default function WebsiteHub() {
                   sections={sections}
                   publicUrl={publicUrl}
                   onToggleSection={toggleSection}
+                  onReorderSection={reorderSection}
                   onSaveSettings={saveSettings}
                 />
               )}
@@ -723,7 +750,7 @@ function useSettingsForm<T extends object>(
 // ── Overview ─────────────────────────────────────────────────────────────────
 
 function OverviewPanel({
-  templateSlug, manifest, settings, sections, publicUrl, onToggleSection, onSaveSettings,
+  templateSlug, manifest, settings, sections, publicUrl, onToggleSection, onReorderSection, onSaveSettings,
 }: {
   templateSlug: string
   manifest: TemplateManifest | null
@@ -731,6 +758,7 @@ function OverviewPanel({
   sections: WebsiteSection[]
   publicUrl: string
   onToggleSection: (id: number, enabled: boolean) => Promise<void>
+  onReorderSection: (id: number, direction: 'up' | 'down') => Promise<void>
   onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
 }) {
   const sorted = useMemo(
@@ -775,6 +803,20 @@ function OverviewPanel({
     setBusyId(s.id)
     try {
       await onToggleSection(s.id, !s.is_enabled)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  // IDs of reorderable (non-locked) sections in display order — used to
+  // disable the up/down arrows at the ends of the movable range.
+  const movableIds = sorted.filter(s => !s.is_locked).map(s => s.id)
+
+  async function move(s: WebsiteSection, direction: 'up' | 'down') {
+    if (s.is_locked) return
+    setBusyId(s.id)
+    try {
+      await onReorderSection(s.id, direction)
     } finally {
       setBusyId(null)
     }
@@ -935,6 +977,34 @@ function OverviewPanel({
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {/* Reorder arrows — non-locked sections only. Swaps
+                      sort_order with the adjacent movable section; templates
+                      render content tabs in sort_order so this reorders the
+                      public site too. */}
+                  {!s.is_locked && movableIds.length > 1 && (
+                    <div className="inline-flex flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => move(s, 'up')}
+                        disabled={busy || movableIds.indexOf(s.id) === 0}
+                        title="Move up"
+                        aria-label={`Move ${label} up`}
+                        className="p-1.5 border border-[rgba(18,18,18,0.10)] bg-white text-muted-text hover:text-near-black hover:border-near-black transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <ArrowUp size={11} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => move(s, 'down')}
+                        disabled={busy || movableIds.indexOf(s.id) === movableIds.length - 1}
+                        title="Move down"
+                        aria-label={`Move ${label} down`}
+                        className="p-1.5 border border-l-0 border-[rgba(18,18,18,0.10)] bg-white text-muted-text hover:text-near-black hover:border-near-black transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <ArrowDown size={11} />
+                      </button>
+                    </div>
+                  )}
                   {/* Jump-to-editor link — only this icon is clickable for nav. */}
                   {SECTION_KEY_TO_TAB[s.section_key] && (
                     <Link

@@ -208,7 +208,14 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
     { id: 'before',    label: tabLabels.timeline_label ?? (tabLabels as any).before_appointment_label, key: 'timeline' },
     { id: 'policies',  label: tabLabels.policy_label,             key: 'policy'             },
   ]
-  const tabs = allTabs.filter(t => t.id === 'book' || enabledByTab[t.id])
+  const orderByTab: Record<string, number> = {}
+  for (const s of (site.template?.sections ?? [])) {
+    const tid = SECTION_KEY_TO_TAB[s.section_key]
+    if (tid) orderByTab[tid] = s.sort_order
+  }
+  const tabs = allTabs
+    .filter(t => t.id === 'book' || enabledByTab[t.id])
+    .sort((a, b) => (orderByTab[a.id] ?? 999) - (orderByTab[b.id] ?? 999))
 
   const [active, setActive] = useState<TabId>('book')
   const tabRailRef = useRef<HTMLDivElement>(null)

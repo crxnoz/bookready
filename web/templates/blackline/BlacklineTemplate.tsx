@@ -120,9 +120,19 @@ export default function BlacklineTemplate({ site, slug }: Props) {
     { id: 'advice',   label: tabs.advice_label   ?? 'Notes' },
     { id: 'timeline', label: tabs.timeline_label ?? 'Process' },
   ]
+  // Map each tab to its website_sections.sort_order so the rail honors the
+  // order set in the editor. Tabs without a resolved order sink to the end.
+  const orderByTab: Record<string, number> = {}
+  for (const s of (site.template?.sections ?? [])) {
+    const tid = SECTION_KEY_TO_TAB[s.section_key]
+    if (tid) orderByTab[tid] = s.sort_order
+  }
+
   // Book is always shown (the booking flow is the template's whole point);
-  // other tabs respect editor toggles.
-  const visibleTabs = allTabs.filter(t => t.id === 'book' || enabledByTab[t.id])
+  // other tabs respect editor toggles. Stable-sorted by editor sort_order.
+  const visibleTabs = allTabs
+    .filter(t => t.id === 'book' || enabledByTab[t.id])
+    .sort((a, b) => (orderByTab[a.id] ?? 999) - (orderByTab[b.id] ?? 999))
 
   // Resolved tab labels keyed by TabId — reused as each tabbed section's
   // eyebrow so editing a tab name in the editor renames its eyebrow too.
