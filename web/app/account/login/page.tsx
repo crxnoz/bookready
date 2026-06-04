@@ -33,6 +33,8 @@ function Inner() {
     : '/account/register'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  // #158 — Remember me, customer side. Same semantics as owner login.
+  const [remember, setRemember] = useState(true)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -41,7 +43,7 @@ function Inner() {
     setError('')
     setLoading(true)
     try {
-      await customerLogin({ email, password })
+      await customerLogin({ email, password, remember })
       setCustomerLoggedIn()
       if (returnTo) {
         // Cross-origin redirect — router.push won't work, hard-nav.
@@ -111,7 +113,17 @@ function Inner() {
           />
         </Field>
 
-        <div className="flex items-center justify-end text-xs">
+        {/* #158 — Remember me + forgot. Mirrors the owner /login layout. */}
+        <div className="flex items-center justify-between text-xs">
+          <label className="flex items-center gap-2 text-muted-text cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="accent-[#121212]"
+              checked={remember}
+              onChange={e => setRemember(e.target.checked)}
+            />
+            Remember me
+          </label>
           <Link href="/account/forgot-password" className="text-muted-text hover:text-near-black transition-colors">
             Forgot password?
           </Link>

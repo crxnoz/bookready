@@ -44,12 +44,26 @@ class CustomerAuthCookie
      */
     public const TOKEN_TTL_MIN = 60 * 24 * 30; // 30 days
 
-    public static function make(string $plainTextToken): Cookie
+    /**
+     * #158 — short backstop TTL paired with the session cookie when
+     * the customer unchecks "Remember me". Mirrors AuthCookie.
+     */
+    public const SESSION_TOKEN_TTL_MIN = 60 * 24; // 24 hours
+
+    /**
+     * Build the customer auth cookie. $remember controls persistence:
+     *   true  (default): TTL_MIN minutes — original behavior, survives
+     *                    browser restarts.
+     *   false:           minutes=0 → session cookie, expires when the
+     *                    browser closes. Pair with createToken using
+     *                    SESSION_TOKEN_TTL_MIN.
+     */
+    public static function make(string $plainTextToken, bool $remember = true): Cookie
     {
         return cookie(
             name:     self::NAME,
             value:    $plainTextToken,
-            minutes:  self::TTL_MIN,
+            minutes:  $remember ? self::TTL_MIN : 0,
             path:     '/',
             domain:   self::domain(),
             secure:   self::secure(),
@@ -57,6 +71,15 @@ class CustomerAuthCookie
             raw:      false,
             sameSite: 'lax',
         );
+    }
+
+    /**
+     * Token TTL helper — matches the cookie's persistence so the two
+     * never disagree. Callers pass this into createToken().
+     */
+    public static function tokenTtlMinutes(bool $remember = true): int
+    {
+        return $remember ? self::TOKEN_TTL_MIN : self::SESSION_TOKEN_TTL_MIN;
     }
 
     public static function forget(): Cookie

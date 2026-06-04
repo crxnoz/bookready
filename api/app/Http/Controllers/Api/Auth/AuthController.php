@@ -18,6 +18,10 @@ class AuthController extends Controller
         $request->validate([
             'email'    => ['required', 'email'],
             'password' => ['required', 'string'],
+            // #158 — "Remember me" checkbox state from the login form.
+            // Defaults to true so legacy callers without the field
+            // get today's behavior (14-day cookie, 30-day token).
+            'remember' => ['sometimes', 'boolean'],
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -31,10 +35,15 @@ class AuthController extends Controller
         // Revoke old tokens if single-session is desired
         // $user->tokens()->delete();
 
+        // #158 — when remember=false, issue a session cookie + a short
+        // backstop token TTL so a forgotten browser doesn't leave a
+        // 30-day token alive at rest.
+        $remember = (bool) $request->boolean('remember', true);
+
         $token = $user->createToken(
             'api',
             ['*'],
-            now()->addMinutes(AuthCookie::TOKEN_TTL_MIN),
+            now()->addMinutes(AuthCookie::tokenTtlMinutes($remember)),
         )->plainTextToken;
 
         // Phase S6 — also set the token as an httpOnly cookie so the
@@ -51,7 +60,7 @@ class AuthController extends Controller
                     'is_admin'  => (bool) ($user->is_admin ?? false),
                 ],
             ])
-            ->withCookie(AuthCookie::make($token));
+            ->withCookie(AuthCookie::make($token, $remember));
 
         // Phase S6+ — only attach the .bkrdy.me-scoped delete cookie when
         // the request actually carries a bookready_token already. Without

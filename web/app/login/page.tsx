@@ -23,6 +23,10 @@ function LoginInner() {
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  // #158 — Remember me. Defaults to true to match the long-running
+  // existing behavior (persistent cookie). Unchecking gives a session
+  // cookie that evaporates on browser close.
+  const [remember, setRemember] = useState(true)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -37,7 +41,7 @@ function LoginInner() {
     setError('')
     setLoading(true)
     try {
-      const res = await login({ email, password })
+      const res = await login({ email, password, remember })
       setToken()
       const tenantId = res.tenant_id ?? res.user.tenant_id
       setTenantId(tenantId)
@@ -108,10 +112,17 @@ function LoginInner() {
           />
         </Field>
 
-        {/* Remember me + forgot */}
+        {/* #158 — Remember me. Wired to the `remember` state; sent in
+            the login payload. When checked: persistent 14-day cookie +
+            30-day token. When unchecked: session cookie + 24h token. */}
         <div className="flex items-center justify-between text-xs">
           <label className="flex items-center gap-2 text-muted-text cursor-pointer select-none">
-            <input type="checkbox" className="accent-[#121212]" />
+            <input
+              type="checkbox"
+              className="accent-[#121212]"
+              checked={remember}
+              onChange={e => setRemember(e.target.checked)}
+            />
             Remember me
           </label>
           <Link href="/forgot-password" className="text-muted-text hover:text-near-black transition-colors">

@@ -1244,6 +1244,13 @@ export interface RegisterPayload {
 export interface LoginPayload {
   email: string
   password: string
+  /**
+   * #158 — when true (default), server issues a persistent cookie + a
+   * 30-day token (current behavior). When false, server issues a
+   * session cookie (dies on browser close) + a 24h token backstop.
+   * Optional in TS so legacy callers without the field still type-check.
+   */
+  remember?: boolean
 }
 
 export interface AuthResponse {

@@ -33,6 +33,10 @@ class AuthController extends Controller
         $request->validate([
             'email'    => ['required', 'email'],
             'password' => ['required', 'string'],
+            // #158 — same "Remember me" semantics as owner login.
+            // Defaults to true so existing callers (in-booking auth
+            // modals on tenant sites) get current behavior.
+            'remember' => ['sometimes', 'boolean'],
         ]);
 
         $user = CustomerUser::where('email', strtolower(trim($request->email)))->first();
@@ -49,17 +53,20 @@ class AuthController extends Controller
         $user->last_login_at = now();
         $user->save();
 
+        // #158 — session cookie + 24h token when remember is unchecked.
+        $remember = (bool) $request->boolean('remember', true);
+
         $token = $user->createToken(
             'customer-api',
             ['*'],
-            now()->addMinutes(CustomerAuthCookie::TOKEN_TTL_MIN),
+            now()->addMinutes(CustomerAuthCookie::tokenTtlMinutes($remember)),
         )->plainTextToken;
 
         return response()
             ->json([
                 'user' => $this->presentUser($user),
             ])
-            ->withCookie(CustomerAuthCookie::make($token));
+            ->withCookie(CustomerAuthCookie::make($token, $remember));
     }
 
     public function logout(Request $request): JsonResponse

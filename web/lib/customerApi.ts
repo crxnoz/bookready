@@ -78,7 +78,16 @@ export interface ClaimPreview {
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
-export async function customerLogin(payload: { email: string; password: string }): Promise<{ user: CustomerProfile }> {
+export async function customerLogin(payload: {
+  email: string
+  password: string
+  /**
+   * #158 — true (default-omitted) = persistent cookie; false = session
+   * cookie. Optional because in-booking auth modals can omit it and
+   * accept the persistent default.
+   */
+  remember?: boolean
+}): Promise<{ user: CustomerProfile }> {
   return request<{ user: CustomerProfile }>('/auth/login', {
     method: 'POST',
     body:   JSON.stringify(payload),
