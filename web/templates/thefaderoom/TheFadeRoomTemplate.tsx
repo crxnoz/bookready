@@ -1163,7 +1163,9 @@ const TFR_CSS = `
 .tfr-template .brk-thanks {
   position: relative;
   max-width: min(680px, calc(100% - 64px));
-  padding: var(--brk-space-3xl) clamp(28px, 5vw, 56px) var(--brk-space-2xl);
+  /* Extra breathing room at the bottom — the outro sat tight against
+     the footer band; lift it with a larger bottom padding. */
+  padding: var(--brk-space-3xl) clamp(28px, 5vw, 56px) clamp(72px, 9vw, 120px);
   border: 2px solid var(--tfr-accent);
   border-radius: 22px;
 }
