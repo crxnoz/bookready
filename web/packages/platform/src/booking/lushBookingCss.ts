@@ -1227,150 +1227,12 @@ export const LUSH_CSS = `
   color: var(--lush-text);
 }
 
-.lush-gallery-section { width:100%; max-width:1080px; margin:0 auto; padding:0 24px clamp(64px,8vw,110px); background:var(--lush-bg); }
-.lush-gallery-group { width:min(100%,396px); margin:0 auto; padding:36px 30px 0; }
-.lush-gallery-group+.lush-gallery-group { padding-top:30px; }
-.lush-gallery-group h2 {
-  margin:0 0 22px; color:var(--lush-text); text-align:center;
-  font-family:var(--lush-script); font-size:42px; line-height:1;
-  font-weight:400; letter-spacing:0;
-  display:inline-flex; align-items:center; gap:12px; width:100%; justify-content:center;
-}
-.lush-gallery-group h2::before,.lush-gallery-group h2::after {
-  content:""; flex:1; height:1px; max-width:60px;
-  background:var(--lush-dark-border);
-}
-.lush-gallery-grid {
-  display:grid; grid-template-columns:repeat(2,1fr); grid-auto-flow:dense;
-  gap:28px 18px;
-  padding:10px 4px;
-}
-/* ── Polaroid gallery item ──
-   Each tile is a casually-placed polaroid: white border-frame, a
-   thicker strip at the bottom (the caption area), a soft drop
-   shadow, and a gentle rotation that alternates with nth-child so
-   the wall of prints feels hand-arranged. Hover straightens the
-   tile and lifts the shadow. Aspect-ratio lives on the inner img
-   (not the wrapper) so the polaroid hugs the image cleanly. */
-.lush-gallery-img {
-  position:relative;
-  background:#FFFFFF;
-  padding:8px 8px 30px;
-  border:none;
-  border-radius:2px;
-  box-shadow:0 6px 18px rgba(14,17,17,0.12);
-  overflow:visible;
-  transition:transform .35s ease, box-shadow .35s ease;
-}
-.lush-gallery-img:nth-child(odd)  { transform:rotate(-2.5deg); }
-.lush-gallery-img:nth-child(even) { transform:rotate(2deg); }
-.lush-gallery-img:nth-child(3n)   { transform:rotate(-1deg); }
-.lush-gallery-img:nth-child(5n)   { transform:rotate(1.5deg); }
-.lush-gallery-img:hover {
-  transform:rotate(0);
-  box-shadow:0 10px 24px rgba(14,17,17,0.18);
-  z-index:2;
-}
-.lush-gallery-img > img {
-  width:100%; display:block; object-fit:cover;
-}
-.lush-gallery-img--square > img { aspect-ratio:1/1; }
-.lush-gallery-img--tall   > img { aspect-ratio:160/200; }
-.lush-gallery-img--wide   { grid-column:1/-1; }
-.lush-gallery-img--wide   > img { aspect-ratio:331/160; }
-.lush-gallery-placeholder {
-  width:100%;
-  background:#ECE7DD;
-  display:flex; align-items:center; justify-content:center;
-  min-height:auto;
-}
-.lush-gallery-img--square .lush-gallery-placeholder { aspect-ratio:1/1; }
-.lush-gallery-img--tall   .lush-gallery-placeholder { aspect-ratio:160/200; }
-.lush-gallery-img--wide   .lush-gallery-placeholder { aspect-ratio:331/160; }
-.lush-gallery-placeholder span {
-  font-family:var(--lush-ui); font-size:11px; font-weight:600;
-  letter-spacing:0.18em; text-transform:uppercase;
-  color:var(--lush-muted);
-}
-
-/* ── Before & After ── */
-.lush-before-after-section { width:100%; max-width:1080px; margin:0 auto; background:var(--lush-bg); padding:0 24px 80px; }
-/* Hide the deprecated big-Molle "Amazing/results" heading — the new
-   shared .lush-tab-header carries the title now. */
-.lush-results-heading { display:none !important; }
-/* "Amazing" + "results" are both Molle italic in highlight-color sage
-   with a hard sharp shadow (no blur). Big word on TOP (h2 = "Amazing"),
-   small word BELOW (backdrop = "results") translated up so they sit
-   close. About + Policy share the same pattern with their own
-   ordering. */
-.lush-results-heading {
-  position:relative; text-align:center;
-  display:flex; flex-direction:column; align-items:center;
-  padding:0 16px 12px;
-}
-.lush-results-heading h2 {
-  margin:0;
-  font-family:var(--lush-molle); font-style:italic; font-weight:400;
-  font-size:clamp(60px,15vw,80px); line-height:1; letter-spacing:-0.01em;
-  color:var(--lush-pink);
-  text-shadow:5px 5px 0 rgba(14,17,17,0.18);
-}
-.lush-results-backdrop {
-  margin:-14px 0 0;
-  font-family:var(--lush-molle); font-style:italic; font-weight:400;
-  font-size:clamp(28px,7vw,40px); line-height:1;
-  color:var(--lush-pink);
-  text-shadow:3px 3px 0 rgba(14,17,17,0.18);
-}
-/* Lush Studio's Before/After is an editorial DIPTYCH — side-by-side
-   panes with a sage ✦ separator. No tilt, no tap-to-reveal — those
-   were FadeRoom's barbershop gimmicks. The DM Serif numeral on the
-   left numbers the portfolio entries; small DM Serif italic labels
-   sit above each pane; cookie caption optional below. */
-.lush-ba-stack { display:grid; gap:36px; padding:14px 0 0; }
-.lush-ba-bucket+.lush-ba-bucket { margin-top:48px; }
-.lush-ba-bucket-heading {
-  margin:18px 0 4px; font-family:var(--lush-script); font-size:42px; font-weight:400;
-  letter-spacing:0; color:var(--lush-text); text-align:center; line-height:1;
-}
-.lush-ba-diptych {
-  width:min(100%, 360px); margin:0 auto;
-  padding:6px 0 0;
-}
-.lush-ba-pair {
-  display:grid; grid-template-columns:1fr auto 1fr; gap:8px;
-  align-items:stretch;
-}
-.lush-ba-pane { margin:0; display:flex; flex-direction:column; gap:6px; }
-.lush-ba-label {
-  margin:0; text-align:center;
-  font-family:var(--lush-serif); font-style:italic; font-weight:400;
-  font-size:14px; letter-spacing:0; line-height:1;
-  color:var(--lush-muted);
-}
-.lush-ba-pane img,
-.lush-ba-placeholder {
-  width:100%; aspect-ratio:1/1; object-fit:cover; display:block;
-  background:#ECE7DD;
-  border:1px solid var(--lush-dark-border);
-}
-.lush-ba-pane--after img { border-color:var(--lush-pink); }
-.lush-ba-sep {
-  align-self:center;
-  font-family:var(--lush-ui);
-  font-size:18px; line-height:1; color:var(--lush-pink);
-  padding:0 2px;
-  /* matches the post-label baseline so the ✦ sits between the photos,
-     not at the very top including the labels */
-  margin-top:18px;
-}
-.lush-ba-caption {
-  margin:14px 0 0;
-  text-align:center;
-  font-family:var(--lush-script);
-  font-size:22px; font-weight:400; line-height:1.1;
-  color:var(--lush-text);
-}
+/* ── Gallery / Before & After ── now render via the shared
+   GallerySection / BeforeAfterSection components (@bkrdy/platform/
+   sections); the Lush look (tilted white polaroid tiles + serif-italic
+   diptych with a sage ✦ separator) lives in LUSH_SECTIONS_SKIN inside
+   LushStudioTemplate.tsx. The former .lush-gallery* / .lush-ba* /
+   .lush-results-* rules were removed here. ── */
 
 /* ── About ── Editorial rebuild: 3 staggered images at top, layered
    DM Serif backdrop + Cookie script overlay title, body with sage
@@ -1553,81 +1415,11 @@ export const LUSH_CSS = `
   text-transform: none;
 }
 
-/* ── Policy ── */
-.lush-policy-section { width:100%; max-width:720px; margin:0 auto; background:var(--lush-bg); padding:0 24px 80px; }
-/* Deprecated — replaced by the shared .lush-tab-header on each panel. */
-.lush-policy-heading { display:none !important; }
-/* Policy heading is a Molle twin-line kicker pattern:
-   small "Booking" kicker on top, big "Policies" heading underneath
-   (translated up to close the gap). */
-.lush-policy-heading {
-  margin:0 0 24px;
-  display:flex; flex-direction:column; align-items:center;
-  text-align:center;
-}
-.lush-policy-heading span {
-  margin:0;
-  font-family:var(--lush-molle); font-style:italic; font-weight:400;
-  font-size:clamp(28px,7vw,40px); line-height:1;
-  color:var(--lush-pink);
-  text-shadow:3px 3px 0 rgba(14,17,17,0.18);
-}
-.lush-policy-heading h2 {
-  margin:-14px 0 0;
-  font-family:var(--lush-molle); font-style:italic; font-weight:400;
-  font-size:clamp(60px,15vw,80px); line-height:1; letter-spacing:-0.01em;
-  color:var(--lush-pink);
-  text-shadow:5px 5px 0 rgba(14,17,17,0.18);
-}
-/* "House Rules" — Policies as an editorial brand-book numbered list.
-   Big DM Serif numerals on the left, Cookie script kicker ("Rule One"),
-   DM Serif rule title, Roboto body. Hairline sage divider between
-   policies. Replaces the previous box grid (which read as generic
-   SaaS rather than spa). */
-/* House Rules — divided editorial list, no numerals. Each row carries
-   a ✦ sparkle marker on the left (Lush's signature glyph), DM Serif
-   title, Roboto body. Sage hairline rule between rows. Reads as a
-   quiet brand-book rather than a numbered grid. */
-.lush-policy-list {
-  list-style:none; margin:0; padding:0;
-  display:flex; flex-direction:column;
-  border-top:1px solid var(--lush-dark-border);
-}
-.lush-policy-row {
-  display:grid; grid-template-columns:32px 1fr; gap:18px;
-  padding:24px 4px 28px;
-  border-bottom:1px solid var(--lush-dark-border);
-  align-items:flex-start;
-}
-.lush-policy-mark {
-  color:var(--lush-pink);
-  font-size:18px;
-  line-height:1;
-  padding-top:10px;
-  text-align:center;
-}
-.lush-policy-body { min-width:0; }
-.lush-policy-title {
-  margin:0 0 10px;
-  font-family:var(--lush-serif); font-weight:400;
-  font-size:22px; line-height:1.1; letter-spacing:-0.02em;
-  color:var(--lush-text);
-}
-.lush-policy-text {
-  margin:0;
-  font-family:var(--lush-ui);
-  font-size:14px; font-weight:400; line-height:1.6;
-  color:var(--lush-text);
-}
-/* Deprecated number column — kept hidden in case any legacy markup
-   still emits it. */
-.lush-policy-num { display:none !important; }
-.lush-policy-custom-group { margin-top:48px; }
-.lush-policy-custom-heading {
-  margin:0 0 18px; font-family:var(--lush-script); font-weight:400;
-  font-size:36px; letter-spacing:0; line-height:1;
-  color:var(--lush-text); text-align:center;
-}
+/* ── Policy ── now renders via the shared PolicySection component
+   (@bkrdy/platform/sections); the Lush look (✦-marked divided
+   brand-book list with serif titles + Cookie-script custom-group
+   headings) lives in LUSH_SECTIONS_SKIN inside LushStudioTemplate.tsx.
+   The former .lush-policy* rules were removed here. ── */
 
 /* ── Advice / Timeline ── These two tab sections now render the shared
    @bkrdy/platform InstructionsSection (.brk-instructions*); the Lush
@@ -1687,19 +1479,9 @@ export const LUSH_CSS = `
   .lush-tab-header { max-width:880px; padding-top:76px; }
   .lush-section-title { font-size:clamp(64px,6vw,86px); }
 
-  /* Gallery — 4-col polaroid wall in a wide column. */
-  .lush-gallery-section { max-width:1180px; padding:0 40px 104px; }
-  .lush-gallery-group { width:min(100%,1100px); padding:56px 0 0; }
-  .lush-gallery-group+.lush-gallery-group { padding-top:56px; }
-  .lush-gallery-group h2 { font-size:54px; margin:0 0 34px; }
-  .lush-gallery-grid { grid-template-columns:repeat(4,1fr); gap:34px 26px; }
-
-  /* Before & After — 2 diptychs per row with generous gutters. */
-  .lush-before-after-section { max-width:1080px; padding:8px 40px 110px; }
-  .lush-ba-stack { grid-template-columns:repeat(2,minmax(0,1fr)); gap:56px 48px; padding:24px 0 0; }
-  .lush-ba-diptych { width:100%; max-width:480px; margin:0 auto; }
-  .lush-ba-label { font-size:15px; }
-  .lush-ba-caption { font-size:24px; margin-top:16px; }
+  /* Gallery + Before & After desktop scale-ups now live in
+     LUSH_SECTIONS_SKIN (LushStudioTemplate.tsx) on the shared
+     .brk-gallery* / .brk-ba* markup. */
 
   /* About — centered editorial column (NO grid). Wide feature image,
      layered Molle title, then prose + staggered images + highlights. */
@@ -1716,13 +1498,8 @@ export const LUSH_CSS = `
   .lush-about-highlights p { font-size:15px; }
   .lush-about-sign em { font-size:56px; }
 
-  /* Policy — centered brand-book list, larger type. */
-  .lush-policy-section { max-width:780px; padding:8px 40px 110px; }
-  .lush-policy-row { grid-template-columns:40px 1fr; gap:22px; padding:30px 4px 34px; }
-  .lush-policy-mark { font-size:20px; }
-  .lush-policy-title { font-size:26px; margin-bottom:12px; }
-  .lush-policy-text { font-size:15px; line-height:1.65; }
-  .lush-policy-custom-heading { font-size:42px; }
+  /* Policy desktop scale-ups now live in LUSH_SECTIONS_SKIN
+     (LushStudioTemplate.tsx) on the shared .brk-policy* markup. */
 
   /* Advice + Timeline desktop scale-ups now live in LUSH_SECTIONS_SKIN
      (LushStudioTemplate.tsx) on the shared .brk-instructions* markup. */
@@ -1756,16 +1533,9 @@ export const LUSH_CSS = `
   .lush-tab-pill { padding:14px 20px; font-size:11px; letter-spacing:0.18em; }
   .lush-tab-header { padding-top:64px; }
 
-  /* Gallery — 3-col polaroid grid. */
-  .lush-gallery-section { max-width:900px; padding:0 32px 88px; }
-  .lush-gallery-group { width:min(100%,760px); padding:48px 0 0; }
-  .lush-gallery-group h2 { font-size:46px; margin:0 0 28px; }
-  .lush-gallery-grid { grid-template-columns:repeat(3,1fr); gap:22px 18px; }
-
-  /* Before & After — 2 diptychs per row. */
-  .lush-before-after-section { max-width:760px; padding:8px 36px 96px; }
-  .lush-ba-stack { grid-template-columns:repeat(2,minmax(0,1fr)); gap:36px 28px; }
-  .lush-ba-diptych { width:100%; max-width:none; margin:0; }
+  /* Gallery + Before & After tablet scale-ups now live in
+     LUSH_SECTIONS_SKIN (LushStudioTemplate.tsx) on the shared
+     .brk-gallery* / .brk-ba* markup. */
 
   /* About — centered column, mid type scale. */
   .lush-about-section { max-width:680px; padding:16px 36px 88px; }
@@ -1774,9 +1544,8 @@ export const LUSH_CSS = `
   .lush-layered-heading { font-size:clamp(64px,9vw,88px); }
   .lush-about-copy { font-size:16px; line-height:1.66; }
 
-  /* Policy — centered list. */
-  .lush-policy-section { max-width:680px; padding:8px 36px 96px; }
-  .lush-policy-title { font-size:24px; }
+  /* Policy tablet scale-ups now live in LUSH_SECTIONS_SKIN
+     (LushStudioTemplate.tsx) on the shared .brk-policy* markup. */
 
   /* Advice + Timeline tablet scale-ups now live in LUSH_SECTIONS_SKIN
      (LushStudioTemplate.tsx) on the shared .brk-instructions* markup. */
@@ -1799,7 +1568,6 @@ export const LUSH_CSS = `
   .brk-booking-days { gap:6px; }
   .brk-booking-day { flex:1 1 64px; min-width:60px; padding:10px 6px; }
   .brk-booking-times { grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:6px; }
-  .lush-gallery-group { padding-left:18px; padding-right:18px; }
   /* progress pills already use a sr-only label; no mobile override needed */
 }
 
@@ -1877,53 +1645,11 @@ export const LUSH_CSS = `
   50%      { opacity: 0.95; transform: scale(1.15) rotate(8deg); }
 }
 
-/* Section title ornament — small flourish marks before/after every h2
-   inside the page (gallery / about / before-after / etc.) so the
-   feminine "decorated header" reads consistently. Uses currentColor so
-   it inherits the accent. */
-.lush-femme .lush-gallery-group h2::before {
-  content: '✺';
-  margin-right: 10px;
-  opacity: 0.75;
-  font-family: serif;
-}
-.lush-femme .lush-gallery-group h2::after {
-  content: '✺';
-  margin-left: 10px;
-  opacity: 0.75;
-  font-family: serif;
-}
-
-/* Polaroid before/after — wraps each pair as a soft offset stack with
-   a white border, slight rotation, and pearl-shadow. Reads as actual
-   photographs on a vanity table, not a clinical grid. The Lush ba-pair
-   markup uses two figures side-by-side; alternate the tilt so they look
-   handheld. */
-.lush-femme .lush-ba-pair figure {
-  background: #FFFFFF;
-  padding: 10px 10px 28px;
-  border: 1px solid rgba(18,18,18,0.06);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.8) inset,
-    0 12px 28px rgba(118, 75, 90, 0.18),
-    0 4px 8px rgba(0,0,0,0.06);
-  transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.lush-femme .lush-ba-pair figure:first-child  { transform: rotate(-1.6deg); }
-.lush-femme .lush-ba-pair figure:last-child   { transform: rotate(1.8deg); }
-.lush-femme .lush-ba-pair figure:hover {
-  transform: rotate(0deg) translateY(-4px);
-}
-.lush-femme .lush-ba-pair figcaption {
-  font-family: var(--lush-script);
-  font-size: 22px;
-  letter-spacing: 0;
-  text-transform: none !important;
-  color: var(--lush-text);
-  opacity: 0.75;
-  text-align: center;
-  margin-top: 8px;
-}
+/* The femme gallery-heading ✺ ornaments + polaroid before/after
+   overrides moved to LUSH_SECTIONS_SKIN (LushStudioTemplate.tsx) when
+   Gallery + Results migrated to the shared .brk-gallery* / .brk-ba*
+   markup. They used to target the local .lush-gallery-group h2 /
+   .lush-ba-pair figure nodes, which no longer render. */
 
 /* Tab pills get a softer feminine shape — proper rounded pill with a
    gentle gradient fill on active state instead of the TFR-style hard

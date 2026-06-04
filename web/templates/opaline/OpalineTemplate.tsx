@@ -28,7 +28,7 @@ import { useState, useRef } from 'react'
 import type { PublicSite } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 import { tokensToCss } from '@bkrdy/platform'
-import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, InstructionsSection, SECTIONS_CSS } from '@bkrdy/platform/sections'
+import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, InstructionsSection, GallerySection, BeforeAfterSection, PolicySection, SECTIONS_CSS } from '@bkrdy/platform/sections'
 import OpalineBooking from './OpalineBooking'
 
 // ── Contact-href helper ──────────────────────────────────────────────────────
@@ -147,10 +147,11 @@ export default function OpalineTemplate({ site, slug }: Props) {
   const additionals: any = settings.additionals ?? {}
   const advice:   any[] = Array.isArray(settings.advice?.items)   ? settings.advice.items   : []
   const timeline: any[] = Array.isArray(settings.timeline?.items) ? settings.timeline.items : []
-  const gallery       = site.gallery ?? []
-  const results       = site.results ?? site.before_after ?? []
-  const policies: any = site.policies ?? {}
   const aboutImages: (string | null)[] = Array.isArray(about.images) ? about.images : []
+  // Loosely-typed view of the policy bag — mirrors the old `any` access so
+  // owner-extra fields the BusinessPolicy interface doesn't enumerate (e.g.
+  // guest_policy) still resolve at runtime without a TS error.
+  const policies: any = site.policies ?? {}
 
   // Accent (tenant-picked or champagne default). Canvas + ink stay constant.
   const accentHex = settings?.theme?.accent_color || '#B89B72'
@@ -276,20 +277,15 @@ export default function OpalineTemplate({ site, slug }: Props) {
         {enabledByTab.gallery && (
           <div className={`opaline-tab-panel${active === 'gallery' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'gallery'}>
-            <section className="opaline-section" aria-label={tabs.gallery_label ?? 'Gallery'}>
-              <SectionHeader eyebrow={tabs.gallery_label ?? 'Gallery'} title="Portfolio" />
-              {gallery.length === 0 ? (
-                <p className="opaline-empty">A curated gallery of recent work will appear here.</p>
-              ) : (
-                <ul className="opaline-gallery-grid">
-                  {gallery.map(g => (
-                    <li key={g.id} className="opaline-gallery-item">
-                      <img src={g.image_url} alt={g.alt_text ?? ''} loading="lazy" />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            <GallerySection
+              items={site.gallery}
+              groups={site.gallery_groups}
+              heading="Portfolio"
+              eyebrow={tabs.gallery_label ?? 'Gallery'}
+              displayName={display}
+              emptyText="A curated gallery of recent work will appear here."
+              ariaLabel={tabs.gallery_label ?? 'Gallery'}
+            />
           </div>
         )}
 
@@ -297,29 +293,16 @@ export default function OpalineTemplate({ site, slug }: Props) {
         {enabledByTab.results && (
           <div className={`opaline-tab-panel${active === 'results' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'results'}>
-            <section className="opaline-section" aria-label={tabs.results_label ?? 'Results'}>
-              <SectionHeader eyebrow={tabs.results_label ?? 'Results'} title="Before & After" />
-              {results.length === 0 ? (
-                <p className="opaline-empty">Before-and-after results will be shown here.</p>
-              ) : (
-                <div className="opaline-ba-stack">
-                  {results.map((r: any) => (
-                    <article key={r.id} className="opaline-ba">
-                      <figure className="opaline-ba-pane">
-                        <span className="opaline-ba-label">Before</span>
-                        <img src={r.before_image_url} alt={r.before_alt_text ?? 'Before'} loading="lazy" />
-                      </figure>
-                      <span className="opaline-ba-sep" aria-hidden="true">&#9670;</span>
-                      <figure className="opaline-ba-pane">
-                        <span className="opaline-ba-label">After</span>
-                        <img src={r.after_image_url} alt={r.after_alt_text ?? 'After'} loading="lazy" />
-                      </figure>
-                      {r.caption && <p className="opaline-ba-caption">{r.caption}</p>}
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
+            <BeforeAfterSection
+              items={site.results ?? site.before_after}
+              groups={site.results_groups ?? site.before_after_groups}
+              heading="Before & After"
+              eyebrow={tabs.results_label ?? 'Results'}
+              separator="◆"
+              labels
+              emptyText="Before-and-after results will be shown here."
+              ariaLabel={tabs.results_label ?? 'Results'}
+            />
           </div>
         )}
 
@@ -362,24 +345,28 @@ export default function OpalineTemplate({ site, slug }: Props) {
         {enabledByTab.policy && (
           <div className={`opaline-tab-panel${active === 'policy' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'policy'}>
-            <section className="opaline-section" aria-label={tabs.policy_label ?? 'Policies'}>
-              <SectionHeader eyebrow={tabs.policy_label ?? 'Policies'} title="Good to Know" />
-              <div className="opaline-policy-list">
-                <PolicyRow label="Cancellation" body={policies.cancellation_policy} />
-                <PolicyRow label="Late Arrival" body={policies.late_policy} />
-                <PolicyRow label="No-Show"      body={policies.no_show_policy} />
-                <PolicyRow label="Deposit"      body={policies.deposit_policy} />
-                <PolicyRow label="Rescheduling" body={policies.reschedule_policy} />
-                <PolicyRow label="Guests"       body={policies.guest_policy} />
-                {Array.isArray(policies.custom_groups) && policies.custom_groups.map((g: any, gi: number) => (
-                  Array.isArray(g.items)
-                    ? g.items.map((it: any, ii: number) => (
-                        <PolicyRow key={`c${gi}-${ii}`} label={it.title} body={it.content ?? it.body} />
-                      ))
-                    : <PolicyRow key={`c${gi}`} label={g.heading} body={g.body} />
-                ))}
-              </div>
-            </section>
+            <PolicySection
+              rows={[
+                { label: 'Cancellation', body: policies.cancellation_policy },
+                { label: 'Late Arrival', body: policies.late_policy },
+                { label: 'No-Show',      body: policies.no_show_policy },
+                { label: 'Deposit',      body: policies.deposit_policy },
+                { label: 'Rescheduling', body: policies.reschedule_policy },
+                { label: 'Guests',       body: policies.guest_policy },
+              ]}
+              customGroups={(Array.isArray(policies.custom_groups) ? policies.custom_groups : []).map((g: any) => ({
+                heading: g.heading,
+                items: (Array.isArray(g.items) ? g.items : []).map((it: any) => ({
+                  title: it.title,
+                  content: it.content ?? it.body,
+                })),
+              }))}
+              heading="Good to Know"
+              eyebrow={tabs.policy_label ?? 'Policies'}
+              marker="none"
+              emptyText="Booking policies will appear here."
+              ariaLabel={tabs.policy_label ?? 'Policies'}
+            />
           </div>
         )}
 
@@ -476,16 +463,6 @@ function SectionHeader({ eyebrow, title }: { eyebrow: string; title: string }) {
       <p className="opaline-eyebrow">{eyebrow}</p>
       <h2 className="opaline-section-title">{title}</h2>
     </header>
-  )
-}
-
-function PolicyRow({ label, body }: { label: string; body?: string | null }) {
-  if (!body) return null
-  return (
-    <div className="opaline-policy">
-      <h3 className="opaline-policy-title">{label}</h3>
-      <p className="opaline-policy-text" style={{ whiteSpace: 'pre-wrap' }}>{body}</p>
-    </div>
   )
 }
 
@@ -818,72 +795,17 @@ const OPALINE_CSS = `
 }
 .opaline-book { padding-top: clamp(40px, 5vw, 64px); }
 
-/* ── Gallery ── */
-.opaline-gallery-grid {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 18px;
-}
-.opaline-gallery-item {
-  overflow: hidden;
-  border-radius: 3px;
-  border: 1px solid var(--opaline-rule);
-  background: var(--opaline-surface);
-  aspect-ratio: 4/5;
-}
-.opaline-gallery-item img { width: 100%; height: 100%; object-fit: cover; }
-@media (min-width: 641px) { .opaline-gallery-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 1025px) { .opaline-gallery-grid { grid-template-columns: repeat(3, 1fr); gap: 22px; } }
-
-/* ── Results / Before-After diptych ── */
-.opaline-ba-stack { display: flex; flex-direction: column; gap: 56px; max-width: 920px; margin: 0 auto; }
-.opaline-ba {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 18px;
-}
-.opaline-ba-pane { margin: 0; position: relative; }
-.opaline-ba-pane img {
-  width: 100%;
-  aspect-ratio: 3/4;
-  object-fit: cover;
-  border-radius: 3px;
-  border: 1px solid var(--opaline-rule);
-}
-.opaline-ba-label {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 1;
-  padding: 5px 12px;
+/* ── Gallery / Results / Policies ── now render via the shared
+   GallerySection / BeforeAfterSection / PolicySection components
+   (@bkrdy/platform/sections), styled by SECTIONS_CSS against the --brk-*
+   tokens bridged above. The shared base metrics were ported verbatim from
+   Opaline, so the only skin needed is restoring the signature frosted-glass
+   Before/After label pill (the shared base uses a solid surface fill; Opaline
+   floats a translucent, blurred pearl pill over the photo). */
+.opaline-template .brk-ba-label {
   background: color-mix(in srgb, var(--opaline-bg) 86%, transparent);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  border: 1px solid var(--opaline-rule);
-  border-radius: 999px;
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--opaline-ink);
-}
-.opaline-ba-sep { color: var(--opaline-accent); font-size: 10px; align-self: center; }
-.opaline-ba-caption {
-  grid-column: 1 / -1;
-  margin: 6px 0 0;
-  text-align: center;
-  font-family: var(--opaline-display);
-  font-style: italic;
-  font-size: 18px;
-  color: var(--opaline-muted);
-}
-@media (max-width: 640px) {
-  .opaline-ba { grid-template-columns: 1fr; }
-  .opaline-ba-sep { display: none; }
 }
 
 /* ── About ── */
@@ -944,19 +866,6 @@ const OPALINE_CSS = `
 .opaline-about-pair-img--empty {
   background: linear-gradient(135deg, color-mix(in srgb, var(--opaline-accent) 6%, var(--opaline-surface)), color-mix(in srgb, var(--opaline-accent) 14%, var(--opaline-surface)));
 }
-
-/* ── Policies ── hairline-divided ledger, no boxes. */
-.opaline-policy-list { max-width: 720px; margin: 0 auto; border-top: 1px solid var(--opaline-rule); }
-.opaline-policy { padding: 30px 0; border-bottom: 1px solid var(--opaline-rule); }
-.opaline-policy-title {
-  margin: 0 0 10px;
-  font-family: var(--opaline-display);
-  font-weight: 500;
-  font-size: 26px;
-  letter-spacing: 0.005em;
-  color: var(--opaline-ink);
-}
-.opaline-policy-text { margin: 0; font-size: 15px; line-height: 1.75; color: var(--opaline-muted); }
 
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {

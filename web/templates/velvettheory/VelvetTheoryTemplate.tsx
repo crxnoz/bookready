@@ -6,7 +6,7 @@ import VelvetTheoryBooking from './VelvetTheoryBooking'
 import type { PublicSite, Service } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 import { tokensToCss } from '@bkrdy/platform'
-import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, InstructionsSection, SECTIONS_CSS } from '@bkrdy/platform/sections'
+import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, InstructionsSection, GallerySection, BeforeAfterSection, PolicySection, SECTIONS_CSS } from '@bkrdy/platform/sections'
 
 // ── Brand glyphs lucide doesn't ship ─────────────────────────────────────────
 
@@ -57,10 +57,6 @@ function signatureWord(name: string): string {
   const real = parts.find(p => ! STOP.has(p.toLowerCase()))
   return real ?? parts[0]
 }
-
-// Roman numerals for policy/about sections — first 20 covers any realistic list.
-const ROMAN = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV','XV','XVI','XVII','XVIII','XIX','XX']
-function roman(n: number): string { return ROMAN[n - 1] ?? String(n) }
 
 // ── Background variants ──────────────────────────────────────────────────────
 //
@@ -160,7 +156,9 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
   const displayName = p?.business_name ?? site.business_name ?? site.slug
   const services    = (site.services ?? []).filter((s: Service) => s.is_active)
   const hours       = site.hours     ?? []
-  const policies    = site.policies  ?? null
+  // Loosely-typed policy bag for the shared PolicySection — owner-extra keys
+  // (refund_policy, guest_policy, custom_groups) aren't all on the strict type.
+  const pol: any    = site.policies  ?? {}
   const availability = site.availability ?? null
   const address     = [p?.address_line, p?.city, p?.state, p?.zip].filter(Boolean).join(', ')
 
@@ -415,16 +413,24 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
           )}
         </section>
 
-        {/* ── Atelier (gallery as strips) ── */}
+        {/* ── Atelier (gallery as full-width strips) — shared GallerySection.
+            VT renders the gallery as full-width strips (variant="strips"); the
+            skin restyles .brk-gallery-grid--strips into VT's 2.4:1 sharp-corner
+            rows with the gold-underlined italic group heading. The old per-strip
+            caption is dropped (the shared component renders image-only tiles),
+            as is the italic lede line — both VT-specific flourishes the shared
+            structure doesn't carry. ── */}
         <section className={`vt-panel${active === 'gallery' ? ' is-active' : ''}`}>
-          <div className="vt-section">
-            <p className="vt-eyebrow">{tabLabels.gallery_label}</p>
-            <h2 className="vt-h2">Work, on file.</h2>
-            <p className="vt-prose vt-prose-lede">
-              A selection of recent work from the {signatureWord(displayName)} studio.
-            </p>
-            {renderGallery(site)}
-          </div>
+          <GallerySection
+            items={site.gallery}
+            groups={site.gallery_groups}
+            heading="Work, on file."
+            eyebrow={tabLabels.gallery_label}
+            displayName={displayName}
+            variant="strips"
+            emptyText="No work on file yet."
+            ariaLabel={tabLabels.gallery_label}
+          />
         </section>
 
         {/* ── About (lead image, drop cap, highlight bullets) ── */}
@@ -457,13 +463,21 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
           </div>
         </section>
 
-        {/* ── Transformations (before & after) ── */}
+        {/* ── Transformations (before & after) — shared BeforeAfterSection.
+            VT's diptych had NO center separator and labelled each pane; the
+            shared `labels` flag supplies the Before/After tags, which the skin
+            flattens into VT's sharp, gold-hairline corner marks (no pill fill).
+            Canonical `results`, falling back to legacy `before_after`. ── */}
         <section className={`vt-panel${active === 'results' ? ' is-active' : ''}`}>
-          <div className="vt-section">
-            <p className="vt-eyebrow">{tabLabels.results_label}</p>
-            <h2 className="vt-h2">Then, and now.</h2>
-            {renderBeforeAfter(site)}
-          </div>
+          <BeforeAfterSection
+            items={site.results ?? site.before_after}
+            groups={site.results_groups ?? site.before_after_groups}
+            heading="Then, and now."
+            eyebrow={tabLabels.results_label}
+            labels
+            emptyText="No transformations on file yet."
+            ariaLabel={tabLabels.results_label}
+          />
         </section>
 
         {/* ── Notes (advice) — shared InstructionsSection (un-numbered).
@@ -506,13 +520,36 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
           </div>
         </section>
 
-        {/* ── Manifesto (policies as Roman numeral sections) ── */}
+        {/* ── Manifesto (policies as Roman numeral sections) — shared
+            PolicySection. VT keyed each clause with a lowercase Roman numeral;
+            with marker="numeral" the shared component supplies an ordinal we
+            blank out in the skin and replace with a CSS counter (lower-roman)
+            on .vt-template .brk-policy-list--marked, restoring i. ii. iii. …
+            VT's exact "On Deposits / On Cancellations / …" labels + field map
+            are preserved; custom_groups carry through under their headings. ── */}
         <section className={`vt-panel${active === 'policies' ? ' is-active' : ''}`}>
-          <div className="vt-section vt-section-narrow">
-            <p className="vt-eyebrow">{tabLabels.policy_label}</p>
-            <h2 className="vt-h2">The practice.</h2>
-            {renderPolicies(policies)}
-          </div>
+          <PolicySection
+            rows={[
+              { label: 'On Deposits',          body: pol.deposit_policy },
+              { label: 'On Cancellations',     body: pol.cancellation_policy },
+              { label: 'On Late Arrivals',     body: pol.late_policy },
+              { label: 'On No-Shows',          body: pol.no_show_policy },
+              { label: 'On Refunds',           body: pol.refund_policy },
+              { label: 'On Children & Guests', body: pol.guest_policy },
+            ]}
+            customGroups={(Array.isArray(pol.custom_groups) ? pol.custom_groups : []).map((g: any) => ({
+              heading: g.heading,
+              items: (Array.isArray(g.items) ? g.items : []).map((it: any) => ({
+                title: it.title,
+                content: it.content ?? it.body,
+              })),
+            }))}
+            heading="The practice."
+            eyebrow={tabLabels.policy_label}
+            marker="numeral"
+            emptyText="No published policies yet."
+            ariaLabel={tabLabels.policy_label}
+          />
         </section>
 
         {/* ── Additionals: thank-you opens it, then FAQs + Reviews ──
@@ -592,46 +629,6 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
 
 // ── Section renderers ────────────────────────────────────────────────────────
 
-function renderGallery(site: PublicSite) {
-  const groups = (site as any).gallery_groups ?? []
-  const items  = ((site as any).gallery ?? []).filter((i: any) => i.is_active !== false)
-  if (items.length === 0) {
-    return <p className="vt-empty-line">No work on file yet.</p>
-  }
-  // Group items by group_id; ungrouped items collapse into a single "Selected" group
-  const byGroup = new Map<number | null, any[]>()
-  for (const item of items) {
-    const gid = (item.group_id ?? null) as number | null
-    if (!byGroup.has(gid)) byGroup.set(gid, [])
-    byGroup.get(gid)!.push(item)
-  }
-  const groupedSections: { title: string | null; items: any[] }[] = []
-  for (const g of groups) {
-    const its = byGroup.get(g.id)
-    if (its && its.length > 0) groupedSections.push({ title: g.title ?? null, items: its })
-  }
-  const ungrouped = byGroup.get(null)
-  if (ungrouped && ungrouped.length > 0) {
-    groupedSections.push({ title: groupedSections.length === 0 ? null : 'Other work', items: ungrouped })
-  }
-  return (
-    <div className="vt-gallery">
-      {groupedSections.map((grp, gi) => (
-        <div key={gi} className="vt-gallery-group">
-          {grp.title && <h3 className="vt-gallery-title">{grp.title}</h3>}
-          {grp.items.map((it: any) => (
-            <figure key={it.id} className="vt-strip">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={it.image_url} alt={it.caption ?? ''} />
-              {it.caption && <figcaption>{it.caption}</figcaption>}
-            </figure>
-          ))}
-        </div>
-      ))}
-    </div>
-  )
-}
-
 function renderAbout(aboutBlock: any, displayName: string, p: Profile | null) {
   const paragraphs: string[] = []
   if (typeof aboutBlock?.body === 'string' && aboutBlock.body.trim() !== '') {
@@ -662,80 +659,6 @@ function renderAbout(aboutBlock: any, displayName: string, p: Profile | null) {
         return <p key={i} className="vt-prose">{para}</p>
       })}
     </div>
-  )
-}
-
-function renderBeforeAfter(site: PublicSite) {
-  // M3 rename: canonical key is `results`; `before_after` remains for
-  // backward compat with payloads served before the rename shipped.
-  const items  = (((site as any).results ?? (site as any).before_after) ?? []).filter((i: any) => i.is_active !== false)
-  if (items.length === 0) {
-    return <p className="vt-empty-line">No transformations on file yet.</p>
-  }
-  return (
-    <div className="vt-ba">
-      {items.map((it: any) => (
-        <div key={it.id} className="vt-ba-pair">
-          <figure>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={it.before_image_url} alt="Before" />
-            <figcaption>Before</figcaption>
-          </figure>
-          <figure>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={it.after_image_url} alt="After" />
-            <figcaption>After</figcaption>
-          </figure>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function renderPolicies(policies: any) {
-  if (!policies) {
-    return <p className="vt-empty-line">No published policies yet.</p>
-  }
-  const items: { heading: string; body: string }[] = []
-  const tryPush = (heading: string, body: string | null | undefined) => {
-    const b = (body ?? '').trim()
-    if (b !== '') items.push({ heading, body: b })
-  }
-  tryPush('On Deposits',           policies.deposit_policy)
-  tryPush('On Cancellations',      policies.cancellation_policy)
-  tryPush('On Late Arrivals',      policies.late_policy)
-  tryPush('On No-Shows',           policies.no_show_policy)
-  tryPush('On Refunds',            policies.refund_policy)
-  tryPush('On Children & Guests',  policies.guest_policy)
-
-  // Custom groups from the policies editor.
-  if (Array.isArray(policies.custom_groups)) {
-    for (const grp of policies.custom_groups) {
-      if (!grp || typeof grp !== 'object') continue
-      const heading = (grp.heading ?? '').trim()
-      const groupItems = Array.isArray(grp.items) ? grp.items : []
-      if (heading === '' && groupItems.length === 0) continue
-      // Custom groups can have multiple items; merge them under the group heading
-      const body = groupItems
-        .map((it: any) => `${it.title ? it.title + '. ' : ''}${it.content ?? ''}`.trim())
-        .filter((s: string) => s !== '')
-        .join('\n\n')
-      tryPush(heading || 'Additional', body)
-    }
-  }
-
-  if (items.length === 0) {
-    return <p className="vt-empty-line">No published policies yet.</p>
-  }
-  return (
-    <ol className="vt-manifesto">
-      {items.map((it, i) => (
-        <li key={i}>
-          <h3 className="vt-manifesto-h"><span className="vt-roman">{roman(i + 1)}.</span> {it.heading}</h3>
-          {it.body.split(/\n{2,}/).map((para, pi) => <p key={pi} className="vt-prose">{para}</p>)}
-        </li>
-      ))}
-    </ol>
   )
 }
 
@@ -1044,63 +967,9 @@ const VT_CSS = `
   opacity: 0.85;
   margin-bottom: 20px;
 }
-.vt-prose-lede {
-  font-family: var(--vt-display);
-  font-style: italic;
-  font-size: 19px;
-  opacity: 0.95;
-  margin-bottom: 56px;
-  max-width: 560px;
-}
-.vt-empty-line {
-  font-family: var(--vt-display);
-  font-style: italic;
-  color: var(--vt-fg-muted);
-  font-size: 16px;
-  padding: 24px 0;
-}
 .vt-empty {
   text-align: center;
   padding: 120px 32px;
-}
-
-/* ── Gallery: full-width strips, not grids ── */
-.vt-gallery {
-  display: flex;
-  flex-direction: column;
-  gap: 88px;
-}
-.vt-gallery-group {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-}
-.vt-gallery-title {
-  font-family: var(--vt-display);
-  font-style: italic;
-  font-size: 22px;
-  color: var(--vt-fg);
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--vt-accent);
-  margin-bottom: 16px;
-}
-.vt-strip {
-  margin: 0;
-}
-.vt-strip img {
-  width: 100%;
-  display: block;
-  aspect-ratio: 2.4 / 1;
-  object-fit: cover;
-}
-.vt-strip figcaption {
-  margin-top: 12px;
-  font-family: var(--vt-body);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--vt-fg-muted);
 }
 
 /* ── About / drop cap ── */
@@ -1169,66 +1038,6 @@ const VT_CSS = `
   line-height: 1.65;
 }
 
-/* ── Transformations: before/after ── */
-.vt-ba {
-  display: flex;
-  flex-direction: column;
-  gap: 80px;
-}
-.vt-ba-pair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-}
-.vt-ba-pair figure {
-  margin: 0;
-}
-.vt-ba-pair img {
-  width: 100%;
-  aspect-ratio: 3 / 4;
-  object-fit: cover;
-  display: block;
-}
-.vt-ba-pair figcaption {
-  margin-top: 12px;
-  font-family: var(--vt-body);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--vt-fg-muted);
-}
-@media (max-width: 640px) {
-  .vt-ba-pair { grid-template-columns: 1fr; gap: 16px; }
-}
-
-/* ── Manifesto / Roman-numeral policies ── */
-.vt-manifesto {
-  counter-reset: vt-manifesto;
-}
-.vt-manifesto li {
-  padding: 36px 0;
-  border-top: 1px solid var(--vt-rule);
-}
-.vt-manifesto li:first-child { border-top: 0; padding-top: 0; }
-.vt-manifesto-h {
-  font-family: var(--vt-display);
-  font-size: 24px;
-  font-weight: 400;
-  letter-spacing: -0.005em;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-}
-.vt-roman {
-  font-family: var(--vt-display);
-  font-style: italic;
-  font-size: 18px;
-  color: var(--vt-accent);
-  letter-spacing: 0.04em;
-}
-
 /* ── Additionals (thank-you + FAQs only — hours now lives in the footer) ── */
 .vt-additionals { padding: 0; }
 .vt-additionals > .vt-section { border-top: 1px solid var(--vt-rule); padding-top: 80px; }
@@ -1238,7 +1047,6 @@ const VT_CSS = `
   .vt-hero { padding: 60px 20px 80px; }
   .vt-section { padding: 60px 20px; }
   .vt-hero-contacts { gap: 14px; }
-  .vt-strip img { aspect-ratio: 1.5 / 1; }
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -1569,4 +1377,167 @@ const VT_CSS = `
   color: var(--vt-accent);
 }
 .vt-template .brk-instructions--numbered .brk-instruction-body h3 { font-size: 20px; }
+
+/* ════════════════════════════════════════════════════════════════════
+   VT SKIN — Gallery / Before-After / Policy (shared platform sections)
+   ────────────────────────────────────────────────────────────────────
+   Gallery / Results / Manifesto now render the canonical .brk-gallery* /
+   .brk-ba* / .brk-policy* markup. These overrides re-apply Velvet
+   Theory's editorial-luxe treatment: flat (no card fills / no borders),
+   sharp corners, gold hairlines, Fraunces serif headings, and the
+   lowercase Roman-numeral policy marks via a CSS counter. Colors/fonts
+   come from the bridged --brk-* tokens.
+
+   Width: the blanket .vt-template .brk-section (max-width:720px) above
+   keeps the additionals (FAQ/Reviews/Thanks) in VT's narrow column and
+   also frames the Manifesto (which used .vt-section-narrow). Gallery +
+   Results lived in the wider 1080px .vt-section, so they're re-widened
+   here. Section padding matches the old .vt-section (96px block). ── */
+.vt-template .brk-gallery-section,
+.vt-template .brk-ba-section {
+  max-width: 1080px;
+  padding: 96px 32px;
+}
+.vt-template .brk-policy-section { padding: 96px 32px; }
+
+/* ── Gallery — full-width strips, flat & sharp (matches old .vt-strip).
+   The shared strips variant gives full-width rows; VT restores its 2.4:1
+   crop, removes the tile border/surface/radius, and widens the group gap.
+   Per-item captions don't exist in the shared markup (image-only tiles),
+   so VT's old uppercase strip caption is intentionally gone. ── */
+.vt-template .brk-gallery-group { display: flex; flex-direction: column; gap: 32px; }
+.vt-template .brk-gallery-group + .brk-gallery-group { margin-top: 88px; }
+/* Italic Fraunces group heading with the gold underline (old .vt-gallery-title). */
+.vt-template .brk-gallery-group-heading {
+  text-align: left;
+  font-family: var(--vt-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 22px;
+  color: var(--vt-fg);
+  padding-bottom: 12px;
+  margin: 0 0 16px;
+  border-bottom: 1px solid var(--vt-accent);
+}
+.vt-template .brk-gallery-grid--strips { gap: 32px; }
+.vt-template .brk-gallery-grid--strips .brk-gallery-item {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  aspect-ratio: 2.4 / 1;
+}
+
+/* ── Before & After — flat 2-up diptych (matches old .vt-ba-pair).
+   Override the shared 3-col (with center separator slot) back to VT's
+   even 1fr/1fr; sharp corners, no pane border; gold-hairline FLAT corner
+   tags (no pill fill); italic serif caption. ── */
+.vt-template .brk-ba-stack { gap: 80px; max-width: none; }
+.vt-template .brk-ba-group + .brk-ba-group { margin-top: 88px; }
+.vt-template .brk-ba-group-heading {
+  text-align: left;
+  font-family: var(--vt-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 22px;
+  color: var(--vt-fg);
+  padding-bottom: 12px;
+  margin: 0 0 16px;
+  border-bottom: 1px solid var(--vt-accent);
+}
+.vt-template .brk-ba-pair { grid-template-columns: 1fr 1fr; gap: 24px; }
+.vt-template .brk-ba-pane img {
+  aspect-ratio: 3 / 4;
+  border: 0;
+  border-radius: 0;
+}
+/* Flat editorial corner tag — VT had captions, reproduced here as a sharp
+   gold-hairline mark in the top-left of each pane (no surface, no pill). */
+.vt-template .brk-ba-label {
+  top: 14px;
+  left: 14px;
+  padding: 6px 12px;
+  background: color-mix(in srgb, var(--vt-bg) 80%, transparent);
+  border: 1px solid var(--vt-accent);
+  border-radius: 0;
+  font-family: var(--vt-body);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  color: var(--vt-fg);
+}
+.vt-template .brk-ba-caption {
+  font-family: var(--vt-display);
+  font-style: italic;
+  font-size: 18px;
+  color: var(--vt-fg-muted);
+}
+@media (max-width: 640px) {
+  .vt-template .brk-ba-pair { grid-template-columns: 1fr; gap: 16px; }
+}
+
+/* ── Manifesto / Policies — hairline-divided clauses with lowercase Roman
+   numeral marks (matches old .vt-manifesto + .vt-roman). marker="numeral"
+   emits a zero-padded ordinal we BLANK (font-size:0) and replace with a
+   CSS counter rendered lower-roman, giving i. ii. iii. … in italic gold
+   serif. Rows are flat; the first row drops its top rule (VT had no rule
+   above the opening clause). ── */
+.vt-template .brk-policy-group-heading {
+  text-align: left;
+  font-family: var(--vt-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 22px;
+  color: var(--vt-fg);
+  border-bottom: 1px solid var(--vt-accent);
+  padding-bottom: 12px;
+  margin: 0 0 8px;
+}
+.vt-template .brk-policy-list { border-top: 0; }
+.vt-template .brk-policy-list--marked {
+  counter-reset: vt-manifesto;
+  grid-template-columns: none;
+}
+.vt-template .brk-policy-row {
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  padding: 36px 0;
+  border-bottom: 0;
+  border-top: 1px solid var(--vt-rule);
+  align-items: baseline;
+  counter-increment: vt-manifesto;
+}
+.vt-template .brk-policy-list .brk-policy-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+/* Hide the shared padded ordinal; the counter ::before supplies i/ii/iii. */
+.vt-template .brk-policy-mark {
+  font-size: 0;
+  font-family: var(--vt-display);
+  font-style: italic;
+  color: var(--vt-accent);
+  text-align: left;
+  line-height: 1.2;
+}
+.vt-template .brk-policy-mark::before {
+  content: counter(vt-manifesto, lower-roman) '.';
+  font-size: 18px;
+  letter-spacing: 0.04em;
+}
+/* Upright Fraunces clause heading (matches old .vt-manifesto-h). */
+.vt-template .brk-policy-title {
+  font-family: var(--vt-display);
+  font-weight: 400;
+  font-size: 24px;
+  letter-spacing: -0.005em;
+  color: var(--vt-fg);
+  margin: 0 0 16px;
+}
+.vt-template .brk-policy-text {
+  font-family: var(--vt-body);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--vt-fg);
+  opacity: 0.85;
+}
 `

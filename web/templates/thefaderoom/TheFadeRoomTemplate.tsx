@@ -25,7 +25,7 @@ import { CalendarPlus, Phone, Mail, Instagram, MapPin, MessageSquare, Youtube, F
 import type { PublicSite } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 import { tokensToCss } from '@bkrdy/platform'
-import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, InstructionsSection, SECTIONS_CSS } from '@bkrdy/platform/sections'
+import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, InstructionsSection, GallerySection, BeforeAfterSection, PolicySection, SECTIONS_CSS } from '@bkrdy/platform/sections'
 import TheFadeRoomBooking from './TheFadeRoomBooking'
 
 // ── Brand glyphs lucide doesn't ship (sized to match the lucide icons
@@ -101,8 +101,8 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
   const additionals: any = settings.additionals ?? {}
   const advice:   any[] = Array.isArray(settings.advice?.items)   ? settings.advice.items   : []
   const timeline: any[] = Array.isArray(settings.timeline?.items) ? settings.timeline.items : []
-  const gallery       = site.gallery ?? []
-  const results       = site.results ?? site.before_after ?? []
+  // Loosely-typed view of the policy bag so owner-extra fields the
+  // BusinessPolicy interface doesn't enumerate still resolve at runtime.
   const policies: any = site.policies ?? {}
 
   // Resolve accent — tenant-picked or pink default.
@@ -245,48 +245,43 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
           </section>
         </div>
 
-        {/* 4. Gallery / Work */}
+        {/* 4. Gallery / Work — migrated to the shared GallerySection. The
+            tab-panel wrapper + enabledByTab gating stay; the inner render is
+            now the canonical .brk-gallery-* markup, re-skinned to TFR's neon
+            grid cards by the .tfr-template .brk-gallery* rules at the end of
+            TFR_CSS. Eyebrow keeps the resolved Gallery tab label. */}
         {enabledByTab.gallery && (
           <div className={`tfr-tab-panel${active === 'gallery' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'gallery'}>
-            <section className="tfr-section" aria-label={tabs.gallery_label ?? 'Work'}>
-              <p className="tfr-eyebrow">{tabLabel.gallery}</p>
-              <h2 className="tfr-section-title">{tabs.gallery_label ?? 'Gallery'}</h2>
-              {gallery.length === 0 ? (
-                <p className="tfr-empty">No gallery items yet.</p>
-              ) : (
-                <ul className="tfr-grid">
-                  {gallery.map(g => (
-                    <li key={g.id} className="tfr-grid-cell">
-                      <img src={g.image_url} alt={g.alt_text ?? ''} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            <GallerySection
+              items={site.gallery}
+              groups={site.gallery_groups}
+              heading={tabs.gallery_label ?? 'Gallery'}
+              eyebrow={tabLabel.gallery}
+              displayName={display}
+              variant="grid"
+              emptyText="No gallery items yet."
+              ariaLabel={tabs.gallery_label ?? 'Work'}
+            />
           </div>
         )}
 
-        {/* 5. Results / Before & After */}
+        {/* 5. Results / Before & After — migrated to the shared
+            BeforeAfterSection. The old TFR render was a bare two-image
+            diptych with no center separator and no Before/After tags, so
+            both `separator` and `labels` are omitted to keep parity. The
+            .tfr-template .brk-ba* skin re-applies the neon card frame. */}
         {enabledByTab.results && (
           <div className={`tfr-tab-panel${active === 'results' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'results'}>
-            <section className="tfr-section" aria-label={tabs.results_label ?? 'Results'}>
-              <p className="tfr-eyebrow">{tabLabel.results}</p>
-              <h2 className="tfr-section-title">{tabs.results_label ?? 'Results'}</h2>
-              {results.length === 0 ? (
-                <p className="tfr-empty">No results yet.</p>
-              ) : (
-                <ul className="tfr-grid tfr-grid-2">
-                  {results.map(r => (
-                    <li key={r.id} className="tfr-ba">
-                      <img src={r.before_image_url} alt={r.before_alt_text ?? 'Before'} />
-                      <img src={r.after_image_url}  alt={r.after_alt_text  ?? 'After'} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            <BeforeAfterSection
+              items={site.results ?? site.before_after}
+              groups={site.results_groups ?? site.before_after_groups}
+              heading={tabs.results_label ?? 'Results'}
+              eyebrow={tabLabel.results}
+              emptyText="No results yet."
+              ariaLabel={tabs.results_label ?? 'Results'}
+            />
           </div>
         )}
 
@@ -342,24 +337,37 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
           </div>
         )}
 
-        {/* 7. Policy / House Rules */}
+        {/* 7. Policy / House Rules — migrated to the shared PolicySection.
+            rows mirror TFR's old PolicyRow set (Deposit / Cancellation / Late
+            arrival / No-show / Reschedule); custom_groups map to the richer
+            shared {heading, items:[{title, content}]} shape (it.content ??
+            it.body for legacy flat groups). marker="none" preserves TFR's old
+            tagged-ticket look (no glyph/numeral column); the
+            .tfr-template .brk-policy* skin restores the accent-tag treatment. */}
         {enabledByTab.policy && (
           <div className={`tfr-tab-panel${active === 'policy' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'policy'}>
-            <section className="tfr-section" aria-label={tabs.policy_label ?? 'House Rules'}>
-              <p className="tfr-eyebrow">{tabLabel.policy}</p>
-              <h2 className="tfr-section-title">{tabs.policy_label ?? 'Policy'}</h2>
-              <div className="tfr-policy-stack">
-                <PolicyRow label="Deposit"      body={policies.deposit_policy} />
-                <PolicyRow label="Cancellation" body={policies.cancellation_policy} />
-                <PolicyRow label="Late arrival" body={policies.late_policy} />
-                <PolicyRow label="No-show"      body={policies.no_show_policy} />
-                <PolicyRow label="Reschedule"   body={policies.reschedule_policy} />
-                {Array.isArray(policies.custom_groups) && policies.custom_groups.map((g: any, i: number) => (
-                  <PolicyRow key={`c${i}`} label={g.heading} body={g.body} />
-                ))}
-              </div>
-            </section>
+            <PolicySection
+              rows={[
+                { label: 'Deposit',      body: policies.deposit_policy },
+                { label: 'Cancellation', body: policies.cancellation_policy },
+                { label: 'Late arrival', body: policies.late_policy },
+                { label: 'No-show',      body: policies.no_show_policy },
+                { label: 'Reschedule',   body: policies.reschedule_policy },
+              ]}
+              customGroups={(Array.isArray(policies.custom_groups) ? policies.custom_groups : []).map((g: any) => ({
+                heading: g.heading,
+                items: (Array.isArray(g.items) ? g.items : []).map((it: any) => ({
+                  title: it.title,
+                  content: it.content ?? it.body,
+                })),
+              }))}
+              heading={tabs.policy_label ?? 'House Rules'}
+              eyebrow={tabLabel.policy}
+              marker="none"
+              emptyText="No house rules yet."
+              ariaLabel={tabs.policy_label ?? 'House Rules'}
+            />
           </div>
         )}
 
@@ -464,16 +472,6 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
 }
 
 // ─── Subcomponents ─────────────────────────────────────────────────────────────
-
-function PolicyRow({ label, body }: { label: string; body?: string | null }) {
-  if (!body) return null
-  return (
-    <div className="tfr-policy">
-      <h3>{label}</h3>
-      <p>{body}</p>
-    </div>
-  )
-}
 
 // Per-platform brand gradients. Each button's `background` reads like
 // the destination it points at — Insta's iconic pink→orange→purple,
@@ -868,60 +866,6 @@ const TFR_CSS = `
 .tfr-tab-panel > .tfr-section:first-child { border-top: none; }
 .tfr-book { padding-top: var(--brk-space-3xl); }
 
-.tfr-empty {
-  font-family: var(--tfr-body);
-  font-size: 14px;
-  color: var(--tfr-fg-muted);
-  margin: 0;
-}
-
-/* Grid — soft rounded cards in a 3-col layout (2 on mobile). */
-.tfr-grid {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(2, 1fr);
-}
-@media (min-width: 720px) {
-  .tfr-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; }
-}
-.tfr-grid-cell {
-  background: var(--tfr-card);
-  aspect-ratio: 1;
-  overflow: hidden;
-  border-radius: 12px;
-  border: 1px solid var(--tfr-rule);
-  transition: border-color 200ms ease, box-shadow 250ms ease;
-}
-.tfr-grid-cell:hover {
-  border-color: var(--tfr-accent);
-  box-shadow: 0 0 24px color-mix(in srgb, var(--tfr-accent) 25%, transparent);
-}
-.tfr-grid img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* Before/After grid — 1 col mobile, 2 col desktop */
-.tfr-grid-2 { grid-template-columns: 1fr; gap: 12px; }
-@media (min-width: 720px) {
-  .tfr-grid-2 { grid-template-columns: repeat(2, 1fr); }
-}
-.tfr-ba {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid var(--tfr-rule);
-  background: var(--tfr-card);
-  padding: 6px;
-}
-.tfr-ba > img { aspect-ratio: 1; border-radius: 8px; }
-
 /* About — three-up staggered hero gallery. Each cell gets a slightly
    different aspect-ratio + vertical offset so they don't read as a
    strict grid. Equal-width columns keep the rhythm. */
@@ -1058,52 +1002,6 @@ const TFR_CSS = `
   padding: 0.05em 0;
 }
 .tfr-highlights p { margin: 0; color: var(--tfr-fg-muted); line-height: 1.55; }
-
-/* Policies — tagged ticket layout. Each policy is a horizontal pill
-   with a filled accent-color "tag" on the left carrying the policy
-   label, and the body sitting in the white-on-card right side. Reads
-   like a ticket stub or a tagged folder, very distinct from
-   Blackline's editorial label-column-then-body pattern. */
-.tfr-policy-stack {
-  display: grid;
-  gap: 14px;
-}
-.tfr-policy {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0;
-  border: 1px solid color-mix(in srgb, var(--tfr-accent) 24%, var(--tfr-rule));
-  border-radius: 14px;
-  overflow: hidden;
-  background: var(--tfr-card);
-}
-@media (min-width: 720px) {
-  .tfr-policy { grid-template-columns: minmax(160px, max-content) 1fr; }
-}
-.tfr-policy h3 {
-  background: color-mix(in srgb, var(--tfr-accent) 14%, transparent);
-  color: var(--tfr-fg);
-  padding: 18px 24px;
-  margin: 0;
-  font-family: var(--tfr-body);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-  /* Hairline accent divider between the tag and body. */
-  border-right: 1px solid color-mix(in srgb, var(--tfr-accent) 24%, transparent);
-}
-.tfr-policy p {
-  padding: 18px 24px;
-  margin: 0;
-  color: var(--tfr-fg);
-  line-height: 1.55;
-  display: flex;
-  align-items: center;
-}
 
 @media (prefers-reduced-motion: reduce) {
   .tfr-template *,
@@ -1487,5 +1385,155 @@ const TFR_CSS = `
   font-size: 15px;
   color: var(--tfr-fg-muted);
   line-height: 1.55;
+}
+
+/* ── Gallery skin — matches the old .tfr-grid: dark card tiles with a
+   neon-rule border that lights up + glows on hover. The shared grid is
+   already responsive (1/2/3 cols); TFR keeps 2-up on mobile, so widen the
+   first breakpoint to 2 cols, and squares the tiles (shared base is 4/5).
+   Group headings get the Dancing Script + neon halo treatment. ── */
+.tfr-template .brk-gallery-grid {
+  gap: 12px;
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (min-width: 720px) {
+  .tfr-template .brk-gallery-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+}
+.tfr-template .brk-gallery-item {
+  background: var(--tfr-card);
+  aspect-ratio: 1;
+  border-radius: 12px;
+  border: 1px solid var(--tfr-rule);
+  transition: border-color 200ms ease, box-shadow 250ms ease;
+}
+.tfr-template .brk-gallery-item:hover {
+  border-color: var(--tfr-accent);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--tfr-accent) 25%, transparent);
+}
+.tfr-template .brk-gallery-group-heading {
+  font-family: var(--tfr-script);
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--tfr-fg);
+  text-shadow: var(--tfr-neon-shadow-tight);
+  padding: 0.05em 0;
+}
+
+/* ── Before/After skin — matches the old .tfr-ba: both panes sit inside a
+   single neon-bordered card on the dark surface, tight 6px gutter, square
+   images with a soft inner radius. The shared markup nests panes in
+   .brk-ba-pair (a 1fr/auto/1fr grid); TFR drops the center separator
+   column to a tight gap and carries the frame on the outer .brk-ba.
+   Border lights + glows on hover. ── */
+.tfr-template .brk-ba-stack { gap: 12px; }
+.tfr-template .brk-ba {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--tfr-rule);
+  background: var(--tfr-card);
+  padding: 6px;
+  transition: border-color 200ms ease, box-shadow 250ms ease;
+}
+.tfr-template .brk-ba:hover {
+  border-color: var(--tfr-accent);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--tfr-accent) 25%, transparent);
+}
+.tfr-template .brk-ba-pair {
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.tfr-template .brk-ba-pane img {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  border: 0;
+}
+@media (max-width: 640px) {
+  /* Keep both panes side-by-side on mobile (the shared base stacks them);
+     TFR's diptych reads as a single before|after card at every width. */
+  .tfr-template .brk-ba-pair { grid-template-columns: 1fr 1fr; }
+}
+.tfr-template .brk-ba-caption {
+  font-family: var(--tfr-display);
+  font-style: normal;
+  color: var(--tfr-fg-muted);
+}
+.tfr-template .brk-ba-group-heading {
+  font-family: var(--tfr-script);
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--tfr-fg);
+  text-shadow: var(--tfr-neon-shadow-tight);
+  padding: 0.05em 0;
+}
+
+/* ── Policy skin — matches the old .tfr-policy "tagged ticket": each row is
+   a neon-bordered card on the dark surface, split into a filled accent-tint
+   label tag (the title) and the body. marker="none" → the shared list runs
+   in --plain mode (single-column rows), so TFR drops the hairline list
+   rules and turns each .brk-policy-row into the bordered card, then puts the
+   tag/body split on the inner .brk-policy-body. ── */
+.tfr-template .brk-policy-list--plain {
+  border-top: 0;
+  display: grid;
+  gap: 14px;
+  max-width: var(--brk-container-narrow);
+}
+.tfr-template .brk-policy-list--plain .brk-policy-row {
+  display: block;
+  padding: 0;
+  border-bottom: 0;
+  border: 1px solid color-mix(in srgb, var(--tfr-accent) 24%, var(--tfr-rule));
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--tfr-card);
+}
+/* The title+text container becomes the two-column ticket: an accent-tint
+   tag column (the label) and the body column. Single column on mobile. */
+.tfr-template .brk-policy-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+@media (min-width: 720px) {
+  .tfr-template .brk-policy-body { grid-template-columns: minmax(160px, max-content) 1fr; }
+}
+/* The label becomes the filled accent tag (was .tfr-policy h3). */
+.tfr-template .brk-policy-title {
+  margin: 0;
+  background: color-mix(in srgb, var(--tfr-accent) 14%, transparent);
+  color: var(--tfr-fg);
+  padding: 18px 24px;
+  font-family: var(--tfr-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  border-right: 1px solid color-mix(in srgb, var(--tfr-accent) 24%, transparent);
+}
+/* The body (was .tfr-policy p). */
+.tfr-template .brk-policy-text {
+  padding: 18px 24px;
+  margin: 0;
+  color: var(--tfr-fg);
+  line-height: 1.55;
+  display: flex;
+  align-items: center;
+}
+/* Custom-group subheading — Dancing Script + neon halo, like section titles. */
+.tfr-template .brk-policy-group-heading {
+  font-family: var(--tfr-script);
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--tfr-fg);
+  text-shadow: var(--tfr-neon-shadow-tight);
+  padding: 0.05em 0;
+  margin-bottom: var(--brk-space-lg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tfr-template .brk-gallery-item,
+  .tfr-template .brk-ba { transition: none !important; }
 }
 `

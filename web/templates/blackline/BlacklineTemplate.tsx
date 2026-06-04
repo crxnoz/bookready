@@ -21,7 +21,7 @@ import { useState, useRef } from 'react'
 import type { PublicSite } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 import { tokensToCss } from '@bkrdy/platform'
-import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, InstructionsSection, SECTIONS_CSS } from '@bkrdy/platform/sections'
+import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, InstructionsSection, GallerySection, BeforeAfterSection, PolicySection, SECTIONS_CSS } from '@bkrdy/platform/sections'
 import BlacklineBooking from './BlacklineBooking'
 
 // ── Contact-href helper ──────────────────────────────────────────────────────
@@ -80,8 +80,10 @@ export default function BlacklineTemplate({ site, slug }: Props) {
   const additionals: any = settings.additionals ?? {}
   const advice:   any[] = Array.isArray(settings.advice?.items)   ? settings.advice.items   : []
   const timeline: any[] = Array.isArray(settings.timeline?.items) ? settings.timeline.items : []
-  const gallery       = site.gallery ?? []
-  const results       = site.results ?? site.before_after ?? []
+  // Loosely-typed view of the policy bag so owner-extra fields the
+  // BusinessPolicy interface doesn't enumerate (late_policy, refund_policy,
+  // guest_policy) still resolve at runtime. Gallery/Results read straight from
+  // `site` inside their shared sections, so no local copies are kept.
   const policies: any = site.policies ?? {}
 
   // Resolve canvas color — tenant-picked or Onyx default.
@@ -218,48 +220,43 @@ export default function BlacklineTemplate({ site, slug }: Props) {
           </section>
         </div>
 
-        {/* 4. Gallery / Work */}
+        {/* 4. Gallery / Work — migrated to the shared GallerySection. Heading
+            keeps Blackline's old "Gallery" copy; eyebrow is the live tab label
+            (so renaming the tab renames the eyebrow). The .blackline-template
+            .brk-gallery* skin below re-applies Blackline's sharp, hairline
+            edge-to-edge grid (zero radius, flat tiles, brass gutters). */}
         {enabledByTab.gallery && (
           <div className={`blackline-tab-panel${active === 'gallery' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'gallery'}>
-            <section className="blackline-section" aria-label={tabs.gallery_label ?? 'Gallery'}>
-              <p className="blackline-eyebrow">{tabLabel.gallery}</p>
-              <h2 className="blackline-section-title">{tabs.gallery_label ?? 'Gallery'}</h2>
-              {gallery.length === 0 ? (
-                <p className="blackline-empty">No gallery items yet.</p>
-              ) : (
-                <ul className="blackline-grid">
-                  {gallery.map(g => (
-                    <li key={g.id}>
-                      <img src={g.image_url} alt={g.alt_text ?? ''} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            <GallerySection
+              items={site.gallery}
+              groups={site.gallery_groups}
+              heading={tabs.gallery_label ?? 'Gallery'}
+              eyebrow={tabLabel.gallery}
+              displayName={display}
+              variant="grid"
+              emptyText="No gallery items yet."
+              ariaLabel={tabs.gallery_label ?? 'Gallery'}
+            />
           </div>
         )}
 
-        {/* 5. Results / Before & After */}
+        {/* 5. Results / Before & After — migrated to the shared
+            BeforeAfterSection. Blackline's old render was a flat paired diptych
+            with NO center separator and NO Before/After label tags, so both are
+            omitted here. The .blackline-template .brk-ba* skin below restores
+            the sharp 1px-brass-gutter pair (zero radius, flat panes). */}
         {enabledByTab.results && (
           <div className={`blackline-tab-panel${active === 'results' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'results'}>
-            <section className="blackline-section" aria-label={tabs.results_label ?? 'Results'}>
-              <p className="blackline-eyebrow">{tabLabel.results}</p>
-              <h2 className="blackline-section-title">{tabs.results_label ?? 'Results'}</h2>
-              {results.length === 0 ? (
-                <p className="blackline-empty">No results yet.</p>
-              ) : (
-                <ul className="blackline-grid blackline-grid-2">
-                  {results.map(r => (
-                    <li key={r.id} className="blackline-ba">
-                      <img src={r.before_image_url} alt={r.before_alt_text ?? 'Before'} />
-                      <img src={r.after_image_url}  alt={r.after_alt_text  ?? 'After'} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            <BeforeAfterSection
+              items={site.results ?? site.before_after}
+              groups={site.results_groups ?? site.before_after_groups}
+              heading={tabs.results_label ?? 'Results'}
+              eyebrow={tabLabel.results}
+              emptyText="No results yet."
+              ariaLabel={tabs.results_label ?? 'Results'}
+            />
           </div>
         )}
 
@@ -285,25 +282,39 @@ export default function BlacklineTemplate({ site, slug }: Props) {
           </div>
         )}
 
-        {/* 7. Policy / House Rules */}
+        {/* 7. Policy / House Rules — migrated to the shared PolicySection.
+            Rows reproduce Blackline's old field set + labels (Deposit /
+            Cancellation / Late arrival / No-show / Refund / Guest);
+            custom_groups map to the shared {heading, items[{title, content}]}
+            shape (content falls back to the legacy `body` field). marker="none"
+            keeps Blackline's flat, marker-less divided ledger. The
+            .blackline-template .brk-policy* skin below restores the brass
+            uppercase label / 200px column / hairline-divided rows. */}
         {enabledByTab.policy && (
           <div className={`blackline-tab-panel${active === 'policy' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'policy'}>
-            <section className="blackline-section" aria-label={tabs.policy_label ?? 'House Rules'}>
-              <p className="blackline-eyebrow">{tabLabel.policy}</p>
-              <h2 className="blackline-section-title">{tabs.policy_label ?? 'Policy'}</h2>
-              <div className="blackline-policy-stack">
-                <PolicyRow label="Deposit"      body={policies.deposit_policy} />
-                <PolicyRow label="Cancellation" body={policies.cancellation_policy} />
-                <PolicyRow label="Late arrival" body={policies.late_policy} />
-                <PolicyRow label="No-show"      body={policies.no_show_policy} />
-                <PolicyRow label="Refund"       body={policies.refund_policy} />
-                <PolicyRow label="Guest"        body={policies.guest_policy} />
-                {Array.isArray(policies.custom_groups) && policies.custom_groups.map((g: any, i: number) => (
-                  <PolicyRow key={`c${i}`} label={g.heading} body={g.body} />
-                ))}
-              </div>
-            </section>
+            <PolicySection
+              rows={[
+                { label: 'Deposit',      body: policies.deposit_policy },
+                { label: 'Cancellation', body: policies.cancellation_policy },
+                { label: 'Late arrival', body: policies.late_policy },
+                { label: 'No-show',      body: policies.no_show_policy },
+                { label: 'Refund',       body: policies.refund_policy },
+                { label: 'Guest',        body: policies.guest_policy },
+              ]}
+              customGroups={(Array.isArray(policies.custom_groups) ? policies.custom_groups : []).map((g: any) => ({
+                heading: g.heading,
+                items: (Array.isArray(g.items) ? g.items : []).map((it: any) => ({
+                  title: it.title,
+                  content: it.content ?? it.body,
+                })),
+              }))}
+              heading={tabs.policy_label ?? 'Policy'}
+              eyebrow={tabLabel.policy}
+              marker="none"
+              emptyText="No house rules yet."
+              ariaLabel={tabs.policy_label ?? 'House Rules'}
+            />
           </div>
         )}
 
@@ -413,16 +424,6 @@ export default function BlacklineTemplate({ site, slug }: Props) {
 }
 
 // ─── Subcomponents ─────────────────────────────────────────────────────────────
-
-function PolicyRow({ label, body }: { label: string; body?: string | null }) {
-  if (!body) return null
-  return (
-    <div className="blackline-policy">
-      <h3>{label}</h3>
-      <p>{body}</p>
-    </div>
-  )
-}
 
 function SocialButtons({ header, profile, goBook }: { header: any; profile: any; goBook: () => void }) {
   const btns: { key: string; href: string | null; label: string }[] = [
@@ -662,48 +663,12 @@ const BLACKLINE_CSS = `
 .blackline-tab-panel > .blackline-section:first-child { border-top: none; }
 .blackline-book { padding-top: var(--brk-space-3xl); }
 
-.blackline-empty {
-  font-family: var(--blackline-body);
-  font-size: 14px;
-  color: var(--blackline-fg-muted);
-  margin: 0;
-}
-
-/* Gallery / Results grid */
-.blackline-grid {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 1px;
-  grid-template-columns: repeat(2, 1fr);
-  background: var(--blackline-rule);
-}
-@media (min-width: 720px) {
-  .blackline-grid { grid-template-columns: repeat(3, 1fr); }
-}
-.blackline-grid > li {
-  background: var(--blackline-bg);
-  aspect-ratio: 1;
-  overflow: hidden;
-}
-.blackline-grid img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: grayscale(0.05);
-}
-.blackline-grid-2 { grid-template-columns: 1fr; gap: var(--brk-space-md); background: transparent; }
-@media (min-width: 720px) {
-  .blackline-grid-2 { grid-template-columns: repeat(2, 1fr); }
-}
-.blackline-ba {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  background: var(--blackline-rule);
-}
-.blackline-ba > img { aspect-ratio: 1; }
+/* Gallery + Results + Policies now render via the shared GallerySection /
+   BeforeAfterSection / PolicySection (@bkrdy/platform/sections). Their
+   Blackline skin lives in the SKIN block at the end of this file
+   (.blackline-template .brk-gallery* / .brk-ba* / .brk-policy*). The old
+   .blackline-grid* / .blackline-ba* / .blackline-policy* / .blackline-empty
+   rules were deleted in that migration. */
 
 /* About */
 .blackline-about-body {
@@ -740,35 +705,6 @@ const BLACKLINE_CSS = `
   margin: 0 0 var(--brk-space-xs);
 }
 .blackline-highlights p { margin: 0; color: var(--blackline-fg-muted); }
-
-/* Policies */
-.blackline-policy-stack {
-  border-top: 1px solid var(--blackline-rule);
-}
-.blackline-policy {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--brk-space-sm);
-  padding: var(--brk-space-xl) 0;
-  border-bottom: 1px solid var(--blackline-rule);
-}
-@media (min-width: 720px) {
-  .blackline-policy { grid-template-columns: 200px 1fr; gap: var(--brk-space-2xl); }
-}
-.blackline-policy h3 {
-  font-family: var(--blackline-body);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: var(--blackline-accent);
-  margin: 0;
-}
-.blackline-policy p {
-  margin: 0;
-  color: var(--blackline-fg);
-  line-height: 1.65;
-}
 
 /* Advice notes + Timeline now render via the shared InstructionsSection
    (@bkrdy/platform/sections). Their Blackline skin lives in the SKIN block
@@ -1033,4 +969,118 @@ const BLACKLINE_CSS = `
   font-variant-numeric: normal;
 }
 .blackline-template .brk-instructions--numbered .brk-instruction-body h3 { font-size: 22px; }
+
+/* ── Gallery skin (shared GallerySection) ──
+   Blackline's signature gallery is a SHARP, FLAT, edge-to-edge grid: square
+   tiles with zero radius, no card fill, hairline brass gutters formed by a
+   1px grid gap over a brass-ruled background (the tile fill is the canvas, so
+   only the gutters show as brass lines). 2 cols → 3 at 720px, matching the old
+   .blackline-grid. The shared base's 4/5 rounded surface cards are fully
+   overridden. Group headings go left-aligned Space Grotesk (Blackline is
+   left-aligned, not centered). */
+.blackline-template .brk-gallery-grid {
+  gap: 1px;
+  grid-template-columns: repeat(2, 1fr);
+  background: var(--blackline-rule);
+}
+@media (min-width: 720px) {
+  .blackline-template .brk-gallery-grid { grid-template-columns: repeat(3, 1fr); gap: 1px; }
+}
+.blackline-template .brk-gallery-item {
+  border: 0;
+  border-radius: 0;
+  background: var(--blackline-bg);
+  aspect-ratio: 1;
+}
+.blackline-template .brk-gallery-item img { filter: grayscale(0.05); }
+.blackline-template .brk-gallery-group-heading {
+  text-align: left;
+  font-family: var(--blackline-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--blackline-fg);
+}
+
+/* ── Before / After skin (shared BeforeAfterSection) ──
+   Blackline's old results were a flat square diptych: a 1fr/1fr pair with a
+   single 1px brass gutter, zero radius, no labels, no separator (both omitted
+   in the JSX). Reproduce the sharp paired panes over the shared base (which is
+   a 3/4 rounded pair with an auto separator column + 18px gap). Keep the pair
+   at 1fr/1fr on ALL viewports — the old grid never collapsed to a single
+   column on mobile. */
+.blackline-template .brk-ba-pair {
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--blackline-rule);
+}
+@media (max-width: 640px) {
+  .blackline-template .brk-ba-pair { grid-template-columns: 1fr 1fr; }
+}
+.blackline-template .brk-ba-pane img {
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 0;
+}
+/* Caption — Space Grotesk, muted, left-aligned (shared base is centered
+   italic serif). */
+.blackline-template .brk-ba-caption {
+  text-align: left;
+  font-family: var(--blackline-display);
+  font-style: normal;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--blackline-fg-muted);
+}
+.blackline-template .brk-ba-group-heading {
+  text-align: left;
+  font-family: var(--blackline-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--blackline-fg);
+}
+
+/* ── Policy skin (shared PolicySection, marker="none") ──
+   Blackline's house rules are a brass divided ledger: a tracked uppercase
+   brass label in a fixed 200px column with the rule body beside it (stacked on
+   narrow), hairline-divided rows, spanning the narrow container. The shared
+   base is a single-column 720px-capped list with a big 26px serif title.
+   Re-form the two-column label/body grid on the plain (marker-less) list and
+   restyle the title back to Blackline's brass label. */
+.blackline-template .brk-policy-list {
+  max-width: none;
+  border-top: 1px solid var(--blackline-rule);
+}
+.blackline-template .brk-policy-list--plain .brk-policy-row {
+  grid-template-columns: 1fr;
+  gap: var(--brk-space-sm);
+  padding: var(--brk-space-xl) 0;
+  border-bottom: 1px solid var(--blackline-rule);
+  align-items: start;
+}
+@media (min-width: 720px) {
+  .blackline-template .brk-policy-list--plain .brk-policy-row {
+    grid-template-columns: 200px 1fr;
+    gap: var(--brk-space-2xl);
+  }
+}
+.blackline-template .brk-policy-title {
+  margin: 0;
+  font-family: var(--blackline-body);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--blackline-accent);
+}
+.blackline-template .brk-policy-text {
+  color: var(--blackline-fg);
+  line-height: 1.65;
+}
+.blackline-template .brk-policy-group-heading {
+  text-align: left;
+  font-family: var(--blackline-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--blackline-fg);
+}
 `

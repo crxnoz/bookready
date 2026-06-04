@@ -324,6 +324,147 @@ export const SECTIONS_CSS = `
   color: var(--brk-color-muted, inherit);
 }
 
+/* ── Gallery — captioned buckets of image tiles (Opaline base metrics) ── */
+.brk-gallery-group + .brk-gallery-group { margin-top: clamp(40px, 5vw, 64px); }
+.brk-gallery-group-heading {
+  margin: 0 0 22px;
+  text-align: center;
+  font-family: var(--brk-family-display, serif);
+  font-weight: 500;
+  font-size: clamp(24px, 3vw, 32px);
+  letter-spacing: 0.005em;
+  color: var(--brk-color-text, inherit);
+}
+.brk-gallery-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+.brk-gallery-item {
+  margin: 0;
+  overflow: hidden;
+  border-radius: 3px;
+  border: 1px solid var(--brk-color-rule, rgba(0,0,0,0.12));
+  background: var(--brk-color-surface, #fff);
+  aspect-ratio: 4/5;
+}
+.brk-gallery-item img { width: 100%; height: 100%; object-fit: cover; }
+@media (min-width: 641px) { .brk-gallery-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1025px) { .brk-gallery-grid { grid-template-columns: repeat(3, 1fr); gap: 22px; } }
+/* Strips variant — full-width rows regardless of breakpoint. */
+.brk-gallery-grid--strips { grid-template-columns: 1fr; gap: 22px; }
+.brk-gallery-grid--strips .brk-gallery-item { aspect-ratio: 16/9; }
+
+/* ── Before & After — center-separated diptych (Opaline base metrics) ── */
+.brk-ba-group + .brk-ba-group { margin-top: clamp(48px, 6vw, 72px); }
+.brk-ba-group-heading {
+  margin: 0 0 28px;
+  text-align: center;
+  font-family: var(--brk-family-display, serif);
+  font-weight: 500;
+  font-size: clamp(24px, 3vw, 32px);
+  letter-spacing: 0.005em;
+  color: var(--brk-color-text, inherit);
+}
+.brk-ba-stack { display: flex; flex-direction: column; gap: 56px; max-width: 920px; margin: 0 auto; }
+.brk-ba { margin: 0; }
+.brk-ba-pair {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 18px;
+}
+.brk-ba-pane { margin: 0; position: relative; }
+.brk-ba-pane img {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid var(--brk-color-rule, rgba(0,0,0,0.12));
+}
+.brk-ba-label {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1;
+  padding: 5px 12px;
+  background: var(--brk-color-surface, rgba(255,255,255,0.86));
+  border: 1px solid var(--brk-color-rule, rgba(0,0,0,0.12));
+  border-radius: 999px;
+  font-family: var(--brk-family-body, sans-serif);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--brk-color-text, inherit);
+}
+.brk-ba-sep { color: var(--brk-color-accent, currentColor); font-size: 10px; align-self: center; }
+.brk-ba-caption {
+  margin: 18px 0 0;
+  text-align: center;
+  font-family: var(--brk-family-display, serif);
+  font-style: italic;
+  font-size: 18px;
+  color: var(--brk-color-muted, inherit);
+}
+@media (max-width: 640px) {
+  .brk-ba-pair { grid-template-columns: 1fr; }
+  .brk-ba-sep { display: none; }
+}
+
+/* ── Policies — hairline-divided ledger, no boxes (Opaline base metrics) ── */
+.brk-policy-group + .brk-policy-group,
+.brk-policy-list + .brk-policy-group { margin-top: clamp(36px, 4.5vw, 56px); }
+.brk-policy-group-heading {
+  margin: 0 0 6px;
+  text-align: center;
+  font-family: var(--brk-family-display, serif);
+  font-weight: 500;
+  font-size: clamp(22px, 2.6vw, 28px);
+  letter-spacing: 0.005em;
+  color: var(--brk-color-text, inherit);
+}
+.brk-policy-list {
+  list-style: none;
+  margin: 0 auto;
+  padding: 0;
+  max-width: 720px;
+  border-top: 1px solid var(--brk-color-rule, rgba(0,0,0,0.12));
+}
+.brk-policy-row {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 18px;
+  padding: 30px 0;
+  border-bottom: 1px solid var(--brk-color-rule, rgba(0,0,0,0.12));
+  align-items: start;
+}
+.brk-policy-list--plain .brk-policy-row { grid-template-columns: 1fr; }
+.brk-policy-mark {
+  color: var(--brk-color-accent, currentColor);
+  font-family: var(--brk-family-body, sans-serif);
+  font-size: 13px;
+  line-height: 2;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.brk-policy-title {
+  margin: 0 0 10px;
+  font-family: var(--brk-family-display, serif);
+  font-weight: 500;
+  font-size: 26px;
+  letter-spacing: 0.005em;
+  color: var(--brk-color-text, inherit);
+}
+.brk-policy-text {
+  margin: 0;
+  font-family: var(--brk-family-body, sans-serif);
+  font-size: 15px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  color: var(--brk-color-muted, inherit);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .brk-faq summary::after,
   .brk-footer-book,

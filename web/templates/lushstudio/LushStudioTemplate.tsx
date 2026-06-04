@@ -109,7 +109,7 @@ import {
   CustomerAccountWidget as LushCustomerAccountWidget,
   PLATFORM_BOOKING_CSS as LUSH_CSS,
 } from '@bkrdy/platform/booking'
-import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, InstructionsSection, SECTIONS_CSS } from '@bkrdy/platform/sections'
+import { FaqSection, ReviewsSection, ThanksSection, SiteFooter, InstructionsSection, GallerySection, BeforeAfterSection, PolicySection, SECTIONS_CSS } from '@bkrdy/platform/sections'
 import { tokensToCss } from '@bkrdy/platform'
 import type { PublicSite, Service } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
@@ -621,25 +621,38 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
             </div>
           </div>
 
-          {/* ── Gallery ── */}
+          {/* ── Gallery ── shared platform section. Lush skin
+              (LUSH_SECTIONS_SKIN) restores the tilted white-framed
+              polaroid tiles + Cookie group headings. */}
           {enabledByTab.gallery && (
             <div className={`lush-tab-panel${active === 'gallery' ? ' is-active' : ''}`}>
-              <GalleryPanel
-                items={site.gallery ?? []}
-                groups={site.gallery_groups ?? []}
-                displayName={displayName}
+              <GallerySection
+                items={site.gallery}
+                groups={site.gallery_groups}
+                heading="Recent work"
                 eyebrow={tabLabelById.gallery}
+                displayName={displayName}
+                variant="grid"
+                emptyText="A gallery of recent work will appear here."
+                ariaLabel={tabLabelById.gallery ?? 'Gallery'}
               />
             </div>
           )}
 
-          {/* ── Results ── */}
+          {/* ── Results ── shared platform section. Lush skin restyles
+              the diptych with a sage ✦ separator, serif-italic
+              Before/After labels + script caption. */}
           {enabledByTab.results && (
             <div className={`lush-tab-panel${active === 'results' ? ' is-active' : ''}`}>
-              <ResultsPanel
-                items={site.results ?? site.before_after ?? []}
-                groups={site.results_groups ?? site.before_after_groups ?? []}
+              <BeforeAfterSection
+                items={site.results ?? site.before_after}
+                groups={site.results_groups ?? site.before_after_groups}
+                heading="Before & after"
                 eyebrow={tabLabelById.results}
+                separator="✦"
+                labels
+                emptyText="Before-and-after results will be shown here."
+                ariaLabel={tabLabelById.results ?? 'Results'}
               />
             </div>
           )}
@@ -655,12 +668,58 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
             </div>
           )}
 
-          {/* ── Policy ── */}
-          {enabledByTab.policies && (
-            <div className={`lush-tab-panel${active === 'policies' ? ' is-active' : ''}`}>
-              <PoliciesPanel policies={policies} eyebrow={tabLabelById.policies} />
-            </div>
-          )}
+          {/* ── Policy ── shared platform section. Lush skin restores
+              the ✦-marked divided list with serif titles. When the
+              tenant has set no named policies, Lush falls back to a
+              set of sensible defaults so the tab never reads empty. */}
+          {enabledByTab.policies && (() => {
+            // Lush's named policy keys → [field, label]. Same set the old
+            // PoliciesPanel used.
+            const policyKeys: [string, string][] = [
+              ['cancellation_policy', 'Cancellation'],
+              ['late_policy',         'Late Arrival'],
+              ['no_show_policy',      'No-Show'],
+              ['deposit_policy',      'Deposit'],
+              ['reschedule_policy',   'Rescheduling'],
+              ['extra_notes',         'Additional Notes'],
+            ]
+            // Lush's default house rules — shown when the tenant has set
+            // none of the named policies (mirrors the old FALLBACK_POLICIES).
+            const fallbackPolicies: { label: string; body: string }[] = [
+              { label: 'Cancellation', body: 'We require 24 hours notice for cancellations. Cancellations made with less than 24 hours notice may be subject to a fee.' },
+              { label: 'Late Arrival',  body: 'Please arrive on time. Clients arriving more than 10 minutes late may need to be rescheduled to protect other clients\' appointments.' },
+              { label: 'No-Show',      body: 'No-shows may be charged a no-show fee. Repeated no-shows may result in prepayment requirements for future bookings.' },
+            ]
+            // Build label/body rows from Lush's named policy keys. The
+            // shared PolicySection drops empty-body rows, so we don't
+            // pre-filter here. When nothing is set, fall back to the
+            // default house rules above.
+            const pol = (policies ?? null) as Record<string, string | null> | null
+            const namedRows = policyKeys.map(([key, label]) => ({ label, body: pol?.[key] ?? null }))
+            const hasAnyNamed = namedRows.some(r => (r.body ?? '').trim())
+            const rows = hasAnyNamed ? namedRows : fallbackPolicies
+            const customGroups = ((policies?.custom_groups ?? []) as any[]).map(g => ({
+              heading: g.heading,
+              items: (Array.isArray(g.items) ? g.items : []).map((it: any) => ({
+                title: it.title,
+                content: it.content ?? it.body,
+              })),
+            }))
+            return (
+              <div className={`lush-tab-panel${active === 'policies' ? ' is-active' : ''}`}>
+                <PolicySection
+                  rows={rows}
+                  customGroups={customGroups}
+                  heading="House rules"
+                  eyebrow={tabLabelById.policies}
+                  marker="glyph"
+                  markGlyph="✦"
+                  emptyText="Booking policies will appear here."
+                  ariaLabel={tabLabelById.policies ?? 'Policies'}
+                />
+              </div>
+            )
+          })()}
 
           {/* ── Advice (aftercare) ── shared platform section. Lush skin
               (LUSH_SECTIONS_SKIN) restores the editorial un-numbered
@@ -789,280 +848,6 @@ function AnnounceMsgs({
   )
 }
 
-// ── Gallery panel ─────────────────────────────────────────────────────────────
-
-const GALLERY_GROUPS = [
-  {
-    label: 'Fresh Work',
-    images: [
-      { label: 'Fresh Fade' },
-      { label: 'Beard Detail' },
-      { label: 'Clean Lineup' },
-      { label: 'Chair View' },
-    ],
-  },
-  {
-    label: 'The Shop',
-    images: [
-      { label: 'Shop Floor' },
-      { label: 'Shop Detail' },
-      { label: 'Tools' },
-      { label: 'Vibe' },
-    ],
-  },
-]
-
-interface PublicGalleryItem {
-  id: number
-  title: string | null
-  caption: string | null
-  alt_text: string | null
-  image_url: string
-  category: string | null
-  sort_order: number
-  group_id?: number | null
-}
-
-interface PublicGroup {
-  id: number
-  heading: string
-  sort_order: number
-}
-
-function GalleryPanel({
-  items,
-  groups,
-  displayName,
-  eyebrow,
-}: {
-  items: PublicGalleryItem[]
-  groups: PublicGroup[]
-  displayName: string
-  eyebrow?: string
-}) {
-  // No items at all → polished placeholders (lifted from the original layout)
-  if (items.length === 0 && groups.length === 0) {
-    return (
-      <section className="lush-gallery-section">
-        <header className="lush-tab-header">
-          <p className="lush-eyebrow">{eyebrow ?? 'Gallery'}</p>
-          <h2 className="lush-section-title">Recent work</h2>
-        </header>
-        {GALLERY_GROUPS.map(g => (
-          <div key={g.label} className="lush-gallery-group">
-            <h2>{g.label}</h2>
-            <div className="lush-gallery-grid">
-              {g.images.map((img, i) => (
-                <div key={i} className="lush-gallery-img lush-gallery-img--square">
-                  <div className="lush-gallery-placeholder">
-                    <span>{img.label}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </section>
-    )
-  }
-
-  // Group items by group_id. Owner-defined groups own a heading; items
-  // without a group_id fall through to a final "More" bucket so legacy data
-  // (created before the groups feature shipped) still renders.
-  const byGroup = new Map<number, PublicGalleryItem[]>()
-  const ungrouped: PublicGalleryItem[] = []
-  for (const it of items) {
-    const gid = it.group_id ?? null
-    if (gid === null) { ungrouped.push(it); continue }
-    if (!byGroup.has(gid)) byGroup.set(gid, [])
-    byGroup.get(gid)!.push(it)
-  }
-
-  const sortedGroups = [...groups].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
-
-  return (
-    <section className="lush-gallery-section">
-      <header className="lush-tab-header">
-        <p className="lush-eyebrow">{eyebrow ?? 'Gallery'}</p>
-        <h2 className="lush-section-title">Recent work</h2>
-      </header>
-      {sortedGroups.map(g => {
-        const list = (byGroup.get(g.id) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
-        if (list.length === 0) return null
-        return (
-          <div key={g.id} className="lush-gallery-group">
-            <h2>{g.heading}</h2>
-            <div className="lush-gallery-grid">
-              {list.map(item => (
-                <div key={item.id} className="lush-gallery-img lush-gallery-img--square">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={item.image_url}
-                    alt={item.alt_text ?? item.title ?? displayName}
-                    loading="lazy"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      })}
-      {ungrouped.length > 0 && (
-        <div className="lush-gallery-group">
-          <h2>{sortedGroups.length > 0 ? 'More' : 'Gallery'}</h2>
-          <div className="lush-gallery-grid">
-            {ungrouped.slice().sort((a, b) => a.sort_order - b.sort_order || a.id - b.id).map(item => (
-              <div key={item.id} className="lush-gallery-img lush-gallery-img--square">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={item.image_url}
-                  alt={item.alt_text ?? item.title ?? displayName}
-                  loading="lazy"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </section>
-  )
-}
-
-// ── Results (before/after) panel ──────────────────────────────────────────────
-
-const BA_PAIRS = [
-  { label: 'Fade' },
-  { label: 'Lineup' },
-  { label: 'Beard' },
-]
-
-interface PublicBeforeAfterItem {
-  id: number
-  title: string | null
-  caption: string | null
-  before_image_url: string
-  after_image_url: string
-  before_alt_text: string | null
-  after_alt_text: string | null
-  category: string | null
-  sort_order: number
-  group_id?: number | null
-}
-
-function ResultsPanel({
-  items, groups, eyebrow,
-}: {
-  items: PublicBeforeAfterItem[]
-  groups: PublicGroup[]
-  eyebrow?: string
-}) {
-  // Real items take precedence over placeholders
-  if (items.length > 0) {
-    // Bucket by group, mirroring GalleryPanel. Legacy items (no group_id)
-    // fall into a final unlabeled bucket so nothing disappears on upgrade.
-    const byGroup = new Map<number, PublicBeforeAfterItem[]>()
-    const ungrouped: PublicBeforeAfterItem[] = []
-    for (const it of items) {
-      const gid = it.group_id ?? null
-      if (gid === null) { ungrouped.push(it); continue }
-      if (!byGroup.has(gid)) byGroup.set(gid, [])
-      byGroup.get(gid)!.push(it)
-    }
-    const sortedGroups = [...groups].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
-    const buckets: { key: string; heading: string | null; list: PublicBeforeAfterItem[] }[] = []
-    for (const g of sortedGroups) {
-      const list = (byGroup.get(g.id) ?? []).slice().sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
-      if (list.length > 0) buckets.push({ key: `g-${g.id}`, heading: g.heading, list })
-    }
-    if (ungrouped.length > 0) {
-      const sortedUngrouped = ungrouped.slice().sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)
-      buckets.push({ key: 'g-none', heading: sortedGroups.length > 0 ? 'More' : null, list: sortedUngrouped })
-    }
-
-    // Lush Studio's Before/After is an editorial DIPTYCH layout — both
-    // images visible side-by-side with a sage ✦ separator. We dropped
-    // FadeRoom's "tap to reveal" gimmick — spas don't sell suspense,
-    // they sell competence. Big DM Serif numerals (01/02) run down the
-    // left of each pair so the section reads like a portfolio spread.
-    let runningIndex = 0
-    return (
-      <section className="lush-before-after-section">
-        <header className="lush-tab-header">
-          <p className="lush-eyebrow">{eyebrow ?? 'Results'}</p>
-          <h2 className="lush-section-title">Before &amp; after</h2>
-        </header>
-        {buckets.map(b => (
-          <div key={b.key} className="lush-ba-bucket">
-            {b.heading && buckets.length > 1 && (
-              <h3 className="lush-ba-bucket-heading">{b.heading}</h3>
-            )}
-            <div className="lush-ba-stack">
-              {b.list.map((item) => {
-                const i = runningIndex++
-                return (
-                  <article key={item.id} className="lush-ba-diptych">
-                    <div className="lush-ba-pair">
-                      <figure className="lush-ba-pane lush-ba-pane--before">
-                        <p className="lush-ba-label">Before</p>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={item.before_image_url}
-                          alt={item.before_alt_text ?? `${b.heading ?? 'Result'} — before`}
-                          loading="lazy"
-                        />
-                      </figure>
-                      <span className="lush-ba-sep" aria-hidden="true">&#x2726;&#xFE0E;</span>
-                      <figure className="lush-ba-pane lush-ba-pane--after">
-                        <p className="lush-ba-label">After</p>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={item.after_image_url}
-                          alt={item.after_alt_text ?? `${b.heading ?? 'Result'} — after`}
-                          loading="lazy"
-                        />
-                      </figure>
-                    </div>
-                    {item.caption && (
-                      <p className="lush-ba-caption">{item.caption}</p>
-                    )}
-                  </article>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-      </section>
-    )
-  }
-
-  // Placeholder fallback when no real items exist (same diptych layout)
-  return (
-    <section className="lush-before-after-section">
-      <header className="lush-tab-header">
-        <p className="lush-eyebrow">{eyebrow ?? 'Results'}</p>
-        <h2 className="lush-section-title">Before &amp; after</h2>
-      </header>
-      <div className="lush-ba-stack">
-        {BA_PAIRS.map((pair, i) => (
-          <article key={i} className="lush-ba-diptych">
-            <div className="lush-ba-pair">
-              <figure className="lush-ba-pane lush-ba-pane--before">
-                <p className="lush-ba-label">Before</p>
-                <div className="lush-ba-placeholder" />
-              </figure>
-              <span className="lush-ba-sep" aria-hidden="true">&#x2726;&#xFE0E;</span>
-              <figure className="lush-ba-pane lush-ba-pane--after">
-                <p className="lush-ba-label">After</p>
-                <div className="lush-ba-placeholder" />
-              </figure>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  )
-}
-
 // ── About panel ───────────────────────────────────────────────────────────────
 
 interface PublicAboutSettings {
@@ -1165,95 +950,6 @@ function AboutPanel({
           <em>{signatureWord(displayName)}</em>
         </p>
       </div>
-    </section>
-  )
-}
-
-// ── Policies panel ────────────────────────────────────────────────────────────
-
-const POLICY_KEYS: [string, string][] = [
-  ['cancellation_policy', 'Cancellation'],
-  ['late_policy',         'Late Arrival'],
-  ['no_show_policy',      'No-Show'],
-  ['deposit_policy',      'Deposit'],
-  ['reschedule_policy',   'Rescheduling'],
-  ['extra_notes',         'Additional Notes'],
-]
-
-const FALLBACK_POLICIES = [
-  { label: 'Cancellation', text: 'We require 24 hours notice for cancellations. Cancellations made with less than 24 hours notice may be subject to a fee.' },
-  { label: 'Late Arrival',  text: 'Please arrive on time. Clients arriving more than 10 minutes late may need to be rescheduled to protect other clients\' appointments.' },
-  { label: 'No-Show',      text: 'No-shows may be charged a no-show fee. Repeated no-shows may result in prepayment requirements for future bookings.' },
-]
-
-function PoliciesPanel({ policies, eyebrow }: { policies: PublicSite['policies']; eyebrow?: string }) {
-  const activeReal = policies
-    ? POLICY_KEYS.filter(([key]) => (policies as unknown as Record<string, string | null>)[key])
-    : []
-
-  // Owner-defined extra sections — rendered after the 6 named ones, each as
-  // its own card per item so a single "Aftercare" group can list several
-  // bullet-style sub-policies without leaving Markdown in the body text.
-  const customGroups = (policies?.custom_groups ?? [])
-    .filter(g => (g.heading?.trim().length ?? 0) > 0)
-    .map(g => ({
-      heading: g.heading.trim(),
-      items: (g.items ?? []).filter(it => (it.title?.trim().length ?? 0) > 0),
-    }))
-    .filter(g => g.items.length > 0)
-
-  // House Rules — Lush Studio's Policies tab as an editorial brand-book
-  // numbered list. Big DM Serif numerals on the left, Cookie script kicker
-  // ("Rule One", "Rule Two"...), hairline sage dividers between. Replaces
-  // the previous box-grid which read as generic-SaaS rather than spa.
-  const allPolicies: { label: string; body: string }[] = activeReal.length > 0
-    ? activeReal.map(([key, label]) => ({
-        label,
-        body: ((policies as unknown as Record<string, string | null>)[key] ?? '').trim(),
-      }))
-    : FALLBACK_POLICIES.map(fp => ({ label: fp.label, body: fp.text }))
-
-  return (
-    <section className="lush-policy-section">
-      <header className="lush-tab-header">
-        <p className="lush-eyebrow">{eyebrow ?? 'Policies'}</p>
-        <h2 className="lush-section-title">House rules</h2>
-      </header>
-
-      {/* Editorial divided list — no numerals. Each row carries a ✦
-          sparkle marker on the left (Lush's signature glyph), DM Serif
-          title, Roboto body, and sage hairline rule above. Reads as a
-          quiet brand-book rather than a numbered grid. */}
-      <ul className="lush-policy-list" aria-label="Booking policies">
-        {allPolicies.map((p, i) => (
-          <li key={i} className="lush-policy-row">
-            <span className="lush-policy-mark" aria-hidden="true">&#x2726;&#xFE0E;</span>
-            <div className="lush-policy-body">
-              <h3 className="lush-policy-title">{p.label}</h3>
-              <p className="lush-policy-text" style={{ whiteSpace: 'pre-wrap' }}>{p.body}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      {customGroups.map((g, gi) => (
-        <div key={`cg-${gi}`} className="lush-policy-custom-group">
-          <h3 className="lush-policy-custom-heading">{g.heading}</h3>
-          <ul className="lush-policy-list">
-            {g.items.map((it, ii) => (
-              <li key={ii} className="lush-policy-row">
-                <span className="lush-policy-mark" aria-hidden="true">&#x2726;&#xFE0E;</span>
-                <div className="lush-policy-body">
-                  <h3 className="lush-policy-title">{it.title.trim()}</h3>
-                  {it.content?.trim() && (
-                    <p className="lush-policy-text" style={{ whiteSpace: 'pre-wrap' }}>{it.content.trim()}</p>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
     </section>
   )
 }
@@ -1648,6 +1344,252 @@ const LUSH_SECTIONS_SKIN = `
   font-weight: 400;
   line-height: 1.55;
   color: var(--lush-muted);
+}
+
+/* ── Gallery skin — casually-placed POLAROIDS. Each tile is a white
+   border-frame with a thicker bottom strip + soft drop shadow, tilted
+   by nth-child so the wall of prints reads hand-arranged. Hover
+   straightens + lifts. The aspect-ratio lives on the inner <img> (1/1)
+   so the white frame hugs the photo. Group headings are Cookie script
+   flanked by sage hairlines. Matches the old .lush-gallery* block. ── */
+.lush-template .brk-gallery-section { max-width: 1080px; }
+.lush-template .brk-gallery-group { width: min(100%, 396px); margin: 0 auto; }
+.lush-template .brk-gallery-group + .brk-gallery-group { margin-top: 30px; }
+.lush-template .brk-gallery-group-heading {
+  margin: 0 0 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  justify-content: center;
+  font-family: var(--lush-script);
+  font-weight: 400;
+  font-size: 42px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--lush-text);
+}
+.lush-template .brk-gallery-group-heading::before,
+.lush-template .brk-gallery-group-heading::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  max-width: 60px;
+  background: var(--lush-dark-border);
+}
+.lush-template .brk-gallery-grid {
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-flow: dense;
+  gap: 28px 18px;
+  padding: 10px 4px;
+}
+.lush-template .brk-gallery-item {
+  position: relative;
+  background: #FFFFFF;
+  padding: 8px 8px 30px;
+  border: none;
+  border-radius: 2px;
+  box-shadow: 0 6px 18px rgba(14, 17, 17, 0.12);
+  overflow: visible;
+  aspect-ratio: auto;
+  transition: transform .35s ease, box-shadow .35s ease;
+}
+.lush-template .brk-gallery-item:nth-child(odd)  { transform: rotate(-2.5deg); }
+.lush-template .brk-gallery-item:nth-child(even) { transform: rotate(2deg); }
+.lush-template .brk-gallery-item:nth-child(3n)   { transform: rotate(-1deg); }
+.lush-template .brk-gallery-item:nth-child(5n)   { transform: rotate(1.5deg); }
+.lush-template .brk-gallery-item:hover {
+  transform: rotate(0);
+  box-shadow: 0 10px 24px rgba(14, 17, 17, 0.18);
+  z-index: 2;
+}
+.lush-template .brk-gallery-item img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1/1;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── Before & After skin — editorial DIPTYCH. Side-by-side panes with a
+   serif-italic Before/After label ABOVE each photo, a sage ✦ between,
+   and an optional Cookie-script caption below. The shared base floats
+   the label as an absolute pill — Lush lifts it out into a static
+   centered caption. Matches the old .lush-ba* block. ── */
+.lush-template .brk-ba-section { max-width: 1080px; }
+.lush-template .brk-ba-stack { display: grid; gap: 36px; max-width: none; padding: 14px 0 0; }
+.lush-template .brk-ba-group + .brk-ba-group { margin-top: 48px; }
+.lush-template .brk-ba-group-heading {
+  margin: 18px 0 4px;
+  font-family: var(--lush-script);
+  font-weight: 400;
+  font-size: 42px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--lush-text);
+}
+.lush-template .brk-ba {
+  width: min(100%, 360px);
+  margin: 0 auto;
+  padding: 6px 0 0;
+}
+.lush-template .brk-ba-pair {
+  grid-template-columns: 1fr auto 1fr;
+  gap: 8px;
+  align-items: stretch;
+}
+/* Lift the label out of the absolute pill into a static serif-italic
+   caption stacked above the photo. */
+.lush-template .brk-ba-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lush-template .brk-ba-label {
+  position: static;
+  top: auto;
+  left: auto;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  text-align: center;
+  font-family: var(--lush-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 14px;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: none;
+  color: var(--lush-muted);
+}
+.lush-template .brk-ba-pane img {
+  aspect-ratio: 1/1;
+  border-radius: 0;
+  border: 1px solid var(--lush-dark-border);
+  background: #ECE7DD;
+}
+.lush-template .brk-ba-after img { border-color: var(--lush-pink); }
+.lush-template .brk-ba-sep {
+  align-self: center;
+  font-family: var(--lush-ui);
+  font-size: 18px;
+  line-height: 1;
+  color: var(--lush-pink);
+  padding: 0 2px;
+  /* drop past the label baseline so the ✦ sits between the photos */
+  margin-top: 18px;
+}
+.lush-template .brk-ba-caption {
+  margin: 14px 0 0;
+  font-family: var(--lush-script);
+  font-style: normal;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.1;
+  color: var(--lush-text);
+}
+
+/* ── Policy skin — ✦-marked divided brand-book list. Each row carries a
+   sage ✦ on the left (markGlyph), a DM Serif title + Roboto body, and a
+   sage hairline rule between. Custom-group subheadings are Cookie
+   script. Matches the old .lush-policy* block. ── */
+.lush-template .brk-policy-section { max-width: 720px; }
+.lush-template .brk-policy-list { border-top: 1px solid var(--lush-dark-border); }
+.lush-template .brk-policy-list--marked .brk-policy-row { grid-template-columns: 32px 1fr; gap: 18px; }
+.lush-template .brk-policy-row {
+  padding: 24px 4px 28px;
+  border-bottom: 1px solid var(--lush-dark-border);
+  align-items: flex-start;
+}
+.lush-template .brk-policy-mark {
+  color: var(--lush-pink);
+  font-family: var(--lush-ui);
+  font-size: 18px;
+  line-height: 1;
+  padding-top: 10px;
+  text-align: center;
+}
+.lush-template .brk-policy-title {
+  margin: 0 0 10px;
+  font-family: var(--lush-serif);
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--lush-text);
+}
+.lush-template .brk-policy-text {
+  margin: 0;
+  font-family: var(--lush-ui);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--lush-text);
+}
+.lush-template .brk-policy-group + .brk-policy-group,
+.lush-template .brk-policy-list + .brk-policy-group { margin-top: 48px; }
+.lush-template .brk-policy-group-heading {
+  margin: 0 0 18px;
+  font-family: var(--lush-script);
+  font-weight: 400;
+  font-size: 36px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--lush-text);
+}
+
+/* ── Femme decorations over the shared gallery/ba markup ──
+   Re-applies the .lush-femme flourishes that used to target the local
+   .lush-gallery / .lush-ba-pair markup: ✺ ornaments flanking gallery
+   group headings + tilted polaroid before/after panes. Scoped to
+   .lush-femme so the Velvet embed (only .lush-template) is unaffected. */
+.lush-femme .brk-gallery-group-heading::before { content: "\\2733"; flex: none; max-width: none; height: auto; background: none; margin-right: 10px; opacity: 0.75; font-family: serif; color: currentColor; }
+.lush-femme .brk-gallery-group-heading::after  { content: "\\2733"; flex: none; max-width: none; height: auto; background: none; margin-left: 10px;  opacity: 0.75; font-family: serif; color: currentColor; }
+.lush-femme .brk-ba-pair .brk-ba-pane img {
+  box-shadow:
+    0 12px 28px rgba(118, 75, 90, 0.18),
+    0 4px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* ── Desktop — wider columns + larger type for the shared section
+   markup (mirrors the old .lush-gallery/.lush-ba/.lush-policy desktop
+   rules that lived in lushBookingCss.ts media queries). ── */
+@media (min-width: 1025px) {
+  .lush-template .brk-gallery-section { max-width: 1180px; }
+  .lush-template .brk-gallery-group { width: min(100%, 1100px); }
+  .lush-template .brk-gallery-group + .brk-gallery-group { margin-top: 56px; }
+  .lush-template .brk-gallery-group-heading { font-size: 54px; margin: 0 0 34px; }
+  .lush-template .brk-gallery-grid { grid-template-columns: repeat(4, 1fr); gap: 34px 26px; }
+
+  .lush-template .brk-ba-section { max-width: 1080px; }
+  .lush-template .brk-ba-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px 48px; padding: 24px 0 0; }
+  .lush-template .brk-ba { width: 100%; max-width: 480px; }
+  .lush-template .brk-ba-label { font-size: 15px; }
+  .lush-template .brk-ba-caption { font-size: 24px; margin-top: 16px; }
+
+  .lush-template .brk-policy-section { max-width: 780px; }
+  .lush-template .brk-policy-list--marked .brk-policy-row { grid-template-columns: 40px 1fr; gap: 22px; }
+  .lush-template .brk-policy-row { padding: 30px 4px 34px; }
+  .lush-template .brk-policy-mark { font-size: 20px; }
+  .lush-template .brk-policy-title { font-size: 26px; margin-bottom: 12px; }
+  .lush-template .brk-policy-text { font-size: 15px; line-height: 1.65; }
+  .lush-template .brk-policy-group-heading { font-size: 42px; }
+}
+
+/* ── Tablet — mid columns + scale. ── */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .lush-template .brk-gallery-section { max-width: 900px; }
+  .lush-template .brk-gallery-group { width: min(100%, 760px); }
+  .lush-template .brk-gallery-group-heading { font-size: 46px; margin: 0 0 28px; }
+  .lush-template .brk-gallery-grid { grid-template-columns: repeat(3, 1fr); gap: 22px 18px; }
+
+  .lush-template .brk-ba-section { max-width: 760px; }
+  .lush-template .brk-ba-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px 28px; }
+  .lush-template .brk-ba { width: 100%; max-width: none; margin: 0; }
+
+  .lush-template .brk-policy-section { max-width: 680px; }
+  .lush-template .brk-policy-title { font-size: 24px; }
 }
 `
 
