@@ -47,11 +47,16 @@ function Inner() {
   const onTurnstileVerify = useCallback((t: string) => setTurnstileToken(t), [])
   const onTurnstileExpire = useCallback(() => setTurnstileToken(''), [])
   const [error, setError] = useState('')
+  // #159 — see /register page for the rationale. When the backend returns
+  // 422 with existing_role, swap out the flat error for a contextual
+  // "sign in instead" block pointing at the right surface.
+  const [conflict, setConflict] = useState<{ role: 'owner' | 'customer'; redirect: string } | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setConflict(null)
     if (password !== confirm) {
       setError('Passwords don’t match.')
       return
@@ -79,7 +84,13 @@ function Inner() {
       const next = returnTo ? `/account/verify-email?return_to=${encodeURIComponent(returnTo)}` : '/account/verify-email'
       router.push(next)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign-up failed.')
+      // #159 — branch on existing_role / redirect_url like the owner side.
+      const e = err as { existing_role?: 'owner' | 'customer'; redirect_url?: string; message?: string }
+      if (e?.existing_role && e.redirect_url) {
+        setConflict({ role: e.existing_role, redirect: e.redirect_url })
+      } else {
+        setError(err instanceof Error ? err.message : 'Sign-up failed.')
+      }
       // #161: Reset for next attempt (single-use tokens).
       setTurnstileToken('')
       turnstileRef.current?.reset()
@@ -111,6 +122,27 @@ function Inner() {
           Sign up once to see your bookings from every BookReady business in one place.
         </p>
       </div>
+
+      {/* #159 — same conflict banner as /register. We point them at the
+          right surface: existing customer → /account/login; existing
+          owner → /login (owner sign-in carries access to customer side
+          via the role picker). */}
+      {conflict && (
+        <div className="mb-4 px-4 py-3 bg-cream border border-[rgba(18,18,18,0.15)] text-xs text-near-black">
+          <p className="font-bold mb-1">An account with this email already exists.</p>
+          <p className="text-muted-text mb-2">
+            {conflict.role === 'customer'
+              ? 'Sign in to your existing customer account to continue.'
+              : 'You already have a business account on BookReady. Sign in there — you can manage your bookings from the same login.'}
+          </p>
+          <Link
+            href={conflict.redirect}
+            className="inline-block text-[11px] font-bold tracking-[0.08em] uppercase underline underline-offset-2 hover:opacity-75"
+          >
+            Sign in instead →
+          </Link>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-xs text-red-700">

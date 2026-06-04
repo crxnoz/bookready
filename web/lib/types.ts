@@ -1257,6 +1257,11 @@ export interface AuthResponse {
   tenant_id?: string  // present on register, absent on login (use user.tenant_id instead)
   domain?: string
   user: AuthUser
+  /** #159 — roles available on this identity. Single-role logins
+   *  contain just the current role; multi-role logins trigger the
+   *  RolePicker overlay before redirect. Optional for backward compat. */
+  available_roles?: ('owner' | 'customer')[]
+  current_role?: 'owner' | 'customer'
 }
 
 // ── Website / Template system ────────────────────────────────────────────────

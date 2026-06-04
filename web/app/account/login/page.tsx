@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { customerLogin } from '@/lib/customerApi'
 import { setCustomerLoggedIn, safeReturnTo } from '@/lib/customerAuth'
 import AuthShell from '@/components/auth/AuthShell'
+import RolePicker from '@/components/auth/RolePicker'
 
 /**
  * Phase 4 — customer login page at /account/login.
@@ -35,6 +36,10 @@ function Inner() {
   const [password, setPassword] = useState('')
   // #158 — Remember me, customer side. Same semantics as owner login.
   const [remember, setRemember] = useState(true)
+  // #159 — RolePicker overlay state. Multi-role customer login → show
+  // picker. Customer cookie is already set; picker calls switch-role
+  // if user wants to go to the owner dashboard.
+  const [pickerRoles, setPickerRoles] = useState<('owner' | 'customer')[] | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -43,8 +48,12 @@ function Inner() {
     setError('')
     setLoading(true)
     try {
-      await customerLogin({ email, password, remember })
+      const res = await customerLogin({ email, password, remember })
       setCustomerLoggedIn()
+      if (res.available_roles && res.available_roles.length > 1) {
+        setPickerRoles(res.available_roles)
+        return
+      }
       if (returnTo) {
         // Cross-origin redirect — router.push won't work, hard-nav.
         window.location.href = returnTo
@@ -59,6 +68,10 @@ function Inner() {
   }
 
   return (
+    <>
+      {pickerRoles && (
+        <RolePicker availableRoles={pickerRoles} currentRole="customer" />
+      )}
     <AuthShell>
       <div className="grid grid-cols-2 border border-[rgba(18,18,18,0.12)] mb-7 overflow-hidden">
         <span className="text-center py-2.5 text-[11px] font-bold tracking-[0.08em] uppercase bg-near-black text-white">
@@ -154,6 +167,7 @@ function Inner() {
         <a href="mailto:hello@mybookready.com" className="hover:text-near-black">Help</a>
       </div>
     </AuthShell>
+    </>
   )
 }
 

@@ -21,11 +21,21 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }))
-    const e: Error & { status?: number; code?: string } = new Error(
-      (err && err.message) || 'Request failed',
-    )
+    // #159 — preserve extra body fields (existing_role, redirect_url,
+    // try_endpoint, code) so register/login pages can render context-
+    // aware UX on conflicts.
+    const e: Error & {
+      status?:        number
+      code?:          string
+      existing_role?: 'owner' | 'customer'
+      redirect_url?:  string
+      try_endpoint?:  string
+    } = new Error((err && err.message) || 'Request failed')
     e.status = res.status
-    if (err && typeof err.code === 'string') e.code = err.code
+    if (err && typeof err.code          === 'string') e.code          = err.code
+    if (err && typeof err.existing_role === 'string') e.existing_role = err.existing_role
+    if (err && typeof err.redirect_url  === 'string') e.redirect_url  = err.redirect_url
+    if (err && typeof err.try_endpoint  === 'string') e.try_endpoint  = err.try_endpoint
     throw e
   }
   if (res.status === 204) return undefined as unknown as T
@@ -87,7 +97,12 @@ export async function customerLogin(payload: {
    * accept the persistent default.
    */
   remember?: boolean
-}): Promise<{ user: CustomerProfile }> {
+}): Promise<{
+  user: CustomerProfile
+  /** #159 — multi-role indicator. Single role logins omit. */
+  available_roles?: ('owner' | 'customer')[]
+  current_role?: 'owner' | 'customer'
+}> {
   return request<{ user: CustomerProfile }>('/auth/login', {
     method: 'POST',
     body:   JSON.stringify(payload),

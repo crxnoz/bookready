@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { login } from '@/lib/api'
 import { setToken, setTenantId } from '@/lib/auth'
 import AuthShell from '@/components/auth/AuthShell'
+import RolePicker from '@/components/auth/RolePicker'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
 const GOOGLE_REDIRECT_URL = `${API_BASE}/auth/google/redirect`
@@ -27,6 +28,11 @@ function LoginInner() {
   // existing behavior (persistent cookie). Unchecking gives a session
   // cookie that evaporates on browser close.
   const [remember, setRemember] = useState(true)
+  // #159 — when login response indicates the identity has both roles,
+  // stash them here and the RolePicker overlay renders. Backend already
+  // set the owner cookie on this endpoint; picker calls switch-role
+  // if the user wants the other side.
+  const [pickerRoles, setPickerRoles] = useState<('owner' | 'customer')[] | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -45,7 +51,15 @@ function LoginInner() {
       setToken()
       const tenantId = res.tenant_id ?? res.user.tenant_id
       setTenantId(tenantId)
-      router.push('/editor/website?tab=business')
+      // #159 — multi-role identity → show the role picker. Cookie was
+      // already set for owner on this endpoint; picker calls switch-role
+      // if user wants customer instead. Single-role goes straight to the
+      // editor as always.
+      if (res.available_roles && res.available_roles.length > 1) {
+        setPickerRoles(res.available_roles)
+        return
+      }
+      router.push('/editor')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed.')
     } finally {
@@ -54,6 +68,10 @@ function LoginInner() {
   }
 
   return (
+    <>
+      {pickerRoles && (
+        <RolePicker availableRoles={pickerRoles} currentRole="owner" />
+      )}
     <AuthShell>
       {/* Mode switch */}
       <div className="grid grid-cols-2 border border-[rgba(18,18,18,0.12)] mb-7 overflow-hidden">
@@ -173,6 +191,7 @@ function LoginInner() {
         <a href="mailto:hello@mybookready.com" className="hover:text-near-black">Help</a>
       </div>
     </AuthShell>
+    </>
   )
 }
 

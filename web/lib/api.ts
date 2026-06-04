@@ -104,7 +104,22 @@ async function request<T>(
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }))
-    throw new Error(err.message ?? 'Request failed')
+    // #159 — preserve extra body fields (existing_role, redirect_url,
+    // try_endpoint, code) so register/login pages can render context-
+    // aware UX on conflicts instead of just a flat message string.
+    const e: Error & {
+      status?:        number
+      code?:          string
+      existing_role?: 'owner' | 'customer'
+      redirect_url?:  string
+      try_endpoint?:  string
+    } = new Error(err?.message ?? 'Request failed')
+    e.status = res.status
+    if (err && typeof err.code          === 'string') e.code          = err.code
+    if (err && typeof err.existing_role === 'string') e.existing_role = err.existing_role
+    if (err && typeof err.redirect_url  === 'string') e.redirect_url  = err.redirect_url
+    if (err && typeof err.try_endpoint  === 'string') e.try_endpoint  = err.try_endpoint
+    throw e
   }
   return res.json() as Promise<T>
 }
@@ -139,6 +154,22 @@ export async function completeGoogleSignup(payload: {
   return request<AuthResponse>('/auth/google/complete-signup', {
     method: 'POST',
     body: JSON.stringify(payload),
+  })
+}
+
+/**
+ * #159 — Swap to the sibling role on the same identity. Revokes the
+ * current session + mints a new one + sets the matching httpOnly
+ * cookie. Returns the dashboard URL to navigate to.
+ */
+export async function switchRole(to: 'owner' | 'customer'): Promise<{
+  current_role: 'owner' | 'customer'
+  redirect_url: string
+  user?: AuthUser
+}> {
+  return request('/auth/switch-role', {
+    method: 'POST',
+    body: JSON.stringify({ to }),
   })
 }
 

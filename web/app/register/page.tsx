@@ -37,6 +37,10 @@ function RegisterForm() {
   const onTurnstileVerify = useCallback((t: string) => setTurnstileToken(t), [])
   const onTurnstileExpire = useCallback(() => setTurnstileToken(''), [])
   const [error, setError] = useState('')
+  // #159 — when the backend 422s with existing_role, we render a richer
+  // "you already have an account" block in place of the flat error toast,
+  // with a direct sign-in link pointed at the right surface.
+  const [conflict, setConflict] = useState<{ role: 'owner' | 'customer'; redirect: string } | null>(null)
   const [loading, setLoading] = useState(false)
 
   // Surface any error bounced back from the Google OAuth bridge.
@@ -82,6 +86,7 @@ function RegisterForm() {
       return
     }
     setError('')
+    setConflict(null)
     setLoading(true)
     try {
       const res = await register({
@@ -127,7 +132,16 @@ function RegisterForm() {
       // /auth/google/complete instead of this handler).
       router.push('/verify-email')
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Registration failed.')
+      // #159 — backend 422s with existing_role + redirect_url when the
+      // email is already attached to an identity. Branch on that instead
+      // of dropping a flat string in the error toast — the user needs
+      // to be told which sign-in surface to use.
+      const e = err as { existing_role?: 'owner' | 'customer'; redirect_url?: string; message?: string }
+      if (e?.existing_role && e.redirect_url) {
+        setConflict({ role: e.existing_role, redirect: e.redirect_url })
+      } else {
+        setError(err instanceof Error ? err.message : 'Registration failed.')
+      }
       // #161: Cloudflare tokens are single-use — a failed POST consumed
       // ours. Wipe + re-render so the next attempt mints a fresh one.
       setTurnstileToken('')
@@ -167,6 +181,29 @@ function RegisterForm() {
           marketing-site CTAs forwarded plan/billing/template/sms. Small
           and unobtrusive — they already chose, this is just reassurance. */}
       <IntentSummary searchParams={searchParams} />
+
+      {/* #159 — Account-already-exists banner. Overrides the generic
+          error toast because the right UX is "sign in instead" not
+          "try again with the same email". Two branches:
+          - existing owner identity → send them to /login
+          - customer-only identity wants an owner account → push to
+            /login (they sign in customer-first, then can add owner) */}
+      {conflict && (
+        <div className="mb-4 px-4 py-3 bg-cream border border-[rgba(18,18,18,0.15)] text-xs text-near-black">
+          <p className="font-bold mb-1">An account with this email already exists.</p>
+          <p className="text-muted-text mb-2">
+            {conflict.role === 'owner'
+              ? 'Sign in to your existing business account to continue.'
+              : 'You already have a customer account on BookReady. Sign in there first — once in, you can add a business profile from your dashboard.'}
+          </p>
+          <Link
+            href={conflict.redirect}
+            className="inline-block text-[11px] font-bold tracking-[0.08em] uppercase underline underline-offset-2 hover:opacity-75"
+          >
+            Sign in instead →
+          </Link>
+        </div>
+      )}
 
       {/* Error */}
       {error && (
