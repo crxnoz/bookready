@@ -47,6 +47,16 @@ class PublicBookingController extends Controller
             return response()->json(['message' => 'Site not found'], 404);
         }
 
+        // #155 — block booking attempts against a parked (trial_expired
+        // or cancelled) tenant. Anyone with a direct URL gets the same
+        // "site temporarily offline" surface as the public site lookup.
+        if (\Illuminate\Support\Facades\Schema::hasColumn('tenants', 'subscription_state') && ! $tenant->publicSiteLive()) {
+            return response()->json([
+                'message' => 'This booking site is temporarily offline. Please try again later.',
+                'parked'  => true,
+            ], 423); // Locked
+        }
+
         // Phase 3 customer-accounts — if the visitor is signed into a
         // BookReady customer account, override the identity fields on the
         // request input BEFORE validation runs. This both removes the

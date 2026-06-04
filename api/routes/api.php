@@ -183,13 +183,22 @@ Route::prefix('v1')->group(function () {
         // site and the in-app picker.
         Route::get('plans',                              [BillingController::class, 'plans']);
         Route::post('checkout',                          [BillingController::class, 'checkout']);
+        // #155 — 14-day trial flow. Creates a Stripe Checkout Session
+        // with trial_period_days set; tenant flipped to 'trialing'.
+        Route::post('start-trial',                       [BillingController::class, 'startTrial']);
         Route::get('checkout-session/{sessionId}',       [BillingController::class, 'checkoutSession']);
         Route::get('portal',                             [BillingController::class, 'portal']);
         Route::get('subscription',                       [BillingController::class, 'subscription']);
     });
 
     // ── Editor (central routes, manual tenancy init) ──────────────────────
-    Route::middleware(['auth:sanctum', 'verified_email', 'tenant_owner'])->prefix('editor')->group(function () {
+    // #155 — `write_gate` reads HTTP method internally: GET/HEAD always
+    // pass (read endpoints stay open even for trial_expired tenants so
+    // owners can confirm what they'd be paying to restore); POST/PATCH/
+    // PUT/DELETE return 402 when subscription_state is trial_expired or
+    // cancelled. past_due is treated as alive — Stripe is still
+    // retrying, owner should be able to fix the card.
+    Route::middleware(['auth:sanctum', 'verified_email', 'tenant_owner', 'write_gate'])->prefix('editor')->group(function () {
         Route::get('business',  [BusinessProfileController::class, 'show']);
         Route::patch('business', [BusinessProfileController::class, 'update']);
 

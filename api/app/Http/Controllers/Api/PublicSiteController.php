@@ -32,6 +32,28 @@ class PublicSiteController extends Controller
             return response()->json(['message' => 'Site not found'], 404);
         }
 
+        // #155 — Subscription gate. Trials + active + past_due tenants
+        // serve the normal payload. trial_expired + cancelled return a
+        // parked-page response that the public site renderer treats as
+        // a friendly "site temporarily offline" state. Returns 200 so
+        // crawlers + browsers handle it cleanly (vs 410, which we'd use
+        // for permanently-gone). Defensive Schema::hasColumn guard for
+        // tenants migrated before this column existed.
+        if (Schema::hasColumn('tenants', 'subscription_state') && ! $tenant->publicSiteLive()) {
+            $domainName = $tenant->domains()->first()?->domain;
+            $businessName = is_array($tenant->data ?? null)
+                ? ($tenant->data['business_name'] ?? null)
+                : null;
+            return response()->json([
+                'slug'           => $slug,
+                'parked'         => true,
+                'parked_reason'  => $tenant->subscription_state,
+                'business_name'  => $businessName,
+                'domain'         => $domainName,
+                'message'        => 'This booking site is temporarily offline. The owner can restore it from their BookReady dashboard.',
+            ]);
+        }
+
         $domain = $tenant->domains()->first();
 
         tenancy()->initialize($tenant);

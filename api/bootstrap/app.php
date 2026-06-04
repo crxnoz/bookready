@@ -40,6 +40,12 @@ return Application::configure(basePath: dirname(__DIR__))
             // endpoints. Reads turnstile_token from JSON body, 422s on
             // verification failure. Disable via TURNSTILE_DISABLED=true.
             'turnstile'                => \App\Http\Middleware\VerifyTurnstile::class,
+            // #155 — Read-only gate. Returns 402 on /editor/* writes
+            // when the tenant's subscription_state is trial_expired or
+            // cancelled. GETs always pass; writes pass when state is
+            // trialing / active / past_due. Apply to write-y editor
+            // route groups (reads can skip it).
+            'write_gate'               => \App\Http\Middleware\EnforceWriteGate::class,
             // Phase 2 customer-accounts aliases. Mirror of owner's
             // verified_email + tenant_owner pair, but for the
             // CustomerUser tokenable. Applied to /customer/* routes.

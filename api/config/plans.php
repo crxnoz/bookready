@@ -32,10 +32,12 @@ return [
     // ("$0.025 each").
     'sms_overage_cents' => 3,
 
-    // Trial length for new tenants in days. Mirrors what the marketing
-    // page promises (currently no trial advertised; set to 0 = no trial
-    // in code until we decide).
-    'trial_days' => 0,
+    // #155 — Trial length for new tenants. The signup flow collects a
+    // payment method via Stripe Checkout Setup mode but does NOT charge
+    // for `trial_days`. Stripe attempts the first charge after the
+    // trial ends; success → active, failure → trial_expired (site goes
+    // read-only / parked).
+    'trial_days' => 14,
 
     // ── SMS bundle uplift ────────────────────────────────────────────
     // Single source of truth for the additional-SMS bundle pricing.

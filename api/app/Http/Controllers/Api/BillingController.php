@@ -138,6 +138,127 @@ class BillingController extends Controller
     }
 
     /**
+     * #155 — Start a 14-day free trial.
+     *
+     * Differences from checkout(): we wrap the same subscription
+     * creation with trialDays() so Stripe collects the card via
+     * Setup mode but does NOT charge for the first 14 days. On day 14
+     * Stripe auto-charges; success → invoice.payment_succeeded fires +
+     * subscription status moves to active. Failure → invoice.payment_failed
+     * fires + the webhook flips tenants.subscription_state to
+     * trial_expired (gated by EnforceWriteGate + the parked-page check
+     * in PublicSiteController).
+     *
+     * Body shape mirrors checkout() so the frontend can call this
+     * instead during the trial-aware signup flow. The tenant is also
+     * flipped to subscription_state='trialing' + trial_ends_at set
+     * locally so the read-only gate has an immediate answer (we don't
+     * have to wait for the webhook).
+     */
+    public function startTrial(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'plan'           => ['nullable', 'string', 'in:solo,studio,salon'],
+            'billing_cycle'  => ['required', 'string', 'in:monthly,annual'],
+            'sms_mult'       => ['nullable', 'integer', 'in:1,2,3'],
+            'template_slug'  => ['required', 'string', 'regex:/^[a-z0-9]+$/'],
+        ]);
+
+        if (($data['plan'] ?? null) === 'salon') {
+            return response()->json([
+                'message' => 'Salon plan is currently waitlist-only.',
+            ], 422);
+        }
+
+        $plan  = $data['plan'] ?? 'studio'; // sensible default for missing plan
+        $cycle = $data['billing_cycle'];
+        $mult  = $data['sms_mult'] ?? 1;
+
+        $lookupKey = "br_{$plan}_{$cycle}_{$mult}x";
+        $priceId   = null;
+        try {
+            $list = Cashier::stripe()->prices->all([
+                'lookup_keys' => [$lookupKey],
+                'limit'       => 1,
+                'active'      => true,
+            ]);
+            if (count($list->data) > 0) {
+                $priceId = $list->data[0]->id;
+            }
+        } catch (\Throwable $e) {
+            Log::error('Billing/startTrial: Stripe price lookup failed', [
+                'lookup_key' => $lookupKey,
+                'error'      => $e->getMessage(),
+            ]);
+        }
+
+        if (! $priceId) {
+            return response()->json([
+                'message' => "No Stripe price configured for plan='{$plan}' cycle='{$cycle}' mult='{$mult}'.",
+            ], 500);
+        }
+
+        $user   = $request->user();
+        $tenant = $user->tenant_id ? Tenant::find($user->tenant_id) : null;
+        if (! $tenant) {
+            return response()->json([
+                'message' => 'No active workspace for this account. Please contact support.',
+            ], 400);
+        }
+
+        $trialDays = (int) config('plans.trial_days', 14);
+
+        $frontendUrl = rtrim(env('FRONTEND_URL', 'https://app.bkrdy.me'), '/');
+        $successUrl  = "{$frontendUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}&trial=1";
+        $cancelUrl   = "{$frontendUrl}/checkout/trial?cancelled=1";
+
+        // Cashier's trialDays() on the subscription builder threads
+        // trial_period_days through to the Stripe Checkout session.
+        // Stripe collects payment method without charging now.
+        try {
+            $session = $tenant->newSubscription('default', $priceId)
+                ->trialDays($trialDays)
+                ->checkout([
+                    'success_url'        => $successUrl,
+                    'cancel_url'         => $cancelUrl,
+                    'payment_method_collection' => 'always',
+                    'metadata'           => [
+                        'user_id'         => (string) $user->id,
+                        'tenant_id'       => $tenant->id,
+                        'template_slug'   => $data['template_slug'],
+                        'billing_cycle'   => $cycle,
+                        'bookready_plan'  => $plan,
+                        'bookready_mult'  => (string) $mult,
+                        'flow'            => 'trial',
+                    ],
+                ]);
+        } catch (\Throwable $e) {
+            Log::error('Billing/startTrial: Stripe checkout creation failed', [
+                'tenant_id' => $tenant->id,
+                'error'     => $e->getMessage(),
+            ]);
+            return response()->json([
+                'message' => 'Could not start your trial. Try again or contact support.',
+            ], 500);
+        }
+
+        // Optimistically flip the tenant to trialing locally so the
+        // read-only gate doesn't lock them out between checkout creation
+        // and the webhook landing. Stripe is the source of truth long-
+        // term; the webhook will overwrite if anything diverges.
+        if (\Illuminate\Support\Facades\Schema::hasColumn('tenants', 'subscription_state')) {
+            $tenant->subscription_state = Tenant::STATE_TRIALING;
+            $tenant->trial_ends_at      = now()->addDays($trialDays);
+            $tenant->save();
+        }
+
+        return response()->json([
+            'checkout_url'   => $session->url,
+            'trial_ends_at'  => now()->addDays($trialDays)->toIso8601String(),
+        ]);
+    }
+
+    /**
      * Retrieve a Stripe Checkout Session by ID.
      * Used on the success page to confirm payment status.
      */
@@ -244,15 +365,26 @@ class BillingController extends Controller
             }
         }
 
+        // #155 — canonical state + countdown for the editor banner /
+        // trial-end nudges. Read straight off the central tenants
+        // row (cheap; no Stripe call needed every page load).
+        $state              = $tenant->subscription_state ?? Tenant::STATE_ACTIVE;
+        $trialDaysRemaining = $tenant->trialDaysRemaining();
+
         return response()->json([
-            'subscribed'     => $subscribed,
-            'on_trial'       => $tenant->onTrial(),
-            'trial_ends'     => $tenant->trial_ends_at,
-            'subscription'   => $sub,
-            'plan'           => $plan,
-            'sms_mult'       => $mult,
-            'sms_included'   => $smsIncluded,
-            'billing_cycle'  => $cycle,
+            'subscribed'         => $subscribed,
+            'on_trial'           => $tenant->onTrial(),
+            'trial_ends'         => $tenant->trial_ends_at,
+            'subscription'       => $sub,
+            'plan'               => $plan,
+            'sms_mult'           => $mult,
+            'sms_included'       => $smsIncluded,
+            'billing_cycle'      => $cycle,
+            // #155 additions:
+            'subscription_state' => $state,
+            'is_trialing'        => $state === Tenant::STATE_TRIALING,
+            'is_alive'           => in_array($state, Tenant::STATES_ALIVE, true),
+            'trial_days_remaining' => $trialDaysRemaining,
         ]);
     }
 }
