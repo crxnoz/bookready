@@ -122,7 +122,10 @@ Route::prefix('v1')->group(function () {
         // Phase S5 — credential endpoints throttled to slow brute-force
         // attacks. Login is tighter than register since attackers loop
         // login attempts against known emails.
-        Route::post('register', [RegisterController::class, 'store'])->middleware(['trusted_origin', 'throttle:5,1']);
+        // #161 — Turnstile gate on signup (login deliberately not gated:
+        // throttle + Sanctum revocation are enough, and CAPTCHA on every
+        // sign-in is friction for legit users).
+        Route::post('register', [RegisterController::class, 'store'])->middleware(['trusted_origin', 'throttle:5,1', 'turnstile']);
         Route::post('login',    [AuthController::class, 'login'])->middleware(['trusted_origin', 'throttle:10,1']);
 
         // Google sign-in / sign-up.
@@ -134,8 +137,10 @@ Route::prefix('v1')->group(function () {
         Route::post('google/exchange',         [GoogleAuthController::class, 'exchange'])
             ->middleware(['trusted_origin', 'throttle:30,1']);
 
-        // Forgot / reset password.
-        Route::post('password/forgot', [PasswordResetController::class, 'forgot'])->middleware('throttle:5,1');
+        // Forgot / reset password. #161 — Turnstile on the forgot
+        // endpoint (it triggers an email send + DB write per request,
+        // a great abuse target). Reset itself is token-gated already.
+        Route::post('password/forgot', [PasswordResetController::class, 'forgot'])->middleware(['throttle:5,1', 'turnstile']);
         Route::post('password/reset',  [PasswordResetController::class, 'reset'])->middleware('throttle:10,1');
 
         // Phase S6 part 2 — email verification.
@@ -159,6 +164,12 @@ Route::prefix('v1')->group(function () {
             // Resend the verification email — authed so we don't expose
             // verification state to anonymous probing. Throttled to
             // 3 sends per hour per IP.
+            // Resend the verification email — authed so we don't expose
+            // verification state to anonymous probing. Throttled to
+            // 3 sends per hour per IP. Not Turnstile-gated: authed users
+            // + tight throttle are enough; CAPTCHA on a logged-in surface
+            // is unusual friction. The dedicated /verify-email screen
+            // (#160) will add the widget if abuse appears.
             Route::post('verify-email/resend', [EmailVerificationController::class, 'resend'])
                 ->middleware('throttle:3,60');
         });
@@ -353,13 +364,23 @@ Route::prefix('v1')->group(function () {
     Route::prefix('customer')->group(function () {
         // Auth — same throttle ladder as owner side.
         Route::prefix('auth')->group(function () {
+            // #161 — Turnstile NOT applied here: the customer register
+            // endpoint is also used by the in-booking auth modals on
+            // tenant sites (LushCustomerAuth, TfrCustomerAuth) where a
+            // CAPTCHA would tank booking conversions. The standalone
+            // /account/register form still sends a token (defense in
+            // depth — if a bot replays the same script the field exists),
+            // but enforcement waits until we redesign the in-booking
+            // modal (#159 / #160). Standalone forgot-password IS still
+            // Turnstile-gated below since it's only invoked from the
+            // standalone form.
             Route::post('register', [CustomerRegisterController::class, 'store'])
                 ->middleware(['trusted_origin', 'throttle:5,1']);
             Route::post('login',    [CustomerAuthController::class, 'login'])
                 ->middleware(['trusted_origin', 'throttle:10,1']);
 
             Route::post('password/forgot', [CustomerPasswordResetController::class, 'forgot'])
-                ->middleware('throttle:5,1');
+                ->middleware(['throttle:5,1', 'turnstile']);
             Route::post('password/reset',  [CustomerPasswordResetController::class, 'reset'])
                 ->middleware('throttle:10,1');
 

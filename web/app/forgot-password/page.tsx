@@ -1,24 +1,38 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import Link from 'next/link'
 import AuthShell from '@/components/auth/AuthShell'
 import { requestPasswordReset } from '@/lib/api'
+import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/auth/TurnstileWidget'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail]     = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [error, setError]     = useState('')
   const [loading, setLoading] = useState(false)
+  // #161: Turnstile gate — forgot-password fires an email send + DB
+  // write per request, so it's a great abuse target without CAPTCHA.
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null)
+  const onTurnstileVerify = useCallback((t: string) => setTurnstileToken(t), [])
+  const onTurnstileExpire = useCallback(() => setTurnstileToken(''), [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (! turnstileToken) {
+      setError('Please complete the verification check below.')
+      return
+    }
     setError(''); setLoading(true)
     try {
-      await requestPasswordReset(email.trim())
+      await requestPasswordReset(email.trim(), turnstileToken)
       setSubmitted(true)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Could not send reset email.')
+      // #161: Single-use token — reset for next attempt.
+      setTurnstileToken('')
+      turnstileRef.current?.reset()
     } finally {
       setLoading(false)
     }
@@ -64,7 +78,12 @@ export default function ForgotPasswordPage() {
                 placeholder="you@studio.com"
               />
             </div>
-            <button type="submit" disabled={loading} className={submitCls}>
+            <TurnstileWidget
+              ref={turnstileRef}
+              onVerify={onTurnstileVerify}
+              onExpire={onTurnstileExpire}
+            />
+            <button type="submit" disabled={loading || !turnstileToken} className={submitCls}>
               {loading ? 'Sending…' : 'Send reset link'}
             </button>
           </form>

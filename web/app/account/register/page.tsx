@@ -1,11 +1,12 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useCallback, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { customerRegister } from '@/lib/customerApi'
 import { setCustomerLoggedIn, safeReturnTo } from '@/lib/customerAuth'
 import AuthShell from '@/components/auth/AuthShell'
+import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/auth/TurnstileWidget'
 
 /**
  * Phase 4 — direct customer signup at /account/register.
@@ -40,6 +41,11 @@ function Inner() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [phone, setPhone] = useState('')
+  // #161: Turnstile CAPTCHA — same pattern as the owner /register page.
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null)
+  const onTurnstileVerify = useCallback((t: string) => setTurnstileToken(t), [])
+  const onTurnstileExpire = useCallback(() => setTurnstileToken(''), [])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -50,6 +56,10 @@ function Inner() {
       setError('Passwords don’t match.')
       return
     }
+    if (! turnstileToken) {
+      setError('Please complete the verification check below.')
+      return
+    }
     setLoading(true)
     try {
       await customerRegister({
@@ -58,6 +68,7 @@ function Inner() {
         password,
         password_confirmation: confirm,
         phone: phone || undefined,
+        turnstile_token: turnstileToken,
       })
       setCustomerLoggedIn()
       if (returnTo) {
@@ -67,6 +78,9 @@ function Inner() {
       router.push('/account')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign-up failed.')
+      // #161: Reset for next attempt (single-use tokens).
+      setTurnstileToken('')
+      turnstileRef.current?.reset()
     } finally {
       setLoading(false)
     }
@@ -161,7 +175,14 @@ function Inner() {
           />
         </Field>
 
-        <button type="submit" disabled={loading} className={submitCls}>
+        {/* #161: Turnstile CAPTCHA. */}
+        <TurnstileWidget
+          ref={turnstileRef}
+          onVerify={onTurnstileVerify}
+          onExpire={onTurnstileExpire}
+        />
+
+        <button type="submit" disabled={loading || !turnstileToken} className={submitCls}>
           {loading ? 'Creating account…' : 'Create account'}
         </button>
       </form>

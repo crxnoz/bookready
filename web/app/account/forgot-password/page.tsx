@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import Link from 'next/link'
 import { customerForgotPassword } from '@/lib/customerApi'
 import AuthShell from '@/components/auth/AuthShell'
+import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/auth/TurnstileWidget'
 
 /**
  * Phase 4 — forgot-password entry for customer accounts.
@@ -17,16 +18,27 @@ export default function CustomerForgotPasswordPage() {
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  // #161: Turnstile CAPTCHA — same gate as owner forgot-password.
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null)
+  const onTurnstileVerify = useCallback((t: string) => setTurnstileToken(t), [])
+  const onTurnstileExpire = useCallback(() => setTurnstileToken(''), [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (! turnstileToken) {
+      setError('Please complete the verification check below.')
+      return
+    }
     setError('')
     setLoading(true)
     try {
-      await customerForgotPassword(email)
+      await customerForgotPassword(email, turnstileToken)
       setSubmitted(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
+      setTurnstileToken('')
+      turnstileRef.current?.reset()
     } finally {
       setLoading(false)
     }
@@ -67,7 +79,12 @@ export default function CustomerForgotPasswordPage() {
                 placeholder="you@example.com"
               />
             </Field>
-            <button type="submit" disabled={loading} className={submitCls}>
+            <TurnstileWidget
+              ref={turnstileRef}
+              onVerify={onTurnstileVerify}
+              onExpire={onTurnstileExpire}
+            />
+            <button type="submit" disabled={loading || !turnstileToken} className={submitCls}>
               {loading ? 'Sending…' : 'Send reset link'}
             </button>
           </form>

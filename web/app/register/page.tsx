@@ -1,11 +1,12 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { register } from '@/lib/api'
 import { setToken, setTenantId } from '@/lib/auth'
 import AuthShell from '@/components/auth/AuthShell'
+import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/auth/TurnstileWidget'
 
 const TEMPLATE_KEY = 'br_template'
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
@@ -27,6 +28,14 @@ function RegisterForm() {
   // until checked. Google flow uses its own checkbox on the
   // /register/complete page after OAuth returns.
   const [termsAccepted, setTermsAccepted] = useState(false)
+  // #161: Cloudflare Turnstile token. Set by the widget callback once
+  // the visitor solves (or auto-passes) the challenge. Submit blocked
+  // until present. Reset after a failed submit so the next attempt
+  // mints a fresh token (Cloudflare tokens are single-use).
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null)
+  const onTurnstileVerify = useCallback((t: string) => setTurnstileToken(t), [])
+  const onTurnstileExpire = useCallback(() => setTurnstileToken(''), [])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -68,6 +77,10 @@ function RegisterForm() {
       setError('Please agree to the Terms of Service and Privacy Policy to continue.')
       return
     }
+    if (! turnstileToken) {
+      setError('Please complete the verification check below.')
+      return
+    }
     setError('')
     setLoading(true)
     try {
@@ -83,6 +96,7 @@ function RegisterForm() {
         // user came in from a template gallery link (?template=…).
         template: templateSlug,
         terms_accepted: termsAccepted,
+        turnstile_token: turnstileToken,
       })
       setToken()
       const tenantId = res.tenant_id ?? res.user.tenant_id
@@ -91,6 +105,10 @@ function RegisterForm() {
       router.push(`/checkout?template=${templateSlug}`)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Registration failed.')
+      // #161: Cloudflare tokens are single-use — a failed POST consumed
+      // ours. Wipe + re-render so the next attempt mints a fresh one.
+      setTurnstileToken('')
+      turnstileRef.current?.reset()
     } finally {
       setLoading(false)
     }
@@ -234,7 +252,17 @@ function RegisterForm() {
           </span>
         </label>
 
-        <button type="submit" disabled={loading || !termsAccepted} className={submitCls}>
+        {/* #161: Turnstile CAPTCHA. Renders Cloudflare's challenge widget;
+            the token populates turnstileToken state, which the submit
+            handler includes in the register payload. Submit is gated
+            on it so a bot script can't just call the API. */}
+        <TurnstileWidget
+          ref={turnstileRef}
+          onVerify={onTurnstileVerify}
+          onExpire={onTurnstileExpire}
+        />
+
+        <button type="submit" disabled={loading || !termsAccepted || !turnstileToken} className={submitCls}>
           {loading ? 'Creating account…' : 'Create account'}
         </button>
       </form>

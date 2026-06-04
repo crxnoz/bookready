@@ -36,6 +36,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'verified_email'           => \App\Http\Middleware\EnsureEmailVerified::class,
             'tenant_owner'             => \App\Http\Middleware\EnsureTenantOwner::class,
             'trusted_origin'           => \App\Http\Middleware\EnsureTrustedBrowserOrigin::class,
+            // #161 — Cloudflare Turnstile gate on signup + sensitive auth
+            // endpoints. Reads turnstile_token from JSON body, 422s on
+            // verification failure. Disable via TURNSTILE_DISABLED=true.
+            'turnstile'                => \App\Http\Middleware\VerifyTurnstile::class,
             // Phase 2 customer-accounts aliases. Mirror of owner's
             // verified_email + tenant_owner pair, but for the
             // CustomerUser tokenable. Applied to /customer/* routes.

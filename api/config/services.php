@@ -16,6 +16,24 @@ return [
         'key' => env('RESEND_API_KEY', ''),
     ],
 
+    // Cloudflare Turnstile (#161) — CAPTCHA on signup + sensitive auth
+    // endpoints. Get keys at https://dash.cloudflare.com/?to=/:account/turnstile.
+    // - site_key: public, exposed to the frontend via
+    //   NEXT_PUBLIC_TURNSTILE_SITE_KEY in the Next app.
+    // - secret: backend only, used by TurnstileVerifier.
+    // - disabled: set to true to bypass verification entirely (local dev
+    //   or before Cloudflare account is provisioned). Production .env
+    //   must leave this false.
+    // - test_site_key: Cloudflare's "always passes" public key, used as
+    //   a fallback in the frontend when no real key is set so the dev
+    //   build doesn't break.
+    'turnstile' => [
+        'site_key'      => env('TURNSTILE_SITE_KEY', ''),
+        'secret'        => env('TURNSTILE_SECRET', ''),
+        'disabled'      => (bool) env('TURNSTILE_DISABLED', false),
+        'test_site_key' => '1x00000000000000000000AA',
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

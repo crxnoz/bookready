@@ -195,10 +195,14 @@ export async function logout(): Promise<void> {
 
 // ── Password reset (public — no auth) ───────────────────────────────────────
 
-export async function requestPasswordReset(email: string): Promise<{ message: string }> {
+/**
+ * #161: turnstileToken comes from the <TurnstileWidget> on the forgot
+ * password form. Backend 422s the request without a valid token.
+ */
+export async function requestPasswordReset(email: string, turnstileToken: string): Promise<{ message: string }> {
   return request<{ message: string }>('/auth/password/forgot', {
     method: 'POST',
-    body:   JSON.stringify({ email }),
+    body:   JSON.stringify({ email, turnstile_token: turnstileToken }),
   })
 }
 

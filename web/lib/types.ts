@@ -1234,6 +1234,11 @@ export interface RegisterPayload {
    * unless this is true. Tied to a ticked checkbox on /register.
    */
   terms_accepted: boolean
+  /**
+   * #161: Cloudflare Turnstile token from <TurnstileWidget>. Backend
+   * VerifyTurnstile middleware 422s the request without a valid one.
+   */
+  turnstile_token: string
 }
 
 export interface LoginPayload {

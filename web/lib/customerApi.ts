@@ -91,6 +91,17 @@ export async function customerRegister(payload: {
   password: string
   password_confirmation: string
   phone?: string
+  /**
+   * #161: Cloudflare Turnstile token. Optional in TS because the
+   * in-booking auth modals (LushCustomerAuth, TfrCustomerAuth) don't
+   * render the widget — adding CAPTCHA mid-booking tanks conversions.
+   * Standalone /account/register DOES pass it; backend middleware
+   * is currently NOT enforcing it on this endpoint (see api.php
+   * comment on /customer/auth/register). When the in-booking modal
+   * is rebuilt (#159/#160) we'll either add the widget there or
+   * accept the gap.
+   */
+  turnstile_token?: string
 }): Promise<{ user: CustomerProfile }> {
   return request<{ user: CustomerProfile }>('/auth/register', {
     method: 'POST',
@@ -106,10 +117,11 @@ export async function customerMe(): Promise<CustomerProfile> {
   return request<CustomerProfile>('/auth/me')
 }
 
-export async function customerForgotPassword(email: string): Promise<{ message: string }> {
+/** #161: turnstileToken from the widget on /account/forgot-password. */
+export async function customerForgotPassword(email: string, turnstileToken: string): Promise<{ message: string }> {
   return request<{ message: string }>('/auth/password/forgot', {
     method: 'POST',
-    body:   JSON.stringify({ email }),
+    body:   JSON.stringify({ email, turnstile_token: turnstileToken }),
   })
 }
 
