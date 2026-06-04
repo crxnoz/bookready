@@ -1432,7 +1432,10 @@ export const LUSH_CSS = `
     margin:-76px auto 0;
     padding:56px 64px 60px;
     border-radius:30px;
-    box-shadow:0 24px 60px rgba(14,17,17,0.18);
+    /* No drop shadow on PC — the cream-on-cream card sits cleaner without
+       the floating-panel halo. (Mobile keeps its small upward shadow above
+       the card; that's defined in the base .lush-header-content rule.) */
+    box-shadow:none;
   }
   .lush-header-content h1 { font-size:clamp(52px,5vw,74px); }
   .lush-header-subtype { margin-top:14px; font-size:15px; }

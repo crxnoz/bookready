@@ -1503,10 +1503,19 @@ const LUSH_SECTIONS_SKIN = `
   color: var(--lush-muted);
 }
 .lush-template .brk-ba-pane img {
-  aspect-ratio: 1/1;
+  /* SAME HEIGHT both panes — width is determined by the 2fr/3fr grid
+     cells (40/60), but heights stay equal so the before is readable.
+     With aspect-ratio:1/1 (the old rule) each square also grew in HEIGHT
+     proportionally — making the before a tiny ~130px square on mobile
+     and the after a huge ~200px square. Equal height + object-fit:cover
+     keeps the asymmetry purely horizontal. */
+  width: 100%;
+  height: clamp(220px, 38vw, 360px);
+  object-fit: cover;
   border-radius: 0;
   border: 1px solid var(--lush-dark-border);
   background: #ECE7DD;
+  display: block;
 }
 .lush-template .brk-ba-after img { border-color: var(--lush-pink); }
 .lush-template .brk-ba-sep {
