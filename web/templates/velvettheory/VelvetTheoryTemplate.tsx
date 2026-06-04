@@ -1273,15 +1273,20 @@ const VT_CSS = `
   background: transparent;
   color: var(--vt-accent);
   border: 0;
+  /* A gold underline below the "Reserve" word — anchors the type the
+     way a button surface normally would, while keeping VT's quiet
+     editorial voice. Matches the visual weight of the CTAs in the
+     other templates without becoming a filled pill. */
+  border-bottom: 1px solid var(--vt-accent);
   border-radius: 0;
-  padding: 6px 0;
+  padding: 6px 2px 8px;
   font-family: var(--vt-display);
   font-style: italic;
   font-weight: 400;
   font-size: clamp(28px, 4vw, 38px);
   letter-spacing: 0.005em;
   text-transform: none;
-  transition: opacity 160ms ease;
+  transition: opacity 160ms ease, border-color 160ms ease;
 }
 .vt-template .brk-footer-book:hover {
   filter: none;

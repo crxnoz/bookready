@@ -412,18 +412,28 @@ export const SECTIONS_CSS = `
   display: block;
   width: 100%;
   position: relative;
+  /* Clip the blur — without this the blurred pixels bleed past the
+     image bounds, killing the square/rectangle shape of the pane. */
+  overflow: hidden;
   cursor: pointer;
   color: inherit;
   font: inherit;
   text-align: inherit;
 }
 .brk-ba-reveal img {
-  filter: blur(14px) saturate(0.92);
-  transition: filter 360ms ease;
+  /* Lighter blur than before (was 14px which was way too strong) +
+     a slight scale so the blur-feathered edges hide behind the clip
+     instead of revealing the canvas underneath. */
+  filter: blur(8px);
+  transform: scale(1.06);
+  transition: filter 360ms ease, transform 360ms ease;
   display: block;
   width: 100%;
 }
-.brk-ba-reveal.is-revealed img { filter: none; }
+.brk-ba-reveal.is-revealed img {
+  filter: none;
+  transform: scale(1);
+}
 .brk-ba-reveal-hint {
   position: absolute;
   left: 50%;
@@ -451,6 +461,8 @@ export const SECTIONS_CSS = `
 @media (prefers-reduced-motion: reduce) {
   .brk-ba-reveal img,
   .brk-ba-reveal-hint { transition: none; }
+  .brk-ba-reveal img { transform: scale(1.06); }
+  .brk-ba-reveal.is-revealed img { transform: scale(1); }
 }
 .brk-ba-caption {
   margin: 18px 0 0;

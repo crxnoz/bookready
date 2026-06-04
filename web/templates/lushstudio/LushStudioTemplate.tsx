@@ -1229,7 +1229,12 @@ const LUSH_SECTIONS_SKIN = `
    before the heading. Distinct from the .brk-policy ✦-marker list so
    advice doesn't read as a second policies section. ── */
 .lush-template .brk-instructions--plain {
-  gap: 16px;
+  /* Flex so the gap property actually separates the cards — base
+     .brk-instructions is a block list (gap is a no-op there). 18px gives
+     a comfortable breath between cards without breaking the rhythm. */
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
   max-width: 720px;
   margin: 0 auto;
 }
@@ -1455,7 +1460,10 @@ const LUSH_SECTIONS_SKIN = `
   padding: 6px 0 0;
 }
 .lush-template .brk-ba-pair {
-  grid-template-columns: 1fr auto 1fr;
+  /* 40/60 split — before is the supporting context, after is the
+     showcase. Editorial asymmetry that reads stronger than equal panes
+     while keeping both visible. */
+  grid-template-columns: 2fr auto 3fr;
   gap: 8px;
   align-items: stretch;
 }
