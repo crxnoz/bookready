@@ -66,11 +66,15 @@ function SuccessContent() {
           {/* TODO: Webhook handler (checkout.session.completed) will activate the
               subscription reliably. This page is confirmation-only. */}
 
+          {/* #155/#157 — route to /editor which auto-redirects new
+              tenants to /editor/onboard (the wizard). Old path was
+              /editor/website?tab=business which conflicted with the
+              wizard-first design. */}
           <Link
-            href="/editor/website?tab=business"
+            href="/editor"
             className="block w-full bg-near-black text-white text-[11px] font-bold tracking-[0.18em] uppercase py-3 hover:bg-[#2a2a2a] transition-colors text-center"
           >
-            Go to Editor →
+            Set up your site →
           </Link>
         </div>
       </div>

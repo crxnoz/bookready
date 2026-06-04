@@ -384,6 +384,30 @@ export async function getCheckoutSession(sessionId: string): Promise<CheckoutSes
 }
 
 /**
+ * #155 — Start a 14-day free trial. Stripe Checkout collects a card
+ * via SetupIntent + creates a subscription in `trialing` status. No
+ * charge until day 14. Tenant flipped to subscription_state='trialing'
+ * optimistically (webhook overwrites later if anything diverges).
+ *
+ * Returns the Stripe Checkout URL to redirect into.
+ */
+export async function startTrial(
+  billingCycle: BillingCycle,
+  templateSlug: string,
+  opts?: { plan?: 'solo' | 'studio' | 'salon'; smsMult?: 1 | 2 | 3 },
+): Promise<{ checkout_url: string; trial_ends_at: string }> {
+  return request<{ checkout_url: string; trial_ends_at: string }>('/billing/start-trial', {
+    method: 'POST',
+    body: JSON.stringify({
+      billing_cycle: billingCycle,
+      template_slug: templateSlug,
+      plan:          opts?.plan,
+      sms_mult:      opts?.smsMult,
+    }),
+  })
+}
+
+/**
  * Plan catalog — drives the editor billing UI + the upgrade dialog.
  * Same shape as config/plans.php on the backend.
  */

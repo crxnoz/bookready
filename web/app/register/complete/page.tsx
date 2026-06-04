@@ -97,7 +97,17 @@ function CompleteInner() {
       const tenantId = res.tenant_id ?? res.user.tenant_id
       setTenantId(tenantId)
       localStorage.setItem(TEMPLATE_KEY, template)
-      router.push(`/checkout?template=${template}`)
+      // #155 — persist intent + send to trial card-capture screen.
+      // Google flow doesn't carry plan/billing in the OAuth payload,
+      // so we land on sensible defaults; the user can change at the
+      // trial screen if needed (Phase 3 will surface intent more
+      // explicitly).
+      try {
+        localStorage.setItem('br_signup_intent', JSON.stringify({
+          template, plan: 'studio', billing: 'monthly', sms_mult: 1,
+        }))
+      } catch { /* ignore */ }
+      router.push('/checkout/trial')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Could not finish signup.')
     } finally {

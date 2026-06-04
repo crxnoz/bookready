@@ -102,7 +102,26 @@ function RegisterForm() {
       const tenantId = res.tenant_id ?? res.user.tenant_id
       setTenantId(tenantId)
       localStorage.setItem(TEMPLATE_KEY, templateSlug)
-      router.push(`/checkout?template=${templateSlug}`)
+      // #155 / #156 — persist the signup intent (template + plan +
+      // billing + sms_mult) from the marketing URL into localStorage
+      // so /checkout/trial can read it without re-asking the user.
+      // Falls back to sensible defaults when params are missing.
+      const intent = {
+        template: templateSlug,
+        plan:     (searchParams.get('plan')     as 'solo' | 'studio' | 'salon' | null) ?? 'studio',
+        billing:  (searchParams.get('billing')  as 'monthly' | 'annual' | null) ?? 'monthly',
+        sms_mult: ((): 1 | 2 | 3 => {
+          const raw = searchParams.get('sms')
+          if (raw === '2x') return 2
+          if (raw === '3x') return 3
+          const num = parseInt(searchParams.get('sms_mult') ?? '1', 10)
+          return (num === 2 || num === 3 ? num : 1) as 1 | 2 | 3
+        })(),
+      }
+      try { localStorage.setItem('br_signup_intent', JSON.stringify(intent)) } catch { /* localStorage disabled */ }
+      // Send the owner to the new trial card-capture screen instead of
+      // the OLD /checkout (which double-picked template + cycle).
+      router.push('/checkout/trial')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Registration failed.')
       // #161: Cloudflare tokens are single-use — a failed POST consumed
