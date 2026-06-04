@@ -1263,7 +1263,9 @@ const VT_CSS = `
   background: transparent;
   margin-top: 32px;
 }
-.vt-template .brk-footer-cta-band { padding: 48px 24px; border-bottom: 0; }
+/* Keep the shared bottom rule under the CTA band (matches Opaline's
+   anchored look); just tune the padding to VT's rhythm. */
+.vt-template .brk-footer-cta-band { padding: 48px 24px; }
 /* VT's footer CTA is just typography — gold "Reserve" in the body font,
    no fill, no border, no radius. Reads quieter and more editorial than a
    button, consistent with VT's restrained voice. The shared base paints
