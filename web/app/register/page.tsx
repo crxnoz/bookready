@@ -159,6 +159,11 @@ function RegisterForm() {
         </p>
       </div>
 
+      {/* #156 — confirmation line of what they're signing up for, when
+          marketing-site CTAs forwarded plan/billing/template/sms. Small
+          and unobtrusive — they already chose, this is just reassurance. */}
+      <IntentSummary searchParams={searchParams} />
+
       {/* Error */}
       {error && (
         <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-xs text-red-700">
@@ -345,6 +350,33 @@ function Field({
       <label className={labelCls}>{label}</label>
       {children}
       {hint && <p className="mt-1.5 text-[11px] text-muted-text">{hint}</p>}
+    </div>
+  )
+}
+
+/**
+ * #156 — Show "Signing up for: {Plan} · {cycle} · {Template}" when the
+ * marketing-site CTAs forwarded any of those params. Hidden when there's
+ * nothing to confirm (visitor arrived directly with no intent). Designed
+ * to look like a quiet system note, not a value prop.
+ */
+function IntentSummary({ searchParams }: { searchParams: ReturnType<typeof useSearchParams> }) {
+  const plan     = searchParams?.get('plan')
+  const billing  = searchParams?.get('billing')
+  const template = searchParams?.get('template')
+  const sms      = searchParams?.get('sms')
+  if (! plan && ! billing && ! template) return null
+
+  const parts: string[] = []
+  if (plan)     parts.push(plan.charAt(0).toUpperCase() + plan.slice(1))
+  if (billing)  parts.push(billing === 'annual' ? 'annual' : 'monthly')
+  if (sms && sms !== '1x') parts.push(`${sms} SMS`)
+  if (template) parts.push(`${template} template`)
+
+  return (
+    <div className="mb-5 px-3 py-2.5 bg-cream border border-[rgba(18,18,18,0.10)] text-[11px] text-muted-text flex items-start gap-2">
+      <span className="text-near-black font-bold tracking-[0.08em] uppercase text-[9px] mt-0.5">Signing up for</span>
+      <span className="text-near-black">{parts.join(' · ')}</span>
     </div>
   )
 }
