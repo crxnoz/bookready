@@ -49,11 +49,20 @@ const PUBLIC_SITE_CSP = [
 
 const APP_CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://js.stripe.com https://accounts.google.com https://apis.google.com",
+  // challenges.cloudflare.com — the Cloudflare Turnstile JS API loaded
+  // by TurnstileWidget on /register, /account/register, both forgot-
+  // password forms, etc. Without this entry Chrome blocks the script
+  // entirely and the widget never renders ("CAPTCHA failed to load").
+  // static.cloudflareinsights.com — Cloudflare auto-injects a beacon
+  // script on proxied responses. Not load-bearing for the product, but
+  // allowlisting it suppresses spurious CSP warnings in the console.
+  "script-src 'self' 'unsafe-inline' https://js.stripe.com https://accounts.google.com https://apis.google.com https://challenges.cloudflare.com https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
-  "connect-src 'self' https://api.bkrdy.me https://api.stripe.com https://*.stripe.com https://accounts.google.com",
+  // challenges.cloudflare.com on connect-src — Turnstile's XHR/POST
+  // calls back into Cloudflare during the challenge lifecycle.
+  "connect-src 'self' https://api.bkrdy.me https://api.stripe.com https://*.stripe.com https://accounts.google.com https://challenges.cloudflare.com",
   // frame-src — what the editor is allowed to load AS iframes. Stripe
   // and Google for their respective widgets, plus the wildcard tenant
   // subdomains so the website-preview iframe in /editor/website can
@@ -61,7 +70,10 @@ const APP_CSP = [
   // shows "This content is blocked. Contact the site owner to fix the
   // issue." on every preview load, even though the tenant response's
   // frame-ancestors permits the editor.
-  "frame-src https://js.stripe.com https://hooks.stripe.com https://accounts.google.com https://*.bkrdy.me https://*.daysbookings.site",
+  // challenges.cloudflare.com — Turnstile renders the actual challenge
+  // box inside an iframe; without this entry the widget can load its
+  // script but never displays the checkbox.
+  "frame-src https://js.stripe.com https://hooks.stripe.com https://accounts.google.com https://*.bkrdy.me https://*.daysbookings.site https://challenges.cloudflare.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self' https://api.bkrdy.me https://checkout.stripe.com",
