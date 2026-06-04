@@ -1169,6 +1169,15 @@ const TFR_CSS = `
   border: 2px solid var(--tfr-accent);
   border-radius: 22px;
 }
+/* On mobile the bordered card was sitting flush against the footer
+   band — add real bottom padding INSIDE the card + a margin OUTSIDE
+   so it sits with breath above the next section. */
+@media (max-width: 640px) {
+  .tfr-template .brk-thanks {
+    padding-bottom: 96px;
+    margin-bottom: 48px;
+  }
+}
 .tfr-template .brk-thanks::before,
 .tfr-template .brk-thanks::after {
   content: '\\2726';
