@@ -139,7 +139,13 @@ export const SECTIONS_CSS = `
 }
 
 /* ── Thank-you ── */
-.brk-thanks { text-align: center; max-width: 680px; }
+.brk-thanks {
+  text-align: center;
+  max-width: 680px;
+  /* Extra breathing room below the gratitude message before the footer
+     starts — the section's default bottom padding read as too tight. */
+  padding-bottom: clamp(96px, 12vw, 160px);
+}
 .brk-thanks-title {
   margin: 14px 0 0;
   font-family: var(--brk-family-display, serif);
