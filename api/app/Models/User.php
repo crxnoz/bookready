@@ -18,6 +18,9 @@ class User extends Authenticatable
         'tenant_id',
         'is_owner',
         'is_admin',
+        // #159 — FK to identities. Null for unmigrated legacy rows; the
+        // create-identities migration backfills every existing user.
+        'identity_id',
     ];
 
     protected $hidden = [
@@ -35,5 +38,15 @@ class User extends Authenticatable
     public function tenant()
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    /**
+     * #159 — Link to the unified Identity that owns the password.
+     * Same identity can also have a customer_users row (the customer
+     * sibling) via Identity::customerUser().
+     */
+    public function identity()
+    {
+        return $this->belongsTo(Identity::class);
     }
 }

@@ -37,7 +37,18 @@ class CustomerUser extends Authenticatable
         'email',
         'password',
         'phone',
+        // #159 — FK to identities (one identity per email). Backfilled.
+        'identity_id',
     ];
+
+    /**
+     * #159 — Link to the unified Identity. Same identity can also
+     * have a users (owner) row via Identity::user().
+     */
+    public function identity()
+    {
+        return $this->belongsTo(\App\Models\Identity::class);
+    }
 
     protected $hidden = [
         'password',

@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\CustomerUser;
+use App\Models\Identity;
 use App\Models\User;
 use App\Support\AuthCookie;
+use App\Support\CustomerAuthCookie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -24,12 +28,51 @@ class AuthController extends Controller
             'remember' => ['sometimes', 'boolean'],
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $email = strtolower(trim((string) $request->email));
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
+        // #159 — unified identity lookup. If migrations have run, we
+        // authenticate against `identities` first; otherwise fall
+        // back to the legacy users.password column (so a deploy mid-
+        // way through the rollout doesn't 401 every session).
+        $identity = Schema::hasTable('identities')
+            ? Identity::with(['user', 'customerUser'])->where('email', $email)->first()
+            : null;
+
+        $user = null;
+        $availableRoles = [];
+
+        if ($identity) {
+            if (! Hash::check($request->password, $identity->password)) {
+                throw ValidationException::withMessages([
+                    'email' => ['The provided credentials are incorrect.'],
+                ]);
+            }
+            $availableRoles = $identity->availableRoles();
+            // No owner row → owner login endpoint can't issue an owner
+            // session. Tell the frontend to route the customer to the
+            // customer flow.
+            if (! in_array('owner', $availableRoles, true)) {
+                return response()->json([
+                    'message'         => 'This account is registered as a customer, not a business owner.',
+                    'available_roles' => $availableRoles,
+                    'try_endpoint'    => '/customer/auth/login',
+                ], 422);
+            }
+            $user = $identity->user;
+        } else {
+            // Legacy path — pre-#159 row that hasn't been migrated yet,
+            // or an environment where identities table doesn't exist.
+            $user = User::where('email', $email)->first();
+            if (! $user || ! Hash::check($request->password, $user->password)) {
+                throw ValidationException::withMessages([
+                    'email' => ['The provided credentials are incorrect.'],
+                ]);
+            }
+            // Synthesize available roles by checking the sibling table.
+            $availableRoles = ['owner'];
+            if (CustomerUser::where('email', $email)->exists()) {
+                $availableRoles[] = 'customer';
+            }
         }
 
         // Revoke old tokens if single-session is desired
@@ -59,6 +102,11 @@ class AuthController extends Controller
                     'is_owner'  => (bool) ($user->is_owner ?? false),
                     'is_admin'  => (bool) ($user->is_admin ?? false),
                 ],
+                // #159 — available_roles drives the post-login role
+                // picker. Single-role users see no picker; multi-role
+                // users pick a side every login (per founder decision).
+                'available_roles' => $availableRoles,
+                'current_role'    => 'owner',
             ])
             ->withCookie(AuthCookie::make($token, $remember));
 

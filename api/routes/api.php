@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AppointmentPaymentWebhookController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\EmailVerificationController;
 use App\Http\Controllers\Api\Auth\GoogleAuthController;
+use App\Http\Controllers\Api\Auth\IdentityController;
 use App\Http\Controllers\Api\Auth\PasswordResetController;
 use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\Customer\AuthController                as CustomerAuthController;
@@ -161,6 +162,15 @@ Route::prefix('v1')->group(function () {
         Route::middleware('auth:sanctum')->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);
             Route::get('me',      [AuthController::class, 'me']);
+            // #159 — Identity operations: swap to the sibling role
+            // (revokes current token + mints new + sets cookie) and
+            // "Become a customer" inline link. Both require an auth'd
+            // owner OR customer session — the controller checks the
+            // tokenable type to know who's calling.
+            Route::post('switch-role',           [IdentityController::class, 'switchRole'])
+                ->middleware('throttle:30,1');
+            Route::post('identity/link-customer', [IdentityController::class, 'linkCustomer'])
+                ->middleware('throttle:5,60');
             // Resend the verification email — authed so we don't expose
             // verification state to anonymous probing. Throttled to
             // 3 sends per hour per IP.

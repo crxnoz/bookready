@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Api\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\CustomerUser;
+use App\Models\Identity;
+use App\Models\User;
 use App\Support\CustomerAuthCookie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -39,15 +42,42 @@ class AuthController extends Controller
             'remember' => ['sometimes', 'boolean'],
         ]);
 
-        $user = CustomerUser::where('email', strtolower(trim($request->email)))->first();
+        $email = strtolower(trim((string) $request->email));
 
-        // Constant-time check via password_verify under the hood.
-        // Single error message on both branches so we don't reveal
-        // whether the email exists.
-        if (! $user || ! $user->password || ! Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
+        // #159 — same identity-first lookup as owner side.
+        $identity = Schema::hasTable('identities')
+            ? Identity::with(['user', 'customerUser'])->where('email', $email)->first()
+            : null;
+
+        $user = null;
+        $availableRoles = [];
+
+        if ($identity) {
+            if (! Hash::check($request->password, $identity->password)) {
+                throw ValidationException::withMessages([
+                    'email' => ['The provided credentials are incorrect.'],
+                ]);
+            }
+            $availableRoles = $identity->availableRoles();
+            if (! in_array('customer', $availableRoles, true)) {
+                return response()->json([
+                    'message'         => 'This account is registered as a business owner, not a customer.',
+                    'available_roles' => $availableRoles,
+                    'try_endpoint'    => '/auth/login',
+                ], 422);
+            }
+            $user = $identity->customerUser;
+        } else {
+            $user = CustomerUser::where('email', $email)->first();
+            if (! $user || ! $user->password || ! Hash::check($request->password, $user->password)) {
+                throw ValidationException::withMessages([
+                    'email' => ['The provided credentials are incorrect.'],
+                ]);
+            }
+            $availableRoles = ['customer'];
+            if (User::where('email', $email)->exists()) {
+                $availableRoles[] = 'owner';
+            }
         }
 
         $user->last_login_at = now();
@@ -64,7 +94,10 @@ class AuthController extends Controller
 
         return response()
             ->json([
-                'user' => $this->presentUser($user),
+                'user'            => $this->presentUser($user),
+                // #159 — same shape as owner-side response.
+                'available_roles' => $availableRoles,
+                'current_role'    => 'customer',
             ])
             ->withCookie(CustomerAuthCookie::make($token, $remember));
     }

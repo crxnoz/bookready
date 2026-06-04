@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Api\Customer;
 use App\Http\Controllers\Controller;
 use App\Mail\CustomerWelcomeMail;
 use App\Models\CustomerUser;
+use App\Models\Identity;
 use App\Support\CustomerAuthCookie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Phase 2 of the customer-accounts feature — self-serve signup.
@@ -38,6 +41,29 @@ class RegisterController extends Controller
 {
     public function store(Request $request): JsonResponse
     {
+        // #159 — Conflict check BEFORE validation. Same "block + ask to
+        // sign in" UX as owner side.
+        $emailIn = strtolower(trim((string) $request->input('email')));
+        if ($emailIn && Schema::hasTable('identities')) {
+            $existing = Identity::with(['user', 'customerUser'])->where('email', $emailIn)->first();
+            if ($existing) {
+                if ($existing->customerUser) {
+                    return response()->json([
+                        'message'       => 'A customer account already exists with this email. Sign in instead.',
+                        'existing_role' => 'customer',
+                        'redirect_url'  => '/account/login',
+                    ], 422);
+                }
+                if ($existing->user) {
+                    return response()->json([
+                        'message'       => 'You already have a BookReady business account with this email. Sign in to your business account, then use "Become a customer" from your dashboard.',
+                        'existing_role' => 'owner',
+                        'redirect_url'  => '/login',
+                    ], 422);
+                }
+            }
+        }
+
         $validated = $request->validate([
             'name'     => ['required', 'string', 'max:100'],
             'email'    => ['required', 'email', 'max:255', 'unique:customer_users,email'],
@@ -53,6 +79,20 @@ class RegisterController extends Controller
             'password' => $validated['password'],
             'phone'    => $validated['phone'] ?? null,
         ]);
+
+        // #159 — create + link identity.
+        if (Schema::hasTable('identities')) {
+            $identityId = DB::table('identities')->insertGetId([
+                'email'             => strtolower($user->email),
+                'password'          => $user->password, // already bcrypt-hashed by the model cast
+                'name'              => $user->name,
+                'phone'             => $user->phone,
+                'email_verified_at' => $user->email_verified_at,
+                'created_at'        => now(),
+                'updated_at'        => now(),
+            ]);
+            DB::table('customer_users')->where('id', $user->id)->update(['identity_id' => $identityId]);
+        }
 
         // Best-effort welcome email — never blocks signup. Caller will
         // separately trigger the verify-email send via the dedicated

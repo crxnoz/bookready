@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Api\Auth\EmailVerificationController;
 use App\Http\Controllers\Controller;
+use App\Models\Identity;
 use App\Services\PlatformMailer;
 use App\Services\TenantProvisioningService;
 use App\Support\AuthCookie;
@@ -11,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class RegisterController extends Controller
 {
@@ -28,6 +30,31 @@ class RegisterController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        // #159 — Conflict check BEFORE validation. If the email already
+        // exists as an identity, surface a "sign in instead" 422 with
+        // the existing role so the frontend can route them. This is
+        // the "Block + ask to sign in" UX per founder decision.
+        $emailIn = strtolower(trim((string) $request->input('email')));
+        if ($emailIn && Schema::hasTable('identities')) {
+            $existing = Identity::with(['user', 'customerUser'])->where('email', $emailIn)->first();
+            if ($existing) {
+                if ($existing->user) {
+                    return response()->json([
+                        'message'       => 'An owner account already exists with this email. Sign in instead.',
+                        'existing_role' => 'owner',
+                        'redirect_url'  => '/login',
+                    ], 422);
+                }
+                if ($existing->customerUser) {
+                    return response()->json([
+                        'message'       => 'You already have a customer account with this email. Sign in to your customer account, then use "Become a business owner" from your dashboard.',
+                        'existing_role' => 'customer',
+                        'redirect_url'  => '/account/login',
+                    ], 422);
+                }
+            }
+        }
+
         $data = $request->validate([
             'owner_name'     => ['required', 'string', 'max:100'],
             'email'          => ['required', 'email', 'unique:users,email'],
@@ -55,6 +82,24 @@ class RegisterController extends Controller
             'terms_accepted_at' => now(),
             'terms_version'     => self::TERMS_VERSION,
         ]);
+
+        // #159 — Create the unified identity row and link the new user
+        // to it. Password mirrors the just-hashed users.password so the
+        // identity has a valid credential from day one. Guarded by
+        // Schema check so the controller stays bootable on environments
+        // where the create-identities migration hasn't run yet.
+        if (Schema::hasTable('identities')) {
+            $identityId = DB::table('identities')->insertGetId([
+                'email'             => strtolower($owner->email),
+                'password'          => $owner->password, // already bcrypt-hashed by the User model
+                'name'              => $owner->name,
+                'phone'             => null,
+                'email_verified_at' => $owner->email_verified_at,
+                'created_at'        => now(),
+                'updated_at'        => now(),
+            ]);
+            DB::table('users')->where('id', $owner->id)->update(['identity_id' => $identityId]);
+        }
 
         $token = $owner->createToken(
             'api',
