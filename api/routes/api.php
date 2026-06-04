@@ -198,7 +198,13 @@ Route::prefix('v1')->group(function () {
     // PUT/DELETE return 402 when subscription_state is trial_expired or
     // cancelled. past_due is treated as alive — Stripe is still
     // retrying, owner should be able to fix the card.
-    Route::middleware(['auth:sanctum', 'verified_email', 'tenant_owner', 'write_gate'])->prefix('editor')->group(function () {
+    //
+    // #160 — `verified_email` removed from this group. Unverified owners
+    // can build their site during the trial (per the design); specific
+    // actions that require verification (publishing the site to the
+    // public) are gated inside the controller. Booking new appointments
+    // stays open on the PUBLIC endpoint and isn't affected by this.
+    Route::middleware(['auth:sanctum', 'tenant_owner', 'write_gate'])->prefix('editor')->group(function () {
         Route::get('business',  [BusinessProfileController::class, 'show']);
         Route::patch('business', [BusinessProfileController::class, 'update']);
 
