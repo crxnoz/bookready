@@ -1263,19 +1263,29 @@ const VT_CSS = `
   background: transparent;
   margin-top: 32px;
 }
-.vt-template .brk-footer-cta-band { padding: 56px 24px; }
-/* VT's footer CTA is a SHARP gold rectangle (not a pill). */
+.vt-template .brk-footer-cta-band { padding: 48px 24px; border-bottom: 0; }
+/* VT's footer CTA is just typography — gold "Reserve" in the body font,
+   no fill, no border, no radius. Reads quieter and more editorial than a
+   button, consistent with VT's restrained voice. The shared base paints
+   it with the accent bg + on-accent text + a border; reset all of those
+   so only the type remains. */
 .vt-template .brk-footer-book {
+  background: transparent;
+  color: var(--vt-accent);
+  border: 0;
   border-radius: 0;
-  font-family: var(--vt-body);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.28em;
+  padding: 6px 0;
+  font-family: var(--vt-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(28px, 4vw, 38px);
+  letter-spacing: 0.005em;
+  text-transform: none;
   transition: opacity 160ms ease;
 }
 .vt-template .brk-footer-book:hover {
   filter: none;
-  opacity: 0.86;
+  opacity: 0.78;
 }
 .vt-template .brk-footer-inner {
   max-width: 1080px;
@@ -1347,26 +1357,13 @@ const VT_CSS = `
 }
 .vt-template .brk-instruction:last-child { border-bottom: 0; }
 
-/* ── Notes only — lowercase Roman numeral marker via CSS counter ── */
-.vt-template .brk-instructions:not(.brk-instructions--numbered) {
-  counter-reset: vt-advice;
-}
+/* Notes (advice): no per-row marker — relies on the hairline divider
+   between rows for rhythm. (Previously had lowercase roman counters; they
+   read as policy-style rules instead of soft editorial notes.) */
+.vt-template .brk-instructions:not(.brk-instructions--numbered) .brk-instruction-mark { display: none; }
 .vt-template .brk-instructions:not(.brk-instructions--numbered) .brk-instruction {
-  grid-template-columns: 56px 1fr;
-  gap: 24px;
+  grid-template-columns: 1fr;
   align-items: start;
-  counter-increment: vt-advice;
-}
-.vt-template .brk-instructions:not(.brk-instructions--numbered) .brk-instruction-mark {
-  font-family: var(--vt-display);
-  font-style: italic;
-  font-size: 28px;
-  line-height: 1;
-  color: var(--vt-accent);
-  text-align: left;
-}
-.vt-template .brk-instructions:not(.brk-instructions--numbered) .brk-instruction-mark::before {
-  content: counter(vt-advice, lower-roman);
 }
 
 /* ── Itinerary only — italic gold serif ordinal (matches VT's numerals) ── */

@@ -401,7 +401,8 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
               items={timeline}
               heading={settings.timeline?.heading ?? 'Timeline'}
               eyebrow={tabs.timeline_label ?? 'Process'}
-              cardKicker={settings.timeline?.card_kicker}
+              // cardKicker intentionally omitted — TFR's numbered ordinal IS
+              // the step indicator; a per-step "Step" eyebrow is redundant.
               numbered
               emptyText="No timeline yet."
               ariaLabel={tabs.timeline_label ?? 'Process'}

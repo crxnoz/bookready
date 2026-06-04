@@ -1,3 +1,7 @@
+'use client'
+
+import { useState } from 'react'
+
 /**
  * BeforeAfterSection — shared, theme-tokenized results diptych.
  *
@@ -7,11 +11,13 @@
  * "More" trailing bucket for ungrouped items when other groups exist).
  *
  * Each result is a before/after pair with an optional center separator glyph
- * (only when `separator` is given) and optional corner "Before"/"After"
- * labels (gated by `labels`). The look is Opaline's neutral base (3/4 panes,
- * hairline borders, italic caption); templates skin via `.brk-ba*`.
+ * (only when `separator` is given) and corner "Before"/"After" labels (on by
+ * default, hide via `labels={false}`). The "after" image starts BLURRED — a
+ * tap (or keyboard activation) reveals it; tap again to hide. Templates skin
+ * via `.brk-ba*` and may tune blur intensity via `.brk-ba-reveal img filter`.
  *
  * Returns null when there are no items, unless an `emptyText` is given.
+ * Client component (the reveal state is per-item).
  */
 export interface BeforeAfterItem {
   id: number
@@ -58,10 +64,19 @@ export function BeforeAfterSection({
   heading = 'Before & After',
   eyebrow = 'Results',
   separator,
-  labels = false,
+  labels = true,
   emptyText,
   ariaLabel,
 }: BeforeAfterSectionProps) {
+  // Tracks which "after" images the visitor has revealed. Toggle on
+  // click/keyboard; default state is blurred for every item.
+  const [revealed, setRevealed] = useState<Set<number>>(new Set())
+  const toggle = (id: number) =>
+    setRevealed(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
   const all = (items ?? []).filter(
     it => (it.before_image_url ?? '').trim() && (it.after_image_url ?? '').trim(),
   )
@@ -120,11 +135,20 @@ export function BeforeAfterSection({
                     {separator && <span className="brk-ba-sep" aria-hidden="true">{separator}</span>}
                     <figure className="brk-ba-pane brk-ba-after">
                       {labels && <figcaption className="brk-ba-label">After</figcaption>}
-                      <img
-                        src={it.after_image_url}
-                        alt={it.after_alt_text ?? it.title ?? 'After'}
-                        loading="lazy"
-                      />
+                      <button
+                        type="button"
+                        className={`brk-ba-reveal${revealed.has(it.id) ? ' is-revealed' : ''}`}
+                        onClick={() => toggle(it.id)}
+                        aria-pressed={revealed.has(it.id)}
+                        aria-label={revealed.has(it.id) ? 'Hide after image' : 'Reveal after image'}
+                      >
+                        <img
+                          src={it.after_image_url}
+                          alt={it.after_alt_text ?? it.title ?? 'After'}
+                          loading="lazy"
+                        />
+                        <span className="brk-ba-reveal-hint" aria-hidden="true">Tap to reveal</span>
+                      </button>
                     </figure>
                   </div>
                   {(it.caption ?? '').trim() && <p className="brk-ba-caption">{it.caption}</p>}

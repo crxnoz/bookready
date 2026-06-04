@@ -125,6 +125,24 @@ class BusinessProfileController extends Controller
             'site_password'                        => 'sometimes|nullable|string|max:100',
         ]);
 
+        // #160 — Publish gate. Setting site_visibility='public' requires
+        // a verified email address. The owner can still build their site
+        // and toggle it private/coming_soon at will; making it visible to
+        // the public is what we gate. Returns 422 so the editor surfaces
+        // a clean validation-style error rather than a generic 403.
+        if (
+            ($validated['site_visibility'] ?? null) === 'public'
+            && ! $request->user()->email_verified_at
+        ) {
+            return response()->json([
+                'message' => 'Verify your email before publishing your site.',
+                'errors'  => [
+                    'site_visibility' => ['Please verify your email address to publish your site to the public.'],
+                ],
+                'requires_verification' => true,
+            ], 422);
+        }
+
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 

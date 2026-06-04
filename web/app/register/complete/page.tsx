@@ -107,6 +107,9 @@ function CompleteInner() {
           template, plan: 'studio', billing: 'monthly', sms_mult: 1,
         }))
       } catch { /* ignore */ }
+      // Google completeSignup already marks email_verified_at on the
+      // backend (Google did the verification), so we skip /verify-email
+      // and jump straight to the trial card-capture screen.
       router.push('/checkout/trial')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Could not finish signup.')

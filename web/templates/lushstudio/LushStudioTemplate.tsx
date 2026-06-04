@@ -905,15 +905,14 @@ function AboutPanel({
         </div>
       )}
 
-      {/* Layered title — DM Serif Text 140px backdrop at low opacity
-          with Molle italic script overlay centered. Same compositional
-          idea as TFR's neon-on-serif layered title, dressed in Lush
-          typography: cream serif eyebrow whispers behind, sage script
-          heading reads cleanly over top. */}
-      <div className="lush-layered-title">
-        <span className="lush-layered-eyebrow" aria-hidden="true">{eyebrow}</span>
-        <h2 className="lush-layered-heading">{heading}</h2>
-      </div>
+      {/* Cohesive section header — same eyebrow + Cookie-script title
+          treatment every other Lush tab uses (gallery/results/policy/etc).
+          Dropped the bespoke Molle layered title — it broke the family
+          feel and didn't survive a redesign pass. */}
+      <header className="lush-about-header">
+        <p className="lush-eyebrow">{eyebrow}</p>
+        <h2 className="lush-section-title">{heading}</h2>
+      </header>
 
       <div className="lush-about-copy">
         <p className="lush-about-body">{body}</p>
@@ -1225,47 +1224,66 @@ const LUSH_SECTIONS_SKIN = `
   color: var(--lush-muted);
 }
 
-/* ── Advice skin (.brk-instructions--plain) — "The Ritual": an
-   un-numbered editorial list with NO divider rules; instead a single
-   centered sage ✦ floats BETWEEN rows (was .lush-ritual-sep, now a
-   ::before on every row after the first). Cookie kicker, DM Serif
-   title, Roboto body. Matches the old .lush-ritual* block. ── */
-.lush-template .brk-instructions--plain { gap: 0; }
+/* ── Advice skin (.brk-instructions--plain) — playful "ritual" cards.
+   Each tip is its own soft sage-tinted card with a heart ♥ floating
+   before the heading. Distinct from the .brk-policy ✦-marker list so
+   advice doesn't read as a second policies section. ── */
+.lush-template .brk-instructions--plain {
+  gap: 16px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+/* Override base divider lines + zero-padding from the plain variant. */
 .lush-template .brk-instructions--plain .brk-instruction {
   border-top: none;
-  padding: 14px 4px 18px;
+  background: rgba(var(--lush-pink-rgb), 0.06);
+  border: 1px solid rgba(var(--lush-pink-rgb), 0.22);
+  border-left: 3px solid var(--lush-pink);
+  border-radius: 14px;
+  padding: 22px 24px 24px;
+  transition: background 200ms ease, transform 200ms ease;
 }
-.lush-template .brk-instructions--plain .brk-instruction:last-child { border-bottom: none; }
-/* Sage ✦ separator before every row except the first. The plain list
-   is a single 1fr column, so this ::before stacks above the body. */
-.lush-template .brk-instructions--plain .brk-instruction + .brk-instruction::before {
-  content: "\\2726\\FE0E";
-  display: block;
-  text-align: center;
-  font-family: var(--lush-ui);
-  font-size: 16px;
-  line-height: 1;
-  color: var(--lush-pink);
-  padding: 0 0 18px;
+.lush-template .brk-instructions--plain .brk-instruction:last-child { border-bottom: 1px solid rgba(var(--lush-pink-rgb), 0.22); }
+.lush-template .brk-instructions--plain .brk-instruction:hover {
+  background: rgba(var(--lush-pink-rgb), 0.10);
+  transform: translateY(-2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lush-template .brk-instructions--plain .brk-instruction,
+  .lush-template .brk-instructions--plain .brk-instruction:hover { transform: none; }
 }
 .lush-template .brk-instructions--plain .brk-instruction-kicker {
   font-family: var(--lush-script);
   font-weight: 400;
-  font-size: 24px;
+  font-size: 22px;
   line-height: 1;
   letter-spacing: 0;
   text-transform: none;
   color: var(--lush-pink);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 .lush-template .brk-instructions--plain .brk-instruction-body h3 {
   margin: 0 0 10px;
   font-family: var(--lush-serif);
   font-weight: 400;
   font-size: 22px;
-  line-height: 1.1;
+  line-height: 1.15;
   letter-spacing: -0.02em;
   color: var(--lush-text);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+/* Heart ♥ flourish — inline BEFORE the heading text. Lush already uses
+   the heart as the template's floating motif; reusing it here ties the
+   ritual cards to the brand without dragging in the policy ✦. */
+.lush-template .brk-instructions--plain .brk-instruction-body h3::before {
+  content: "\\2665";
+  font-family: var(--lush-ui);
+  font-size: 0.78em;
+  line-height: 1;
+  color: var(--lush-pink);
+  flex-shrink: 0;
 }
 .lush-template .brk-instructions--plain .brk-instruction-body p {
   font-family: var(--lush-ui);
@@ -1429,7 +1447,10 @@ const LUSH_SECTIONS_SKIN = `
   color: var(--lush-text);
 }
 .lush-template .brk-ba {
-  width: min(100%, 360px);
+  /* Was capped at 360px (each before/after pane ended up ~170px wide
+     on mobile — way too small to actually compare the result). Let the
+     diptych breathe to the section column so each pane reads. */
+  width: 100%;
   margin: 0 auto;
   padding: 6px 0 0;
 }

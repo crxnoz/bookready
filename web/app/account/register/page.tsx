@@ -71,11 +71,13 @@ function Inner() {
         turnstile_token: turnstileToken,
       })
       setCustomerLoggedIn()
-      if (returnTo) {
-        window.location.href = returnTo
-        return
-      }
-      router.push('/account')
+      // #160 — send the customer to the verify-email waiting screen
+      // (with return_to preserved). They can still book new appts
+      // (the booking endpoint isn't email-gated), but cancel/reschedule
+      // existing bookings IS gated, so the verify step matters for the
+      // /account dashboard experience anyway.
+      const next = returnTo ? `/account/verify-email?return_to=${encodeURIComponent(returnTo)}` : '/account/verify-email'
+      router.push(next)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign-up failed.')
       // #161: Reset for next attempt (single-use tokens).

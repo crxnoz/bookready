@@ -399,6 +399,59 @@ export const SECTIONS_CSS = `
   color: var(--brk-color-text, inherit);
 }
 .brk-ba-sep { color: var(--brk-color-accent, currentColor); font-size: 10px; align-self: center; }
+/* Tap-to-reveal "after" image. The button is a transparent wrapper so it
+   inherits the existing .brk-ba-pane img sizing/border from each template's
+   skin. .is-revealed clears the blur; .brk-ba-reveal-hint floats a small
+   prompt over the blurred image until the visitor taps. */
+.brk-ba-reveal {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: block;
+  width: 100%;
+  position: relative;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+}
+.brk-ba-reveal img {
+  filter: blur(14px) saturate(0.92);
+  transition: filter 360ms ease;
+  display: block;
+  width: 100%;
+}
+.brk-ba-reveal.is-revealed img { filter: none; }
+.brk-ba-reveal-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  background: var(--brk-color-surface, rgba(255,255,255,0.9));
+  border: 1px solid var(--brk-color-rule, rgba(0,0,0,0.12));
+  border-radius: 999px;
+  font-family: var(--brk-family-body, sans-serif);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--brk-color-text, inherit);
+  pointer-events: none;
+  opacity: 0.94;
+  transition: opacity 200ms ease;
+}
+.brk-ba-reveal.is-revealed .brk-ba-reveal-hint { opacity: 0; }
+.brk-ba-reveal:focus-visible {
+  outline: 2px solid var(--brk-color-accent, currentColor);
+  outline-offset: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .brk-ba-reveal img,
+  .brk-ba-reveal-hint { transition: none; }
+}
 .brk-ba-caption {
   margin: 18px 0 0;
   text-align: center;

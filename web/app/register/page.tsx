@@ -119,9 +119,13 @@ function RegisterForm() {
         })(),
       }
       try { localStorage.setItem('br_signup_intent', JSON.stringify(intent)) } catch { /* localStorage disabled */ }
-      // Send the owner to the new trial card-capture screen instead of
-      // the OLD /checkout (which double-picked template + cycle).
-      router.push('/checkout/trial')
+      // #160 — send to the verify-email waiting screen first. That
+      // screen polls /auth/me and advances to /checkout/trial once
+      // the user clicks the link in their email. Google signups skip
+      // /verify-email because Google has already verified the address
+      // (their flow runs through GoogleAuthController::exchange and
+      // /auth/google/complete instead of this handler).
+      router.push('/verify-email')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Registration failed.')
       // #161: Cloudflare tokens are single-use — a failed POST consumed
