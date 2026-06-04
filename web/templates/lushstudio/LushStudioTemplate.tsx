@@ -1470,12 +1470,18 @@ const LUSH_SECTIONS_SKIN = `
   gap: 8px;
   align-items: stretch;
 }
-/* Keep the 40/60 split on mobile too — the shared SECTIONS_CSS collapses
-   .brk-ba-pair to a single column at <=640px (sensible default), but
-   Lush's asymmetric diptych reads better even on phone widths. Forcing
-   the grid here overrides the shared mobile collapse. */
+/* Mobile diptych — tighter 1.3fr/2fr (~39/61) two-column grid; the
+   centered ✦ separator is removed on phones so the two photos sit
+   directly side-by-side. Before image height is dropped a notch below
+   the after so the after is the clear focal point. */
 @media (max-width: 640px) {
-  .lush-template .brk-ba-pair { grid-template-columns: 2fr auto 3fr; }
+  .lush-template .brk-ba-pair {
+    grid-template-columns: 1.3fr 2fr;
+    gap: 6px;
+  }
+  .lush-template .brk-ba-pair .brk-ba-sep { display: none; }
+  .lush-template .brk-ba-before img { height: clamp(180px, 32vw, 280px); }
+  .lush-template .brk-ba-after  img { height: clamp(220px, 38vw, 340px); }
 }
 /* Lift the label out of the absolute pill into a static serif-italic
    caption stacked above the photo. */

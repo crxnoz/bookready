@@ -435,10 +435,13 @@ export const SECTIONS_CSS = `
   transform: scale(1);
 }
 .brk-ba-reveal-hint {
+  /* Fully centered inside the blurred image (vertical + horizontal),
+     so the prompt sits at the optical middle regardless of pane height. */
   position: absolute;
   left: 50%;
-  bottom: 16px;
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
   padding: 8px 14px;
   background: var(--brk-color-surface, rgba(255,255,255,0.9));
   border: 1px solid var(--brk-color-rule, rgba(0,0,0,0.12));
