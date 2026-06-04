@@ -398,8 +398,11 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
 
         {/* ── Header ── */}
         <section className="lush-header-section">
-          {/* Customer-account widget: absolutely positioned top-right of header. */}
-          <LushCustomerAccountWidget />
+          {/* Customer-account widget intentionally NOT rendered on Lush —
+              the floating sign-in pill at the top-right read as clutter
+              against the soft cream canvas + floating-heart decorations.
+              The CustomerAuthProvider still wraps the tree so the booking
+              flow's "View your bookings" CTA still works. */}
 
           <span className="lush-floating-heart lush-fh-1" aria-hidden="true"><Heart size={14} fill="currentColor" /></span>
           <span className="lush-floating-heart lush-fh-2" aria-hidden="true"><Heart size={18} fill="currentColor" /></span>
@@ -1466,6 +1469,13 @@ const LUSH_SECTIONS_SKIN = `
   grid-template-columns: 2fr auto 3fr;
   gap: 8px;
   align-items: stretch;
+}
+/* Keep the 40/60 split on mobile too — the shared SECTIONS_CSS collapses
+   .brk-ba-pair to a single column at <=640px (sensible default), but
+   Lush's asymmetric diptych reads better even on phone widths. Forcing
+   the grid here overrides the shared mobile collapse. */
+@media (max-width: 640px) {
+  .lush-template .brk-ba-pair { grid-template-columns: 2fr auto 3fr; }
 }
 /* Lift the label out of the absolute pill into a static serif-italic
    caption stacked above the photo. */
