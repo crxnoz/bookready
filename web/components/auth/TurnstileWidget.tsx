@@ -42,7 +42,10 @@ declare global {
       render(el: HTMLElement | string, opts: {
         sitekey: string
         callback: (token: string) => void
-        'error-callback'?: () => void
+        // Cloudflare passes an error code string as the first argument
+        // (e.g. "110200" = hostname not allowed for this sitekey).
+        // See https://developers.cloudflare.com/turnstile/reference/client-side-errors/
+        'error-callback'?: (errorCode?: string) => void
         'expired-callback'?: () => void
         theme?: 'light' | 'dark' | 'auto'
         size?: 'normal' | 'compact' | 'flexible'
@@ -132,8 +135,15 @@ const TurnstileWidget = forwardRef<TurnstileWidgetHandle, Props>(function Turnst
         const id = window.turnstile.render(containerRef.current, {
           sitekey: siteKey,
           callback: (token) => onVerify(token),
-          'error-callback': () => {
-            setError('CAPTCHA failed to load. Refresh the page and try again.')
+          'error-callback': (errorCode) => {
+            // Surface the Cloudflare error code so we can diagnose
+            // hostname-allowlist mismatches (110200), invalid sitekey
+            // (110100), etc. without making the user open dev tools.
+            const codeSuffix = errorCode ? ` (Cloudflare code ${errorCode})` : ''
+            setError(`CAPTCHA failed to load. Refresh the page and try again.${codeSuffix}`)
+            // Also log for the dev-tools console — useful when the surfaced
+            // string gets clipped or the screen reader skips it.
+            console.warn('[Turnstile] error-callback fired', { errorCode, sitekey: siteKey })
             onExpire?.()
           },
           'expired-callback': () => {
