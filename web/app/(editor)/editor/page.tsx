@@ -901,15 +901,24 @@ function PendingRequestsTile({ count }: { count: number }) {
 interface RevenueWeek { label: string; value: number; startISO: string }
 
 /**
- * Revenue trend chart — 8 weekly bars. Pure SVG; no library. Hover
- * shows the week label and exact value.
+ * Revenue trend chart — 8 weekly bars, fully interactive (hover tooltip,
+ * highlight, click-to-drill into Payments filtered to that week's start).
  */
 function RevenueChart({ weeks, currency }: { weeks: RevenueWeek[]; currency: string }) {
-  const max = Math.max(1, ...weeks.map(w => w.value))
+  const router = useRouter()
   const total = weeks.reduce((s, w) => s + w.value, 0)
   const last = weeks[weeks.length - 1]?.value ?? 0
   const prev = weeks[weeks.length - 2]?.value ?? 0
   const delta = prev > 0 ? Math.round(((last - prev) / prev) * 100) : null
+
+  const bars: ChartBar[] = weeks.map((w, i) => ({
+    key:        w.startISO,
+    value:      w.value,
+    primary:    `Week of ${w.label}`,
+    secondary:  money(w.value, currency),
+    accent:     i === weeks.length - 1,
+    onClick:    () => router.push(`/editor/payments?from=${w.startISO}`),
+  }))
 
   return (
     <section>
@@ -921,35 +930,12 @@ function RevenueChart({ weeks, currency }: { weeks: RevenueWeek[]; currency: str
           : `${money(total, currency)} total · ${delta != null ? (delta >= 0 ? '+' : '') + delta + '% vs last week' : 'this week'}`}
         cta={{ label: 'Open Payments', href: '/editor/payments' }}
       />
-      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
-        <svg viewBox="0 0 320 120" preserveAspectRatio="none" className="w-full h-32">
-          {weeks.map((w, i) => {
-            const x = (i * (320 / weeks.length)) + 6
-            const barW = (320 / weeks.length) - 12
-            const h = w.value === 0 ? 2 : Math.max(4, (w.value / max) * 100)
-            const y = 110 - h
-            const isLast = i === weeks.length - 1
-            return (
-              <g key={w.startISO}>
-                <rect
-                  x={x}
-                  y={y}
-                  width={barW}
-                  height={h}
-                  fill={isLast ? '#121212' : 'rgba(18,18,18,0.20)'}
-                />
-                <title>{w.label}: {money(w.value, currency)}</title>
-              </g>
-            )
-          })}
-          {/* baseline */}
-          <line x1="0" y1="110" x2="320" y2="110" stroke="rgba(18,18,18,0.15)" strokeWidth="0.5" />
-        </svg>
-        <div className="flex justify-between mt-2 text-[9px] tracking-[0.08em] uppercase text-muted-text">
-          <span>{weeks[0]?.label}</span>
-          <span>{weeks[weeks.length - 1]?.label}</span>
-        </div>
-      </div>
+      <InteractiveBarChart
+        bars={bars}
+        startLabel={weeks[0]?.label ?? ''}
+        endLabel={weeks[weeks.length - 1]?.label ?? ''}
+        emptyText="No revenue in this window."
+      />
     </section>
   )
 }
@@ -957,13 +943,23 @@ function RevenueChart({ weeks, currency }: { weeks: RevenueWeek[]; currency: str
 interface BookingDay { date: string; label: string; count: number; isToday: boolean }
 
 /**
- * Booking volume bar chart — daily bookings for the last 14 days.
- * Highlights today; muted bars for past days. Pure SVG.
+ * Booking volume — 14 daily bars, fully interactive. Today highlighted
+ * green; click any bar to drill into the calendar filtered to that day.
  */
 function BookingVolumeChart({ days }: { days: BookingDay[] }) {
-  const max = Math.max(1, ...days.map(d => d.count))
+  const router = useRouter()
   const total = days.reduce((s, d) => s + d.count, 0)
   const avg = total / days.length
+
+  const bars: ChartBar[] = days.map(d => ({
+    key:        d.date,
+    value:      d.count,
+    primary:    fmtDateFull(d.date),
+    secondary:  `${d.count} booking${d.count === 1 ? '' : 's'}`,
+    accent:     d.isToday,
+    accentColor:'#0f6f3d',
+    onClick:    () => router.push(`/editor/appointments?date=${d.date}`),
+  }))
 
   return (
     <section>
@@ -975,35 +971,174 @@ function BookingVolumeChart({ days }: { days: BookingDay[] }) {
           : `${total} bookings total · ${avg.toFixed(1)}/day avg`}
         cta={{ label: 'Open calendar', href: '/editor/appointments' }}
       />
-      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
-        <svg viewBox="0 0 320 120" preserveAspectRatio="none" className="w-full h-32">
-          {days.map((d, i) => {
-            const x = (i * (320 / days.length)) + 4
-            const barW = (320 / days.length) - 8
-            const h = d.count === 0 ? 2 : Math.max(4, (d.count / max) * 100)
+      <InteractiveBarChart
+        bars={bars}
+        startLabel={days[0]?.label ?? ''}
+        endLabel="Today"
+        emptyText="No bookings in this window."
+      />
+    </section>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// A14 — shared interactive bar-chart primitive
+// ────────────────────────────────────────────────────────────────────────────
+
+interface ChartBar {
+  key:           string
+  value:         number
+  primary:       string   // tooltip headline (date / week label)
+  secondary:     string   // tooltip detail (count / amount)
+  accent?:       boolean  // last-week / today highlight
+  accentColor?:  string   // override accent fill (defaults to near-black)
+  onClick?:      () => void
+}
+
+/**
+ * Interactive bar chart used by Revenue + Bookings tiles.
+ *
+ * Features:
+ *   - Custom hover tooltip that follows the hovered bar (positioned
+ *     absolutely above the bar; auto-edge-clamped on left/right).
+ *   - Mount animation: bars grow from 0 height in a 600ms CSS keyframe
+ *     with a staggered start so the chart "deals out" left → right.
+ *   - Click handler per bar (typically drills into a filtered view).
+ *   - Hover dims non-hovered bars subtly so focus reads instantly.
+ *   - Keyboard-accessible: each bar is a focusable button with the
+ *     same tooltip behaviour on focus.
+ */
+function InteractiveBarChart({
+  bars, startLabel, endLabel, emptyText,
+}: {
+  bars:       ChartBar[]
+  startLabel: string
+  endLabel:   string
+  emptyText:  string
+}) {
+  const [hover, setHover] = useState<number | null>(null)
+  const max = Math.max(1, ...bars.map(b => b.value))
+  const total = bars.reduce((s, b) => s + b.value, 0)
+
+  if (total === 0) {
+    return (
+      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-6 text-center">
+        <p className="text-[12px] text-muted-text">{emptyText}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
+      <div className="relative" onMouseLeave={() => setHover(null)}>
+        {/* Tooltip positioned above the hovered bar. */}
+        {hover != null && bars[hover] && (
+          <ChartTooltip
+            bar={bars[hover]}
+            position={(hover + 0.5) / bars.length}
+          />
+        )}
+
+        <svg viewBox="0 0 320 120" preserveAspectRatio="none" className="w-full h-32 block">
+          {bars.map((b, i) => {
+            const xStep = 320 / bars.length
+            const pad   = bars.length > 10 ? 4 : 6
+            const x = i * xStep + pad
+            const barW = xStep - pad * 2
+            const h = b.value === 0 ? 2 : Math.max(4, (b.value / max) * 100)
             const y = 110 - h
+            const isHover = hover === i
+            const baseFill = b.accent ? (b.accentColor ?? '#121212') : 'rgba(18,18,18,0.22)'
+            const hoverFill = b.accent ? (b.accentColor ?? '#121212') : 'rgba(18,18,18,0.55)'
             return (
-              <g key={d.date}>
+              <g
+                key={b.key}
+                onMouseEnter={() => setHover(i)}
+                onFocus={() => setHover(i)}
+                onBlur={() => setHover(null)}
+                onClick={b.onClick}
+                tabIndex={b.onClick ? 0 : -1}
+                role={b.onClick ? 'button' : undefined}
+                aria-label={`${b.primary}: ${b.secondary}`}
+                style={{ cursor: b.onClick ? 'pointer' : 'default', outline: 'none' }}
+              >
+                {/* Invisible full-height hit area for easier hover/click. */}
+                <rect x={i * xStep} y={0} width={xStep} height={120} fill="transparent" />
                 <rect
+                  className="onb-chart-bar"
                   x={x}
                   y={y}
                   width={barW}
                   height={h}
-                  fill={d.isToday ? '#0f6f3d' : 'rgba(18,18,18,0.30)'}
+                  fill={isHover ? hoverFill : baseFill}
+                  style={{
+                    transition: 'fill 120ms ease, opacity 120ms ease',
+                    opacity: hover != null && ! isHover ? 0.6 : 1,
+                    animationDelay: `${i * 35}ms`,
+                  }}
                 />
-                <title>{d.label}: {d.count} booking{d.count === 1 ? '' : 's'}</title>
               </g>
             )
           })}
+          {/* baseline */}
           <line x1="0" y1="110" x2="320" y2="110" stroke="rgba(18,18,18,0.15)" strokeWidth="0.5" />
         </svg>
-        <div className="flex justify-between mt-2 text-[9px] tracking-[0.08em] uppercase text-muted-text">
-          <span>{days[0]?.label}</span>
-          <span>Today</span>
-        </div>
+
+        <style>{`
+          .onb-chart-bar {
+            transform-box: fill-box;
+            transform-origin: bottom;
+            animation-name: onbBarGrow;
+            animation-duration: 600ms;
+            animation-timing-function: cubic-bezier(.2,.7,.3,1);
+            animation-fill-mode: both;
+          }
+          @keyframes onbBarGrow {
+            from { transform: scaleY(0); }
+            to   { transform: scaleY(1); }
+          }
+        `}</style>
       </div>
-    </section>
+      <div className="flex justify-between mt-2 text-[9px] tracking-[0.08em] uppercase text-muted-text">
+        <span>{startLabel}</span>
+        <span>{endLabel}</span>
+      </div>
+    </div>
   )
+}
+
+/**
+ * Tooltip positioned over the hovered bar. Clamps to the chart edges so
+ * the leftmost / rightmost hover doesn't overflow the card.
+ */
+function ChartTooltip({ bar, position }: { bar: ChartBar; position: number }) {
+  // position is 0..1 — bar centre across the chart.
+  // Convert to a CSS left% but clamp [12%, 88%] so the tooltip stays
+  // visually inside the card even at the edges.
+  const left = Math.max(12, Math.min(88, position * 100))
+  return (
+    <div
+      className="absolute -top-2 -translate-x-1/2 -translate-y-full pointer-events-none z-10"
+      style={{ left: `${left}%` }}
+    >
+      <div className="bg-near-black text-white px-2.5 py-1.5 text-[10px] tracking-tight whitespace-nowrap shadow-md">
+        <p className="font-semibold leading-tight">{bar.primary}</p>
+        <p className="text-white/80 leading-tight mt-0.5">{bar.secondary}</p>
+      </div>
+      {/* Pointer */}
+      <div
+        className="w-2 h-2 bg-near-black mx-auto rotate-45 -mt-1"
+      />
+    </div>
+  )
+}
+
+/** Friendlier date for tooltips: "Tuesday, Jun 4". */
+function fmtDateFull(iso: string): string {
+  if (! iso) return ''
+  const [y, m, d] = iso.split('T')[0].split('-').map(s => parseInt(s, 10))
+  const date = new Date(y, m - 1, d)
+  return date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
 }
 
 interface NewCustomer { name: string; firstAppointmentDate: string }
