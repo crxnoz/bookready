@@ -48,14 +48,22 @@ class WebsiteSectionsController extends Controller
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
-        $slug = TemplateDefaults::DEFAULT_TEMPLATE_SLUG;
+        // Use the tenant's ACTIVE template slug (from template_settings) for
+        // seeding fresh rows — not the hardcoded DEFAULT_TEMPLATE_SLUG. The
+        // active slug drives the public render; seeding with anything else
+        // means the public reader would have to filter the wrong way around.
+        $activeSlug = (string) (DB::table('template_settings')->value('template_slug')
+            ?: TemplateDefaults::DEFAULT_TEMPLATE_SLUG);
 
-        $count = DB::table('website_sections')->where('template_slug', $slug)->count();
+        // No template_slug filter on the read — each tenant has exactly one
+        // template, so all sections in the tenant DB belong to it (legacy
+        // rows seeded under an old slug are still valid for this tenant).
+        $count = DB::table('website_sections')->count();
         if ($count === 0) {
             $now = now();
-            foreach (TemplateDefaults::sectionsFor($slug) as $s) {
+            foreach (TemplateDefaults::sectionsFor($activeSlug) as $s) {
                 DB::table('website_sections')->insert([
-                    'template_slug' => $slug,
+                    'template_slug' => $activeSlug,
                     'section_key'   => $s['section_key'],
                     'section_type'  => $s['section_type'],
                     'title'         => $s['title'],
@@ -71,7 +79,6 @@ class WebsiteSectionsController extends Controller
         }
 
         $sections = DB::table('website_sections')
-            ->where('template_slug', $slug)
             ->orderBy('sort_order', 'asc')
             ->orderBy('id', 'asc')
             ->get()
@@ -102,10 +109,13 @@ class WebsiteSectionsController extends Controller
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
-        $slug = TemplateDefaults::DEFAULT_TEMPLATE_SLUG;
+        // Stamp the active template_slug onto new custom rows so legacy +
+        // new rows share the same value going forward. Reads don't filter
+        // by it anymore, but keeping it consistent keeps the data clean.
+        $slug = (string) (DB::table('template_settings')->value('template_slug')
+            ?: TemplateDefaults::DEFAULT_TEMPLATE_SLUG);
 
         $customCount = DB::table('website_sections')
-            ->where('template_slug', $slug)
             ->whereIn('section_type', self::ALLOWED_CUSTOM_TYPES)
             ->count();
 
@@ -120,7 +130,6 @@ class WebsiteSectionsController extends Controller
         $sectionKey = $validated['section_type'] . '_' . time() . '_' . rand(100, 999);
 
         $nextOrder = (int) DB::table('website_sections')
-            ->where('template_slug', $slug)
             ->where('is_locked', false)
             ->max('sort_order') + 1;
 

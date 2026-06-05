@@ -592,8 +592,13 @@ class PublicSiteController extends Controller
         }
 
         if (Schema::hasTable('website_sections')) {
+            // No where('template_slug') filter — each tenant has exactly one
+            // template (template_settings is single-row), so all sections
+            // belong to it. The legacy filter caused stale rows (seeded with
+            // the original template_slug but never updated when the tenant
+            // switched templates) to be invisible to the public site, which
+            // made the editor's section visibility + reorder appear broken.
             $templateSections = DB::table('website_sections')
-                ->where('template_slug', $templateSlug)
                 ->orderBy('sort_order', 'asc')
                 ->orderBy('id', 'asc')
                 ->get()
