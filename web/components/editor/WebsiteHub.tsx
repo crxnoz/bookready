@@ -70,7 +70,10 @@ import {
   supportsHeaderField,
   supportsFooterField,
   aboutImageCountFor,
+  supportsPatternPicker,
+  patternOptionsFor,
   type TemplateManifest,
+  type PatternOption,
 } from '@bkrdy/platform'
 
 // ── Types & constants ────────────────────────────────────────────────────────
@@ -846,65 +849,81 @@ function OverviewPanel({
           customers, availability, and policies. Template-specific settings may reset.
         </p>
 
-        {/* ── Accent color (or, for Velvet Theory, Background variant) ── */}
-        <div className="space-y-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
-          {(() => {
-            const { title, hint } = colorPickerLabels(manifest)
-            return (
-              <div className="flex items-baseline justify-between gap-2">
-                <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
-                  {title}
-                </p>
-                <p className="text-[10px] text-muted-text">{hint}</p>
-              </div>
-            )
-          })()}
-          <div className="flex items-center gap-2 flex-wrap">
-            {accentPalette.map(({ hex, label }) => {
-              const isActive = (accent ?? defaultAccent).toUpperCase() === hex.toUpperCase()
-              const isBusy   = savingAccent === hex
-              const checkCol = checkColorOn(hex)
-              const { ariaPrefix } = colorPickerLabels(manifest)
+        {/* ── Theme picker —
+            Templates that declare pattern_options in their manifest
+            (currently only Bottega) show a PATTERN picker here instead
+            of the accent-color picker. The selected key writes to
+            settings.theme.pattern_motif and the template's PATTERNS map
+            resolves it to a URL + tuned overlay opacity at render time.
+            ── */}
+        {supportsPatternPicker(manifest) ? (
+          <PatternPickerBlock
+            options={patternOptionsFor(manifest)}
+            current={(settings.theme as any)?.pattern_motif ?? null}
+            onPick={async (key) => {
+              await onSaveSettings({ theme: { pattern_motif: key } } as any)
+            }}
+          />
+        ) : (
+          <div className="space-y-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+            {(() => {
+              const { title, hint } = colorPickerLabels(manifest)
               return (
-                <button
-                  key={hex}
-                  type="button"
-                  onClick={() => pickAccent(hex === defaultAccent ? null : hex)}
-                  disabled={!!savingAccent}
-                  title={label}
-                  aria-label={`${ariaPrefix}: ${label}`}
-                  aria-pressed={isActive}
-                  className={cn(
-                    'relative w-8 h-8 border transition-shadow disabled:opacity-50',
-                    isActive
-                      ? 'border-near-black ring-2 ring-offset-2 ring-near-black/20'
-                      : 'border-[rgba(18,18,18,0.18)] hover:border-near-black',
-                  )}
-                  style={{ background: hex }}
-                >
-                  {isBusy && (
-                    <span className="absolute inset-0 flex items-center justify-center bg-black/30">
-                      <Loader2 size={12} className="animate-spin text-white" />
-                    </span>
-                  )}
-                  {isActive && !isBusy && (
-                    <span className="absolute inset-0 flex items-center justify-center">
-                      <Check
-                        size={14}
-                        style={{ color: checkCol, filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.45))' }}
-                      />
-                    </span>
-                  )}
-                </button>
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+                    {title}
+                  </p>
+                  <p className="text-[10px] text-muted-text">{hint}</p>
+                </div>
               )
-            })}
+            })()}
+            <div className="flex items-center gap-2 flex-wrap">
+              {accentPalette.map(({ hex, label }) => {
+                const isActive = (accent ?? defaultAccent).toUpperCase() === hex.toUpperCase()
+                const isBusy   = savingAccent === hex
+                const checkCol = checkColorOn(hex)
+                const { ariaPrefix } = colorPickerLabels(manifest)
+                return (
+                  <button
+                    key={hex}
+                    type="button"
+                    onClick={() => pickAccent(hex === defaultAccent ? null : hex)}
+                    disabled={!!savingAccent}
+                    title={label}
+                    aria-label={`${ariaPrefix}: ${label}`}
+                    aria-pressed={isActive}
+                    className={cn(
+                      'relative w-8 h-8 border transition-shadow disabled:opacity-50',
+                      isActive
+                        ? 'border-near-black ring-2 ring-offset-2 ring-near-black/20'
+                        : 'border-[rgba(18,18,18,0.18)] hover:border-near-black',
+                    )}
+                    style={{ background: hex }}
+                  >
+                    {isBusy && (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/30">
+                        <Loader2 size={12} className="animate-spin text-white" />
+                      </span>
+                    )}
+                    {isActive && !isBusy && (
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <Check
+                          size={14}
+                          style={{ color: checkCol, filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.45))' }}
+                        />
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+            {accentError && (
+              <p className="text-[11px] text-red-700 flex items-center gap-1.5">
+                <AlertCircle size={12} /> {accentError}
+              </p>
+            )}
           </div>
-          {accentError && (
-            <p className="text-[11px] text-red-700 flex items-center gap-1.5">
-              <AlertCircle size={12} /> {accentError}
-            </p>
-          )}
-        </div>
+        )}
 
         {/* Phase 18 — Seasonal themes teaser. Sits right under accent color
             because both are "site-wide flavor" choices in the owner's head. */}
@@ -3746,6 +3765,91 @@ function WebsiteCustomPolicyGroupsEditor({
 }
 
 // ── Phase 18 — Coming-soon teasers ──────────────────────────────────────────
+
+/**
+ * PatternPickerBlock — the editor's swap for the accent-color picker on
+ * templates that ship a patterned background (currently only Bottega).
+ * Renders each option as a square tile previewing the actual pattern
+ * asset (so the owner sees what they're picking). Clicking writes the
+ * key to settings.theme.pattern_motif.
+ */
+function PatternPickerBlock({
+  options, current, onPick,
+}: {
+  options: PatternOption[]
+  current: string | null
+  onPick: (key: string) => Promise<void>
+}) {
+  const [busyKey, setBusyKey] = useState<string | null>(null)
+  const [error,   setError]   = useState<string | null>(null)
+  const defaultKey = options[0]?.key ?? null
+  const activeKey  = current ?? defaultKey
+
+  async function handlePick(key: string) {
+    if (key === activeKey) return
+    setBusyKey(key); setError(null)
+    try {
+      await onPick(key)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update pattern')
+    } finally {
+      setBusyKey(null)
+    }
+  }
+
+  return (
+    <div className="space-y-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+          Pattern
+        </p>
+        <p className="text-[10px] text-muted-text">
+          Backdrop behind every section
+        </p>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        {options.map(opt => {
+          const isActive = opt.key === activeKey
+          const isBusy   = busyKey === opt.key
+          return (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => handlePick(opt.key)}
+              disabled={!!busyKey}
+              title={opt.label}
+              aria-label={`Pattern: ${opt.label}`}
+              aria-pressed={isActive}
+              className={cn(
+                'relative w-12 h-12 border bg-cover bg-center transition-shadow disabled:opacity-50 overflow-hidden',
+                isActive
+                  ? 'border-near-black ring-2 ring-offset-2 ring-near-black/20'
+                  : 'border-[rgba(18,18,18,0.18)] hover:border-near-black',
+              )}
+              style={{ backgroundImage: `url('${opt.url}')`, backgroundSize: '120px auto' }}
+            >
+              {isBusy && (
+                <span className="absolute inset-0 flex items-center justify-center bg-black/40">
+                  <Loader2 size={14} className="animate-spin text-white" />
+                </span>
+              )}
+              {isActive && !isBusy && (
+                <span className="absolute inset-0 flex items-center justify-center bg-black/15">
+                  <Check size={16} className="text-white" style={{ filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.6))' }} />
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+      {error && (
+        <p className="text-[11px] text-red-700 flex items-center gap-1.5">
+          <AlertCircle size={12} /> {error}
+        </p>
+      )}
+    </div>
+  )
+}
 
 function SeasonalThemesTeaser() {
   // Compact horizontal preview row of seasonal theme presets. Pure display —

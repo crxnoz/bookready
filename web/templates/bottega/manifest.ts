@@ -65,6 +65,19 @@ const manifest: TemplateManifest = {
   // derives the about eyebrow from the About tab name.
   about_fields: ['highlights', 'images'],
   about_image_count: 2,
+
+  // Pattern picker — Bottega is the only template that ships a patterned
+  // background, so the editor replaces its accent-color picker with a
+  // pattern picker driven by this list. The selected key writes to
+  // settings.theme.pattern_motif; BottegaTemplate's PATTERNS map resolves
+  // each key to a URL + tuned overlay opacity + tile size at render time.
+  pattern_options: [
+    { key: 'terrazzo', label: 'Terrazzo',         url: '/templates/bottega/terrazzo.jpg' },
+    { key: 'flowers',  label: 'Cherry blossom',   url: '/templates/bottega/flowers.png' },
+    { key: 'leaves',   label: 'Leaves',           url: '/templates/bottega/leaves.jpeg' },
+    { key: 'marble',   label: 'Marble',           url: '/templates/bottega/marble.jpeg' },
+    { key: 'oceanic',  label: 'Coastal',          url: '/templates/bottega/oceanic-pattern.jpg' },
+  ],
 }
 
 export default manifest

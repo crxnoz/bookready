@@ -208,9 +208,19 @@ export default function BottegaTemplate({ site, slug }: Props) {
   // source is white-with-pink-line and would otherwise vanish), and the
   // tile dimensions (terrazzo is a square 800; flowers is wider than tall
   // so tileH is `auto` for proportional repeat).
+  // Each pattern has its own per-asset overlay tuning. Dense-color sources
+  // (terrazzo, marble) take a high opacity (.85-.92, pattern shows at
+  // ~8-15%) so they read as backdrop; white-backed linework sources
+  // (flowers, leaves) take a lower opacity (.50-.55, pattern shows at
+  // ~45-50%) because they'd otherwise dissolve into the cream canvas;
+  // the mid-density oceanic motif lands between. Tile sizes are picked
+  // per artwork's natural aspect.
   const PATTERNS: Record<string, { url: string; overlay: number; tileW: string; tileH: string }> = {
-    terrazzo: { url: '/templates/bottega/terrazzo.jpg', overlay: 0.92, tileW: '800px', tileH: '800px' },
-    flowers:  { url: '/templates/bottega/flowers.png',  overlay: 0.50, tileW: '720px', tileH: 'auto' },
+    terrazzo: { url: '/templates/bottega/terrazzo.jpg',        overlay: 0.92, tileW: '800px', tileH: '800px' },
+    flowers:  { url: '/templates/bottega/flowers.png',         overlay: 0.50, tileW: '720px', tileH: 'auto' },
+    leaves:   { url: '/templates/bottega/leaves.jpeg',         overlay: 0.55, tileW: '600px', tileH: 'auto' },
+    marble:   { url: '/templates/bottega/marble.jpeg',         overlay: 0.88, tileW: '900px', tileH: 'auto' },
+    oceanic:  { url: '/templates/bottega/oceanic-pattern.jpg', overlay: 0.74, tileW: '700px', tileH: 'auto' },
   }
   const patternKey = (settings?.theme?.pattern_motif as string) || 'terrazzo'
   const pattern = PATTERNS[patternKey] ?? PATTERNS.terrazzo

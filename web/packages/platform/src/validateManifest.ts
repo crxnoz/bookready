@@ -159,11 +159,56 @@ export function validateManifest(candidate: unknown): ValidationError[] {
     }
   }
 
+  // ─── pattern_options (optional) ───────────────────────────────────
+  if (m.pattern_options !== undefined) {
+    if (!Array.isArray(m.pattern_options)) {
+      errs.push({
+        path: 'pattern_options',
+        message: 'Optional. When set, must be an array of { key, label, url } entries.',
+      })
+    } else {
+      if (m.pattern_options.length < 1 || m.pattern_options.length > 12) {
+        errs.push({ path: 'pattern_options', message: 'Must contain 1-12 entries.' })
+      }
+      const keys = new Set<string>()
+      m.pattern_options.forEach((entry, i) => {
+        const path = `pattern_options[${i}]`
+        if (!entry || typeof entry !== 'object') {
+          errs.push({ path, message: 'Each entry must be an object.' })
+          return
+        }
+        const e = entry as Record<string, unknown>
+        if (typeof e.key !== 'string' || !/^[a-z][a-z0-9-]{0,30}$/.test(e.key)) {
+          errs.push({
+            path: `${path}.key`,
+            message: 'Required. Lowercase letters/digits/hyphens, 1-31 chars.',
+          })
+        } else if (keys.has(e.key)) {
+          errs.push({ path: `${path}.key`, message: `Duplicate key "${e.key}".` })
+        }
+        if (typeof e.key === 'string') keys.add(e.key)
+        if (typeof e.label !== 'string' || e.label.length < 1 || e.label.length > 40) {
+          errs.push({
+            path: `${path}.label`,
+            message: 'Required. Must be a 1-40 character string.',
+          })
+        }
+        if (typeof e.url !== 'string' || e.url.length < 1) {
+          errs.push({
+            path: `${path}.url`,
+            message: 'Required. Asset URL (typically /templates/{slug}/{file}.{ext}).',
+          })
+        }
+      })
+    }
+  }
+
   // ─── unknown top-level keys ───────────────────────────────────────
   const ALLOWED_TOP_LEVEL = new Set([
     'slug', 'name', 'version', 'color_role', 'color_palette',
     'header_fields', 'footer_fields',
     'about_fields', 'about_image_count',
+    'pattern_options',
   ])
   Object.keys(m).forEach(k => {
     if (! ALLOWED_TOP_LEVEL.has(k)) {

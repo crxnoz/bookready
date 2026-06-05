@@ -134,6 +134,30 @@ export interface TemplateManifest {
    * renders about.images[0] as a single hero image.
    */
   about_image_count?: number
+
+  /**
+   * Optional pattern motif options for templates that ship a patterned
+   * background. When present and non-empty, the website editor REPLACES
+   * its accent-color picker with a pattern picker — each option renders
+   * as a small thumbnail of the pattern itself. The selected key writes
+   * to settings.theme.pattern_motif (the template reads that and resolves
+   * to a URL + overlay opacity).
+   *
+   * Currently used by Bottega, which is the only template with a
+   * patterned background. Other templates omit this and get the standard
+   * accent-color picker.
+   */
+  pattern_options?: PatternOption[]
+}
+
+/**
+ * One swatch in a template's pattern picker. The thumbnail in the editor
+ * uses `url`; the value written to settings.theme.pattern_motif is `key`.
+ */
+export interface PatternOption {
+  key:   string  // e.g. 'terrazzo'  (stable id used in settings)
+  label: string  // e.g. 'Terrazzo'  (display label)
+  url:   string  // e.g. '/templates/bottega/terrazzo.jpg'
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -168,6 +192,27 @@ export function supportsAboutField(
   field: AboutField,
 ): boolean {
   return manifest.about_fields ? manifest.about_fields.includes(field) : true
+}
+
+/**
+ * True if the template ships a pattern picker (i.e. declares non-empty
+ * pattern_options). Editor uses this to swap the accent-color picker
+ * for a pattern picker on tenants whose template supports patterns.
+ */
+export function supportsPatternPicker(
+  manifest: TemplateManifest | null | undefined,
+): boolean {
+  return !!(manifest?.pattern_options && manifest.pattern_options.length > 0)
+}
+
+/**
+ * Get a template's pattern options, or an empty array if it doesn't
+ * declare any. Safe to call regardless of supportsPatternPicker.
+ */
+export function patternOptionsFor(
+  manifest: TemplateManifest | null | undefined,
+): PatternOption[] {
+  return manifest?.pattern_options ?? []
 }
 
 /**
