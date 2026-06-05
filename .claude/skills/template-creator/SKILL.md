@@ -81,6 +81,18 @@ These are hard-won from shipping real templates. Every one of them produced eith
    ```
    Skip this and FAQ accordions, review cards, the footer, etc. render in a default white/serif look that won't match your brand. (See ARCHITECTURE.md §3 for the full canonical token contract.)
 
+9. **Bare Unicode glyphs render as color emoji on iOS — force text rendering with `\\FE0E`.** Codepoints like `✦` (U+2726), `✺` (U+273A), `♡` (U+2661), `♥` (U+2665), `✳` (U+2733) display as monochrome glyphs on desktop and Android but iOS Safari helpfully promotes them to full-color emoji — your hairline-thin accent becomes a rainbow sticker. Fix: append the text variation selector U+FE0E to every raw glyph:
+   - In CSS: `content: "\\2726\\FE0E";` (the backdrop fix from gotcha #3 still applies — double-backslash the unicode escapes inside template literals).
+   - In JSX prop strings: append the literal `︎` character, e.g., `separator="✦︎"` (after the glyph is an invisible U+FE0E).
+   This bit Lush Studio's gallery group headings (✳), tab pill markers (✦), and advice/timeline section glyphs. Test on a real iPhone if you can — desktop Safari does NOT reproduce the emoji promotion.
+
+10. **TFR-style layered title (giant backdrop eyebrow + overlay heading) needs `overflow: hidden` and left-anchored overlay.** If you do the museum-placard pattern — a low-opacity `white-space: nowrap` serif eyebrow at `clamp(80px, 18vw, 200px)` with a smaller heading absolute-positioned over it — TWO things go wrong on narrow viewports:
+    1. The nowrap'd eyebrow overflows the section's right edge.
+    2. If the absolute heading is `justify-content: center` of an `inline-block` parent sized to the eyebrow, the heading rides off-screen WITH the eyebrow.
+    Fix the container with `display: block; overflow: hidden;` (clips eyebrow at the section edge, doesn't drag the heading along) AND set the heading to `justify-content: flex-start` so it anchors to the section's left edge regardless of how wide the backdrop tries to be. See `.tfr-layered-title` / `.tfr-layered-eyebrow` / `.tfr-layered-heading` for the canonical implementation.
+
+11. **Contact-button row — all icons or no icons, never half.** If your hero/header social cluster uses brand glyphs on SOME buttons (TikTok, YouTube, Facebook, Pinterest, WhatsApp, Message), put icons on ALL of them — including Instagram, Phone/Call, Email, Maps/Directions. A row where some pills lead with glyphs and others are text-only reads as half-finished. Opaline got this fix late: Instagram and Directions had no icon and stood out as missing. Either supply lucide imports or hand-draw small SVG glyphs in the same stroke weight + 14px size as the others (see `OpalineTemplate.tsx`'s `InstagramGlyph` / `DirectionsGlyph` for the pattern).
+
 ## Step 1: Interview
 
 This is a friendly design conversation, not a form. Ask one or two questions at a time, confirm answers, then move on. Default to sensible answers and only press when the creator's choice would produce a worse result.
@@ -94,6 +106,8 @@ This is a friendly design conversation, not a form. Ask one or two questions at 
 - **Color role.** Accent (palette swatches are highlights — page background stays constant) or background (palette swatches replace the page background — accent stays constant, like Velvet Theory's gold). If the creator is unsure, default to `accent` — it's what most templates want and matches the editor's most common UI.
 
 - **Color palette.** Ask for 3-6 `{ hex, label }` pairs. The first is the default. Validate each hex matches `^#[0-9A-Fa-f]{6}$`. If the creator describes colors verbally ("cream + ocean blue + sun yellow"), pick concrete hex values and confirm them.
+
+  **Keep the palette in one canvas family.** If your template is dark-only (the typography, glyphs, glow effects, and on-accent foreground assume a dark canvas), don't include a light swatch as a "bonus option". Inverting the canvas almost always breaks the design language — a serif text-shadow that reads as candlelight on burgundy reads as soot on bone. Same in reverse: a light editorial template doesn't get a midnight option. Velvet Theory shipped with a `Bone (light)` swatch and pulled it later because it produced visually inconsistent results when paired with the always-light foreground tokens. Pick a canvas family during the interview and stay in it.
 
 - **Font direction.** Single sans, single serif, sans + serif pair, hand-script accent? Pick concrete Google Fonts unless the creator names specific ones. Common pairings: Fraunces (serif) + Inter (sans), DM Serif Text + DM Sans, Cookie + Roboto.
 
@@ -134,10 +148,36 @@ const manifest: TemplateManifest = {
 
   header_fields: [/* tokens from interview */],
   footer_fields: [/* tokens from interview */],
+
+  // Optional — declare only when your About layout differs from the
+  // default "all three controls + 3 image slots". The editor hides
+  // controls a template doesn't render.
+  //
+  // about_fields:       ['highlights', 'images'],  // omit 'eyebrow' — every
+  //                                                 //   template now derives
+  //                                                 //   the about eyebrow
+  //                                                 //   from tabLabel.about
+  //                                                 //   (so renaming the tab
+  //                                                 //   renames the eyebrow).
+  //                                                 //   New templates should
+  //                                                 //   NOT include 'eyebrow'.
+  // about_image_count:  1,                          // editor shows 1 slot
+  //                                                 //   instead of 3 (the
+  //                                                 //   stored array stays
+  //                                                 //   length-3 so data
+  //                                                 //   isn't truncated if
+  //                                                 //   tenant switches
+  //                                                 //   templates). Blackline
+  //                                                 //   uses this.
 }
 
 export default manifest
 ```
+
+**Manifest field tokens** — copy verbatim, don't invent:
+- `header_fields`: `cover_image`, `avatar_image`, `announcement`, `business_type`, `social_buttons`
+- `footer_fields`: `show_powered_by`, `show_hours`, `show_quick_book`, `show_contact_links`, `business_name_override`, `subtext`
+- `about_fields` (optional): `eyebrow`, `images`, `highlights` — but see the comment above; new templates omit `eyebrow`.
 
 ### 2b. `{Pascal}Template.tsx`
 
@@ -175,15 +215,15 @@ The best structural reference is **`web/templates/opaline/OpalineTemplate.tsx`**
 | 1 | Announcement bar | **Bespoke** | Static centered strip; you write `~10` lines of JSX + CSS |
 | 2 | Header / Hero | **Bespoke** | Identity-defining; you own the layout & contact-button rendering |
 | 3 | Booking | Wrap via `{Pascal}Booking.tsx` (step 2c) | |
-| 4 | Gallery | `<GallerySection items={site.gallery} groups={site.gallery_groups} … variant="grid"\|"strips" />` | |
-| 5 | Results / Before & After | `<BeforeAfterSection items={site.results ?? site.before_after} groups={…} separator?="✦" labels />` | |
-| 6 | About | **Bespoke** | Each template arranges `about.images[3]` + heading + body + highlights + signature differently |
-| 7 | Policies | `<PolicySection rows={…} customGroups={…} marker="none"\|"glyph"\|"numeral" />` | |
+| 4 | Gallery | `<GallerySection items={site.gallery} groups={site.gallery_groups} heading={settings.gallery?.heading ?? '…'} eyebrow={tabLabel.gallery} variant="grid"\|"strips" />` | Pass `heading` — owners can edit `gallery.heading` inline inside the Gallery editor panel |
+| 5 | Results / Before & After | `<BeforeAfterSection items={site.results ?? site.before_after} groups={…} heading={settings.results?.heading ?? '…'} eyebrow={tabLabel.results} separator?="✦︎" labels />` | Pass `heading` from `results.heading`; mind glyph-emoji gotcha #9 on the separator |
+| 6 | About | **Bespoke** | Each template arranges `about.images[…]` + heading + body + highlights + signature differently. **The About eyebrow is ALWAYS derived from `tabLabel.about ?? 'About'`** — no separate eyebrow input. If your layout only uses one hero image, set `about_image_count: 1` on the manifest and render `about.images[0]` only |
+| 7 | Policies | `<PolicySection rows={…} customGroups={…} heading={settings.policy?.heading ?? '…'} eyebrow={tabLabel.policy} marker="none"\|"glyph"\|"numeral" />` | Pass `heading` from `policy.heading` |
 | 8 | Advice | `<InstructionsSection items={settings.advice?.items} cardKicker={settings.advice?.card_kicker} markGlyph="◆" />` | |
 | 9 | Timeline | `<InstructionsSection items={settings.timeline?.items} numbered />` | |
 | 10 | FAQ | `<FaqSection items={settings.additionals?.faq?.items} heading={…} />` | |
 | 11 | Reviews | `<ReviewsSection items={settings.additionals?.reviews?.items} starGlyph="★" />` | |
-| 12 | Thank-you + Footer | `<ThanksSection title={…} body={…} signature={…} fallbackSignature={display} />` + `<SiteFooter businessName={…} hours={hours} phone={…} email={…} servicesCount={services.length} onBook={goBook} … />` | |
+| 12 | Thank-you + Footer | `<ThanksSection title={…} body={…} signature={settings.additionals?.thank_you_signature \|\| '…'} eyebrow={settings.additionals?.thank_you_eyebrow \|\| 'Outro'} fallbackSignature={display} />` + `<SiteFooter brandLabel={settings.footer?.brand_label \|\| 'The Studio'} businessName={…} hours={hours} phone={…} email={…} servicesCount={services.length} onBook={goBook} … />` | NEVER hardcode the brand-tag label ("The Studio" / "The Shop" / "The House"). Wire it to `settings.footer?.brand_label` — owners edit this in the Footer panel. Same for thank-you signature + eyebrow — wire to `additionals.thank_you_signature` + `thank_you_eyebrow` |
 
 Each shared component returns `null` when the underlying data is empty (or shows an `emptyText` placeholder if you pass one) — so you can render them unconditionally inside the right tab panel without empty-state guards. Pass `eyebrow={tabLabel.gallery}` etc. so the section's eyebrow tracks the editable tab name.
 
