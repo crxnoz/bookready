@@ -445,7 +445,7 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
                 <img src={(aboutBlock as any).images?.[0] ?? (aboutBlock as any).image_1_url} alt="" />
               </figure>
             )}
-            <p className="vt-eyebrow">{(aboutBlock as any).eyebrow?.trim() || (tabLabels.about_label ?? 'Introduction')}</p>
+            <p className="vt-eyebrow">{tabLabels.about_label ?? 'About'}</p>
             <h2 className="vt-h2">{(aboutBlock as any).eyebrow ?? `On ${signatureWord(displayName)}.`}</h2>
             {renderAbout(aboutBlock as any, displayName, p)}
             {/* Highlights — editor-editable bullet list. Sits after the
@@ -613,7 +613,7 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
           email={p?.public_email}
           servicesCount={services.length}
           onBook={goBook}
-          brandLabel="The Studio"
+          brandLabel={footerSettings.brand_label || 'The Studio'}
           ctaLabel="Reserve a chair"
           show={{
             quickBook: footerSettings.show_quick_book,

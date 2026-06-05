@@ -667,6 +667,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 profile={p}
                 displayName={displayName}
                 about={site.template?.settings.about}
+                tabsAboutLabel={tabLabelById.about}
               />
             </div>
           )}
@@ -806,7 +807,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
           servicesCount={services.length}
           onBook={goBook}
           ctaLabel="Reserve your chair"
-          brandLabel="The Studio"
+          brandLabel={footerSettings.brand_label || 'The Studio'}
           hoursLabel="Hours"
           contactLabel="Contact"
           show={{
@@ -862,11 +863,12 @@ interface PublicAboutSettings {
 }
 
 function AboutPanel({
-  profile: p, displayName, about,
+  profile: p, displayName, about, tabsAboutLabel,
 }: {
   profile: Profile | null
   displayName: string
   about?: PublicAboutSettings
+  tabsAboutLabel?: string | undefined
 }) {
   // Strip leading articles ("The Fade Room" → "Fade") so the headline
   // signature word is meaningful, not just "The".
@@ -875,7 +877,7 @@ function AboutPanel({
   // Saved values win; fall back to brand-flavored defaults so empty
   // tenants still feel intentional rather than placeholder-y.
   const heading = about?.heading?.trim() || `The ${businessWord} Experience`
-  const eyebrow = about?.eyebrow?.trim() || businessWord
+  const eyebrow = tabsAboutLabel || 'About'
   const body    = about?.body?.trim()
     || (p?.tagline?.trim()
           ? `${p.tagline} — we're dedicated to delivering an exceptional experience every visit.`

@@ -1382,6 +1382,9 @@ export interface TemplateFooterSettings {
   show_powered_by: boolean
   business_name_override?: string | null
   subtext?: string | null
+  /** Eyebrow above the business name in the footer's brand column (e.g.
+   * "The Studio"). Editable; empty/null falls back to the template default. */
+  brand_label?: string | null
   show_hours?: boolean
   show_quick_book?: boolean
   show_contact_links?: boolean

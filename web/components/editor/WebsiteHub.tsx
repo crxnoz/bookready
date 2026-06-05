@@ -369,11 +369,11 @@ export default function WebsiteHub() {
 
               {tab === 'gallery' && (
                 <>
-                  <GalleryManagerPanel />
-                  <ResultsManagerPanel />
+                  <GalleryManagerPanel settings={settings} onSaveSettings={saveSettings} />
+                  <ResultsManagerPanel settings={settings} onSaveSettings={saveSettings} />
                 </>
               )}
-              {tab === 'policies'     && <PoliciesEditorPanel />}
+              {tab === 'policies'     && <PoliciesEditorPanel settings={settings} onSaveSettings={saveSettings} />}
 
               {tab === 'additionals' && (
                 <AdditionalsPanel settings={settings} onSave={saveSettings} />
@@ -1386,8 +1386,6 @@ function ContentTabsPanel({
         />
       </CollapsibleSection>
 
-      <SectionHeadingsPanel settings={settings} onSaveSettings={onSaveSettings} />
-
       <InstructionsEditorPanel
         title="Advice"
         subtitle="Tips, advice, or care instructions shown on the Advice tab."
@@ -1417,71 +1415,6 @@ function ContentTabsPanel({
         onSave={(next) => onSaveSettings({ about: next })}
       />
     </div>
-  )
-}
-
-// ── Section headings (Gallery / Results / Policy) ───────────────────────────
-//
-// Each tab's name doubles as the section eyebrow on the public site. The
-// section's <h1> (heading) is a separate field — set it here without
-// touching the tab label. Empty value falls back to the template's
-// hardcoded default in JSX, so leaving any field blank is fine.
-
-function SectionHeadingsPanel({
-  settings, onSaveSettings,
-}: {
-  settings: TemplateSettings
-  onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
-}) {
-  type HeadingsForm = { gallery: string; results: string; policy: string }
-  const initial: HeadingsForm = {
-    gallery: settings.gallery?.heading ?? '',
-    results: settings.results?.heading ?? '',
-    policy:  settings.policy?.heading  ?? '',
-  }
-  const form = useSettingsForm<HeadingsForm>(initial, async (next) => {
-    // Save each block; deep-merge on the backend preserves any other keys.
-    await onSaveSettings({
-      gallery: { heading: next.gallery || null },
-      results: { heading: next.results || null },
-      policy:  { heading: next.policy  || null },
-    })
-  })
-
-  return (
-    <CollapsibleSection
-      title="Section headings"
-      subtitle="The big heading shown above each section on your public site. Tab names (above) drive the small eyebrow; these drive the h1 below it. Leave blank to use the template default."
-      icon={ListChecks}
-    >
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <TextField
-          label="Gallery heading"
-          value={form.value.gallery}
-          onChange={v => form.patch({ gallery: v })}
-          placeholder="Recent work"
-          maxLength={80}
-        />
-        <TextField
-          label="Before & After heading"
-          value={form.value.results}
-          onChange={v => form.patch({ results: v })}
-          placeholder="Before & After"
-          maxLength={80}
-        />
-        <TextField
-          label="Policies heading"
-          value={form.value.policy}
-          onChange={v => form.patch({ policy: v })}
-          placeholder="House Rules"
-          maxLength={80}
-        />
-      </div>
-      <SaveBar
-        dirty={form.dirty} saving={form.saving} saved={form.saved}
-        error={form.error} onSave={form.doSave}
-      />
-    </CollapsibleSection>
   )
 }
 
@@ -1780,16 +1713,9 @@ function AboutEditorPanel({
         </div>
       )}
 
-      {/* Manifest-gated — hidden when about_fields omits 'eyebrow'. */}
-      {showEyebrow && (
-        <TextField
-          label="Eyebrow (renders as the large backdrop word behind the heading)"
-          value={value.eyebrow ?? ''}
-          onChange={v => patch({ eyebrow: v })}
-          placeholder="The Studio"
-          maxLength={60}
-        />
-      )}
+      {/* About eyebrow input removed — every template now uses the About
+          tab name as the section eyebrow (so renaming the tab renames the
+          eyebrow too, matching how the other tabbed sections work). */}
       <TextField
         label="Heading"
         value={value.heading ?? ''}
@@ -1876,7 +1802,36 @@ const POLICY_FIELDS: { key: keyof BusinessPolicy; label: string; placeholder: st
   { key: 'extra_notes',         label: 'Additional notes',    placeholder: 'Anything else clients should know.' },
 ]
 
-function PoliciesEditorPanel() {
+function PoliciesHeadingPanel({ settings, onSaveSettings }: {
+  settings: TemplateSettings
+  onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
+}) {
+  const form = useSettingsForm<{ heading: string }>(
+    { heading: settings.policy?.heading ?? '' },
+    async (next) => { await onSaveSettings({ policy: { heading: next.heading || null } }) },
+  )
+  return (
+    <CollapsibleSection
+      title="Section heading"
+      subtitle="The h1 shown above the policies on your public site. Leave blank to use the template default; the small eyebrow above it comes from the tab name (edit it in Content)."
+      icon={ListChecks}
+    >
+      <TextField
+        label="Policies heading"
+        value={form.value.heading}
+        onChange={v => form.patch({ heading: v })}
+        placeholder="House Rules"
+        maxLength={80}
+      />
+      <SaveBar dirty={form.dirty} saving={form.saving} saved={form.saved} error={form.error} onSave={form.doSave} />
+    </CollapsibleSection>
+  )
+}
+
+function PoliciesEditorPanel({ settings, onSaveSettings }: {
+  settings: TemplateSettings
+  onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
+}) {
   const [policies, setPolicies] = useState<BusinessPolicy | null>(null)
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
@@ -1950,6 +1905,8 @@ function PoliciesEditorPanel() {
   }
 
   return (
+    <>
+    <PoliciesHeadingPanel settings={settings} onSaveSettings={onSaveSettings} />
     <CollapsibleSection
       title="Policies"
       subtitle="Cancellation, late arrival, no-show, deposit, and reschedule policies shown on the Policy tab."
@@ -1997,6 +1954,7 @@ function PoliciesEditorPanel() {
         </>
       )}
     </CollapsibleSection>
+    </>
   )
 }
 
@@ -2301,6 +2259,7 @@ function FooterPanel({
   const initial: TemplateFooterSettings = {
     business_name_override: settings.footer.business_name_override ?? null,
     subtext:                settings.footer.subtext                ?? '',
+    brand_label:            settings.footer.brand_label            ?? '',
     show_hours:             settings.footer.show_hours             ?? true,
     show_quick_book:        settings.footer.show_quick_book        ?? true,
     show_contact_links:     settings.footer.show_contact_links     ?? true,
@@ -2324,6 +2283,14 @@ function FooterPanel({
           {' '}schedule. Toggle below to choose what shows in the footer.
         </p>
       </div>
+
+      <TextField
+        label="Brand label (eyebrow above your business name in the footer)"
+        value={form.value.brand_label ?? ''}
+        onChange={v => form.patch({ brand_label: v || null })}
+        placeholder="The Studio"
+        maxLength={40}
+      />
 
       {showNameOverride && (
         <TextField
@@ -2485,7 +2452,36 @@ function PreviewPanel({ url, refreshKey }: { url: string; refreshKey: number }) 
 const GALLERY_MAX_GROUPS         = 3
 const GALLERY_MAX_ITEMS_PER_GROUP = 6
 
-function GalleryManagerPanel() {
+function GalleryHeadingPanel({ settings, onSaveSettings }: {
+  settings: TemplateSettings
+  onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
+}) {
+  const form = useSettingsForm<{ heading: string }>(
+    { heading: settings.gallery?.heading ?? '' },
+    async (next) => { await onSaveSettings({ gallery: { heading: next.heading || null } }) },
+  )
+  return (
+    <CollapsibleSection
+      title="Section heading"
+      subtitle="The h1 shown above the gallery on your public site. Leave blank to use the template default; the small eyebrow above it comes from the tab name (edit it in Content)."
+      icon={ListChecks}
+    >
+      <TextField
+        label="Gallery heading"
+        value={form.value.heading}
+        onChange={v => form.patch({ heading: v })}
+        placeholder="Recent work"
+        maxLength={80}
+      />
+      <SaveBar dirty={form.dirty} saving={form.saving} saved={form.saved} error={form.error} onSave={form.doSave} />
+    </CollapsibleSection>
+  )
+}
+
+function GalleryManagerPanel({ settings, onSaveSettings }: {
+  settings: TemplateSettings
+  onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
+}) {
   const [items, setItems]     = useState<GalleryItem[] | null>(null)
   const [groups, setGroups]   = useState<GalleryGroup[] | null>(null)
   const [loading, setLoading] = useState(true)
@@ -2597,6 +2593,8 @@ function GalleryManagerPanel() {
   const ungrouped   = itemsForGroup(null)
 
   return (
+    <>
+    <GalleryHeadingPanel settings={settings} onSaveSettings={onSaveSettings} />
     <CollapsibleSection
       title="Gallery"
       subtitle="Organize your work into up to 3 collections — each can hold up to 6 photos."
@@ -2684,6 +2682,7 @@ function GalleryManagerPanel() {
         />
       )}
     </CollapsibleSection>
+    </>
   )
 }
 
@@ -3046,7 +3045,36 @@ function GalleryItemDialog({
 const BA_MAX_GROUPS         = 3
 const BA_MAX_ITEMS_PER_GROUP = 6
 
-function ResultsManagerPanel() {
+function ResultsHeadingPanel({ settings, onSaveSettings }: {
+  settings: TemplateSettings
+  onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
+}) {
+  const form = useSettingsForm<{ heading: string }>(
+    { heading: settings.results?.heading ?? '' },
+    async (next) => { await onSaveSettings({ results: { heading: next.heading || null } }) },
+  )
+  return (
+    <CollapsibleSection
+      title="Section heading"
+      subtitle="The h1 shown above the before & after section on your public site. Leave blank to use the template default; the small eyebrow above it comes from the tab name (edit it in Content)."
+      icon={ListChecks}
+    >
+      <TextField
+        label="Before & After heading"
+        value={form.value.heading}
+        onChange={v => form.patch({ heading: v })}
+        placeholder="Before & After"
+        maxLength={80}
+      />
+      <SaveBar dirty={form.dirty} saving={form.saving} saved={form.saved} error={form.error} onSave={form.doSave} />
+    </CollapsibleSection>
+  )
+}
+
+function ResultsManagerPanel({ settings, onSaveSettings }: {
+  settings: TemplateSettings
+  onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
+}) {
   const [items, setItems]     = useState<ResultsItem[] | null>(null)
   const [groups, setGroups]   = useState<ResultsGroup[] | null>(null)
   const [loading, setLoading] = useState(true)
@@ -3155,6 +3183,8 @@ function ResultsManagerPanel() {
   const ungrouped  = itemsForGroup(null)
 
   return (
+    <>
+    <ResultsHeadingPanel settings={settings} onSaveSettings={onSaveSettings} />
     <CollapsibleSection
       title="Before & After"
       subtitle="Group your transformations into up to 3 collections — each holds up to 6 pairs."
@@ -3240,6 +3270,7 @@ function ResultsManagerPanel() {
         />
       )}
     </CollapsibleSection>
+    </>
   )
 }
 

@@ -267,8 +267,14 @@ export default function BlacklineTemplate({ site, slug }: Props) {
           <div className={`blackline-tab-panel${active === 'about' ? ' is-active' : ''}`}
                role="tabpanel" aria-hidden={active !== 'about'}>
             <section className="blackline-section blackline-about" aria-label={tabs.about_label ?? 'About'}>
-              <p className="blackline-eyebrow">{about.eyebrow || tabLabel.about}</p>
+              <p className="blackline-eyebrow">{tabLabel.about ?? 'About'}</p>
               <h2 className="blackline-section-title">{about.heading ?? 'The Shop'}</h2>
+              {/* Optional hero image — first slot of about.images. Renders
+                  only when set so the manifest control gracefully degrades. */}
+              {Array.isArray(about.images) && about.images[0] && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img className="blackline-about-img" src={about.images[0]} alt="" loading="lazy" />
+              )}
               {about.body && <p className="blackline-about-body">{about.body}</p>}
               {Array.isArray(about.highlights) && about.highlights.length > 0 && (
                 <ul className="blackline-highlights">
@@ -410,7 +416,7 @@ export default function BlacklineTemplate({ site, slug }: Props) {
           servicesCount={services.length}
           onBook={goBook}
           ctaLabel="Reserve the chair"
-          brandLabel="The Studio"
+          brandLabel={settings.footer?.brand_label || 'The Studio'}
           hoursLabel="Hours"
           contactLabel="Contact"
           show={{
@@ -679,6 +685,16 @@ const BLACKLINE_CSS = `
   max-width: 60ch;
   margin: 0 0 var(--brk-space-2xl);
   color: var(--blackline-fg);
+}
+/* About hero image — flat, sharp-cornered, full-width within the column
+   to match Blackline's industrial vocabulary (no rounded card chrome). */
+.blackline-about-img {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  height: auto;
+  margin: 0 0 var(--brk-space-2xl);
+  border: 1px solid var(--blackline-rule);
 }
 .blackline-highlights {
   list-style: none;

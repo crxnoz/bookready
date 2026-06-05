@@ -316,7 +316,7 @@ export default function OpalineTemplate({ site, slug }: Props) {
                   <img src={aboutImages[0]!} alt="" loading="lazy" />
                 </div>
               )}
-              <SectionHeader eyebrow={about.eyebrow || (tabs.about_label ?? 'About')} title={about.heading ?? 'About'} />
+              <SectionHeader eyebrow={tabs.about_label ?? 'About'} title={about.heading ?? 'About'} />
               {about.body && <p className="opaline-about-body">{about.body}</p>}
               {Array.isArray(about.highlights) && about.highlights.length > 0 && (
                 <ul className="opaline-highlights">
@@ -443,6 +443,7 @@ export default function OpalineTemplate({ site, slug }: Props) {
           email={p?.public_email}
           servicesCount={services.length}
           onBook={goBook}
+          brandLabel={settings.footer?.brand_label || 'The Studio'}
           show={{
             quickBook: settings.footer?.show_quick_book,
             hours: settings.footer?.show_hours,

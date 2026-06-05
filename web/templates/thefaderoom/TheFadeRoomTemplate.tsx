@@ -304,12 +304,9 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
 
               {/* Layered title: DM Serif backdrop eyebrow at 80px low-opacity,
                   Dancing Script neon heading at 30px overlaid centered.
-                  Eyebrow stays editable via about.eyebrow; falls back to the
-                  resolved About tab label rather than a hardcoded string. */}
+                  Eyebrow always uses the resolved About tab label. */}
               {(() => {
-                const aboutEyebrow = (typeof about.eyebrow === 'string' && about.eyebrow.trim())
-                  ? about.eyebrow.trim()
-                  : tabLabel.about
+                const aboutEyebrow = tabLabel.about ?? 'About'
                 return (aboutEyebrow || about.heading) ? (
                   <div className="tfr-layered-title">
                     {aboutEyebrow && (
@@ -460,6 +457,7 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
           servicesCount={services.length}
           onBook={goBook}
           ctaLabel="Reserve the chair"
+          brandLabel={settings.footer?.brand_label || 'The Studio'}
           show={{
             quickBook: settings.footer?.show_quick_book,
             hours: settings.footer?.show_hours,

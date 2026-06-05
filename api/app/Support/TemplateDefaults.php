@@ -164,6 +164,9 @@ class TemplateDefaults
             'footer' => [
                 'business_name_override' => null,
                 'subtext'                => 'Booking by appointment. Walk-ins welcome when available.',
+                // Eyebrow above the business name in the footer's brand column.
+                // Owner-editable; empty/null falls back to the template default.
+                'brand_label'            => 'The Studio',
                 'show_hours'             => true,
                 'show_quick_book'        => true,
                 'show_contact_links'     => true,

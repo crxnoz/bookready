@@ -49,10 +49,10 @@ const manifest: TemplateManifest = {
     'subtext',
   ],
 
-  // Blackline's About surface is body + highlights only — no eyebrow,
-  // no images. Declaring the subset hides those editor controls so the
-  // owner doesn't fill in fields the template silently ignores.
-  about_fields: ['highlights'],
+  // Blackline's About now surfaces body + highlights + a single hero
+  // image (the first slot of about.images). Eyebrow is omitted because
+  // every template now derives the about eyebrow from the About tab name.
+  about_fields: ['highlights', 'images'],
 }
 
 export default manifest
