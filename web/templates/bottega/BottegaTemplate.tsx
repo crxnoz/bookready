@@ -303,7 +303,7 @@ export default function BottegaTemplate({ site, slug }: Props) {
             When NO cover, the layout falls back to a centered hero (so
             tenants who haven't uploaded a photo still get a composed
             opening). */}
-        <header className={`bottega-header${header.cover_image_url ? ' bottega-header--split' : ''}`}>
+        <header className={`bottega-header${header.cover_image_url ? ' bottega-header--magazine' : ''}`}>
           {header.cover_image_url && (
             <div className="bottega-cover-wrap">
               <img className="bottega-cover" src={header.cover_image_url} alt="" />
@@ -793,87 +793,81 @@ const BOTTEGA_CSS = `
 }
 .bottega-rule-ornament svg { display: block; }
 
-/* ── Magazine-cover split (active when bottega-header--split is set) ──
-   Desktop: two-column grid (image LEFT bleeding edge-to-edge, identity
-   RIGHT with internal padding). Mobile: collapses to stacked, cover first.
-   This is Bottega's hero signature — distinct from the centered editorial
-   shared by Opaline / Blackline / TFR.
-*/
-.bottega-header--split {
-  display: grid;
-  grid-template-columns: 1fr;
-  align-items: stretch;
-  min-height: clamp(420px, 70vh, 720px);
-}
-@media (min-width: 880px) {
-  .bottega-header--split {
-    grid-template-columns: 6fr 5fr;
-  }
-}
+/* ── Magazine hero (active when bottega-header--magazine is set) ──
+   Single column, full-width cover at the top, big rounded-rect avatar
+   overlapping the cover's fade zone, identity stacked LEFT-aligned
+   beneath the avatar. The cover fades into the cream + floral canvas
+   via a mask-image gradient so the avatar appears to emerge from the
+   photograph itself. None of the other templates carry this overlap-
+   into-fade move — it's Bottega's hero signature.
 
-/* Cover panel in split mode — image bleeds to its container edge.
-   A mask-image fade on the bottom 30% softens the seam between the
-   photo and the cream canvas + floral pattern beneath, so the image
-   reads as a vignette rather than a cut-off rectangle. */
-.bottega-header--split .bottega-cover-wrap {
-  height: 100%;
-  min-height: clamp(320px, 60vw, 720px);
-  order: 1;
-  -webkit-mask-image: linear-gradient(to bottom, black 65%, transparent 100%);
-          mask-image: linear-gradient(to bottom, black 65%, transparent 100%);
+   Mobile collapses to centered alignment (left-aligned narrow text
+   reads off-balance on small viewports), and the avatar + cover both
+   scale down proportionally.
+*/
+.bottega-header--magazine {
+  max-width: var(--brk-container-standard);
+  margin: 0 auto;
+  padding: 0 var(--brk-space-md) clamp(40px, 6vw, 64px);
+  display: flex;
+  flex-direction: column;
 }
-.bottega-header--split .bottega-cover {
+.bottega-header--magazine .bottega-cover-wrap {
+  width: 100%;
+  height: clamp(440px, 85vh, 880px);
+  -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+          mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+}
+.bottega-header--magazine .bottega-cover {
   width: 100%;
   height: 100%;
-  min-height: inherit;
   object-fit: cover;
 }
-
-/* Identity panel in split mode — left-aligned column, centered vertically. */
-.bottega-header--split .bottega-header-inner {
+.bottega-header--magazine .bottega-header-inner {
+  max-width: none;
+  margin: 0;
+  padding: 0;
   text-align: left;
   align-items: flex-start;
-  justify-content: center;
-  margin: 0;
-  max-width: none;
-  padding: clamp(56px, 6vw, 88px) clamp(28px, 5vw, 64px);
-  order: 2;
 }
-@media (max-width: 879px) {
-  /* On mobile, collapse back to centered alignment so the stacked view
-     still reads composed (left-aligned narrow text feels off when there
-     is no neighboring image to anchor against). */
-  .bottega-header--split .bottega-header-inner {
-    text-align: center;
-    align-items: center;
-    padding: clamp(48px, 7vw, 80px) var(--brk-space-md);
-  }
+/* Big rounded-rect avatar — pushed UP into the cover's fade with a
+   negative top margin so it overlaps the dissolving photograph. Reads
+   like the studio's wooden sign hanging in front of a shop window. */
+.bottega-header--magazine .bottega-avatar {
+  width: 240px;
+  height: 168px;
+  border-radius: 14px;
+  margin: -180px 0 28px;
+  position: relative;
+  z-index: 2;
+  border: 2px solid var(--bottega-bg);
+  box-shadow: 0 14px 40px rgba(42,31,24,0.20);
 }
-.bottega-header--split .bottega-name {
-  /* Slightly tighter ceiling than centered — the identity column is
-     narrower in split mode, so the giant 92px ceiling would overflow. */
-  font-size: clamp(44px, 5.4vw, 72px);
-  margin-top: 12px;
-}
-.bottega-header--split .bottega-tagline {
+.bottega-header--magazine .bottega-tagline {
   margin-left: 0;
   margin-right: 0;
-  max-width: 36ch;
+  max-width: 48ch;
 }
-.bottega-header--split .bottega-avatar {
-  margin: 0 0 20px;
+.bottega-header--magazine .bottega-rule-ornament {
+  margin: 28px 0;
 }
-.bottega-header--split .bottega-rule-ornament {
-  margin: 24px 0;
-}
-.bottega-header--split .bottega-social {
+.bottega-header--magazine .bottega-social {
   justify-content: flex-start;
 }
 @media (max-width: 879px) {
-  .bottega-header--split .bottega-tagline { margin-left: auto; margin-right: auto; }
-  .bottega-header--split .bottega-avatar { margin-left: auto; margin-right: auto; }
-  .bottega-header--split .bottega-rule-ornament { margin-left: auto; margin-right: auto; }
-  .bottega-header--split .bottega-social { justify-content: center; }
+  .bottega-header--magazine .bottega-cover-wrap { height: clamp(360px, 75vw, 600px); }
+  .bottega-header--magazine .bottega-avatar {
+    width: 180px;
+    height: 126px;
+    margin: -110px auto 24px;
+  }
+  .bottega-header--magazine .bottega-header-inner {
+    text-align: center;
+    align-items: center;
+  }
+  .bottega-header--magazine .bottega-tagline { margin-left: auto; margin-right: auto; }
+  .bottega-header--magazine .bottega-rule-ornament { margin-left: auto; margin-right: auto; }
+  .bottega-header--magazine .bottega-social { justify-content: center; }
 }
 
 /* Hero contact strip — icon-only circular buttons (matches the family
