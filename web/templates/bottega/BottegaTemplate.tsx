@@ -1129,7 +1129,13 @@ const BOTTEGA_CSS = `
   font-family: var(--bottega-display);
 }
 
-/* Reviews — italic blockquote, accent terrazzo cluster as the rating dots. */
+/* Reviews — italic blockquote, accent terrazzo cluster as the rating dots,
+   transparent fill + visible accent border (no surface card, the pattern
+   shows through). */
+.bottega-template .brk-review {
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--bottega-accent) 55%, transparent);
+}
 .bottega-template .brk-review blockquote {
   font-family: var(--bottega-display);
   font-style: italic;
@@ -1157,12 +1163,86 @@ const BOTTEGA_CSS = `
   font-family: var(--bottega-body);
 }
 
-/* Surface cards on the shared sections (FAQ/reviews bg, etc.) — slightly
-   more opaque than the bridged --brk-color-surface so they lift cleanly
-   off the terrazzo without feeling too solid. */
-.bottega-template .brk-card,
-.bottega-template .brk-review {
+/* Surface cards on the OTHER shared sections — FAQ etc keep the soft
+   cream fill so they read against the terrazzo. Reviews override above
+   forces transparent + border (no fill). */
+.bottega-template .brk-card {
   background: rgba(251,248,241,0.85);
+}
+
+/* ── Gallery: force 2 columns at every desktop width (default shared
+   grid goes to 3 at ≥1025px; Bottega prefers the larger images and the
+   more deliberate cadence of a 2-up grid). Mobile stays 1-col. ── */
+.bottega-template .brk-gallery-grid {
+  grid-template-columns: 1fr;
+}
+@media (min-width: 641px) {
+  .bottega-template .brk-gallery-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 22px;
+  }
+}
+@media (min-width: 1025px) {
+  .bottega-template .brk-gallery-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 28px;
+  }
+}
+
+/* ── Before & After: 2-column grid of PAIRS at desktop, each pair stacked
+   vertically (before on top, after below) so a narrower per-pair column
+   still shows both photos at a useful size. The shared default is a
+   vertical stack of horizontal pairs — Bottega prefers the album-spread
+   read of two stacked pairs side by side. ── */
+.bottega-template .brk-ba-stack {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 48px;
+  max-width: none;
+}
+@media (min-width: 821px) {
+  .bottega-template .brk-ba-stack {
+    grid-template-columns: 1fr 1fr;
+    gap: 40px 32px;
+  }
+  .bottega-template .brk-ba-pair {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  /* The center separator (•) is meaningless when the pair stacks
+     vertically — hide it in the 2-col view. */
+  .bottega-template .brk-ba-sep { display: none; }
+}
+
+/* ── Timeline numbered counter: big italic faded numerals + a vertical
+   accent hairline running the height of the card body. Replaces the
+   default small 40px solid-color number with a magazine-table-of-contents
+   treatment — confident, deliberate, signature for Bottega. ── */
+.bottega-template .brk-instructions--numbered .brk-instruction {
+  grid-template-columns: auto 1fr;
+  gap: 26px;
+  padding: 36px 0;
+  align-items: stretch;
+}
+.bottega-template .brk-instructions--numbered .brk-instruction-mark {
+  font-family: var(--bottega-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(56px, 8vw, 88px);
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  color: var(--bottega-accent);
+  opacity: 0.42;
+  min-width: 84px;
+  text-align: left;
+  align-self: start;
+  margin-top: -6px;
+}
+.bottega-template .brk-instructions--numbered .brk-instruction-body {
+  border-left: 1px solid color-mix(in srgb, var(--bottega-accent) 38%, transparent);
+  padding-left: 22px;
+  align-self: stretch;
 }
 
 /* ── Reduced motion ── */
