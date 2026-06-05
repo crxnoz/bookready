@@ -934,6 +934,7 @@ const TFR_CSS = `
   margin: 0;
   letter-spacing: -0.015em;
   color: var(--tfr-fg);
+  text-transform: uppercase;
   white-space: nowrap;
   /* Strip any inherited script styling — this is a serif backdrop only. */
   text-shadow: none;
@@ -950,7 +951,9 @@ const TFR_CSS = `
   letter-spacing: 0;
   line-height: 1;
   color: var(--tfr-fg);
-  text-shadow: var(--tfr-neon-shadow);
+  /* Use the tighter neon variant — the full 4-layer bloom was too
+     loud overlaid on the giant uppercase backdrop. Standard halo only. */
+  text-shadow: var(--tfr-neon-shadow-tight);
   margin: 0;
   white-space: nowrap;
   padding: 0.05em 0.1em;
