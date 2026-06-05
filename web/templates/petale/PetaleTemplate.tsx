@@ -250,17 +250,17 @@ export default function PetaleTemplate({ site, slug }: Props) {
     })
   }
 
-  // Scalloped SVG divider — reused between sections as Pétale's signature
-  // section break. Inline so we control color via currentColor.
+  // Botanical petal divider — Pétale's signature section break. Three
+  // small petals on a hairline, like pressed flowers between pages of a
+  // wedding album. Replaces the earlier scalloped curve.
   const ScallopDivider = () => (
     <div className="petale-divider" aria-hidden="true">
-      <svg width="120" height="14" viewBox="0 0 120 14" xmlns="http://www.w3.org/2000/svg">
-        <path
-          d="M0 7 Q 10 0 20 7 T 40 7 T 60 7 T 80 7 T 100 7 T 120 7"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1"
-        />
+      <svg width="160" height="20" viewBox="0 0 160 20" xmlns="http://www.w3.org/2000/svg">
+        <line x1="0" y1="10" x2="60" y2="10" stroke="currentColor" strokeWidth="1" />
+        <ellipse cx="74" cy="10" rx="3" ry="6" fill="currentColor" opacity="0.55" />
+        <ellipse cx="80" cy="10" rx="5" ry="7" fill="currentColor" opacity="0.85" />
+        <ellipse cx="86" cy="10" rx="3" ry="6" fill="currentColor" opacity="0.55" />
+        <line x1="100" y1="10" x2="160" y2="10" stroke="currentColor" strokeWidth="1" />
       </svg>
     </div>
   )
@@ -280,24 +280,42 @@ export default function PetaleTemplate({ site, slug }: Props) {
           </div>
         )}
 
-        {/* 2. Header / Hero — cover + identity card, off-center on desktop. */}
-        <header className="petale-header">
+        {/* 2. Header / Hero — wedding-invitation layout: identity card sits
+            LEFT (Pinyon Script name + Playfair italic tagline + petal
+            ornament), cover image flanks RIGHT (vertical 3:4 portrait
+            window). Stacks on mobile with cover first. Asymmetric +
+            handwritten-script vocabulary makes this read as a wedding
+            invitation rather than Opaline's symmetric editorial spread. */}
+        <header className={`petale-header${header.cover_image_url ? ' petale-header--has-cover' : ''}`}>
+          <div className="petale-header-text">
+            <p className="petale-hero-kicker">{p?.business_type || 'Atelier'}</p>
+            <h1 className="petale-name">{display}</h1>
+            {p?.tagline && <p className="petale-tagline">{p.tagline}</p>}
+            <span className="petale-rule-ornament" aria-hidden="true">
+              <svg width="64" height="14" viewBox="0 0 64 14" xmlns="http://www.w3.org/2000/svg">
+                {/* Three small petal silhouettes connected by a hairline.
+                    Replaces the plain gold rule with a botanical ornament. */}
+                <line x1="0" y1="7" x2="22" y2="7" stroke="currentColor" strokeWidth="1" />
+                <ellipse cx="32" cy="7" rx="4" ry="6" fill="currentColor" opacity="0.7" />
+                <line x1="42" y1="7" x2="64" y2="7" stroke="currentColor" strokeWidth="1" />
+                <ellipse cx="26" cy="7" rx="2" ry="3" fill="currentColor" opacity="0.45" />
+                <ellipse cx="38" cy="7" rx="2" ry="3" fill="currentColor" opacity="0.45" />
+              </svg>
+            </span>
+            <SocialButtons header={header} profile={p} goBook={goBook} />
+          </div>
           {header.cover_image_url && (
             <div className="petale-cover-wrap">
               <img className="petale-cover" src={header.cover_image_url} alt="" />
-              <div className="petale-cover-veil" aria-hidden="true" />
+              <div className="petale-cover-frame" aria-hidden="true" />
+              {header.avatar_image_url && (
+                <img className="petale-cover-avatar" src={header.avatar_image_url} alt="" />
+              )}
             </div>
           )}
-          <div className="petale-header-inner">
-            {header.avatar_image_url && (
-              <img className="petale-avatar" src={header.avatar_image_url} alt="" />
-            )}
-            <p className="petale-eyebrow">{p?.business_type || 'Atelier'}</p>
-            <h1 className="petale-name">{display}</h1>
-            {p?.tagline && <p className="petale-tagline">{p.tagline}</p>}
-            <span className="petale-rule-ornament" aria-hidden="true" />
-            <SocialButtons header={header} profile={p} goBook={goBook} />
-          </div>
+          {!header.cover_image_url && header.avatar_image_url && (
+            <img className="petale-avatar-standalone" src={header.avatar_image_url} alt="" />
+          )}
         </header>
 
         {/* ── Sticky tab rail with scalloped active-underline ── */}
@@ -569,17 +587,22 @@ function SocialButtons({ header, profile, goBook }: { header: any; profile: any;
           ? (e: React.MouseEvent<HTMLAnchorElement>) => { e.preventDefault(); goBook() }
           : undefined
         const isWeb = !!b.href && /^https?:/i.test(b.href)
+        const isPrimary = b.key === 'book'
         return (
           <a
             key={b.key}
             href={safeHref(b.href!)}
             target={!isReserve && isWeb ? '_blank' : undefined}
             rel={!isReserve && isWeb ? 'noopener noreferrer' : undefined}
-            className={`petale-social-btn petale-social-btn--${b.key}${b.key === 'book' ? ' petale-social-btn--primary' : ''}`}
+            className={`petale-social-btn petale-social-btn--${b.key}${isPrimary ? ' petale-social-btn--primary' : ''}`}
             onClick={onClick}
+            aria-label={b.label}
+            title={b.label}
           >
-            {b.icon && <span className="petale-social-ico" aria-hidden="true">{b.icon}</span>}
-            {b.label}
+            {/* Primary keeps its visible label ("Reserve") as a wide pill;
+                every other button is icon-only with the label moved to
+                aria-label + native tooltip via the `title` attribute. */}
+            {isPrimary ? b.label : (b.icon && <span className="petale-social-ico" aria-hidden="true">{b.icon}</span>)}
           </a>
         )
       })}
@@ -659,198 +682,259 @@ const PETALE_CSS = `
 .petale-template a { color: inherit; text-decoration: none; }
 .petale-template :focus-visible { outline: 2px solid var(--petale-accent); outline-offset: 3px; }
 
-/* ── Shared eyebrow + section header ── */
+/* ── Shared eyebrow + section header ──
+   The eyebrow uses Pinyon Script now (handwritten-romantic), NOT tracked
+   Inter uppercase like Opaline. This is the single biggest visual move
+   — what made Pétale read as an Opaline dupe before. The section title
+   also gets a larger, more italic Playfair treatment. */
 .petale-eyebrow {
   margin: 0;
-  font-family: var(--petale-body);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
+  font-family: var(--petale-script);
+  font-size: clamp(26px, 3.2vw, 38px);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--petale-accent);
+  line-height: 1;
 }
 .petale-section-title {
-  margin: 14px 0 0;
+  margin: 4px 0 0;
   font-family: var(--petale-display);
   font-style: italic;
-  font-weight: 500;
-  font-size: clamp(38px, 5.4vw, 60px);
-  line-height: 1.06;
-  letter-spacing: -0.005em;
+  font-weight: 600;
+  font-size: clamp(42px, 6vw, 72px);
+  line-height: 1.02;
+  letter-spacing: -0.012em;
   color: var(--petale-ink);
 }
 
-/* ── Announcement ── */
+/* ── Announcement — narrow centered strip, italic Playfair (not Opaline's
+   tracked uppercase). The bookend marks become small petal silhouettes. */
 .petale-announce {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 16px;
-  padding: 13px 24px;
+  padding: 12px 24px;
   background: var(--petale-surface);
   border-bottom: 1px solid var(--petale-rule);
-  font-family: var(--petale-body);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.26em;
-  text-transform: uppercase;
+  font-family: var(--petale-display);
+  font-style: italic;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--petale-ink);
   text-align: center;
 }
-.petale-announce-mark { color: var(--petale-accent); font-size: 11px; }
+.petale-announce-mark { color: var(--petale-accent); font-size: 14px; opacity: 0.7; }
 
-/* ── Header / Hero ── */
-.petale-header { position: relative; }
-.petale-cover-wrap { position: relative; width: 100%; }
-.petale-cover {
-  width: 100%;
-  height: clamp(280px, 52vw, 560px);
-  object-fit: cover;
-  filter: saturate(0.96) brightness(1.02);
-}
-.petale-cover-veil {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg,
-    color-mix(in srgb, var(--petale-bg) 0%, transparent) 40%,
-    color-mix(in srgb, var(--petale-bg) 60%, transparent) 100%);
-  pointer-events: none;
-}
-.petale-header-inner {
+/* ── Header / Hero — wedding-invitation layout. Left: identity text block
+   (kicker + Pinyon Script brand name + Playfair italic tagline +
+   botanical ornament + contact buttons). Right: vertical 3:4 portrait
+   cover window with the avatar tucked as a "stamp" overlap at top-right.
+   Asymmetric, romantic, instantly distinct from Opaline's centered
+   editorial card-on-veil. */
+.petale-header {
   position: relative;
-  max-width: var(--brk-container-narrow);
+  max-width: var(--brk-container-standard);
   margin: 0 auto;
-  padding: clamp(48px, 7vw, 80px) var(--brk-space-md) clamp(40px, 6vw, 64px);
-  text-align: center;
-  display: flex;
-  flex-direction: column;
+  padding: clamp(48px, 6vw, 88px) var(--brk-space-md) clamp(48px, 6vw, 88px);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(36px, 5vw, 64px);
   align-items: center;
 }
-.petale-cover-wrap + .petale-header-inner { margin-top: -64px; }
-.petale-avatar {
-  width: 96px;
-  height: 96px;
-  border-radius: 999px;
-  object-fit: cover;
-  margin: 0 0 22px;
-  border: 1px solid var(--petale-rule);
-  background: var(--petale-surface);
-  box-shadow: 0 8px 30px rgba(61,32,39,0.10);
+@media (min-width: 880px) {
+  .petale-header--has-cover {
+    grid-template-columns: 1fr minmax(360px, 0.85fr);
+  }
 }
-.petale-name {
-  margin: 14px 0 0;
-  font-family: var(--petale-display);
-  font-style: italic;
+.petale-header-text {
+  position: relative;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  /* On mobile, stay center-aligned for the narrow viewport */
+}
+@media (max-width: 879px) {
+  .petale-header-text { align-items: center; text-align: center; }
+}
+.petale-hero-kicker {
+  margin: 0 0 18px;
+  font-family: var(--petale-body);
+  font-size: 11px;
   font-weight: 500;
-  font-size: clamp(48px, 8.5vw, 92px);
-  line-height: 1.0;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--petale-accent);
+  opacity: 0.85;
+}
+/* THE brand-name move — Pinyon Script in display sizing. Wedding-paper
+   coded. The single most distinct moment from Opaline's restrained
+   Cormorant. */
+.petale-name {
+  margin: 0;
+  font-family: var(--petale-script);
+  font-style: normal;
+  font-weight: 400;
+  font-size: clamp(72px, 12vw, 144px);
+  line-height: 0.96;
   letter-spacing: -0.005em;
   color: var(--petale-ink);
 }
 .petale-tagline {
-  margin: 18px 0 0;
-  max-width: 46ch;
+  margin: 22px 0 0;
+  max-width: 38ch;
   font-family: var(--petale-display);
   font-style: italic;
   font-weight: 400;
-  font-size: clamp(18px, 2.4vw, 23px);
+  font-size: clamp(17px, 2.1vw, 22px);
   line-height: 1.5;
   color: var(--petale-muted);
 }
 .petale-rule-ornament {
-  display: block;
-  width: 56px;
-  height: 1px;
-  margin: 32px auto;
-  background: var(--petale-accent);
-  opacity: 0.75;
+  display: inline-flex;
+  align-items: center;
+  margin: 30px 0 30px;
+  color: var(--petale-accent);
+  opacity: 0.85;
+}
+.petale-rule-ornament svg { display: block; }
+
+/* Cover window — vertical 3:4 with a soft hairline frame and an avatar
+   "stamp" overlapping the top-right corner. Floats inside the right
+   column on desktop, full-width image on mobile (positioned ABOVE the
+   text block via order:-1). */
+.petale-cover-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3/4;
+  border-radius: 8px;
+  overflow: visible;
+}
+@media (max-width: 879px) {
+  .petale-cover-wrap {
+    aspect-ratio: 4/3;
+    order: -1;
+  }
+}
+.petale-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  filter: saturate(0.97) brightness(1.01);
+}
+.petale-cover-frame {
+  position: absolute;
+  inset: -6px;
+  border: 1px solid var(--petale-accent);
+  border-radius: 12px;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.petale-cover-avatar {
+  position: absolute;
+  top: -28px;
+  right: -28px;
+  width: 96px;
+  height: 96px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 3px solid var(--petale-bg);
+  background: var(--petale-surface);
+  box-shadow: 0 10px 30px rgba(61,32,39,0.18);
+  z-index: 2;
+}
+@media (max-width: 879px) {
+  .petale-cover-avatar {
+    top: auto;
+    bottom: -32px;
+    right: 50%;
+    transform: translateX(50%);
+    width: 80px;
+    height: 80px;
+  }
+}
+/* When no cover image, render the avatar as a soft standalone card
+   above the text block — keeps the hero from feeling empty. */
+.petale-avatar-standalone {
+  width: 120px;
+  height: 120px;
+  border-radius: 999px;
+  object-fit: cover;
+  margin: 0 auto;
+  border: 1px solid var(--petale-rule);
+  background: var(--petale-surface);
+  box-shadow: 0 10px 30px rgba(61,32,39,0.12);
+  order: -1;
 }
 
-/* Hero contact buttons — "calling-card stack" design. Each contact (Call,
-   Email, Instagram, etc.) renders as a soft circular icon container with
-   an italic Playfair label stacked beneath. Reads as wedding-stationery
-   contact card, distinct from every other template's pill / sharp-square
-   treatments (TFR/Lush rounded neon pills, Opaline hairline rectangles,
-   Velvet bare icon-only, Blackline sharp rectangular rules).
-
-   The PRIMARY (Reserve) button breaks pattern: stays a wide italic
-   Playfair gold pill so the CTA still leads the row visually. */
+/* Hero contact strip — icon-only circular buttons in a tight horizontal
+   row. The label is moved to aria-label + native tooltip; visible labels
+   would compete with the Pinyon Script brand name's read. The Reserve
+   CTA is the one exception: kept as a wide italic Playfair gold pill so
+   the primary action still leads the row. */
 .petale-social {
   display: flex;
   flex-wrap: wrap;
-  gap: 22px 24px;
-  justify-content: center;
-  align-items: flex-end;
+  gap: 12px;
+  justify-content: flex-start;
+  align-items: center;
+  margin-top: 8px;
+}
+@media (max-width: 879px) {
+  .petale-social { justify-content: center; }
 }
 .petale-social-btn {
   display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--petale-ink);
-  font-family: var(--petale-display);
-  font-style: italic;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: none;
-  cursor: pointer;
-  transition: color 200ms ease, transform 200ms ease;
-}
-.petale-social-btn:hover {
-  color: var(--petale-accent);
-  transform: translateY(-2px);
-}
-/* The icon container — circular, hairline gold border, soft warm overlay,
-   icon centered. The button label sits beneath via flex-column above. */
-.petale-social-ico {
-  width: 52px;
-  height: 52px;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--petale-accent) 36%, transparent);
-  background: var(--petale-surface);
-  display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--petale-accent);
-  transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
-}
-.petale-social-btn:hover .petale-social-ico {
-  border-color: var(--petale-accent);
-  background: color-mix(in srgb, var(--petale-accent) 10%, var(--petale-surface));
-  box-shadow: 0 6px 18px rgba(201,168,118,0.18);
-}
-.petale-social-ico svg { display: block; }
-/* The Reserve CTA breaks the calling-card pattern — a wide italic Playfair
-   pill in gold so the primary action visually leads the strip. */
-.petale-social-btn--primary {
-  flex-direction: row;
-  gap: 0;
-  padding: 14px 32px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--petale-accent) 38%, transparent);
   border-radius: 999px;
+  background: var(--petale-surface);
+  color: var(--petale-accent);
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+.petale-social-btn:hover {
+  border-color: var(--petale-accent);
+  background: color-mix(in srgb, var(--petale-accent) 12%, var(--petale-surface));
+  color: var(--petale-ink);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(201,168,118,0.20);
+}
+.petale-social-ico { display: inline-flex; align-items: center; color: currentColor; }
+.petale-social-ico svg { display: block; }
+
+/* Reserve CTA — keeps the wide italic Playfair gold pill. Sits inside
+   the strip but visually breaks pattern, leading the row. */
+.petale-social-btn--primary {
+  width: auto;
+  height: auto;
+  padding: 13px 28px;
   background: var(--petale-accent);
+  border-color: var(--petale-accent);
   color: var(--petale-on-accent);
   font-family: var(--petale-display);
   font-style: italic;
-  font-size: 18px;
   font-weight: 500;
+  font-size: 17px;
   letter-spacing: 0;
-  align-self: center;
   box-shadow: 0 6px 18px rgba(201,168,118,0.22);
-  transition: filter 200ms ease, transform 200ms ease, box-shadow 200ms ease;
 }
 .petale-social-btn--primary:hover {
   color: var(--petale-on-accent);
+  background: var(--petale-accent);
   filter: brightness(1.04);
-  transform: translateY(-2px);
   box-shadow: 0 10px 26px rgba(201,168,118,0.30);
 }
-/* When the Reserve CTA is the primary button, hide its calling-card icon
-   slot — the label alone carries it (visually). The icon shows on every
-   OTHER button as the calling-card mark. */
 .petale-social-btn--primary .petale-social-ico { display: none; }
 
 /* ── Sticky tab rail with scalloped active marker ── */
@@ -1053,22 +1137,27 @@ const PETALE_CSS = `
    italic Playfair section titles, gold tracked Inter eyebrows, italic
    Pinyon Script thank-you signature, scalloped pill CTAs in the footer. */
 
+/* All shared section eyebrows render in Pinyon Script — gives every tab
+   ("Gallery" → "Lookbook", "Reviews" → "Kind Words", etc.) the same
+   wedding-handwritten treatment as the bespoke About + hero. */
 .petale-template .brk-eyebrow {
-  font-family: var(--petale-body);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
+  font-family: var(--petale-script);
+  font-size: clamp(26px, 3.2vw, 38px);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--petale-accent);
+  line-height: 1;
 }
 .petale-template .brk-section-title {
   font-family: var(--petale-display);
   font-style: italic;
-  font-weight: 500;
-  font-size: clamp(38px, 5.4vw, 60px);
-  line-height: 1.06;
-  letter-spacing: -0.005em;
+  font-weight: 600;
+  font-size: clamp(42px, 6vw, 72px);
+  line-height: 1.02;
+  letter-spacing: -0.012em;
   color: var(--petale-ink);
+  margin-top: 4px;
 }
 
 /* Thank-you — Playfair italic heading, Pinyon Script signature, gold ✦ ornament. */
