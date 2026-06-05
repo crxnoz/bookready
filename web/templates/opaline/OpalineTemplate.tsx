@@ -95,6 +95,27 @@ function FacebookGlyph({ size = 14 }: { size?: number }) {
     </svg>
   )
 }
+function InstagramGlyph({ size = 14 }: { size?: number }) {
+  // Stroked camera-square + lens + flash dot — matches the visual weight
+  // of the brand glyphs above without filing off the official IG mark.
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+function DirectionsGlyph({ size = 14 }: { size?: number }) {
+  // Map-pin glyph — same stroke weight as the Instagram square so the
+  // two new icons land in the same visual family as the existing set.
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z" />
+      <circle cx="12" cy="10" r="2.5" />
+    </svg>
+  )
+}
 
 interface Props {
   site: PublicSite
@@ -476,13 +497,13 @@ function SocialButtons({ header, profile, goBook }: { header: any; profile: any;
     { key: 'call',       href: header.call_button_url       || (profile?.public_phone ? `tel:${profile.public_phone}` : null), label: 'Call' },
     { key: 'email',      href: header.email_button_url      || (profile?.public_email ? `mailto:${profile.public_email}` : null), label: 'Email' },
     { key: 'message',    href: safeContactHref(header.message_button_url, 'sms'), label: 'Message', icon: <MessageGlyph /> },
-    { key: 'instagram',  href: header.instagram_button_url  || profile?.instagram_url || null, label: 'Instagram' },
+    { key: 'instagram',  href: header.instagram_button_url  || profile?.instagram_url || null, label: 'Instagram', icon: <InstagramGlyph /> },
     { key: 'tiktok',     href: safeHref(header.tiktok_button_url) ?? null, label: 'TikTok', icon: <TikTokGlyph /> },
     { key: 'youtube',    href: safeHref(header.youtube_button_url) ?? null, label: 'YouTube', icon: <YoutubeGlyph /> },
     { key: 'facebook',   href: safeHref(header.facebook_button_url) ?? null, label: 'Facebook', icon: <FacebookGlyph /> },
     { key: 'pinterest',  href: safeHref(header.pinterest_button_url) ?? null, label: 'Pinterest', icon: <PinterestGlyph /> },
     { key: 'whatsapp',   href: safeHref(header.whatsapp_button_url) ?? null, label: 'WhatsApp', icon: <WhatsAppGlyph /> },
-    { key: 'directions', href: header.directions_button_url || null, label: 'Directions' },
+    { key: 'directions', href: header.directions_button_url || null, label: 'Directions', icon: <DirectionsGlyph /> },
   ]
   const visible = btns.filter(b => header[`show_${b.key}_button`] !== false && b.href)
   if (visible.length === 0) return null
