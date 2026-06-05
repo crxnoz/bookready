@@ -19,6 +19,7 @@ import {
   Calendar, Clock, ExternalLink, Loader2, ChevronRight, CheckCircle2, Circle,
   Megaphone, DollarSign, Activity, Sparkles, AlertCircle, ArrowUpRight,
   TrendingUp, Users, UserPlus, Crown, Repeat, Lightbulb, Inbox, BarChart3,
+  X,
 } from 'lucide-react'
 import EditorShell from '@/components/editor/EditorShell'
 import { cn } from '@/lib/cn'
@@ -149,8 +150,6 @@ function DashboardBody() {
   const tomorrowAppts     = useMemo(() => findTomorrowAppts(appts),   [appts])
   const weekStrip         = useMemo(() => computeWeekStrip(appts),    [appts])
   const pendingCount      = useMemo(() => appts.filter(a => a.status === 'pending').length, [appts])
-  const revenueByWeek     = useMemo(() => computeRevenueByWeek(appts, 8),  [appts])
-  const bookingsByDay     = useMemo(() => computeBookingsByDay(appts, 14), [appts])
   // A13 — customer intelligence.
   const newCustomers      = useMemo(() => computeNewCustomers(appts),  [appts])
   const topSpenders       = useMemo(() => computeTopSpenders(appts),   [appts])
@@ -277,10 +276,10 @@ function DashboardBody() {
         <PendingRequestsTile count={pendingCount} />
       )}
 
-      {/* ── A13: Charts row ── */}
+      {/* ── A13/A15: Charts row — interactive, period-toggleable, inline detail ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <RevenueChart weeks={revenueByWeek} currency={moneyBuckets.currency} />
-        <BookingVolumeChart days={bookingsByDay} />
+        <RevenueChart appts={appts} currency={moneyBuckets.currency} />
+        <BookingVolumeChart appts={appts} />
       </div>
 
       {/* ── A13: Customer intelligence row ── */}
@@ -898,87 +897,275 @@ function PendingRequestsTile({ count }: { count: number }) {
   )
 }
 
-interface RevenueWeek { label: string; value: number; startISO: string }
+type ChartPeriod = 'daily' | 'weekly' | 'monthly'
+
+interface PeriodBucket {
+  key:       string       // unique id (start ISO)
+  label:     string       // short axis label
+  value:     number
+  startISO:  string       // bucket start (YYYY-MM-DD)
+  endISO:    string       // bucket end (exclusive, YYYY-MM-DD)
+  isCurrent: boolean      // is the rightmost bucket the present one
+}
 
 /**
- * Revenue trend chart — 8 weekly bars, fully interactive (hover tooltip,
- * highlight, click-to-drill into Payments filtered to that week's start).
+ * Revenue trend chart — period-toggleable (Daily / Weekly / Monthly),
+ * fully interactive. Clicking a bar opens an inline detail panel below
+ * the chart listing the appointments that contributed.
  */
-function RevenueChart({ weeks, currency }: { weeks: RevenueWeek[]; currency: string }) {
-  const router = useRouter()
-  const total = weeks.reduce((s, w) => s + w.value, 0)
-  const last = weeks[weeks.length - 1]?.value ?? 0
-  const prev = weeks[weeks.length - 2]?.value ?? 0
+function RevenueChart({ appts, currency }: { appts: Appointment[]; currency: string }) {
+  const [period, setPeriod]           = useState<ChartPeriod>('weekly')
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const buckets = useMemo(() => computeRevenueBuckets(appts, period), [appts, period])
+  const total = buckets.reduce((s, b) => s + b.value, 0)
+  const last  = buckets[buckets.length - 1]?.value ?? 0
+  const prev  = buckets[buckets.length - 2]?.value ?? 0
   const delta = prev > 0 ? Math.round(((last - prev) / prev) * 100) : null
+  const periodWord = period === 'daily' ? 'day' : period === 'weekly' ? 'week' : 'month'
 
-  const bars: ChartBar[] = weeks.map((w, i) => ({
-    key:        w.startISO,
-    value:      w.value,
-    primary:    `Week of ${w.label}`,
-    secondary:  money(w.value, currency),
-    accent:     i === weeks.length - 1,
-    onClick:    () => router.push(`/editor/payments?from=${w.startISO}`),
+  const bars: ChartBar[] = buckets.map(b => ({
+    key:       b.key,
+    value:     b.value,
+    primary:   period === 'daily' ? fmtDateFull(b.startISO)
+              : period === 'weekly' ? `Week of ${fmtDate(b.startISO)}`
+              : monthLabel(b.startISO),
+    secondary: money(b.value, currency),
+    accent:    b.isCurrent,
+    selected:  selectedKey === b.key,
   }))
+
+  const selectedBucket = buckets.find(b => b.key === selectedKey) ?? null
+  const contributing  = selectedBucket
+    ? appointmentsInRange(appts, selectedBucket.startISO, selectedBucket.endISO, 'created').filter(a =>
+        ((a.deposit_paid_amount ?? 0) + (a.balance_paid_amount ?? 0)) > 0,
+      )
+    : []
 
   return (
     <section>
       <SectionHeader
         icon={TrendingUp}
-        label="Revenue · last 8 weeks"
+        label="Revenue"
         subtitle={total === 0
-          ? 'No collected revenue yet.'
-          : `${money(total, currency)} total · ${delta != null ? (delta >= 0 ? '+' : '') + delta + '% vs last week' : 'this week'}`}
-        cta={{ label: 'Open Payments', href: '/editor/payments' }}
+          ? `No revenue collected in this ${periodWord} window.`
+          : `${money(total, currency)} total · ${delta != null ? (delta >= 0 ? '+' : '') + delta + `% vs last ${periodWord}` : 'this ' + periodWord}`}
       />
-      <InteractiveBarChart
-        bars={bars}
-        startLabel={weeks[0]?.label ?? ''}
-        endLabel={weeks[weeks.length - 1]?.label ?? ''}
-        emptyText="No revenue in this window."
-      />
+      <div className="bg-white border border-[rgba(18,18,18,0.10)]">
+        <div className="px-4 pt-3 pb-1 flex justify-end">
+          <PeriodToggle value={period} onChange={p => { setPeriod(p); setSelectedKey(null) }} />
+        </div>
+        <div className="px-4 pb-4">
+          <InteractiveBarChart
+            bars={bars}
+            startLabel={buckets[0]?.label ?? ''}
+            endLabel={buckets[buckets.length - 1]?.label ?? ''}
+            emptyText={`No revenue in this ${periodWord} window.`}
+            onBarClick={key => setSelectedKey(prev => prev === key ? null : key)}
+          />
+        </div>
+        {selectedBucket && (
+          <ChartDetailPanel
+            label={
+              period === 'daily' ? fmtDateFull(selectedBucket.startISO)
+              : period === 'weekly' ? `Week of ${fmtDate(selectedBucket.startISO)}`
+              : monthLabel(selectedBucket.startISO)
+            }
+            valueLabel={money(selectedBucket.value, currency)}
+            onClose={() => setSelectedKey(null)}
+            empty={contributing.length === 0 ? 'No paid appointments in this period.' : undefined}
+            rows={contributing.slice(0, 8).map(a => ({
+              key:       String(a.id),
+              primary:   a.customer_name,
+              secondary: `${a.service_name} · ${fmtDate(a.appointment_date)}`,
+              right:     money(round2((a.deposit_paid_amount ?? 0) + (a.balance_paid_amount ?? 0)), currency),
+            }))}
+            overflowCount={contributing.length > 8 ? contributing.length - 8 : 0}
+          />
+        )}
+      </div>
     </section>
   )
 }
 
-interface BookingDay { date: string; label: string; count: number; isToday: boolean }
-
 /**
- * Booking volume — 14 daily bars, fully interactive. Today highlighted
- * green; click any bar to drill into the calendar filtered to that day.
+ * Booking volume — period-toggleable bar chart of appointment count.
+ * Click a bar to inline-expand the list of bookings made that period.
  */
-function BookingVolumeChart({ days }: { days: BookingDay[] }) {
-  const router = useRouter()
-  const total = days.reduce((s, d) => s + d.count, 0)
-  const avg = total / days.length
+function BookingVolumeChart({ appts }: { appts: Appointment[] }) {
+  const [period, setPeriod]           = useState<ChartPeriod>('daily')
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const buckets = useMemo(() => computeBookingsBuckets(appts, period), [appts, period])
+  const total = buckets.reduce((s, b) => s + b.value, 0)
+  const avg = total / Math.max(1, buckets.length)
+  const periodWord = period === 'daily' ? 'day' : period === 'weekly' ? 'week' : 'month'
 
-  const bars: ChartBar[] = days.map(d => ({
-    key:        d.date,
-    value:      d.count,
-    primary:    fmtDateFull(d.date),
-    secondary:  `${d.count} booking${d.count === 1 ? '' : 's'}`,
-    accent:     d.isToday,
-    accentColor:'#0f6f3d',
-    onClick:    () => router.push(`/editor/appointments?date=${d.date}`),
+  const bars: ChartBar[] = buckets.map(b => ({
+    key:         b.key,
+    value:       b.value,
+    primary:     period === 'daily' ? fmtDateFull(b.startISO)
+                : period === 'weekly' ? `Week of ${fmtDate(b.startISO)}`
+                : monthLabel(b.startISO),
+    secondary:   `${b.value} booking${b.value === 1 ? '' : 's'}`,
+    accent:      b.isCurrent,
+    accentColor: '#0f6f3d',
+    selected:    selectedKey === b.key,
   }))
+
+  const selectedBucket = buckets.find(b => b.key === selectedKey) ?? null
+  const contributing  = selectedBucket
+    ? appointmentsInRange(appts, selectedBucket.startISO, selectedBucket.endISO, 'created')
+    : []
 
   return (
     <section>
       <SectionHeader
         icon={Calendar}
-        label="Bookings · last 14 days"
+        label="Bookings"
         subtitle={total === 0
-          ? 'No bookings in this window.'
-          : `${total} bookings total · ${avg.toFixed(1)}/day avg`}
-        cta={{ label: 'Open calendar', href: '/editor/appointments' }}
+          ? `No bookings in this ${periodWord} window.`
+          : `${total} bookings total · ${avg.toFixed(1)}/${periodWord} avg`}
       />
-      <InteractiveBarChart
-        bars={bars}
-        startLabel={days[0]?.label ?? ''}
-        endLabel="Today"
-        emptyText="No bookings in this window."
-      />
+      <div className="bg-white border border-[rgba(18,18,18,0.10)]">
+        <div className="px-4 pt-3 pb-1 flex justify-end">
+          <PeriodToggle value={period} onChange={p => { setPeriod(p); setSelectedKey(null) }} />
+        </div>
+        <div className="px-4 pb-4">
+          <InteractiveBarChart
+            bars={bars}
+            startLabel={buckets[0]?.label ?? ''}
+            endLabel={buckets[buckets.length - 1]?.label ?? ''}
+            emptyText={`No bookings in this ${periodWord} window.`}
+            onBarClick={key => setSelectedKey(prev => prev === key ? null : key)}
+          />
+        </div>
+        {selectedBucket && (
+          <ChartDetailPanel
+            label={
+              period === 'daily' ? fmtDateFull(selectedBucket.startISO)
+              : period === 'weekly' ? `Week of ${fmtDate(selectedBucket.startISO)}`
+              : monthLabel(selectedBucket.startISO)
+            }
+            valueLabel={`${selectedBucket.value} booking${selectedBucket.value === 1 ? '' : 's'}`}
+            onClose={() => setSelectedKey(null)}
+            empty={contributing.length === 0 ? 'No bookings made in this period.' : undefined}
+            rows={contributing.slice(0, 8).map(a => ({
+              key:       String(a.id),
+              primary:   a.customer_name,
+              secondary: `${a.service_name} · ${fmtDate(a.appointment_date)} at ${fmt12(a.start_time)}`,
+              right:     statusShortLabel(a.status),
+            }))}
+            overflowCount={contributing.length > 8 ? contributing.length - 8 : 0}
+          />
+        )}
+      </div>
     </section>
   )
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// A15 — period toggle + detail panel
+// ────────────────────────────────────────────────────────────────────────────
+
+function PeriodToggle({ value, onChange }: { value: ChartPeriod; onChange: (v: ChartPeriod) => void }) {
+  const options: { id: ChartPeriod; label: string }[] = [
+    { id: 'daily',   label: 'D' },
+    { id: 'weekly',  label: 'W' },
+    { id: 'monthly', label: 'M' },
+  ]
+  return (
+    <div className="inline-flex border border-[rgba(18,18,18,0.12)]" role="tablist">
+      {options.map(o => (
+        <button
+          key={o.id}
+          type="button"
+          role="tab"
+          aria-selected={value === o.id}
+          onClick={() => onChange(o.id)}
+          className={cn(
+            'px-2.5 py-1 text-[10px] font-bold tracking-[0.12em] uppercase transition-colors',
+            value === o.id
+              ? 'bg-near-black text-white'
+              : 'bg-white text-muted-text hover:text-near-black',
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+interface DetailRow { key: string; primary: string; secondary: string; right: string }
+
+function ChartDetailPanel({
+  label, valueLabel, onClose, rows, empty, overflowCount,
+}: {
+  label:         string
+  valueLabel:    string
+  onClose:       () => void
+  rows:          DetailRow[]
+  empty?:        string
+  overflowCount: number
+}) {
+  return (
+    <div className="border-t border-[rgba(18,18,18,0.08)] bg-cream/50 animate-[onbPanelIn_220ms_ease-out]">
+      <div className="flex items-center justify-between px-4 py-2.5">
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">{label}</p>
+          <p className="text-[14px] font-bold text-near-black leading-tight">{valueLabel}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close detail"
+          className="w-7 h-7 inline-flex items-center justify-center text-muted-text hover:text-near-black hover:bg-cream transition-colors"
+        >
+          <X size={13} />
+        </button>
+      </div>
+      {empty ? (
+        <p className="px-4 pb-3 text-[12px] text-muted-text">{empty}</p>
+      ) : (
+        <ul className="divide-y divide-[rgba(18,18,18,0.06)]">
+          {rows.map(r => (
+            <li key={r.key} className="flex items-center gap-3 px-4 py-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold text-near-black truncate">{r.primary}</p>
+                <p className="text-[11px] text-muted-text truncate">{r.secondary}</p>
+              </div>
+              <p className="text-[12px] font-bold tabular-nums text-near-black whitespace-nowrap flex-shrink-0">
+                {r.right}
+              </p>
+            </li>
+          ))}
+          {overflowCount > 0 && (
+            <li className="px-4 py-2 text-[11px] text-muted-text">
+              + {overflowCount} more in this period
+            </li>
+          )}
+        </ul>
+      )}
+      <style>{`
+        @keyframes onbPanelIn {
+          from { opacity: 0; transform: translateY(-4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+/** Short status label for the bookings detail right column. */
+function statusShortLabel(status: string): string {
+  return status === 'no_show' ? 'No show'
+    : status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+function monthLabel(iso: string): string {
+  if (! iso) return ''
+  const [y, m] = iso.split('-').map(s => parseInt(s, 10))
+  const d = new Date(y, m - 1, 1)
+  return d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' })
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -990,9 +1177,9 @@ interface ChartBar {
   value:         number
   primary:       string   // tooltip headline (date / week label)
   secondary:     string   // tooltip detail (count / amount)
-  accent?:       boolean  // last-week / today highlight
+  accent?:       boolean  // last-period highlight (current week / today)
   accentColor?:  string   // override accent fill (defaults to near-black)
-  onClick?:      () => void
+  selected?:     boolean  // A15 — selected bar stays highlighted under the cursor
 }
 
 /**
@@ -1009,33 +1196,37 @@ interface ChartBar {
  *     same tooltip behaviour on focus.
  */
 function InteractiveBarChart({
-  bars, startLabel, endLabel, emptyText,
+  bars, startLabel, endLabel, emptyText, onBarClick,
 }: {
-  bars:       ChartBar[]
-  startLabel: string
-  endLabel:   string
-  emptyText:  string
+  bars:        ChartBar[]
+  startLabel:  string
+  endLabel:    string
+  emptyText:   string
+  onBarClick?: (key: string) => void
 }) {
   const [hover, setHover] = useState<number | null>(null)
   const max = Math.max(1, ...bars.map(b => b.value))
   const total = bars.reduce((s, b) => s + b.value, 0)
+  const selectedIdx = bars.findIndex(b => b.selected)
 
   if (total === 0) {
     return (
-      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-6 text-center">
+      <div className="p-2 text-center">
         <p className="text-[12px] text-muted-text">{emptyText}</p>
       </div>
     )
   }
 
+  // Show tooltip for hovered bar if any, else for selected bar (sticky).
+  const tooltipIdx = hover ?? (selectedIdx >= 0 ? selectedIdx : null)
+
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
+    <div>
       <div className="relative" onMouseLeave={() => setHover(null)}>
-        {/* Tooltip positioned above the hovered bar. */}
-        {hover != null && bars[hover] && (
+        {tooltipIdx != null && bars[tooltipIdx] && (
           <ChartTooltip
-            bar={bars[hover]}
-            position={(hover + 0.5) / bars.length}
+            bar={bars[tooltipIdx]}
+            position={(tooltipIdx + 0.5) / bars.length}
           />
         )}
 
@@ -1047,22 +1238,27 @@ function InteractiveBarChart({
             const barW = xStep - pad * 2
             const h = b.value === 0 ? 2 : Math.max(4, (b.value / max) * 100)
             const y = 110 - h
-            const isHover = hover === i
-            const baseFill = b.accent ? (b.accentColor ?? '#121212') : 'rgba(18,18,18,0.22)'
-            const hoverFill = b.accent ? (b.accentColor ?? '#121212') : 'rgba(18,18,18,0.55)'
+            const isHover    = hover === i
+            const isSelected = !! b.selected
+            const accentFill = b.accentColor ?? '#121212'
+            // Selected bar always renders accent — even if it's not the
+            // current period — so the visual link to the detail panel
+            // below is unmistakable.
+            const baseFill = (b.accent || isSelected) ? accentFill : 'rgba(18,18,18,0.22)'
+            const hoverFill = (b.accent || isSelected) ? accentFill : 'rgba(18,18,18,0.55)'
             return (
               <g
                 key={b.key}
                 onMouseEnter={() => setHover(i)}
                 onFocus={() => setHover(i)}
                 onBlur={() => setHover(null)}
-                onClick={b.onClick}
-                tabIndex={b.onClick ? 0 : -1}
-                role={b.onClick ? 'button' : undefined}
+                onClick={onBarClick ? () => onBarClick(b.key) : undefined}
+                tabIndex={onBarClick ? 0 : -1}
+                role={onBarClick ? 'button' : undefined}
                 aria-label={`${b.primary}: ${b.secondary}`}
-                style={{ cursor: b.onClick ? 'pointer' : 'default', outline: 'none' }}
+                aria-pressed={isSelected || undefined}
+                style={{ cursor: onBarClick ? 'pointer' : 'default', outline: 'none' }}
               >
-                {/* Invisible full-height hit area for easier hover/click. */}
                 <rect x={i * xStep} y={0} width={xStep} height={120} fill="transparent" />
                 <rect
                   className="onb-chart-bar"
@@ -1073,14 +1269,13 @@ function InteractiveBarChart({
                   fill={isHover ? hoverFill : baseFill}
                   style={{
                     transition: 'fill 120ms ease, opacity 120ms ease',
-                    opacity: hover != null && ! isHover ? 0.6 : 1,
+                    opacity: (hover != null && ! isHover) || (selectedIdx >= 0 && ! isSelected && hover == null) ? 0.55 : 1,
                     animationDelay: `${i * 35}ms`,
                   }}
                 />
               </g>
             )
           })}
-          {/* baseline */}
           <line x1="0" y1="110" x2="320" y2="110" stroke="rgba(18,18,18,0.15)" strokeWidth="0.5" />
         </svg>
 
@@ -1314,53 +1509,137 @@ function computeWeekStrip(appts: Appointment[]): WeekStripDay[] {
   return days
 }
 
-function computeRevenueByWeek(appts: Appointment[], weeks: number): RevenueWeek[] {
-  const out: RevenueWeek[] = []
+/**
+ * A15 — period-aware bucketing for the interactive charts.
+ *
+ * Each bucket carries explicit [startISO, endISO) bounds so the detail
+ * panel can re-filter appointments without re-running the bucketing
+ * logic. Bucket counts:
+ *   daily   → 14 days (2 weeks)
+ *   weekly  →  8 weeks (~2 months)
+ *   monthly →  6 months (half a year)
+ *
+ * "Current" flag marks the rightmost bucket so the chart can style it
+ * differently (today / this week / this month).
+ */
+function bucketRanges(period: ChartPeriod): { count: number; mkStart: (i: number) => Date; advance: (d: Date) => Date } {
   const now = new Date()
-  const startOfThisWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay())
-  for (let i = weeks - 1; i >= 0; i--) {
-    const wStart = new Date(startOfThisWeek)
-    wStart.setDate(wStart.getDate() - 7 * i)
-    const wEnd = new Date(wStart)
-    wEnd.setDate(wEnd.getDate() + 7)
-    let total = 0
-    for (const a of appts) {
-      if (! a.created_at) continue
-      const ts = new Date(a.created_at)
-      if (ts >= wStart && ts < wEnd) {
-        total += (a.deposit_paid_amount ?? 0) + (a.balance_paid_amount ?? 0)
-      }
+  now.setHours(0, 0, 0, 0)
+  if (period === 'daily') {
+    return {
+      count: 14,
+      mkStart: (i: number) => {
+        const d = new Date(now)
+        d.setDate(d.getDate() - i)
+        return d
+      },
+      advance: (d: Date) => new Date(d.getTime() + 86_400_000),
     }
+  }
+  if (period === 'weekly') {
+    const startOfThisWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay())
+    return {
+      count: 8,
+      mkStart: (i: number) => {
+        const d = new Date(startOfThisWeek)
+        d.setDate(d.getDate() - 7 * i)
+        return d
+      },
+      advance: (d: Date) => {
+        const end = new Date(d)
+        end.setDate(end.getDate() + 7)
+        return end
+      },
+    }
+  }
+  // monthly
+  return {
+    count: 6,
+    mkStart: (i: number) => new Date(now.getFullYear(), now.getMonth() - i, 1),
+    advance: (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 1),
+  }
+}
+
+function buildBuckets(period: ChartPeriod, valueFor: (start: Date, end: Date) => number): PeriodBucket[] {
+  const { count, mkStart, advance } = bucketRanges(period)
+  const out: PeriodBucket[] = []
+  for (let i = count - 1; i >= 0; i--) {
+    const start = mkStart(i)
+    const end   = advance(start)
+    const isCurrent = i === 0
+    const startISO = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`
+    const endISO   = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`
+    const label = period === 'daily'
+      ? start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      : period === 'weekly'
+        ? start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+        : start.toLocaleDateString(undefined, { month: 'short' })
     out.push({
-      startISO: `${wStart.getFullYear()}-${pad(wStart.getMonth() + 1)}-${pad(wStart.getDate())}`,
-      label:    wStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-      value:    round2(total),
+      key:       startISO,
+      label,
+      value:     round2(valueFor(start, end)),
+      startISO,
+      endISO,
+      isCurrent,
     })
   }
   return out
 }
 
-function computeBookingsByDay(appts: Appointment[], days: number): BookingDay[] {
-  const out: BookingDay[] = []
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(today)
-    d.setDate(d.getDate() - i)
-    const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-    const count = appts.filter(a => {
-      if (! a.created_at) return false
+function computeRevenueBuckets(appts: Appointment[], period: ChartPeriod): PeriodBucket[] {
+  return buildBuckets(period, (start, end) => {
+    let total = 0
+    for (const a of appts) {
+      if (! a.created_at) continue
       const ts = new Date(a.created_at)
-      return ts >= d && ts < new Date(d.getTime() + 86_400_000)
-    }).length
-    out.push({
-      date:    iso,
-      label:   d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-      count,
-      isToday: i === 0,
-    })
-  }
-  return out
+      if (ts >= start && ts < end) {
+        total += (a.deposit_paid_amount ?? 0) + (a.balance_paid_amount ?? 0)
+      }
+    }
+    return total
+  })
+}
+
+function computeBookingsBuckets(appts: Appointment[], period: ChartPeriod): PeriodBucket[] {
+  return buildBuckets(period, (start, end) => {
+    let n = 0
+    for (const a of appts) {
+      if (! a.created_at) continue
+      const ts = new Date(a.created_at)
+      if (ts >= start && ts < end) n++
+    }
+    return n
+  })
+}
+
+/**
+ * A15 — filter appointments to those whose timestamp falls in the bucket
+ * range. `mode` controls which timestamp to use: 'created' for both
+ * charts since the bucketing matches that (an appointment booked in
+ * week X contributes to week X's revenue + booking count, regardless of
+ * when it's actually scheduled). Sort: most recent first inside the
+ * bucket, ties broken by id desc.
+ */
+function appointmentsInRange(
+  appts: Appointment[],
+  startISO: string,
+  endISO:   string,
+  mode:     'created' | 'appointment',
+): Appointment[] {
+  const start = new Date(startISO + 'T00:00:00').getTime()
+  const end   = new Date(endISO   + 'T00:00:00').getTime()
+  const inRange = appts.filter(a => {
+    const stamp = mode === 'created'
+      ? (a.created_at ? new Date(a.created_at).getTime() : NaN)
+      : (a.appointment_date ? new Date(a.appointment_date + 'T00:00:00').getTime() : NaN)
+    return !isNaN(stamp) && stamp >= start && stamp < end
+  })
+  return inRange.sort((a, b) => {
+    const ta = a.created_at ?? ''
+    const tb = b.created_at ?? ''
+    if (ta !== tb) return tb.localeCompare(ta)
+    return b.id - a.id
+  })
 }
 
 function computeNewCustomers(appts: Appointment[]): NewCustomer[] {
