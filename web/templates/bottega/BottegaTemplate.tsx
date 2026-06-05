@@ -1185,12 +1185,10 @@ const BOTTEGA_CSS = `
   .bottega-template .brk-gallery-grid { gap: 24px; }
 }
 
-/* ── Before & After: horizontal pairs (before LEFT, after RIGHT) flowing
-   into a 1-col stack on mobile and a 2-col grid on desktop. The
-   horizontal pair stays the canonical read; only the grid count
-   changes by breakpoint so 3 pairs land as 3 rows on mobile (each
-   pair full-width with both photos side-by-side) and as a 2×2 grid
-   on desktop (row 1: pairs 1+2, row 2: pair 3). ── */
+/* ── Before & After: one horizontal pair per row at every breakpoint
+   (before LEFT, after RIGHT). Counted as panes, 3 pairs = a 2×3 grid
+   — 2 columns (before + after) × 3 rows (one per pair). Each pair
+   gets full available width so the photos breathe. ── */
 .bottega-template .brk-ba-stack {
   display: grid;
   grid-template-columns: 1fr;
@@ -1198,10 +1196,7 @@ const BOTTEGA_CSS = `
   max-width: none;
 }
 @media (min-width: 821px) {
-  .bottega-template .brk-ba-stack {
-    grid-template-columns: 1fr 1fr;
-    gap: 40px 32px;
-  }
+  .bottega-template .brk-ba-stack { gap: 48px; }
 }
 
 /* ── Timeline numbered counter: big italic faded numerals + a vertical
