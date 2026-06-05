@@ -293,14 +293,20 @@ export default function BottegaTemplate({ site, slug }: Props) {
           </div>
         )}
 
-        {/* 2. Header / Hero — centered editorial composition. Identity sits
-            on a soft cream "card" lifted slightly above the terrazzo so the
-            hero reads composed. */}
-        <header className="bottega-header">
+        {/* 2. Header / Hero — magazine-cover split. When a cover image is set,
+            the layout becomes a two-column spread on desktop: cover bleeds
+            full-bleed LEFT, identity panel sits RIGHT with the type stacked
+            left-aligned. Reads as a magazine front-cover spread, distinct
+            from the centered editorial lane that Opaline / Blackline / the
+            previous Bottega all shared.
+
+            When NO cover, the layout falls back to a centered hero (so
+            tenants who haven't uploaded a photo still get a composed
+            opening). */}
+        <header className={`bottega-header${header.cover_image_url ? ' bottega-header--split' : ''}`}>
           {header.cover_image_url && (
             <div className="bottega-cover-wrap">
               <img className="bottega-cover" src={header.cover_image_url} alt="" />
-              <div className="bottega-cover-veil" aria-hidden="true" />
             </div>
           )}
           <div className="bottega-header-inner">
@@ -721,9 +727,15 @@ const BOTTEGA_CSS = `
 }
 .bottega-announce-mark { color: var(--bottega-accent); }
 
-/* ── Header / Hero — centered editorial composition. Identity card sits
-   on a cream surface inside the terrazzo backdrop so the hero reads
-   composed, not patterny. ── */
+/* ── Header / Hero ──
+   Two modes:
+   1. Centered (fallback when no cover image is set) — original editorial
+      layout, identity card centered on the cream backdrop.
+   2. Magazine-cover SPLIT (when bottega-header--split is applied) —
+      desktop two-column spread: cover bleeds full-bleed LEFT, identity
+      panel sits RIGHT left-aligned. Mobile collapses to stacked: cover
+      first (full width), identity below.
+*/
 .bottega-header { position: relative; }
 .bottega-cover-wrap { position: relative; width: 100%; }
 .bottega-cover {
@@ -731,12 +743,6 @@ const BOTTEGA_CSS = `
   height: clamp(280px, 52vw, 560px);
   object-fit: cover;
   filter: saturate(0.97) brightness(1.01);
-}
-.bottega-cover-veil {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(242,239,232,0) 40%, rgba(242,239,232,0.55) 100%);
-  pointer-events: none;
 }
 .bottega-header-inner {
   position: relative;
@@ -748,7 +754,6 @@ const BOTTEGA_CSS = `
   flex-direction: column;
   align-items: center;
 }
-.bottega-cover-wrap + .bottega-header-inner { margin-top: -64px; }
 .bottega-avatar {
   width: 96px;
   height: 96px;
@@ -787,6 +792,84 @@ const BOTTEGA_CSS = `
   opacity: 0.85;
 }
 .bottega-rule-ornament svg { display: block; }
+
+/* ── Magazine-cover split (active when bottega-header--split is set) ──
+   Desktop: two-column grid (image LEFT bleeding edge-to-edge, identity
+   RIGHT with internal padding). Mobile: collapses to stacked, cover first.
+   This is Bottega's hero signature — distinct from the centered editorial
+   shared by Opaline / Blackline / TFR.
+*/
+.bottega-header--split {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  min-height: clamp(420px, 70vh, 720px);
+}
+@media (min-width: 880px) {
+  .bottega-header--split {
+    grid-template-columns: 6fr 5fr;
+  }
+}
+
+/* Cover panel in split mode — image bleeds to its container edge, no veil. */
+.bottega-header--split .bottega-cover-wrap {
+  height: 100%;
+  min-height: clamp(320px, 60vw, 720px);
+  order: 1;
+}
+.bottega-header--split .bottega-cover {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  object-fit: cover;
+}
+
+/* Identity panel in split mode — left-aligned column, centered vertically. */
+.bottega-header--split .bottega-header-inner {
+  text-align: left;
+  align-items: flex-start;
+  justify-content: center;
+  margin: 0;
+  max-width: none;
+  padding: clamp(56px, 6vw, 88px) clamp(28px, 5vw, 64px);
+  order: 2;
+}
+@media (max-width: 879px) {
+  /* On mobile, collapse back to centered alignment so the stacked view
+     still reads composed (left-aligned narrow text feels off when there
+     is no neighboring image to anchor against). */
+  .bottega-header--split .bottega-header-inner {
+    text-align: center;
+    align-items: center;
+    padding: clamp(48px, 7vw, 80px) var(--brk-space-md);
+  }
+}
+.bottega-header--split .bottega-name {
+  /* Slightly tighter ceiling than centered — the identity column is
+     narrower in split mode, so the giant 92px ceiling would overflow. */
+  font-size: clamp(44px, 5.4vw, 72px);
+  margin-top: 12px;
+}
+.bottega-header--split .bottega-tagline {
+  margin-left: 0;
+  margin-right: 0;
+  max-width: 36ch;
+}
+.bottega-header--split .bottega-avatar {
+  margin: 0 0 20px;
+}
+.bottega-header--split .bottega-rule-ornament {
+  margin: 24px 0;
+}
+.bottega-header--split .bottega-social {
+  justify-content: flex-start;
+}
+@media (max-width: 879px) {
+  .bottega-header--split .bottega-tagline { margin-left: auto; margin-right: auto; }
+  .bottega-header--split .bottega-avatar { margin-left: auto; margin-right: auto; }
+  .bottega-header--split .bottega-rule-ornament { margin-left: auto; margin-right: auto; }
+  .bottega-header--split .bottega-social { justify-content: center; }
+}
 
 /* Hero contact strip — icon-only circular buttons (matches the family
    pattern). Reserve CTA breaks the pattern as a wide italic pill. */
