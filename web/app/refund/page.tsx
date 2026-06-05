@@ -11,8 +11,9 @@ export default function RefundPage() {
     <LegalShell eyebrow="Legal" title="Refund Policy" effectiveDate="May 27, 2026">
       <p>
         This Refund Policy describes the circumstances under which DaysGraphic
-        LLC (doing business as BookReady, &ldquo;<strong>we</strong>,&rdquo;{' '}
-        &ldquo;<strong>us</strong>,&rdquo; or &ldquo;<strong>our</strong>&rdquo;)
+        LLC, the company that operates the BookReady platform
+        (&ldquo;<strong>we</strong>,&rdquo;{' '}
+        &ldquo;<strong>us</strong>,&rdquo; or &ldquo;<strong>our</strong>&rdquo;),
         will issue refunds for fees paid in connection with your use of the
         BookReady platform (the &ldquo;<strong>Services</strong>&rdquo;). By
         purchasing or renewing a subscription, you agree to the terms of this
@@ -195,7 +196,7 @@ export default function RefundPage() {
       </p>
       <p>
         <strong>DaysGraphic LLC</strong><br />
-        d/b/a BookReady<br />
+        Operator of the BookReady platform<br />
         Email:{' '}
         <a href="mailto:hello@mybookready.com">hello@mybookready.com</a>
       </p>

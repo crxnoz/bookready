@@ -10,9 +10,9 @@ export default function PrivacyPage() {
   return (
     <LegalShell eyebrow="Legal" title="Privacy Policy" effectiveDate="May 26, 2026">
       <p>
-        This Privacy Notice for DaysGraphic LLC (doing business as BookReady)
-        (&ldquo;<strong>we</strong>,&rdquo; &ldquo;<strong>us</strong>,&rdquo; or{' '}
-        &ldquo;<strong>our</strong>&rdquo;) describes how and why we might access,
+        This Privacy Notice for DaysGraphic LLC, the company that operates the
+        BookReady platform (&ldquo;<strong>we</strong>,&rdquo; &ldquo;<strong>us</strong>,&rdquo;
+        or &ldquo;<strong>our</strong>&rdquo;), describes how and why we might access,
         collect, store, use, and/or share (&ldquo;<strong>process</strong>&rdquo;)
         your personal information when you use our services
         (&ldquo;<strong>Services</strong>&rdquo;), including when you:
@@ -640,9 +640,9 @@ export default function PrivacyPage() {
         <strong><u>How we collect your consent.</u></strong>{' '}
         When you book an appointment on a BookReady-powered website, the booking
         form presents an unchecked consent checkbox below the phone-number field
-        with the label: &ldquo;Send me SMS reminders for this appointment. Msg
+        with the label: &ldquo;Send me appointment reminders from BookReady. Msg
         &amp; data rates may apply. Msg frequency varies. Reply STOP to opt out,
-        HELP for help.&rdquo; You must affirmatively check this box before
+        HELP for help. View our Privacy Policy.&rdquo; You must affirmatively check this box before
         submitting the booking. We record the consent action, timestamp, IP
         address, and phone number against the appointment record. No SMS is sent
         to a number without a recorded affirmative consent. Consent is{' '}

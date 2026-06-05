@@ -11,7 +11,7 @@ export default function TermsPage() {
     <LegalShell eyebrow="Legal" title="Terms of Service" effectiveDate="May 26, 2026">
       <h2 id="agreement">Agreement to our legal terms</h2>
       <p>
-        We are DaysGraphic LLC, doing business as BookReady
+        We are DaysGraphic LLC, the company that operates the BookReady platform
         (&ldquo;<strong>Company</strong>,&rdquo; &ldquo;<strong>we</strong>,&rdquo;{' '}
         &ldquo;<strong>us</strong>,&rdquo; &ldquo;<strong>our</strong>&rdquo;).
       </p>

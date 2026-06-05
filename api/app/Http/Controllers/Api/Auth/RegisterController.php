@@ -22,7 +22,7 @@ class RegisterController extends Controller
      * app. Bump this when the Terms are materially updated AND require
      * existing users to re-accept.
      */
-    public const TERMS_VERSION = '2026-05-27';
+    public const TERMS_VERSION = '2026-06-04';
 
     public function __construct(
         private readonly TenantProvisioningService $provisioner

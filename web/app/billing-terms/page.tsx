@@ -11,10 +11,11 @@ export default function BillingTermsPage() {
     <LegalShell eyebrow="Legal" title="Subscription & Billing Terms" effectiveDate="May 27, 2026">
       <p>
         These Subscription &amp; Billing Terms (the &ldquo;<strong>Billing Terms</strong>&rdquo;)
-        govern the financial side of your relationship with DaysGraphic LLC
-        (doing business as BookReady, &ldquo;<strong>we</strong>,&rdquo;{' '}
-        &ldquo;<strong>us</strong>,&rdquo; or &ldquo;<strong>our</strong>&rdquo;)
-        and explain how subscriptions to the BookReady platform are billed,
+        govern the financial side of your relationship with DaysGraphic LLC,
+        the company that operates the BookReady platform
+        (&ldquo;<strong>we</strong>,&rdquo;{' '}
+        &ldquo;<strong>us</strong>,&rdquo; or &ldquo;<strong>our</strong>&rdquo;),
+        and explain how subscriptions to BookReady are billed,
         renewed, and cancelled. These Billing Terms are part of and incorporated
         into our Terms of Service. By subscribing to BookReady, you agree to
         these Billing Terms.
@@ -220,7 +221,7 @@ export default function BillingTermsPage() {
       </p>
       <p>
         <strong>DaysGraphic LLC</strong><br />
-        d/b/a BookReady<br />
+        Operator of the BookReady platform<br />
         Email:{' '}
         <a href="mailto:hello@mybookready.com">hello@mybookready.com</a>
       </p>

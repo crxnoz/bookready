@@ -313,7 +313,7 @@ function RegisterForm() {
             <Link href="/refund" className="underline underline-offset-2 hover:text-near-black">
               Refund Policy
             </Link>
-            {' '}of DaysGraphic LLC (d/b/a BookReady).
+            {' '}of DaysGraphic LLC, the operator of the BookReady platform.
           </span>
         </label>
 
