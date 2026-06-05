@@ -12,8 +12,8 @@
  *     exit). Champagne gold (#C9A876) stays constant across variants —
  *     drives CTAs, eyebrows, ornaments, and the scalloped active marker.
  *   - Playfair Display (italic emphasis on headings) + Inter body +
- *     Pinyon Script (calligraphic, signature use only — Thank You note
- *     and footer "with love" line).
+ *     Pinyon Script (the brand-name hero treatment + all section
+ *     eyebrows + the Thank You note signature).
  *   - Hairline gold rules and a SCALLOPED divider SVG between sections —
  *     a romantic-wedding-stationery flourish that the other templates
  *     don't carry.
@@ -549,13 +549,6 @@ export default function PetaleTemplate({ site, slug }: Props) {
             poweredBy: settings.footer?.show_powered_by,
           }}
         />
-
-        {/* Calligraphic "with love" line above the platform credit. Pinyon
-            Script signature — the romantic-stationery flourish that signs
-            the page off after the standard footer. */}
-        <div className="petale-footer-signature" aria-hidden="true">
-          with love
-        </div>
       </div>
     </>
   )
@@ -1120,18 +1113,6 @@ const PETALE_CSS = `
   color: var(--petale-muted);
 }
 
-/* ── Footer signature — Pinyon Script "with love" line below the platform
-   credit. The romantic-stationery flourish that signs the page off. ── */
-.petale-footer-signature {
-  text-align: center;
-  font-family: var(--petale-script);
-  font-size: 32px;
-  line-height: 1;
-  color: var(--petale-accent);
-  padding: 0 20px 36px;
-  opacity: 0.85;
-}
-
 /* ── Skin layer over the shared platform sections ──
    Apply Pétale's signature flourishes over the canonical .brk-* base:
    italic Playfair section titles, gold tracked Inter eyebrows, italic
@@ -1284,6 +1265,5 @@ const PETALE_CSS = `
 @media (max-width: 640px) {
   .petale-section { padding: 56px 20px; }
   .petale-about-grid { gap: 32px; }
-  .petale-footer-signature { font-size: 28px; padding-bottom: 28px; }
 }
 `
