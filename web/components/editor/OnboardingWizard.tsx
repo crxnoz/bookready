@@ -23,6 +23,7 @@ import { useRouter } from 'next/navigation'
 import {
   Loader2, Check, ArrowRight, ArrowLeft, Plus, Trash2, X,
   Building2, Scissors, Clock, ShieldCheck, CreditCard, Sparkles, ExternalLink,
+  Copy, Image as ImageIcon, Users, Palette, Eye,
 } from 'lucide-react'
 import {
   getEditorBusiness, updateEditorBusiness,
@@ -31,6 +32,7 @@ import {
   getEditorPolicies, updateEditorPolicies,
   getStripeConnectStatus, startStripeConnect,
   completeOnboarding,
+  getCurrentUser,
 } from '@/lib/api'
 import type {
   BusinessProfile, Service, HoursEntry, BusinessPolicy,
@@ -40,12 +42,55 @@ import { cn } from '@/lib/cn'
 
 type StepId = 'business' | 'services' | 'hours' | 'policies' | 'stripe'
 
-const STEPS: { id: StepId; label: string; icon: React.ElementType }[] = [
-  { id: 'business', label: 'Business',  icon: Building2 },
-  { id: 'services', label: 'Services',  icon: Scissors },
-  { id: 'hours',    label: 'Hours',     icon: Clock },
-  { id: 'policies', label: 'Policies',  icon: ShieldCheck },
-  { id: 'stripe',   label: 'Payments',  icon: CreditCard },
+/**
+ * A10 — Scene state. The wizard is now a 3-act flow: a warm Welcome,
+ * then the 5 form steps, then a Finale celebration. The form steps
+ * still drive the progress rail; Welcome + Finale are full-frame scenes
+ * without it.
+ */
+type Scene = 'welcome' | 'forms' | 'finale'
+
+/**
+ * Per-step metadata for the personalized headers and microcopy
+ * surfaced on each form scene. Time estimates are honest enough to
+ * earn trust (people remember "took 4 min not 3" more than they
+ * remember "took 30s not 45s").
+ */
+interface StepMeta {
+  id:       StepId
+  label:    string
+  icon:     React.ElementType
+  estimate: string
+  // why-this-matters microcopy under the personalized headline
+  why:      string
+}
+
+const STEPS: StepMeta[] = [
+  {
+    id: 'business', label: 'Business',  icon: Building2,
+    estimate: '~30 seconds',
+    why: 'This is what shows at the top of your booking page — your name, where you are, how clients reach you.',
+  },
+  {
+    id: 'services', label: 'Services',  icon: Scissors,
+    estimate: '~1 minute',
+    why: 'Clients pick one of these to book. Names + prices show right on your page — make them sound like you.',
+  },
+  {
+    id: 'hours',    label: 'Hours',     icon: Clock,
+    estimate: '~30 seconds',
+    why: 'Closed days won\'t show up as bookable. You stay in control of when you work.',
+  },
+  {
+    id: 'policies', label: 'Policies',  icon: ShieldCheck,
+    estimate: '~45 seconds',
+    why: 'These appear on the booking confirmation so there are no surprises later.',
+  },
+  {
+    id: 'stripe',   label: 'Payments',  icon: CreditCard,
+    estimate: '~2 minutes (skippable)',
+    why: 'Connect Stripe to take deposits at booking. Skip for now — you can add it any time from Payments.',
+  },
 ]
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
@@ -61,11 +106,19 @@ interface ServiceRow {
 
 export default function OnboardingWizard() {
   const router = useRouter()
+  // A10 — scene drives the high-level layout. Forms scene preserves the
+  // existing 5-step flow exactly; welcome + finale are new.
+  const [scene, setScene]         = useState<Scene>('welcome')
   const [stepIndex, setStepIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [bootRedirect, setBootRedirect] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // A10 — owner_name + tenant_id for personalized copy + finale share link.
+  // tenant_id IS the subdomain slug (TenantProvisioningService::generateSlug).
+  const [ownerName, setOwnerName] = useState<string>('')
+  const [tenantId, setTenantId]   = useState<string>('')
 
   // Per-step working state.
   const [business, setBusiness] = useState<BusinessProfile | null>(null)
@@ -76,6 +129,11 @@ export default function OnboardingWizard() {
   const [stripeConnected, setStripeConnected] = useState(false)
 
   const step = STEPS[stepIndex]
+  // Friendly first name for greeting copy. Falls back to "" if blank
+  // so we render "Welcome." not "Welcome, ."
+  const firstName = ownerName.split(' ')[0] ?? ''
+  // Personalize step copy with the business name once it's loaded.
+  const bizName   = business?.business_name?.trim() || 'your business'
 
   // ── Load everything up front (one round of fetches) ──────────────────
   useEffect(() => {
@@ -86,7 +144,9 @@ export default function OnboardingWizard() {
       getEditorHours().catch(() => [] as HoursEntry[]),
       getEditorPolicies().catch(() => null),
       getStripeConnectStatus().then(r => r.stripe_connect_status).catch(() => null),
-    ]).then(([b, sv, hr, pol, st]) => {
+      // A10 — owner name + tenant id for personalized copy + share link.
+      getCurrentUser().catch(() => null),
+    ]).then(([b, sv, hr, pol, st, me]) => {
       if (cancelled) return
       const profile = b as BusinessProfile | null
       // Already onboarded → don't trap them here; bounce to the dashboard.
@@ -107,6 +167,10 @@ export default function OnboardingWizard() {
       setHours(hr as HoursEntry[])
       setPolicies(pol as BusinessPolicy | null)
       setStripeConnected((st as string | null) === 'active')
+      if (me) {
+        setOwnerName((me as { name?: string }).name ?? '')
+        setTenantId((me as { tenant_id?: string }).tenant_id ?? '')
+      }
       setLoading(false)
     })
     return () => { cancelled = true }
@@ -203,13 +267,18 @@ export default function OnboardingWizard() {
     try {
       await completeOnboarding()
       if (thenStripe) {
+        // Connecting Stripe leaves the app entirely (Express onboarding).
+        // Don't switch to finale; let them return to /editor after Stripe.
         const { onboarding_url } = await startStripeConnect()
         window.location.href = onboarding_url
         return
       }
-      router.replace('/editor')
+      // A10 — advance to the celebration scene instead of going straight
+      // to /editor. The finale has the share-link + what's-next cards.
+      setScene('finale')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not finish setup.')
+    } finally {
       setSaving(false)
     }
   }
@@ -234,15 +303,43 @@ export default function OnboardingWizard() {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
         <div className="flex items-center gap-2 text-sm text-muted-text">
-          <Loader2 size={16} className="animate-spin" /> Loading your setup…
+          <Loader2 size={16} className="animate-spin" />
+          {firstName ? `Setting the stage for ${firstName}…` : 'Setting things up…'}
         </div>
       </div>
     )
   }
 
+  // A10 — Welcome scene. Warm splash before the form sequence kicks in.
+  if (scene === 'welcome') {
+    return (
+      <WelcomeScene
+        firstName={firstName}
+        businessName={bizName}
+        onStart={() => setScene('forms')}
+        onSignOut={signOut}
+      />
+    )
+  }
+
+  // A10 — Finale scene. Replaces the previous "snap straight to /editor"
+  // ending with a celebration + share-link + what's-next nudges.
+  if (scene === 'finale') {
+    return (
+      <FinaleScene
+        firstName={firstName}
+        businessName={bizName}
+        tenantId={tenantId}
+        stripeConnected={stripeConnected}
+        onContinue={() => router.replace('/editor')}
+      />
+    )
+  }
+
   return (
     <div className="min-h-screen bg-cream flex flex-col">
-      {/* Top bar */}
+      {/* Top bar — A10: skip moved to the footer so it doesn't undermine
+          the flow. Sign out stays here as a low-noise utility. */}
       <header className="border-b border-[rgba(18,18,18,0.10)] bg-white">
         <div className="max-w-3xl mx-auto px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -250,18 +347,10 @@ export default function OnboardingWizard() {
               <Sparkles size={12} className="text-white" />
             </div>
             <span className="text-[11px] font-bold tracking-[0.18em] uppercase text-near-black">
-              Welcome to BookReady
+              {firstName ? `Hi ${firstName}` : 'Welcome'} &middot; Setting up {bizName}
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={skipAll}
-              disabled={saving}
-              className="text-[11px] font-semibold text-muted-text hover:text-near-black disabled:opacity-50"
-            >
-              Skip setup
-            </button>
             <button
               type="button"
               onClick={signOut}
@@ -310,21 +399,47 @@ export default function OnboardingWizard() {
           )}
 
           {step.id === 'business' && business && (
-            <BusinessStep business={business} onChange={setBusiness} />
+            <BusinessStep
+              business={business}
+              onChange={setBusiness}
+              estimate={step.estimate}
+              why={step.why}
+            />
           )}
           {step.id === 'services' && (
-            <ServicesStep services={services} onChange={setServices} />
+            <ServicesStep
+              services={services}
+              onChange={setServices}
+              bizName={bizName}
+              estimate={step.estimate}
+              why={step.why}
+            />
           )}
           {step.id === 'hours' && (
-            <HoursStep hours={hours} onChange={setHours} />
+            <HoursStep
+              hours={hours}
+              onChange={setHours}
+              bizName={bizName}
+              estimate={step.estimate}
+              why={step.why}
+            />
           )}
           {step.id === 'policies' && policies && (
-            <PoliciesStep policies={policies} onChange={setPolicies} />
+            <PoliciesStep
+              policies={policies}
+              onChange={setPolicies}
+              bizName={bizName}
+              estimate={step.estimate}
+              why={step.why}
+            />
           )}
           {step.id === 'stripe' && (
             <StripeStep
               connected={stripeConnected}
               saving={saving}
+              bizName={bizName}
+              estimate={step.estimate}
+              why={step.why}
               onConnect={() => finish(true)}
               onSkip={() => finish(false)}
             />
@@ -332,9 +447,11 @@ export default function OnboardingWizard() {
         </div>
       </main>
 
-      {/* Footer nav */}
+      {/* Footer nav. A10 — "I'll do this later" lives here now (not the
+          top bar) so users have to consciously dismiss the flow, not
+          stumble into a Skip link first. */}
       <footer className="border-t border-[rgba(18,18,18,0.10)] bg-white">
-        <div className="max-w-3xl mx-auto px-5 py-3 flex items-center justify-between">
+        <div className="max-w-3xl mx-auto px-5 py-3 flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={goBack}
@@ -342,6 +459,15 @@ export default function OnboardingWizard() {
             className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase text-near-black disabled:opacity-30"
           >
             <ArrowLeft size={12} /> Back
+          </button>
+
+          <button
+            type="button"
+            onClick={skipAll}
+            disabled={saving}
+            className="text-[10px] font-semibold text-muted-text hover:text-near-black disabled:opacity-40 whitespace-nowrap"
+          >
+            I&rsquo;ll do this later
           </button>
 
           {/* Stripe step owns its own actions; the global Next is hidden there. */}
@@ -355,6 +481,7 @@ export default function OnboardingWizard() {
               {saving ? <Loader2 size={12} className="animate-spin" /> : <>Continue <ArrowRight size={12} /></>}
             </button>
           )}
+          {step.id === 'stripe' && <span /> /* spacer for justify-between */}
         </div>
       </footer>
     </div>
@@ -362,16 +489,19 @@ export default function OnboardingWizard() {
 }
 
 // ── Step 1: Business ───────────────────────────────────────────────────
-function BusinessStep({ business, onChange }: {
+function BusinessStep({ business, onChange, estimate, why }: {
   business: BusinessProfile
   onChange: (b: BusinessProfile) => void
+  estimate: string
+  why: string
 }) {
   const set = (k: keyof BusinessProfile) => (e: React.ChangeEvent<HTMLInputElement>) =>
     onChange({ ...business, [k]: e.target.value })
   return (
     <StepFrame
-      title="Tell us about your business"
-      subtitle="This is what your clients see at the top of your booking page. You can change any of it later."
+      title="Let's start with the basics"
+      subtitle={why}
+      estimate={estimate}
     >
       <Field label="Business name">
         <input className={inputCls} value={business.business_name ?? ''} onChange={set('business_name')} placeholder="Lush Studio" />
@@ -400,9 +530,12 @@ function BusinessStep({ business, onChange }: {
 }
 
 // ── Step 2: Services ───────────────────────────────────────────────────
-function ServicesStep({ services, onChange }: {
+function ServicesStep({ services, onChange, bizName, estimate, why }: {
   services: ServiceRow[]
   onChange: (s: ServiceRow[]) => void
+  bizName: string
+  estimate: string
+  why: string
 }) {
   const visible = services.filter(s => ! s._deleted)
   function update(idx: number, patch: Partial<ServiceRow>) {
@@ -426,8 +559,10 @@ function ServicesStep({ services, onChange }: {
   }
   return (
     <StepFrame
-      title="What do you offer?"
-      subtitle="We added a few starter services — rename them to match what you do, set your prices, and remove any you don't need."
+      title={`What does ${bizName} offer?`}
+      subtitle={why}
+      estimate={estimate}
+      footnote="We added a few starter services. Rename, reprice, and remove any you don't need."
     >
       <div className="space-y-3">
         {visible.map((s, i) => (
@@ -470,17 +605,22 @@ function ServicesStep({ services, onChange }: {
 }
 
 // ── Step 3: Hours ──────────────────────────────────────────────────────
-function HoursStep({ hours, onChange }: {
+function HoursStep({ hours, onChange, bizName, estimate, why }: {
   hours: HoursEntry[]
   onChange: (h: HoursEntry[]) => void
+  bizName: string
+  estimate: string
+  why: string
 }) {
   function setDay(idx: number, patch: Partial<HoursEntry>) {
     onChange(hours.map((h, i) => i === idx ? { ...h, ...patch } : h))
   }
   return (
     <StepFrame
-      title="When are you open?"
-      subtitle="Clients can only book during these hours. We've defaulted to weekdays — adjust to match your schedule."
+      title={`When is ${bizName} open?`}
+      subtitle={why}
+      estimate={estimate}
+      footnote="We defaulted to weekdays. Toggle days off and tweak the times to match your real schedule."
     >
       <div className="space-y-2">
         {hours.map((h, i) => (
@@ -511,16 +651,21 @@ function HoursStep({ hours, onChange }: {
 }
 
 // ── Step 4: Policies ───────────────────────────────────────────────────
-function PoliciesStep({ policies, onChange }: {
+function PoliciesStep({ policies, onChange, bizName, estimate, why }: {
   policies: BusinessPolicy
   onChange: (p: BusinessPolicy) => void
+  bizName: string
+  estimate: string
+  why: string
 }) {
   const set = (k: keyof BusinessPolicy) => (e: React.ChangeEvent<HTMLTextAreaElement>) =>
     onChange({ ...policies, [k]: e.target.value })
   return (
     <StepFrame
-      title="Set your booking policies"
-      subtitle="We pre-filled sensible defaults. Tweak the wording to fit your business — these show on your booking page."
+      title={`How does ${bizName} handle the awkward stuff?`}
+      subtitle={why}
+      estimate={estimate}
+      footnote="We pre-filled sensible defaults. Tweak the wording to match how you actually talk to your clients."
     >
       <Field label="Cancellation policy">
         <textarea rows={2} className={textareaCls} value={policies.cancellation_policy ?? ''} onChange={set('cancellation_policy')} />
@@ -539,16 +684,20 @@ function PoliciesStep({ policies, onChange }: {
 }
 
 // ── Step 5: Stripe ─────────────────────────────────────────────────────
-function StripeStep({ connected, saving, onConnect, onSkip }: {
+function StripeStep({ connected, saving, bizName, estimate, why, onConnect, onSkip }: {
   connected: boolean
   saving: boolean
+  bizName: string
+  estimate: string
+  why: string
   onConnect: () => void
   onSkip: () => void
 }) {
   return (
     <StepFrame
-      title="Get paid"
-      subtitle="Connect Stripe to take deposits and payments at booking. This is the last step — you can also do it later from Payments."
+      title={`Get ${bizName} paid`}
+      subtitle={why}
+      estimate={estimate}
     >
       {connected ? (
         <div className="bg-white border border-[rgba(18,18,18,0.12)] p-5 flex items-center gap-3">
@@ -604,16 +753,28 @@ function StripeStep({ connected, saving, onConnect, onSkip }: {
 }
 
 // ── Shared bits ────────────────────────────────────────────────────────
-function StepFrame({ title, subtitle, children }: {
-  title: string
+function StepFrame({ title, subtitle, estimate, footnote, children }: {
+  title:    string
   subtitle: string
+  estimate?: string
+  footnote?: string
   children: React.ReactNode
 }) {
   return (
     <div>
-      <h1 className="text-[22px] font-bold text-near-black tracking-tight">{title}</h1>
-      <p className="text-[13px] text-muted-text mt-1 mb-6 max-w-xl">{subtitle}</p>
-      <div className="space-y-4">{children}</div>
+      {estimate && (
+        <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-2">
+          {estimate}
+        </p>
+      )}
+      <h1 className="text-[24px] sm:text-[28px] font-bold text-near-black tracking-tight leading-tight">
+        {title}
+      </h1>
+      <p className="text-[14px] text-muted-text mt-2 max-w-xl leading-relaxed">{subtitle}</p>
+      {footnote && (
+        <p className="text-[12px] text-muted-text mt-2 max-w-xl italic">{footnote}</p>
+      )}
+      <div className="space-y-4 mt-7">{children}</div>
     </div>
   )
 }
@@ -635,3 +796,301 @@ function Field({ label, hint, children }: {
 const labelCls = 'block text-[10px] font-bold tracking-[0.16em] uppercase text-muted-text mb-1.5'
 const inputCls = 'w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black transition-colors'
 const textareaCls = 'w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black transition-colors resize-y leading-relaxed'
+
+// ── A10: Welcome scene ─────────────────────────────────────────────────
+function WelcomeScene({ firstName, businessName, onStart, onSignOut }: {
+  firstName:    string
+  businessName: string
+  onStart:      () => void
+  onSignOut:    () => void
+}) {
+  return (
+    <div className="min-h-screen bg-cream flex flex-col">
+      <header className="border-b border-[rgba(18,18,18,0.10)] bg-white">
+        <div className="max-w-3xl mx-auto px-5 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-near-black flex items-center justify-center">
+              <Sparkles size={12} className="text-white" />
+            </div>
+            <span className="text-[11px] font-bold tracking-[0.18em] uppercase text-near-black">
+              BookReady
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onSignOut}
+            className="text-[11px] font-semibold text-muted-text hover:text-near-black"
+          >
+            Sign out
+          </button>
+        </div>
+      </header>
+
+      <main className="flex-1 flex items-center justify-center px-5 py-12">
+        <div className="max-w-xl w-full">
+          <div className="mb-7">
+            <Sparkles size={22} strokeWidth={1.5} className="text-near-black mb-4" />
+            <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-muted-text mb-3">
+              Welcome to BookReady
+            </p>
+            <h1 className="text-[36px] sm:text-[44px] font-bold text-near-black tracking-tight leading-[1.04] mb-3">
+              {firstName ? <>Welcome, <span className="italic">{firstName}.</span></> : <>You&rsquo;re in.</>}
+            </h1>
+            <p className="text-[16px] text-muted-text leading-relaxed max-w-md">
+              Let&rsquo;s get {businessName} ready for bookings. Five quick steps,
+              about three minutes. You can change everything later.
+            </p>
+          </div>
+
+          <div className="bg-white border border-[rgba(18,18,18,0.10)] p-5 mb-7">
+            <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-4">
+              What we&rsquo;ll cover
+            </p>
+            <ol className="space-y-2.5">
+              {STEPS.map((s, i) => {
+                const Icon = s.icon
+                return (
+                  <li key={s.id} className="flex items-start gap-3">
+                    <span className="w-5 h-5 bg-cream border border-[rgba(18,18,18,0.12)] flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-near-black mt-px">
+                      {i + 1}
+                    </span>
+                    <div className="flex-1">
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="text-[14px] font-semibold text-near-black">{s.label}</span>
+                        <span className="text-[10px] tracking-[0.12em] uppercase text-muted-text">
+                          {s.estimate}
+                        </span>
+                      </div>
+                      <p className="text-[12px] text-muted-text leading-relaxed mt-0.5">{s.why}</p>
+                    </div>
+                    <Icon size={14} className="text-muted-text mt-1 flex-shrink-0" strokeWidth={1.5} />
+                  </li>
+                )
+              })}
+            </ol>
+          </div>
+
+          <button
+            type="button"
+            onClick={onStart}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-[12px] font-bold tracking-[0.14em] uppercase bg-near-black text-white border border-near-black px-6 py-3.5 hover:bg-[#2a2a2a] transition-colors"
+          >
+            Let&rsquo;s go <ArrowRight size={13} />
+          </button>
+          <p className="text-[11px] text-muted-text mt-3 max-w-md leading-relaxed">
+            Your site is already live at a starter address &mdash;
+            these next minutes make it actually yours.
+          </p>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+// ── A10: Finale scene ─────────────────────────────────────────────────
+function FinaleScene({ firstName, businessName, tenantId, stripeConnected, onContinue }: {
+  firstName:       string
+  businessName:    string
+  tenantId:        string
+  stripeConnected: boolean
+  onContinue:      () => void
+}) {
+  const siteUrl = tenantId ? `https://${tenantId}.bkrdy.me` : ''
+  const [copied, setCopied] = useState(false)
+
+  function copyLink() {
+    if (! siteUrl) return
+    void navigator.clipboard.writeText(siteUrl).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {})
+  }
+
+  const nextUp: Array<{ icon: React.ElementType; label: string; href: string; sub: string }> = [
+    { icon: ImageIcon, label: 'Upload your photos',  href: '/editor/gallery',  sub: 'Show off your work in the gallery' },
+    { icon: Users,     label: 'Add your team',       href: '/editor/staff',    sub: 'Let clients pick who books them' },
+    { icon: Palette,   label: 'Customize the site',  href: '/editor/website',  sub: 'Make the page match your brand' },
+  ]
+  if (! stripeConnected) {
+    nextUp.push({ icon: CreditCard, label: 'Connect Stripe', href: '/editor/settings?tab=payments', sub: 'Take deposits at booking' })
+  }
+
+  return (
+    <div className="min-h-screen bg-cream flex flex-col relative overflow-hidden">
+      {/* Confetti */}
+      <Confetti />
+
+      <header className="border-b border-[rgba(18,18,18,0.10)] bg-white relative z-10">
+        <div className="max-w-3xl mx-auto px-5 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 bg-near-black flex items-center justify-center">
+              <Check size={12} className="text-white" />
+            </div>
+            <span className="text-[11px] font-bold tracking-[0.18em] uppercase text-near-black">
+              You&rsquo;re live
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 px-5 py-10 relative z-10">
+        <div className="max-w-3xl mx-auto">
+          <div className="mb-8 text-center">
+            <Sparkles size={28} strokeWidth={1.5} className="text-near-black mx-auto mb-4" />
+            <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-muted-text mb-3">
+              {firstName ? `Nicely done, ${firstName}` : 'Nicely done'}
+            </p>
+            <h1 className="text-[36px] sm:text-[44px] font-bold text-near-black tracking-tight leading-[1.05] mb-3">
+              {businessName} is <span className="italic">ready.</span>
+            </h1>
+            <p className="text-[15px] text-muted-text leading-relaxed max-w-md mx-auto">
+              Your booking site is live. Share the link with clients,
+              or jump into the dashboard to keep customizing.
+            </p>
+          </div>
+
+          {/* Share link */}
+          {siteUrl && (
+            <section className="bg-white border border-[rgba(18,18,18,0.10)] p-5 mb-6 max-w-2xl mx-auto">
+              <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-3">
+                Your site
+              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <code className="text-[15px] sm:text-[17px] font-bold text-near-black tracking-tight flex-1 min-w-0 break-all">
+                  {siteUrl}
+                </code>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={copyLink}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.10em] uppercase bg-white border border-[rgba(18,18,18,0.15)] text-near-black px-3 py-2 hover:border-near-black transition-colors"
+                  >
+                    {copied ? <Check size={11} className="text-[#1e7a3f]" /> : <Copy size={11} />}
+                    {copied ? 'Copied' : 'Copy'}
+                  </button>
+                  <a
+                    href={siteUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.10em] uppercase bg-near-black text-white border border-near-black px-3 py-2 hover:bg-[#2a2a2a] transition-colors"
+                  >
+                    <Eye size={11} /> Visit
+                  </a>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Iframe preview */}
+          {siteUrl && (
+            <section className="mb-7 max-w-2xl mx-auto">
+              <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-2">
+                Preview
+              </p>
+              <div className="bg-white border border-[rgba(18,18,18,0.10)] overflow-hidden" style={{ aspectRatio: '16 / 9' }}>
+                <iframe
+                  src={siteUrl}
+                  title={`${businessName} booking site`}
+                  className="w-full h-full"
+                  loading="lazy"
+                  // sandbox keeps this from running JS that could mess with the editor app context
+                  // but allow-same-origin is needed for the site to load its own assets
+                  sandbox="allow-same-origin allow-scripts allow-popups"
+                />
+              </div>
+            </section>
+          )}
+
+          {/* What's next */}
+          <section className="mb-7 max-w-2xl mx-auto">
+            <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-3">
+              What&rsquo;s next
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {nextUp.map(item => {
+                const Icon = item.icon
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className="bg-white border border-[rgba(18,18,18,0.10)] px-4 py-3 hover:border-near-black transition-colors flex items-center gap-3 group"
+                  >
+                    <div className="w-8 h-8 bg-cream border border-[rgba(18,18,18,0.10)] flex items-center justify-center flex-shrink-0">
+                      <Icon size={14} strokeWidth={1.5} className="text-near-black" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-semibold text-near-black">{item.label}</p>
+                      <p className="text-[11px] text-muted-text truncate">{item.sub}</p>
+                    </div>
+                    <ArrowRight size={12} className="text-muted-text group-hover:text-near-black flex-shrink-0" />
+                  </a>
+                )
+              })}
+            </div>
+          </section>
+
+          <div className="text-center max-w-2xl mx-auto">
+            <button
+              type="button"
+              onClick={onContinue}
+              className="inline-flex items-center justify-center gap-2 text-[12px] font-bold tracking-[0.14em] uppercase bg-near-black text-white border border-near-black px-6 py-3.5 hover:bg-[#2a2a2a] transition-colors"
+            >
+              Go to dashboard <ArrowRight size={13} />
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+/**
+ * A10 — pure CSS confetti for the finale. Lightweight (no library);
+ * 12 colored chips that drop once on mount via animation-name + delay.
+ * Pointer-events: none so it doesn't steal clicks.
+ */
+function Confetti() {
+  const colors = ['#E8C7DA', '#C8D6E5', '#F4E4BC', '#A8D5BA', '#D4A5A5', '#E5C9F2']
+  const pieces = Array.from({ length: 18 }, (_, i) => ({
+    left: (i * 5.5) % 100,
+    delay: (i % 6) * 0.18,
+    duration: 2.2 + (i % 4) * 0.4,
+    color: colors[i % colors.length],
+    size: 6 + (i % 3) * 2,
+  }))
+  return (
+    <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden">
+      {pieces.map((p, i) => (
+        <span
+          key={i}
+          className="onb-confetti"
+          style={{
+            left: `${p.left}%`,
+            top: '-20px',
+            width: p.size,
+            height: p.size,
+            backgroundColor: p.color,
+            animationDelay: `${p.delay}s`,
+            animationDuration: `${p.duration}s`,
+          }}
+        />
+      ))}
+      <style>{`
+        .onb-confetti {
+          position: absolute;
+          display: block;
+          opacity: 0;
+          animation-name: onbFall;
+          animation-timing-function: cubic-bezier(.2,.6,.4,1);
+          animation-fill-mode: forwards;
+          animation-iteration-count: 1;
+        }
+        @keyframes onbFall {
+          0%   { transform: translate3d(0, -20px, 0) rotate(0deg); opacity: 0; }
+          10%  { opacity: 1; }
+          100% { transform: translate3d(0, 110vh, 0) rotate(540deg); opacity: 0.7; }
+        }
+      `}</style>
+    </div>
+  )
+}
