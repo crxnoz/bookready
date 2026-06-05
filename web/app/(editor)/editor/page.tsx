@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation'
 import {
   Calendar, Clock, ExternalLink, Loader2, ChevronRight, CheckCircle2, Circle,
   Megaphone, DollarSign, Activity, Sparkles, AlertCircle, ArrowUpRight,
+  TrendingUp, Users, UserPlus, Crown, Repeat, Lightbulb, Inbox, BarChart3,
 } from 'lucide-react'
 import EditorShell from '@/components/editor/EditorShell'
 import { cn } from '@/lib/cn'
@@ -140,6 +141,21 @@ function DashboardBody() {
   const businessName = business?.business_name ?? 'your business'
   const publicUrl = slug ? `https://${slug}.bkrdy.me` : null
 
+  // A13 — bookings-focused derivations.
+  const nextAppt          = useMemo(() => findNextAppt(appts),        [appts])
+  const tomorrowAppts     = useMemo(() => findTomorrowAppts(appts),   [appts])
+  const weekStrip         = useMemo(() => computeWeekStrip(appts),    [appts])
+  const pendingCount      = useMemo(() => appts.filter(a => a.status === 'pending').length, [appts])
+  const revenueByWeek     = useMemo(() => computeRevenueByWeek(appts, 8),  [appts])
+  const bookingsByDay     = useMemo(() => computeBookingsByDay(appts, 14), [appts])
+  // A13 — customer intelligence.
+  const newCustomers      = useMemo(() => computeNewCustomers(appts),  [appts])
+  const topSpenders       = useMemo(() => computeTopSpenders(appts),   [appts])
+  const repeatRatio       = useMemo(() => computeRepeatRatio(appts),   [appts])
+  // A13 — daily-changing flavor. Deterministic by day-of-year so it
+  // rotates without needing server state.
+  const dailyTip          = useMemo(() => pickDailyTip(), [])
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   if (loading || redirecting) {
@@ -165,12 +181,12 @@ function DashboardBody() {
 
   return (
     <div className="w-full p-3 sm:p-5 md:p-6 space-y-5">
-      {/* ── 1. Greeting / hero ── */}
+      {/* ── A13: bigger personalized hero with daily tip ribbon ── */}
       <header className="px-1">
-        <h1 className="text-lg sm:text-xl font-bold text-near-black tracking-tight">
-          {greeting}{ownerFirstName ? `, ${ownerFirstName}` : ''}.
+        <h1 className="text-[22px] sm:text-[28px] font-bold text-near-black tracking-tight leading-tight">
+          {greeting}{ownerFirstName ? <>, <span className="italic">{ownerFirstName}.</span></> : '.'}
         </h1>
-        <p className="text-xs sm:text-[13px] text-muted-text mt-1">
+        <p className="text-[13px] sm:text-[14px] text-muted-text mt-1.5">
           Here&apos;s what&apos;s happening at <span className="font-semibold text-near-black">{businessName}</span> today.
           {publicUrl && (
             <>
@@ -186,37 +202,92 @@ function DashboardBody() {
             </>
           )}
         </p>
+        {/* A13 — daily tip ribbon. Deterministic by day-of-year so it
+            shifts every morning without server state. */}
+        <div className="mt-3 inline-flex items-center gap-2 text-[11px] text-near-black bg-cream border border-[rgba(18,18,18,0.10)] px-3 py-2">
+          <Lightbulb size={12} className="text-[#c98a14] flex-shrink-0" strokeWidth={2} />
+          <span className="leading-snug"><span className="font-bold uppercase tracking-[0.1em] text-[10px] text-muted-text">Today&rsquo;s tip · </span>{dailyTip}</span>
+        </div>
       </header>
 
-      {/* ── 2. Announcements ── */}
+      {/* ── A13: hero bookings tile — next appointment countdown ── */}
+      {nextAppt && (
+        <NextApptHero appt={nextAppt} />
+      )}
+
+      {/* ── Announcements ── */}
       <AnnouncementsBlock items={announcements} />
 
-      {/* ── 3. Today's appointments ── */}
-      <section>
-        <SectionHeader
-          icon={Calendar}
-          label="Today's appointments"
-          subtitle={todaysAppointments.length === 0
-            ? 'Nothing on the books for today.'
-            : `${todaysAppointments.length} appointment${todaysAppointments.length === 1 ? '' : 's'} scheduled.`}
-          cta={{ label: 'See all', href: '/editor/appointments' }}
-        />
-        {todaysAppointments.length === 0 ? (
-          <EmptyTile
-            body="When someone books for today, they'll show up here."
-            actionLabel="View calendar"
-            actionHref="/editor/appointments"
+      {/* ── A13: Today + Tomorrow side-by-side ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <section>
+          <SectionHeader
+            icon={Calendar}
+            label="Today's appointments"
+            subtitle={todaysAppointments.length === 0
+              ? 'Nothing on the books for today.'
+              : `${todaysAppointments.length} appointment${todaysAppointments.length === 1 ? '' : 's'}`}
+            cta={{ label: 'See all', href: '/editor/appointments' }}
           />
-        ) : (
-          <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
-            {todaysAppointments.slice(0, 6).map(a => (
-              <TodayApptRow key={a.id} a={a} />
-            ))}
-          </div>
-        )}
-      </section>
+          {todaysAppointments.length === 0 ? (
+            <EmptyTile
+              body="When someone books for today, they'll show up here."
+              actionLabel="View calendar"
+              actionHref="/editor/appointments"
+            />
+          ) : (
+            <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
+              {todaysAppointments.slice(0, 5).map(a => (
+                <TodayApptRow key={a.id} a={a} />
+              ))}
+            </div>
+          )}
+        </section>
 
-      {/* ── 4. Setup checklist + 5. Money snapshot — side by side ── */}
+        <section>
+          <SectionHeader
+            icon={Calendar}
+            label="Tomorrow"
+            subtitle={tomorrowAppts.length === 0
+              ? 'Nothing booked yet for tomorrow.'
+              : `${tomorrowAppts.length} appointment${tomorrowAppts.length === 1 ? '' : 's'}`}
+          />
+          {tomorrowAppts.length === 0 ? (
+            <EmptyTile
+              body="A blank day ahead. Maybe time to post your availability."
+            />
+          ) : (
+            <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
+              {tomorrowAppts.slice(0, 5).map(a => (
+                <TodayApptRow key={a.id} a={a} />
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* ── A13: Week strip ── */}
+      <WeekStrip days={weekStrip} />
+
+      {/* ── A13: Pending requests counter (only when auto-confirm off + count > 0) ── */}
+      {pendingCount > 0 && (
+        <PendingRequestsTile count={pendingCount} />
+      )}
+
+      {/* ── A13: Charts row ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <RevenueChart weeks={revenueByWeek} currency={moneyBuckets.currency} />
+        <BookingVolumeChart days={bookingsByDay} />
+      </div>
+
+      {/* ── A13: Customer intelligence row ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <NewCustomersCard customers={newCustomers} />
+        <TopSpendersCard spenders={topSpenders} currency={moneyBuckets.currency} />
+        <RepeatRatioCard ratio={repeatRatio} />
+      </div>
+
+      {/* ── Setup checklist + Money snapshot — side by side ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <SetupChecklist
           items={setupItems}
@@ -226,7 +297,7 @@ function DashboardBody() {
         <MoneySnapshot buckets={moneyBuckets} />
       </div>
 
-      {/* ── 6. Recent activity ── */}
+      {/* ── Recent activity ── */}
       <section>
         <SectionHeader
           icon={Activity}
@@ -656,4 +727,637 @@ function greetingForHour(h: number): string {
   if (h < 12) return 'Good morning'
   if (h < 18) return 'Good afternoon'
   return 'Good evening'
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// A13 — new components for the bookings-first dashboard
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Next-appointment hero. Shown above-the-fold when there's an upcoming
+ * appointment (today or later). Highlights time-until in a calmly
+ * urgent way — bigger than other dashboard tiles, anchors the day.
+ */
+function NextApptHero({ appt }: { appt: Appointment }) {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000)
+    return () => clearInterval(id)
+  }, [])
+
+  const apptDateTime = parseApptDateTime(appt.appointment_date, appt.start_time)
+  const minsUntil = Math.round((apptDateTime.getTime() - now.getTime()) / 60_000)
+  const timeLabel = formatTimeUntil(minsUntil, appt.appointment_date)
+  const price = typeof appt.service_price === 'number' ? `$${Number(appt.service_price).toFixed(0)}` : null
+
+  return (
+    <Link
+      href={`/editor/appointments?focus=${appt.id}`}
+      className="block bg-near-black text-white p-5 sm:p-6 border border-near-black hover:bg-[#1a1a1a] transition-colors"
+    >
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-white/60 mb-1.5">
+            Next up
+          </p>
+          <p className="text-[18px] sm:text-[22px] font-bold leading-tight">
+            <span className="text-white">{appt.customer_name}</span>
+            <span className="text-white/60"> · </span>
+            <span className="text-white">{appt.service_name}</span>
+            {price && <span className="text-white/60 text-[16px] font-semibold"> · {price}</span>}
+          </p>
+          <p className="text-[12px] text-white/70 mt-2">
+            {fmtDate(appt.appointment_date)} at {fmt12(appt.start_time)}
+            {appt.staff_name && <> · with {appt.staff_name}</>}
+          </p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-white/60">In</p>
+          <p className="text-[24px] sm:text-[32px] font-bold tabular-nums leading-tight">
+            {timeLabel}
+          </p>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+interface WeekStripDay {
+  date:      string   // YYYY-MM-DD
+  label:     string   // 'Mon', 'Tue', etc.
+  num:       number   // day of month
+  isToday:   boolean
+  count:     number
+  status:    'empty' | 'light' | 'medium' | 'heavy'
+}
+
+/**
+ * 7-day strip showing booking density per day. Visual at-a-glance
+ * "is this week heavy or light?" without needing to click into the
+ * calendar.
+ */
+function WeekStrip({ days }: { days: WeekStripDay[] }) {
+  return (
+    <section>
+      <SectionHeader
+        icon={BarChart3}
+        label="This week"
+        subtitle="Next seven days at a glance."
+        cta={{ label: 'Open calendar', href: '/editor/appointments' }}
+      />
+      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-3 sm:p-4">
+        <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+          {days.map(d => (
+            <Link
+              key={d.date}
+              href={`/editor/appointments?date=${d.date}`}
+              className={cn(
+                'border px-1 sm:px-2 py-2.5 sm:py-3 text-center transition-colors',
+                d.isToday ? 'border-near-black bg-near-black text-white'
+                  : 'border-[rgba(18,18,18,0.10)] bg-cream text-near-black hover:border-near-black',
+              )}
+            >
+              <p className={cn(
+                'text-[9px] font-bold tracking-[0.10em] uppercase',
+                d.isToday ? 'text-white/70' : 'text-muted-text',
+              )}>{d.label}</p>
+              <p className={cn(
+                'text-[16px] sm:text-[18px] font-bold mt-0.5 leading-none',
+                d.isToday ? 'text-white' : 'text-near-black',
+              )}>{d.num}</p>
+              <div className="mt-2 flex justify-center">
+                <DensityDots count={d.count} status={d.status} onDark={d.isToday} />
+              </div>
+              <p className={cn(
+                'text-[10px] mt-1',
+                d.isToday ? 'text-white/70' : 'text-muted-text',
+              )}>{d.count === 0 ? 'Open' : d.count}</p>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function DensityDots({ count, status, onDark }: { count: number; status: WeekStripDay['status']; onDark: boolean }) {
+  const dots = Math.min(3, status === 'empty' ? 0 : status === 'light' ? 1 : status === 'medium' ? 2 : 3)
+  return (
+    <div className="flex gap-0.5">
+      {[0, 1, 2].map(i => (
+        <span
+          key={i}
+          className="block w-1.5 h-1.5 rounded-full"
+          style={{
+            backgroundColor: i < dots
+              ? (onDark ? 'rgba(255,255,255,0.95)' : (status === 'heavy' ? '#0f6f3d' : status === 'medium' ? '#5d8a1c' : '#c98a14'))
+              : (onDark ? 'rgba(255,255,255,0.20)' : 'rgba(18,18,18,0.12)'),
+          }}
+        />
+      ))}
+      {/* keep flex width even when count==0 */}
+      {count === 0 && <span aria-hidden style={{ width: 0 }} />}
+    </div>
+  )
+}
+
+/**
+ * Pending requests inbox tile. Surfaces booking requests that need
+ * confirmation when auto-confirm is off.
+ */
+function PendingRequestsTile({ count }: { count: number }) {
+  return (
+    <Link
+      href="/editor/appointments?status=pending"
+      className="block bg-[rgba(180,120,0,0.08)] border border-[rgba(180,120,0,0.30)] p-4 hover:bg-[rgba(180,120,0,0.12)] transition-colors"
+    >
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 bg-white border border-[rgba(180,120,0,0.30)] flex items-center justify-center flex-shrink-0">
+          <Inbox size={16} className="text-[#8a5a00]" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-bold text-[#8a5a00]">
+            {count} booking {count === 1 ? 'request' : 'requests'} waiting on you
+          </p>
+          <p className="text-[11px] text-[#8a5a00]/80 mt-0.5">
+            Review and confirm to lock them into your calendar.
+          </p>
+        </div>
+        <ArrowUpRight size={13} className="text-[#8a5a00] flex-shrink-0" />
+      </div>
+    </Link>
+  )
+}
+
+interface RevenueWeek { label: string; value: number; startISO: string }
+
+/**
+ * Revenue trend chart — 8 weekly bars. Pure SVG; no library. Hover
+ * shows the week label and exact value.
+ */
+function RevenueChart({ weeks, currency }: { weeks: RevenueWeek[]; currency: string }) {
+  const max = Math.max(1, ...weeks.map(w => w.value))
+  const total = weeks.reduce((s, w) => s + w.value, 0)
+  const last = weeks[weeks.length - 1]?.value ?? 0
+  const prev = weeks[weeks.length - 2]?.value ?? 0
+  const delta = prev > 0 ? Math.round(((last - prev) / prev) * 100) : null
+
+  return (
+    <section>
+      <SectionHeader
+        icon={TrendingUp}
+        label="Revenue · last 8 weeks"
+        subtitle={total === 0
+          ? 'No collected revenue yet.'
+          : `${money(total, currency)} total · ${delta != null ? (delta >= 0 ? '+' : '') + delta + '% vs last week' : 'this week'}`}
+        cta={{ label: 'Open Payments', href: '/editor/payments' }}
+      />
+      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
+        <svg viewBox="0 0 320 120" preserveAspectRatio="none" className="w-full h-32">
+          {weeks.map((w, i) => {
+            const x = (i * (320 / weeks.length)) + 6
+            const barW = (320 / weeks.length) - 12
+            const h = w.value === 0 ? 2 : Math.max(4, (w.value / max) * 100)
+            const y = 110 - h
+            const isLast = i === weeks.length - 1
+            return (
+              <g key={w.startISO}>
+                <rect
+                  x={x}
+                  y={y}
+                  width={barW}
+                  height={h}
+                  fill={isLast ? '#121212' : 'rgba(18,18,18,0.20)'}
+                />
+                <title>{w.label}: {money(w.value, currency)}</title>
+              </g>
+            )
+          })}
+          {/* baseline */}
+          <line x1="0" y1="110" x2="320" y2="110" stroke="rgba(18,18,18,0.15)" strokeWidth="0.5" />
+        </svg>
+        <div className="flex justify-between mt-2 text-[9px] tracking-[0.08em] uppercase text-muted-text">
+          <span>{weeks[0]?.label}</span>
+          <span>{weeks[weeks.length - 1]?.label}</span>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+interface BookingDay { date: string; label: string; count: number; isToday: boolean }
+
+/**
+ * Booking volume bar chart — daily bookings for the last 14 days.
+ * Highlights today; muted bars for past days. Pure SVG.
+ */
+function BookingVolumeChart({ days }: { days: BookingDay[] }) {
+  const max = Math.max(1, ...days.map(d => d.count))
+  const total = days.reduce((s, d) => s + d.count, 0)
+  const avg = total / days.length
+
+  return (
+    <section>
+      <SectionHeader
+        icon={Calendar}
+        label="Bookings · last 14 days"
+        subtitle={total === 0
+          ? 'No bookings in this window.'
+          : `${total} bookings total · ${avg.toFixed(1)}/day avg`}
+        cta={{ label: 'Open calendar', href: '/editor/appointments' }}
+      />
+      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
+        <svg viewBox="0 0 320 120" preserveAspectRatio="none" className="w-full h-32">
+          {days.map((d, i) => {
+            const x = (i * (320 / days.length)) + 4
+            const barW = (320 / days.length) - 8
+            const h = d.count === 0 ? 2 : Math.max(4, (d.count / max) * 100)
+            const y = 110 - h
+            return (
+              <g key={d.date}>
+                <rect
+                  x={x}
+                  y={y}
+                  width={barW}
+                  height={h}
+                  fill={d.isToday ? '#0f6f3d' : 'rgba(18,18,18,0.30)'}
+                />
+                <title>{d.label}: {d.count} booking{d.count === 1 ? '' : 's'}</title>
+              </g>
+            )
+          })}
+          <line x1="0" y1="110" x2="320" y2="110" stroke="rgba(18,18,18,0.15)" strokeWidth="0.5" />
+        </svg>
+        <div className="flex justify-between mt-2 text-[9px] tracking-[0.08em] uppercase text-muted-text">
+          <span>{days[0]?.label}</span>
+          <span>Today</span>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+interface NewCustomer { name: string; firstAppointmentDate: string }
+
+function NewCustomersCard({ customers }: { customers: NewCustomer[] }) {
+  return (
+    <section>
+      <SectionHeader
+        icon={UserPlus}
+        label="New customers"
+        subtitle={customers.length === 0
+          ? 'No new customers in the last 7 days.'
+          : `${customers.length} new this week`}
+      />
+      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
+        {customers.length === 0 ? (
+          <p className="text-[12px] text-muted-text">
+            Once new clients start booking, you&apos;ll see them here.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {customers.slice(0, 4).map((c, i) => (
+              <li key={i} className="flex items-center gap-2.5">
+                <div className="w-7 h-7 bg-cream border border-[rgba(18,18,18,0.10)] flex items-center justify-center flex-shrink-0">
+                  <span className="text-[10px] font-bold text-near-black">{initials(c.name)}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-semibold text-near-black truncate">{c.name}</p>
+                  <p className="text-[10px] text-muted-text">First booked {fmtDate(c.firstAppointmentDate)}</p>
+                </div>
+              </li>
+            ))}
+            {customers.length > 4 && (
+              <li className="text-[11px] text-muted-text pt-1">+ {customers.length - 4} more</li>
+            )}
+          </ul>
+        )}
+      </div>
+    </section>
+  )
+}
+
+interface TopSpender { name: string; total: number }
+
+function TopSpendersCard({ spenders, currency }: { spenders: TopSpender[]; currency: string }) {
+  return (
+    <section>
+      <SectionHeader
+        icon={Crown}
+        label="Top spenders · this month"
+        subtitle={spenders.length === 0 ? 'No payments yet this month.' : 'Your top three.'}
+      />
+      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
+        {spenders.length === 0 ? (
+          <p className="text-[12px] text-muted-text">
+            Once payments start landing, your top clients show up here.
+          </p>
+        ) : (
+          <ol className="space-y-2.5">
+            {spenders.slice(0, 3).map((s, i) => (
+              <li key={i} className="flex items-center gap-3">
+                <span className={cn(
+                  'w-5 h-5 flex items-center justify-center text-[10px] font-bold flex-shrink-0',
+                  i === 0 ? 'bg-near-black text-white' : 'bg-cream border border-[rgba(18,18,18,0.10)] text-near-black',
+                )}>
+                  {i + 1}
+                </span>
+                <p className="text-[12px] font-semibold text-near-black truncate flex-1">{s.name}</p>
+                <p className="text-[13px] font-bold tabular-nums text-near-black">{money(s.total, currency)}</p>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+    </section>
+  )
+}
+
+interface RepeatRatio { total: number; returning: number; pct: number }
+
+function RepeatRatioCard({ ratio }: { ratio: RepeatRatio }) {
+  return (
+    <section>
+      <SectionHeader
+        icon={Repeat}
+        label="Repeat rate · last 20 bookings"
+        subtitle={ratio.total === 0
+          ? 'No booking history yet.'
+          : ratio.pct >= 60 ? 'Strong client retention.'
+            : ratio.pct >= 30 ? 'Solid mix of new and returning.'
+              : 'Mostly fresh faces lately.'}
+      />
+      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
+        {ratio.total === 0 ? (
+          <p className="text-[12px] text-muted-text">
+            We&apos;ll start tracking once you have a few bookings logged.
+          </p>
+        ) : (
+          <>
+            <div className="flex items-baseline gap-2 mb-2">
+              <p className="text-[28px] font-bold text-near-black tabular-nums leading-none">
+                {ratio.pct}<span className="text-[16px] text-muted-text font-semibold">%</span>
+              </p>
+              <p className="text-[11px] text-muted-text">
+                {ratio.returning} of {ratio.total} returning
+              </p>
+            </div>
+            <div className="h-1.5 bg-cream rounded-full overflow-hidden">
+              <div
+                className="h-full transition-all duration-700"
+                style={{
+                  width: `${ratio.pct}%`,
+                  backgroundColor: ratio.pct >= 60 ? '#0f6f3d' : ratio.pct >= 30 ? '#5d8a1c' : '#c98a14',
+                }}
+              />
+            </div>
+          </>
+        )}
+      </div>
+    </section>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// A13 — helpers for the new derivations
+// ────────────────────────────────────────────────────────────────────────────
+
+function findNextAppt(appts: Appointment[]): Appointment | null {
+  const now = new Date()
+  let best: Appointment | null = null
+  let bestTs = Infinity
+  for (const a of appts) {
+    if (a.status === 'cancelled' || a.status === 'no_show' || a.status === 'completed') continue
+    const ts = parseApptDateTime(a.appointment_date, a.start_time).getTime()
+    if (ts >= now.getTime() && ts < bestTs) {
+      best = a
+      bestTs = ts
+    }
+  }
+  return best
+}
+
+function findTomorrowAppts(appts: Appointment[]): Appointment[] {
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const tomorrowStr = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`
+  return appts
+    .filter(a => a.appointment_date === tomorrowStr && a.status !== 'cancelled')
+    .sort((a, b) => a.start_time.localeCompare(b.start_time))
+}
+
+function computeWeekStrip(appts: Appointment[]): WeekStripDay[] {
+  const days: WeekStripDay[] = []
+  const start = new Date()
+  start.setHours(0, 0, 0, 0)
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start)
+    d.setDate(d.getDate() + i)
+    const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+    const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const count = appts.filter(a => a.appointment_date === iso && a.status !== 'cancelled').length
+    const status: WeekStripDay['status'] =
+      count === 0 ? 'empty' : count <= 2 ? 'light' : count <= 5 ? 'medium' : 'heavy'
+    days.push({
+      date:    iso,
+      label:   dayLabels[d.getDay()],
+      num:     d.getDate(),
+      isToday: i === 0,
+      count,
+      status,
+    })
+  }
+  return days
+}
+
+function computeRevenueByWeek(appts: Appointment[], weeks: number): RevenueWeek[] {
+  const out: RevenueWeek[] = []
+  const now = new Date()
+  const startOfThisWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay())
+  for (let i = weeks - 1; i >= 0; i--) {
+    const wStart = new Date(startOfThisWeek)
+    wStart.setDate(wStart.getDate() - 7 * i)
+    const wEnd = new Date(wStart)
+    wEnd.setDate(wEnd.getDate() + 7)
+    let total = 0
+    for (const a of appts) {
+      if (! a.created_at) continue
+      const ts = new Date(a.created_at)
+      if (ts >= wStart && ts < wEnd) {
+        total += (a.deposit_paid_amount ?? 0) + (a.balance_paid_amount ?? 0)
+      }
+    }
+    out.push({
+      startISO: `${wStart.getFullYear()}-${pad(wStart.getMonth() + 1)}-${pad(wStart.getDate())}`,
+      label:    wStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      value:    round2(total),
+    })
+  }
+  return out
+}
+
+function computeBookingsByDay(appts: Appointment[], days: number): BookingDay[] {
+  const out: BookingDay[] = []
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today)
+    d.setDate(d.getDate() - i)
+    const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+    const count = appts.filter(a => {
+      if (! a.created_at) return false
+      const ts = new Date(a.created_at)
+      return ts >= d && ts < new Date(d.getTime() + 86_400_000)
+    }).length
+    out.push({
+      date:    iso,
+      label:   d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      count,
+      isToday: i === 0,
+    })
+  }
+  return out
+}
+
+function computeNewCustomers(appts: Appointment[]): NewCustomer[] {
+  // First appointment.created_at by customer_email; "new" = first one
+  // landed in the last 7 days.
+  const firstByKey: Record<string, { name: string; created: string; date: string }> = {}
+  for (const a of appts) {
+    const key = (a.customer_email ?? a.customer_phone ?? a.customer_name).toLowerCase().trim()
+    if (! key) continue
+    const created = a.created_at ?? ''
+    if (! firstByKey[key] || (created && created < firstByKey[key].created)) {
+      firstByKey[key] = { name: a.customer_name, created, date: a.appointment_date }
+    }
+  }
+  const cutoff = Date.now() - 7 * 86_400_000
+  return Object.values(firstByKey)
+    .filter(c => c.created && new Date(c.created).getTime() >= cutoff)
+    .sort((a, b) => (b.created ?? '').localeCompare(a.created ?? ''))
+    .map(c => ({ name: c.name, firstAppointmentDate: c.date }))
+}
+
+function computeTopSpenders(appts: Appointment[]): TopSpender[] {
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const totals: Record<string, { name: string; total: number }> = {}
+  for (const a of appts) {
+    if (! a.created_at) continue
+    if (new Date(a.created_at) < monthStart) continue
+    const paid = (a.deposit_paid_amount ?? 0) + (a.balance_paid_amount ?? 0)
+    if (paid <= 0) continue
+    const key = (a.customer_email ?? a.customer_phone ?? a.customer_name).toLowerCase().trim()
+    if (! key) continue
+    if (! totals[key]) totals[key] = { name: a.customer_name, total: 0 }
+    totals[key].total += paid
+  }
+  return Object.values(totals)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 3)
+    .map(t => ({ name: t.name, total: round2(t.total) }))
+}
+
+function computeRepeatRatio(appts: Appointment[]): RepeatRatio {
+  // Look at the last 20 booking events (by created_at desc). For each,
+  // mark "returning" if this customer had any prior appointment before
+  // this one. customer_email is the join key, with phone + name fallback.
+  const sorted = [...appts]
+    .filter(a => !! a.created_at)
+    .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+  const recent = sorted.slice(0, 20)
+  let returning = 0
+  for (const a of recent) {
+    const key = (a.customer_email ?? a.customer_phone ?? a.customer_name).toLowerCase().trim()
+    if (! key) continue
+    const hadPrior = sorted.some(p =>
+      p !== a
+      && (p.created_at ?? '') < (a.created_at ?? '')
+      && (p.customer_email ?? p.customer_phone ?? p.customer_name).toLowerCase().trim() === key
+    )
+    if (hadPrior) returning++
+  }
+  const total = recent.length
+  return {
+    total,
+    returning,
+    pct: total === 0 ? 0 : Math.round((returning / total) * 100),
+  }
+}
+
+// A13 — daily-rotating tip for the hero. Deterministic by day-of-year
+// so it shifts every morning without server state. ~30 tips means a
+// repeat once a month, low enough to stay novel for early operators.
+const DAILY_TIPS = [
+  'A short tagline on your booking page makes a stronger first impression than a long bio.',
+  'Block off your own buffer between clients — clients respect schedules that respect you.',
+  'A clear cancellation policy actually reduces cancellations, not increases them.',
+  'Photos in your gallery sell more than descriptions do. Two minutes of phone uploads goes a long way.',
+  'Confirmation emails are quiet brand moments. Make them sound like you.',
+  'A deposit of even 20% cuts no-shows by half. Sweet spot for most brands.',
+  'Returning clients are 7× more valuable than new ones. Treat them like it.',
+  'Empty slots? Post one or two on Instagram Stories with your booking link — fastest fill.',
+  'Quick win: send a "thanks, see you again" note 24 hours after their appointment.',
+  'Saturday afternoons fill up fastest. Don\'t leave them last on your calendar.',
+  'A 5-photo gallery converts twice as well as a 15-photo one. Curate, don\'t cram.',
+  'The fastest growth lever is making the booking page easy to share — copy it now.',
+  'Add a tip prompt to your confirmation emails. Most clients want to; few remember unless asked.',
+  'Re-engage a "we haven\'t seen you in a while" client with a personal note, not a discount.',
+  'New clients book based on your photos. Returning clients book based on your reliability.',
+  'A short FAQ on your booking page cuts back-and-forth emails by ~80%.',
+  'Your hours are a brand statement. Closing earlier than competitors can read as premium.',
+  'The clients who tip the best are the ones who feel remembered. Use your notes column.',
+  'A "what to expect" section reduces first-visit anxiety dramatically.',
+  'Your booking confirmation page is your second chance at a first impression.',
+  'Don\'t apologize for full days — booked-out is your strongest marketing.',
+  'Add buffer time between back-to-back services. Burnout is a slow leak.',
+  'A simple "running 10 minutes behind" text from you is worth more than a long apology after.',
+  'Refer-a-friend works best as a thank-you, not a transaction. No formal discount needed.',
+  'Group your services by occasion (weekend reset, before vacation) on your page — not just by name.',
+  'A handful of well-priced staple services beats a sprawling menu, every time.',
+  'Photograph the chair you actually use. Authenticity reads in seconds.',
+  'A "what to bring / what to wear" line on your booking page prevents reschedules.',
+  'Sunday night is the busiest booking time of the week. Make sure your page is up.',
+  'Your bio doesn\'t need to be clever. It needs to make one client feel like you get them.',
+]
+
+function pickDailyTip(): string {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), 0, 0)
+  const diff = (now.getTime() - start.getTime()) + ((start.getTimezoneOffset() - now.getTimezoneOffset()) * 60_000)
+  const dayOfYear = Math.floor(diff / 86_400_000)
+  return DAILY_TIPS[dayOfYear % DAILY_TIPS.length]
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Small format helpers
+// ────────────────────────────────────────────────────────────────────────────
+
+function parseApptDateTime(date: string, time: string): Date {
+  const [y, m, d] = date.split('-').map(s => parseInt(s, 10))
+  const [hh, mm] = time.split(':').map(s => parseInt(s, 10))
+  return new Date(y, m - 1, d, hh ?? 0, mm ?? 0)
+}
+
+function formatTimeUntil(mins: number, apptDate: string): string {
+  // Negative → appointment already started (rare, but possible if we're
+  // mid-session). Show "Now".
+  if (mins <= 0) return 'Now'
+  if (mins < 60) return `${mins}m`
+  const hours = Math.floor(mins / 60)
+  const remMins = mins % 60
+  if (hours < 24) {
+    return remMins === 0 ? `${hours}h` : `${hours}h ${remMins}m`
+  }
+  const days = Math.floor(hours / 24)
+  if (days === 1) return 'Tomorrow'
+  // Far future — show the date label so the giant "5d" doesn't feel weird.
+  return fmtDate(apptDate)
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '·'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
