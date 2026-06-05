@@ -19,7 +19,7 @@ class TemplateDefaults
      * outside this set is not a real template and must fall back to the
      * default rather than seeding a tenant with a broken slug.
      */
-    public const KNOWN_SLUGS = ['thefaderoom', 'lushstudio', 'velvettheory', 'blackline', 'opaline', 'petale'];
+    public const KNOWN_SLUGS = ['thefaderoom', 'lushstudio', 'velvettheory', 'blackline', 'opaline', 'petale', 'bottega'];
 
     /**
      * Map any signup/registry template value to a canonical, KNOWN slug.
@@ -45,6 +45,7 @@ class TemplateDefaults
             'blackline'    => self::blacklineSettings(),
             'opaline'      => self::opalineSettings(),
             'petale'       => self::petaleSettings(),
+            'bottega'      => self::bottegaSettings(),
             default        => self::theFadeRoomSettings(),
         };
     }
@@ -58,6 +59,7 @@ class TemplateDefaults
             'blackline'    => self::blacklineSections(),
             'opaline'      => self::opalineSections(),
             'petale'       => self::petaleSections(),
+            'bottega'      => self::bottegaSections(),
             default        => self::theFadeRoomSections(),
         };
     }
@@ -511,6 +513,83 @@ class TemplateDefaults
         // copy is one tab away from Reserve.
         $sections = self::theFadeRoomSections();
         $order = ['gallery' => 3, 'about' => 4, 'results' => 5, 'advice' => 6, 'timeline' => 7, 'policy' => 8];
+        foreach ($sections as &$s) {
+            if (isset($order[$s['section_key']])) $s['sort_order'] = $order[$s['section_key']];
+        }
+        unset($s);
+        return $sections;
+    }
+
+    // ─── Bottega ───────────────────────────────────────────────────────────────
+    //
+    // Modern earthy nail / lash / brow studio with Italian-artisanal voice.
+    // Niche: high-end concept nail bars, refined lash + brow studios,
+    // Italian-villa-coded salons. Warm cream canvas with a subtle terrazzo
+    // backdrop and a constant earthy accent (Rust default, alternates
+    // Walnut / Slate / Deep Navy / Sage).
+
+    private static function bottegaSettings(): array
+    {
+        $base = self::theFadeRoomSettings();
+        $base['header']['announcement_text'] = 'Booking by appointment — small studio, considered hands.';
+        $base['tabs'] = [
+            'book_label'     => 'Reserve',
+            'gallery_label'  => 'Portfolio',
+            'policy_label'   => 'House',
+            'about_label'    => 'The Bottega',
+            'results_label'  => 'Before & After',
+            'advice_label'   => 'Care',
+            'timeline_label' => 'Visit',
+        ];
+        $base['about'] = [
+            'heading'    => 'A small studio, careful hands',
+            'eyebrow'    => 'The Bottega',
+            'body'       => "We are a quiet studio built around one belief: the best work happens when there is enough time to do it well. Every appointment is its own; every client gets the room.\n\nBottega is the Italian word for a small workshop — a place where craft is practiced, not produced. That is what we aim for here. A finished result that looks effortless, because everything before it was anything but.",
+            'highlights' => [
+                ['title' => 'Considered, never rushed', 'body' => 'We see fewer clients each day so yours has the time it deserves — the prep, the work, and the finish.'],
+                ['title' => 'Tools that respect the work', 'body' => 'Sterilized between every chair. Products chosen for results that last, not for the shelf they came off.'],
+                ['title' => 'A finish, not a moment', 'body' => 'You should walk out with a result you can keep. Aftercare comes with the booking, not as an upsell.'],
+            ],
+            'images'     => [null, null, null],
+        ];
+        $base['advice'] = [
+            'heading'     => 'Care, kept simple',
+            'card_kicker' => '',
+            'items'       => [
+                ['title' => 'Stay gentle for 24 hours',   'body' => 'Skip exfoliants and strong actives the day of your appointment. Your skin will thank you.'],
+                ['title' => 'Hydrate, simply',            'body' => 'Water and a barrier moisturizer keep the result looking fresh longer than anything more complicated.'],
+                ['title' => 'Protect from sun',           'body' => 'A daily SPF is the single best thing you can do to preserve what we just did.'],
+                ['title' => 'Rebook with rhythm',         'body' => 'Regular cadence keeps the work consistent. We will recommend the right interval for you.'],
+            ],
+        ];
+        $base['timeline'] = [
+            'heading'     => 'Your visit, simply',
+            'card_kicker' => '',
+            'items'       => [
+                ['title' => 'Choose your service',  'body' => 'Pick the treatment that suits the moment. We will confirm the fit on arrival.'],
+                ['title' => 'Reserve a time',       'body' => 'Pick a date and hour from the calendar. A deposit secures the appointment.'],
+                ['title' => 'Arrive and settle',    'body' => 'Come a few minutes early. We make the room ready while you do.'],
+                ['title' => 'Sit, and let us begin','body' => 'We take it from here — focused, unhurried, and entirely on you.'],
+            ],
+        ];
+        $base['gallery'] = [ 'heading' => 'Portfolio' ];
+        $base['results'] = [ 'heading' => 'Before & After' ];
+        $base['policy']  = [ 'heading' => 'House Notes' ];
+        $base['additionals']['thank_you_eyebrow'] = 'A note';
+        $base['additionals']['thank_you_title']   = 'Grazie';
+        $base['additionals']['thank_you_body']    = 'Thank you for trusting us with the work. We are looking forward to having you in the chair.';
+        $base['footer']['brand_label'] = 'The Bottega';
+        $base['footer']['subtext']     = 'By appointment. Small studio, careful hands.';
+        return $base;
+    }
+
+    private static function bottegaSections(): array
+    {
+        // Bottega's designed tab order is Gallery, Results, About, Care,
+        // Visit, House — Care + Visit live BEFORE the House notes so the
+        // relational tabs surface first, with policies tucked at the end.
+        $sections = self::theFadeRoomSections();
+        $order = ['gallery' => 3, 'results' => 4, 'about' => 5, 'advice' => 6, 'timeline' => 7, 'policy' => 8];
         foreach ($sections as &$s) {
             if (isset($order[$s['section_key']])) $s['sort_order'] = $order[$s['section_key']];
         }
