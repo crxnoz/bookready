@@ -220,6 +220,18 @@ export async function resendVerificationEmail(): Promise<{ message: string }> {
   return request<{ message: string }>('/auth/verify-email/resend', { method: 'POST' })
 }
 
+// A6 — primary verification mechanic: submit the 6-digit code from the
+// email. Throttled at 5/min server-side. On success the user record's
+// email_verified_at flips, so the caller should immediately re-check
+// /auth/me + advance to the next step (or read the response's
+// verified: true and advance directly).
+export async function verifyEmailCode(code: string): Promise<{ verified: boolean }> {
+  return request<{ verified: boolean }>('/auth/verify-email/code', {
+    method: 'POST',
+    body:   JSON.stringify({ code }),
+  })
+}
+
 export async function logout(): Promise<void> {
   await request('/auth/logout', { method: 'POST' })
 }

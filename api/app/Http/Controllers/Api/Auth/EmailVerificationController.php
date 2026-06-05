@@ -5,11 +5,15 @@ namespace App\Http\Controllers\Api\Auth;
 use App\Http\Controllers\Controller;
 use App\Mail\VerifyEmailMail;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Phase S6 part 2 — owner email verification.
@@ -41,6 +45,14 @@ class EmailVerificationController extends Controller
     private const LINK_TTL_SECONDS = 60 * 60 * 24; // 24 hours
     private const LINK_TTL_MIN     = 60 * 24;
     private const APP_BASE         = 'https://app.bkrdy.me';
+
+    /**
+     * A6 — 6-digit code TTL. Shorter than the link because codes are
+     * easier to brute force (10^6 = 1M combos; with throttle:5,1 at
+     * the route level, a serious attacker needs ~200k minutes — still
+     * comfortable, but no reason to give them more than 15 min).
+     */
+    private const CODE_TTL_MINUTES = 15;
 
     /**
      * GET /api/v1/auth/verify-email/{id}?exp&hash&sig
@@ -120,19 +132,107 @@ class EmailVerificationController extends Controller
     }
 
     /**
-     * Mint a fresh signed verification URL + dispatch the mailable.
-     * Called from RegisterController + the resend endpoint above.
+     * A6 — POST /api/v1/auth/verify-email/code — authed.
+     *
+     * Owner enters the 6-digit code shown in their inbox. Server checks
+     * the hashed code + TTL on the user row. Throttled at the route
+     * layer (5/min) to keep brute force impractical even though the
+     * code space is 10^6 combos.
+     */
+    public function verifyCode(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Not signed in.'], 401);
+        }
+        if ($user->email_verified_at) {
+            // Idempotent.
+            return response()->json(['verified' => true]);
+        }
+
+        $request->validate([
+            'code' => ['required', 'string', 'size:6'],
+        ]);
+        $code = preg_replace('/\D/', '', (string) $request->input('code')) ?? '';
+
+        if (strlen($code) !== 6) {
+            throw ValidationException::withMessages([
+                'code' => ['The code must be 6 digits.'],
+            ]);
+        }
+
+        if (
+            ! $user->email_verification_code
+            || ! $user->email_verification_code_expires_at
+            || Carbon::parse($user->email_verification_code_expires_at)->isPast()
+        ) {
+            throw ValidationException::withMessages([
+                'code' => ['This code has expired. Tap "Resend email" to get a new one.'],
+            ]);
+        }
+
+        if (! Hash::check($code, $user->email_verification_code)) {
+            Log::channel('security')->info('email.verify_code.miss', [
+                'user_id' => $user->id,
+                'ip'      => $request->ip(),
+            ]);
+            throw ValidationException::withMessages([
+                'code' => ['That code is incorrect. Double-check the email and try again.'],
+            ]);
+        }
+
+        // Hit — mark verified + burn the code so it can't be replayed.
+        DB::table('users')->where('id', $user->id)->update([
+            'email_verified_at'                     => now(),
+            'email_verification_code'               => null,
+            'email_verification_code_expires_at'    => null,
+            'updated_at'                            => now(),
+        ]);
+        Log::channel('security')->info('email.verify_code.success', [
+            'user_id' => $user->id,
+        ]);
+
+        return response()->json(['verified' => true]);
+    }
+
+    /**
+     * Mint a fresh signed verification URL + 6-digit code + dispatch the
+     * mailable. Called from RegisterController + the resend endpoint
+     * above. The code is the PRIMARY verification mechanic; the link is
+     * kept as a fallback for users who prefer one-click on the device
+     * that opened the email.
      */
     public static function sendVerificationEmail(User $user): void
     {
         $self = new self();
         $url  = $self->mintLink($user);
+        $code = $self->mintCode($user);
 
         Mail::to($user->email)->send(new VerifyEmailMail(
             ownerName: $user->name ?: 'there',
             verifyUrl: $url,
+            verifyCode: $code,
             ttlMins:   self::LINK_TTL_MIN,
         ));
+    }
+
+    /**
+     * A6 — generate a 6-digit code, persist its hash + TTL on the user
+     * row, and return the plain code for embedding in the email body.
+     */
+    private function mintCode(User $user): string
+    {
+        // Cryptographically random — random_int avoids modulo bias and
+        // is suitable for security-sensitive token generation.
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        DB::table('users')->where('id', $user->id)->update([
+            'email_verification_code'               => Hash::make($code),
+            'email_verification_code_expires_at'    => now()->addMinutes(self::CODE_TTL_MINUTES),
+            'updated_at'                            => now(),
+        ]);
+
+        return $code;
     }
 
     private function mintLink(User $user): string

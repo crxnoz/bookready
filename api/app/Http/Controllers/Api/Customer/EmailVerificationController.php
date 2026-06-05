@@ -5,11 +5,15 @@ namespace App\Http\Controllers\Api\Customer;
 use App\Http\Controllers\Controller;
 use App\Mail\CustomerVerifyEmailMail;
 use App\Models\CustomerUser;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Phase 2 of the customer-accounts feature — email verification.
@@ -36,6 +40,9 @@ class EmailVerificationController extends Controller
     private const LINK_TTL_SECONDS = 60 * 60 * 24; // 24 hours
     private const LINK_TTL_MIN     = 60 * 24;
     private const APP_BASE         = 'https://app.bkrdy.me';
+
+    /** A6 — short-lived 6-digit code. See owner controller for rationale. */
+    private const CODE_TTL_MINUTES = 15;
 
     public function verify(Request $request, int $id): RedirectResponse
     {
@@ -102,20 +109,94 @@ class EmailVerificationController extends Controller
     }
 
     /**
-     * Mint a fresh signed verification URL + dispatch the mailable.
-     * Called inline from RegisterController as well as from resend()
-     * above, so the two share the same minting logic and TTL.
+     * A6 — POST /api/v1/customer/auth/verify-email/code — authed.
+     * Customer enters the 6-digit code shown in their inbox.
+     */
+    public function verifyCode(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user instanceof CustomerUser) {
+            return response()->json(['message' => 'Not signed in.'], 401);
+        }
+        if ($user->email_verified_at) {
+            return response()->json(['verified' => true]);
+        }
+
+        $request->validate([
+            'code' => ['required', 'string', 'size:6'],
+        ]);
+        $code = preg_replace('/\D/', '', (string) $request->input('code')) ?? '';
+
+        if (strlen($code) !== 6) {
+            throw ValidationException::withMessages([
+                'code' => ['The code must be 6 digits.'],
+            ]);
+        }
+
+        if (
+            ! $user->email_verification_code
+            || ! $user->email_verification_code_expires_at
+            || Carbon::parse($user->email_verification_code_expires_at)->isPast()
+        ) {
+            throw ValidationException::withMessages([
+                'code' => ['This code has expired. Tap "Resend email" to get a new one.'],
+            ]);
+        }
+
+        if (! Hash::check($code, $user->email_verification_code)) {
+            Log::channel('security')->info('customer.email.verify_code.miss', [
+                'user_id' => $user->id,
+                'ip'      => $request->ip(),
+            ]);
+            throw ValidationException::withMessages([
+                'code' => ['That code is incorrect. Double-check the email and try again.'],
+            ]);
+        }
+
+        DB::table('customer_users')->where('id', $user->id)->update([
+            'email_verified_at'                     => now(),
+            'email_verification_code'               => null,
+            'email_verification_code_expires_at'    => null,
+            'updated_at'                            => now(),
+        ]);
+        Log::channel('security')->info('customer.email.verify_code.success', [
+            'user_id' => $user->id,
+        ]);
+
+        return response()->json(['verified' => true]);
+    }
+
+    /**
+     * Mint a fresh signed verification URL + 6-digit code + dispatch
+     * the mailable. The code is the primary verification mechanic per
+     * #A6; the link is kept as a fallback.
      */
     public static function sendVerificationEmail(CustomerUser $user): void
     {
         $self = new self();
         $url  = $self->mintLink($user);
+        $code = $self->mintCode($user);
 
         Mail::to($user->email)->send(new CustomerVerifyEmailMail(
             customerName: $user->name ?: 'there',
             verifyUrl:    $url,
+            verifyCode:   $code,
             ttlMins:      self::LINK_TTL_MIN,
         ));
+    }
+
+    /** A6 — see owner controller for rationale. */
+    private function mintCode(CustomerUser $user): string
+    {
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        DB::table('customer_users')->where('id', $user->id)->update([
+            'email_verification_code'               => Hash::make($code),
+            'email_verification_code_expires_at'    => now()->addMinutes(self::CODE_TTL_MINUTES),
+            'updated_at'                            => now(),
+        ]);
+
+        return $code;
     }
 
     private function mintLink(CustomerUser $user): string

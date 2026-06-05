@@ -165,6 +165,15 @@ export async function customerResendVerification(): Promise<{ message: string }>
   return request<{ message: string }>('/auth/verify-email/resend', { method: 'POST' })
 }
 
+// A6 — primary verification mechanic on the customer side. Mirrors
+// verifyEmailCode in api.ts.
+export async function customerVerifyEmailCode(code: string): Promise<{ verified: boolean }> {
+  return request<{ verified: boolean }>('/auth/verify-email/code', {
+    method: 'POST',
+    body:   JSON.stringify({ code }),
+  })
+}
+
 // ── Claim ────────────────────────────────────────────────────────────────────
 
 export async function claimPreview(token: string): Promise<ClaimPreview> {

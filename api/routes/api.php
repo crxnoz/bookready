@@ -182,6 +182,11 @@ Route::prefix('v1')->group(function () {
             // (#160) will add the widget if abuse appears.
             Route::post('verify-email/resend', [EmailVerificationController::class, 'resend'])
                 ->middleware('throttle:3,60');
+            // A6 — code-entry verification (primary UX). Throttle:5,1 keeps
+            // brute-force impractical; code space is 10^6 so even at the
+            // throttle ceiling we're talking ~38 hours to enumerate.
+            Route::post('verify-email/code', [EmailVerificationController::class, 'verifyCode'])
+                ->middleware('throttle:5,1');
         });
     });
 
@@ -426,6 +431,10 @@ Route::prefix('v1')->group(function () {
                 Route::get('me',      [CustomerAuthController::class, 'me']);
                 Route::post('verify-email/resend', [CustomerEmailVerificationController::class, 'resend'])
                     ->middleware('throttle:3,60');
+                // A6 — code-entry verification, same throttle profile
+                // as the owner endpoint above.
+                Route::post('verify-email/code', [CustomerEmailVerificationController::class, 'verifyCode'])
+                    ->middleware('throttle:5,1');
             });
         });
 

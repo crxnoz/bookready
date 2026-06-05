@@ -26,6 +26,10 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        // A6 — never expose the hashed code or its TTL via API. They
+        // live on the user row purely for backend validation.
+        'email_verification_code',
+        'email_verification_code_expires_at',
     ];
 
     protected $casts = [
@@ -33,6 +37,9 @@ class User extends Authenticatable
         'password' => 'hashed',
         'is_owner' => 'boolean',
         'is_admin' => 'boolean',
+        // A6 — datetime cast so Carbon::parse + isPast() in verifyCode
+        // works directly off the attribute.
+        'email_verification_code_expires_at' => 'datetime',
     ];
 
     public function tenant()

@@ -53,12 +53,17 @@ class CustomerUser extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        // A6 — never expose the hashed code or its TTL via API.
+        'email_verification_code',
+        'email_verification_code_expires_at',
     ];
 
     protected $casts = [
         'email_verified_at' => 'datetime',
         'last_login_at'     => 'datetime',
         'password'          => 'hashed',
+        // A6 — datetime cast so verifyCode can use isPast() directly.
+        'email_verification_code_expires_at' => 'datetime',
     ];
 
     /**

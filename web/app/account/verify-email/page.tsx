@@ -16,7 +16,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { MailCheck, Loader2, AlertCircle, CheckCircle, Send, RefreshCw, LogOut } from 'lucide-react'
-import { customerMe, customerResendVerification, customerLogout } from '@/lib/customerApi'
+import { customerMe, customerResendVerification, customerVerifyEmailCode, customerLogout } from '@/lib/customerApi'
 import { clearCustomerAuth, isCustomerLoggedIn, safeReturnTo } from '@/lib/customerAuth'
 
 const VERIFY_SIGNAL_KEY = 'br_verified_at'
@@ -43,6 +43,10 @@ function Inner() {
   const [resendBusy, setResendBusy] = useState(false)
   const [resendOk, setResendOk]     = useState(false)
   const [signOutBusy, setSignOutBusy] = useState(false)
+  // A6 — code-entry state. Same UX as the owner page.
+  const [code, setCode]           = useState('')
+  const [codeBusy, setCodeBusy]   = useState(false)
+  const [codeError, setCodeError] = useState<string | null>(null)
   const advancingRef = useRef(false)
 
   const checkStatus = useCallback(async () => {
@@ -84,6 +88,29 @@ function Inner() {
       clearInterval(id)
     }
   }, [router, checkStatus, returnTo])
+
+  // A6 — submit the 6-digit code. On success advance via the same path
+  // checkStatus uses (return_to or /account).
+  async function handleSubmitCode(e: React.FormEvent) {
+    e.preventDefault()
+    if (codeBusy || code.length !== 6) return
+    setCodeBusy(true); setCodeError(null)
+    try {
+      const res = await customerVerifyEmailCode(code)
+      if (res.verified) {
+        advancingRef.current = true
+        setStatus('verified')
+        setTimeout(() => {
+          if (returnTo) { window.location.href = returnTo; return }
+          router.replace('/account')
+        }, 900)
+      }
+    } catch (e) {
+      setCodeError(e instanceof Error ? e.message : 'Could not verify the code. Try again.')
+    } finally {
+      setCodeBusy(false)
+    }
+  }
 
   async function handleResend() {
     setResendBusy(true); setResendOk(false); setError(null)
@@ -133,10 +160,11 @@ function Inner() {
           </h1>
           {status === 'pending' && (
             <p className="text-[13px] text-muted-text leading-relaxed">
-              We sent a verification link to{' '}
+              We sent a 6-digit code to{' '}
               <span className="font-semibold text-near-black break-all">
                 {email || 'your email'}
-              </span>. Click it to keep going — this tab will move on automatically.
+              </span>. Enter it below — or click the link in the email
+              if it&rsquo;s easier.
             </p>
           )}
           {status === 'verified' && (
@@ -149,10 +177,53 @@ function Inner() {
           )}
         </div>
 
+        {/* A6 — code entry form, mirrors the owner page. */}
+        {status === 'pending' && (
+          <form onSubmit={handleSubmitCode} className="mb-5">
+            <label className="block text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-2 text-center">
+              Verification code
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="\d{6}"
+              maxLength={6}
+              value={code}
+              onChange={e => {
+                setCodeError(null)
+                setCode(e.target.value.replace(/\D/g, '').slice(0, 6))
+              }}
+              placeholder="••••••"
+              className="w-full text-center text-[28px] font-bold tracking-[0.4em] py-3 px-3 bg-cream border border-[rgba(18,18,18,0.15)] focus:outline-none focus:border-near-black text-near-black placeholder:text-[#c4bcb6] font-mono mb-3"
+              autoFocus
+            />
+            {codeError && (
+              <p className="text-[11px] text-[#b42828] mb-3 text-center">{codeError}</p>
+            )}
+            <button
+              type="submit"
+              disabled={codeBusy || code.length !== 6}
+              className="w-full bg-near-black text-white text-[12px] font-bold tracking-[0.10em] uppercase px-5 py-3 hover:opacity-90 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+            >
+              {codeBusy ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />}
+              {codeBusy ? 'Verifying…' : 'Verify code'}
+            </button>
+          </form>
+        )}
+
+        {status === 'pending' && (
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 h-px bg-[rgba(18,18,18,0.10)]" />
+            <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">or use the link</span>
+            <div className="flex-1 h-px bg-[rgba(18,18,18,0.10)]" />
+          </div>
+        )}
+
         {status === 'pending' && (
           <div className="mb-5 flex items-center justify-center gap-2 text-[11px] text-muted-text">
             <Loader2 size={11} className="animate-spin" />
-            <span>Waiting for click…</span>
+            <span>Waiting for the link click…</span>
           </div>
         )}
 

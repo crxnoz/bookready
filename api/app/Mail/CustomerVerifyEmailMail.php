@@ -24,6 +24,8 @@ class CustomerVerifyEmailMail extends Mailable
     public function __construct(
         public readonly string $customerName,
         public readonly string $verifyUrl,
+        // A6 — 6-digit code displayed prominently; link kept as fallback.
+        public readonly string $verifyCode,
         public readonly int    $ttlMins,
     ) {}
 
