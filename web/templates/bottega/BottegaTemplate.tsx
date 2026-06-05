@@ -210,7 +210,7 @@ export default function BottegaTemplate({ site, slug }: Props) {
   // so tileH is `auto` for proportional repeat).
   const PATTERNS: Record<string, { url: string; overlay: number; tileW: string; tileH: string }> = {
     terrazzo: { url: '/templates/bottega/terrazzo.jpg', overlay: 0.92, tileW: '800px', tileH: '800px' },
-    flowers:  { url: '/templates/bottega/flowers.png',  overlay: 0.78, tileW: '720px', tileH: 'auto' },
+    flowers:  { url: '/templates/bottega/flowers.png',  overlay: 0.50, tileW: '720px', tileH: 'auto' },
   }
   const patternKey = (settings?.theme?.pattern_motif as string) || 'terrazzo'
   const pattern = PATTERNS[patternKey] ?? PATTERNS.terrazzo
