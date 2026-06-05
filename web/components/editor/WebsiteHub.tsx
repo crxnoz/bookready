@@ -1386,6 +1386,8 @@ function ContentTabsPanel({
         />
       </CollapsibleSection>
 
+      <SectionHeadingsPanel settings={settings} onSaveSettings={onSaveSettings} />
+
       <InstructionsEditorPanel
         title="Advice"
         subtitle="Tips, advice, or care instructions shown on the Advice tab."
@@ -1415,6 +1417,71 @@ function ContentTabsPanel({
         onSave={(next) => onSaveSettings({ about: next })}
       />
     </div>
+  )
+}
+
+// ── Section headings (Gallery / Results / Policy) ───────────────────────────
+//
+// Each tab's name doubles as the section eyebrow on the public site. The
+// section's <h1> (heading) is a separate field — set it here without
+// touching the tab label. Empty value falls back to the template's
+// hardcoded default in JSX, so leaving any field blank is fine.
+
+function SectionHeadingsPanel({
+  settings, onSaveSettings,
+}: {
+  settings: TemplateSettings
+  onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
+}) {
+  type HeadingsForm = { gallery: string; results: string; policy: string }
+  const initial: HeadingsForm = {
+    gallery: settings.gallery?.heading ?? '',
+    results: settings.results?.heading ?? '',
+    policy:  settings.policy?.heading  ?? '',
+  }
+  const form = useSettingsForm<HeadingsForm>(initial, async (next) => {
+    // Save each block; deep-merge on the backend preserves any other keys.
+    await onSaveSettings({
+      gallery: { heading: next.gallery || null },
+      results: { heading: next.results || null },
+      policy:  { heading: next.policy  || null },
+    })
+  })
+
+  return (
+    <CollapsibleSection
+      title="Section headings"
+      subtitle="The big heading shown above each section on your public site. Tab names (above) drive the small eyebrow; these drive the h1 below it. Leave blank to use the template default."
+      icon={ListChecks}
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <TextField
+          label="Gallery heading"
+          value={form.value.gallery}
+          onChange={v => form.patch({ gallery: v })}
+          placeholder="Recent work"
+          maxLength={80}
+        />
+        <TextField
+          label="Before & After heading"
+          value={form.value.results}
+          onChange={v => form.patch({ results: v })}
+          placeholder="Before & After"
+          maxLength={80}
+        />
+        <TextField
+          label="Policies heading"
+          value={form.value.policy}
+          onChange={v => form.patch({ policy: v })}
+          placeholder="House Rules"
+          maxLength={80}
+        />
+      </div>
+      <SaveBar
+        dirty={form.dirty} saving={form.saving} saved={form.saved}
+        error={form.error} onSave={form.doSave}
+      />
+    </CollapsibleSection>
   )
 }
 
@@ -1947,6 +2014,7 @@ function AdditionalsPanel({
   // present so the form's dirty-tracking compares apples to apples.
   const initial: TemplateAdditionalsSettings = {
     show_thank_you:      settings.additionals?.show_thank_you      ?? true,
+    thank_you_eyebrow:   settings.additionals?.thank_you_eyebrow   ?? '',
     thank_you_title:     settings.additionals?.thank_you_title     ?? 'Thank you for choosing us',
     thank_you_body:      settings.additionals?.thank_you_body      ?? '',
     thank_you_signature: settings.additionals?.thank_you_signature ?? '',
@@ -2009,6 +2077,13 @@ function AdditionalsPanel({
           icon={MessageSquare}
           on={form.value.show_thank_you ?? true}
           onToggle={() => form.patch({ show_thank_you: !(form.value.show_thank_you ?? true) })}
+        />
+        <TextField
+          label="Eyebrow"
+          value={form.value.thank_you_eyebrow ?? ''}
+          onChange={v => form.patch({ thank_you_eyebrow: v || null })}
+          placeholder="Outro"
+          maxLength={40}
         />
         <TextField
           label="Title"

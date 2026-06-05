@@ -424,7 +424,7 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
           <GallerySection
             items={site.gallery}
             groups={site.gallery_groups}
-            heading="Work, on file."
+            heading={settings.gallery?.heading || 'Work, on file.'}
             eyebrow={tabLabels.gallery_label}
             displayName={displayName}
             variant="strips"
@@ -472,7 +472,7 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
           <BeforeAfterSection
             items={site.results ?? site.before_after}
             groups={site.results_groups ?? site.before_after_groups}
-            heading="Then, and now."
+            heading={settings.results?.heading || 'Then, and now.'}
             eyebrow={tabLabels.results_label}
             labels
             emptyText="No transformations on file yet."
@@ -544,7 +544,7 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
                 content: it.content ?? it.body,
               })),
             }))}
-            heading="The practice."
+            heading={settings.policy?.heading || 'The practice.'}
             eyebrow={tabLabels.policy_label}
             marker="numeral"
             emptyText="No published policies yet."
@@ -569,7 +569,7 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
             body={additionals.thank_you_body}
             signature={additionals.thank_you_signature}
             fallbackSignature={signatureWord(displayName)}
-            eyebrow="A note"
+            eyebrow={settings.additionals?.thank_you_eyebrow || 'A note'}
           />
 
           {/* FAQ — shared component. Heading fallback 'Frequently asked.',

@@ -280,7 +280,7 @@ export default function OpalineTemplate({ site, slug }: Props) {
             <GallerySection
               items={site.gallery}
               groups={site.gallery_groups}
-              heading="Portfolio"
+              heading={settings.gallery?.heading || 'Portfolio'}
               eyebrow={tabs.gallery_label ?? 'Gallery'}
               displayName={display}
               emptyText="A curated gallery of recent work will appear here."
@@ -296,7 +296,7 @@ export default function OpalineTemplate({ site, slug }: Props) {
             <BeforeAfterSection
               items={site.results ?? site.before_after}
               groups={site.results_groups ?? site.before_after_groups}
-              heading="Before & After"
+              heading={settings.results?.heading || 'Before & After'}
               eyebrow={tabs.results_label ?? 'Results'}
               separator="◆"
               labels
@@ -361,7 +361,7 @@ export default function OpalineTemplate({ site, slug }: Props) {
                   content: it.content ?? it.body,
                 })),
               }))}
-              heading="Good to Know"
+              heading={settings.policy?.heading || 'Good to Know'}
               eyebrow={tabs.policy_label ?? 'Policies'}
               marker="none"
               emptyText="Booking policies will appear here."
@@ -432,7 +432,7 @@ export default function OpalineTemplate({ site, slug }: Props) {
           body={additionals.thank_you_body}
           signature={additionals.thank_you_signature}
           fallbackSignature={display}
-          eyebrow="With Gratitude"
+          eyebrow={settings.additionals?.thank_you_eyebrow || 'With Gratitude'}
         />
 
         <SiteFooter

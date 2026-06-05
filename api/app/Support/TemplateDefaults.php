@@ -138,10 +138,18 @@ class TemplateDefaults
                     ['title' => 'Get confirmation',   'body' => 'The business will review and confirm your appointment soon.'],
                 ],
             ],
+            // Section heading-only blocks — let owners set the h1 above
+            // each section without changing the tab label (which doubles as
+            // the eyebrow). Empty/null falls back to the template's hardcoded
+            // default in JSX, so existing tenants render unchanged.
+            'gallery' => [ 'heading' => 'Gallery' ],
+            'results' => [ 'heading' => 'Before & After' ],
+            'policy'  => [ 'heading' => 'House Rules' ],
             'additionals' => [
-                'show_thank_you'   => true,
-                'thank_you_title'  => 'Thank you for choosing us',
-                'thank_you_body'   => null,
+                'show_thank_you'    => true,
+                'thank_you_eyebrow' => 'Outro',
+                'thank_you_title'   => 'Thank you for choosing us',
+                'thank_you_body'    => null,
                 'faq' => [
                     'enabled' => false,
                     'heading' => 'Frequently asked',

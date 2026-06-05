@@ -233,7 +233,7 @@ export default function BlacklineTemplate({ site, slug }: Props) {
             <GallerySection
               items={site.gallery}
               groups={site.gallery_groups}
-              heading={tabs.gallery_label ?? 'Gallery'}
+              heading={settings.gallery?.heading || (tabs.gallery_label ?? 'Gallery')}
               eyebrow={tabLabel.gallery}
               displayName={display}
               variant="grid"
@@ -254,7 +254,7 @@ export default function BlacklineTemplate({ site, slug }: Props) {
             <BeforeAfterSection
               items={site.results ?? site.before_after}
               groups={site.results_groups ?? site.before_after_groups}
-              heading={tabs.results_label ?? 'Results'}
+              heading={settings.results?.heading || (tabs.results_label ?? 'Results')}
               eyebrow={tabLabel.results}
               emptyText="No results yet."
               ariaLabel={tabs.results_label ?? 'Results'}
@@ -311,7 +311,7 @@ export default function BlacklineTemplate({ site, slug }: Props) {
                   content: it.content ?? it.body,
                 })),
               }))}
-              heading={tabs.policy_label ?? 'Policy'}
+              heading={settings.policy?.heading || (tabs.policy_label ?? 'Policy')}
               eyebrow={tabLabel.policy}
               marker="none"
               emptyText="No house rules yet."
@@ -392,7 +392,7 @@ export default function BlacklineTemplate({ site, slug }: Props) {
           body={additionals.thank_you_body}
           signature={additionals.thank_you_signature}
           fallbackSignature={display}
-          eyebrow="Outro"
+          eyebrow={settings.additionals?.thank_you_eyebrow || 'Outro'}
         />
 
         {/* Footer — shared 3-band component. Mirrors the old local Footer

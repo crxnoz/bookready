@@ -1220,6 +1220,11 @@ export interface AuthUser {
   // Phase S6 part 2 — ISO 8601 string when the user has verified, or
   // null/undefined for unverified accounts. Drives the dashboard nag.
   email_verified_at?: string | null
+  // A5 — set on /auth/me; EditorGuard reads these to bounce unverified
+  // / cardless users back to the missing step before rendering.
+  email_verified?: boolean
+  is_billing_setup?: boolean
+  redirect_url?: string
 }
 
 export interface RegisterPayload {
@@ -1262,6 +1267,14 @@ export interface AuthResponse {
    *  RolePicker overlay before redirect. Optional for backward compat. */
   available_roles?: ('owner' | 'customer')[]
   current_role?: 'owner' | 'customer'
+  /** A5 — onboarding state. Backend is the single source of truth for
+   *  where the user should land. Frontend trusts redirect_url over
+   *  hardcoded `/editor` so sign-in/sign-out can't bypass verify-email
+   *  or /checkout/trial. Optional for backward compat — old logins
+   *  without these fall through to the existing `/editor` redirect. */
+  email_verified?: boolean
+  is_billing_setup?: boolean
+  redirect_url?: string
 }
 
 // ── Website / Template system ────────────────────────────────────────────────
@@ -1376,6 +1389,9 @@ export interface TemplateFooterSettings {
 
 export interface TemplateAdditionalsSettings {
   show_thank_you?: boolean
+  /** Tracked-uppercase eyebrow above the thank-you title. Editable per
+   * tenant. Empty/null falls back to each template's default copy. */
+  thank_you_eyebrow?: string | null
   thank_you_title?: string | null
   thank_you_body?: string | null
   /** Single-word signature shown between the two thin lines at the bottom of
@@ -1385,6 +1401,16 @@ export interface TemplateAdditionalsSettings {
   faq?:     TemplateFaqSettings
   reviews?: TemplateReviewsSettings
 }
+
+/**
+ * Heading-only blocks for the Gallery, Results, and Policy sections —
+ * lets the public-site h1 differ from the tab label (which always
+ * doubles as the small eyebrow above it). Empty/null in any field
+ * falls back to the template's default heading.
+ */
+export interface TemplateGallerySettings  { heading?: string | null }
+export interface TemplateResultsSettings  { heading?: string | null }
+export interface TemplatePolicySettings   { heading?: string | null }
 
 export interface TemplateThemeSettings {
   /** One of the preset accent hexes (#FF3DBE, #F9FAFB, #22F5A3, #FF3B5C,
@@ -1405,6 +1431,11 @@ export interface TemplateSettings {
   footer: TemplateFooterSettings
   additionals?: TemplateAdditionalsSettings
   about?: TemplateAboutSettings
+  /** Per-section headings (h1 above the section body) — let the editor
+   * change the section heading without affecting the tab label/eyebrow. */
+  gallery?: TemplateGallerySettings
+  results?: TemplateResultsSettings
+  policy?:  TemplatePolicySettings
   theme?: TemplateThemeSettings
 }
 

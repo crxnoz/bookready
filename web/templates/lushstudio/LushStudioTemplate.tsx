@@ -632,7 +632,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
               <GallerySection
                 items={site.gallery}
                 groups={site.gallery_groups}
-                heading="Recent work"
+                heading={(site.template?.settings as any)?.gallery?.heading || 'Recent work'}
                 eyebrow={tabLabelById.gallery}
                 displayName={displayName}
                 variant="grid"
@@ -650,7 +650,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
               <BeforeAfterSection
                 items={site.results ?? site.before_after}
                 groups={site.results_groups ?? site.before_after_groups}
-                heading="Before & after"
+                heading={(site.template?.settings as any)?.results?.heading || 'Before & after'}
                 eyebrow={tabLabelById.results}
                 separator={'✦︎'}
                 labels
@@ -713,7 +713,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 <PolicySection
                   rows={rows}
                   customGroups={customGroups}
-                  heading="House rules"
+                  heading={(site.template?.settings as any)?.policy?.heading || 'House rules'}
                   eyebrow={tabLabelById.policies}
                   marker="glyph"
                   markGlyph={'✦︎'}
@@ -792,7 +792,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
           body={site.template?.settings.additionals?.thank_you_body}
           signature={site.template?.settings.additionals?.thank_you_signature}
           fallbackSignature={signatureWord(displayName)}
-          eyebrow="From us, with love"
+          eyebrow={site.template?.settings.additionals?.thank_you_eyebrow || 'From us, with love'}
         />
 
         {/* ── Footer ── shared platform section; Lush skin restores the
