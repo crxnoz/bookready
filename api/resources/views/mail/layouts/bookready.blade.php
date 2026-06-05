@@ -92,7 +92,11 @@
           </td>
         </tr>
 
-        {{-- Footer --}}
+        {{-- Footer.
+             CAN-SPAM Act § 7704(a)(5) requires a valid physical postal
+             address in every commercial/transactional email. The address
+             below is DaysGraphic LLC's registered business address — keep
+             it in sync with /privacy, /terms, /cookies, and /refund. --}}
         <tr>
           <td style="padding:24px 4px 0;">
             <p style="margin:0;font-size:11px;line-height:1.6;color:#6B7280;">
@@ -101,8 +105,9 @@
             <p style="margin:6px 0 0;font-size:11px;color:#9AA0A6;">
               Reply to this email if you need anything &mdash; we read every reply.
             </p>
-            <p style="margin:14px 0 0;font-size:10px;color:#9AA0A6;">
-              &copy; {{ date('Y') }} BookReady. Operated by DaysGraphic LLC.
+            <p style="margin:14px 0 0;font-size:10px;line-height:1.5;color:#9AA0A6;">
+              &copy; {{ date('Y') }} BookReady. Operated by DaysGraphic LLC.<br>
+              447 Broadway, 2nd Fl. &mdash; #3000, New York, NY 10013-2562
             </p>
           </td>
         </tr>
