@@ -41,8 +41,11 @@ import type {
 // ── Root ────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  // A13 cleanup — the dashboard ships its own large personalized hero,
+  // so the shell's generic "Dashboard · Snapshot of your business…"
+  // header would duplicate the same screen real estate. Suppress it.
   return (
-    <EditorShell>
+    <EditorShell pageHeader={false}>
       <DashboardBody />
     </EditorShell>
   )
@@ -329,6 +332,10 @@ function SectionHeader({
   subtitle?: string
   cta?: { label: string; href: string }
 }) {
+  // External CTA hrefs (announcements archive on marketing site, etc)
+  // need to open in a new tab. Internal hrefs use Next Link.
+  const isExternal = !! cta && /^https?:\/\//.test(cta.href)
+  const ctaClass = 'text-[11px] font-semibold tracking-[0.04em] text-near-black hover:underline whitespace-nowrap flex items-center gap-1'
   return (
     <div className="flex items-end justify-between gap-3 mb-2.5 px-1">
       <div className="min-w-0">
@@ -338,12 +345,20 @@ function SectionHeader({
         {subtitle && <p className="text-[13px] text-near-black mt-0.5">{subtitle}</p>}
       </div>
       {cta && (
-        <Link
-          href={cta.href}
-          className="text-[11px] font-semibold tracking-[0.04em] text-near-black hover:underline whitespace-nowrap flex items-center gap-1"
-        >
-          {cta.label} <ChevronRight size={12} />
-        </Link>
+        isExternal ? (
+          <a
+            href={cta.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={ctaClass}
+          >
+            {cta.label} <ArrowUpRight size={12} />
+          </a>
+        ) : (
+          <Link href={cta.href} className={ctaClass}>
+            {cta.label} <ChevronRight size={12} />
+          </Link>
+        )
       )}
     </div>
   )
@@ -424,58 +439,52 @@ function StatusPill({ status }: { status: string }) {
 }
 
 function AnnouncementsBlock({ items }: { items: PlatformAnnouncement[] }) {
-  // Hide the section entirely when there's nothing to show, so dashboards
-  // don't render an empty header for tenants who joined before any
-  // announcement was posted.
-  const shown = items.slice(0, 2)
-  if (shown.length === 0) return null
+  // A13 declutter — show only the latest announcement. Older ones get a
+  // "View previous" link that opens the marketing-site archive page.
+  // Hide the section entirely when there's nothing to show.
+  if (items.length === 0) return null
+  const a = items[0]
+  const when = a.published_at ?? a.created_at ?? ''
+  const isInternal = !! a.cta_href && a.cta_href.startsWith('/')
   return (
     <section>
       <SectionHeader
         icon={Megaphone}
-        label="Announcements"
-        subtitle="What's new from the BookReady team."
+        label="What's new"
+        subtitle="From the BookReady team."
+        cta={items.length > 1
+          ? { label: 'View previous', href: 'https://mybookready.com/announcements' }
+          : undefined}
       />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {shown.map(a => {
-          const when = a.published_at ?? a.created_at ?? ''
-          const isInternal = !! a.cta_href && a.cta_href.startsWith('/')
-          return (
-            <article
-              key={a.id}
-              className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 flex flex-col"
+      <article className="bg-white border border-[rgba(18,18,18,0.10)] p-4 flex flex-col">
+        <div className="flex items-start gap-2.5 mb-2">
+          <Sparkles size={14} className="text-near-black mt-0.5 flex-shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[14px] font-bold text-near-black leading-tight">{a.title}</p>
+            {when && <p className="text-[10px] text-muted-text mt-0.5">{fmtDate(when.slice(0, 10))}</p>}
+          </div>
+        </div>
+        <p className="text-[13px] text-near-black/80 leading-snug whitespace-pre-line">{a.body}</p>
+        {a.cta_label && a.cta_href && (
+          isInternal ? (
+            <Link
+              href={a.cta_href}
+              className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-near-black hover:underline self-start"
             >
-              <div className="flex items-start gap-2 mb-1.5">
-                <Sparkles size={13} className="text-near-black mt-0.5 flex-shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-bold text-near-black leading-tight">{a.title}</p>
-                  {when && <p className="text-[10px] text-muted-text mt-0.5">{fmtDate(when.slice(0, 10))}</p>}
-                </div>
-              </div>
-              <p className="text-[12px] text-near-black/80 leading-snug whitespace-pre-line">{a.body}</p>
-              {a.cta_label && a.cta_href && (
-                isInternal ? (
-                  <Link
-                    href={a.cta_href}
-                    className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-near-black hover:underline self-start"
-                  >
-                    {a.cta_label} <ArrowUpRight size={11} />
-                  </Link>
-                ) : (
-                  <a
-                    href={a.cta_href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-near-black hover:underline self-start"
-                  >
-                    {a.cta_label} <ArrowUpRight size={11} />
-                  </a>
-                )
-              )}
-            </article>
+              {a.cta_label} <ArrowUpRight size={11} />
+            </Link>
+          ) : (
+            <a
+              href={a.cta_href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-near-black hover:underline self-start"
+            >
+              {a.cta_label} <ArrowUpRight size={11} />
+            </a>
           )
-        })}
-      </div>
+        )}
+      </article>
     </section>
   )
 }
