@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { completeGoogleSignup } from '@/lib/api'
+import { Check, X, Loader2 } from 'lucide-react'
+import { completeGoogleSignup, checkSubdomain, type SubdomainCheckResponse } from '@/lib/api'
 import { setToken, setTenantId } from '@/lib/auth'
 import { SITE_TEMPLATES, normalizeTemplateSlug } from '@/lib/templates'
 import AuthShell from '@/components/auth/AuthShell'
@@ -43,6 +44,10 @@ function CompleteInner() {
   const [template, setTemplate] = useState('thefaderoom')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  // A7 mirror — debounced subdomain availability check, same UX as
+  // the email signup form on /register.
+  const [slugCheck, setSlugCheck] = useState<SubdomainCheckResponse | null>(null)
+  const [slugChecking, setSlugChecking] = useState(false)
 
   useEffect(() => {
     const stored = localStorage.getItem(TEMPLATE_KEY)
@@ -53,6 +58,39 @@ function CompleteInner() {
     () => businessName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'yourbusiness',
     [businessName],
   )
+
+  // A7 mirror — debounced availability check. 400ms debounce + cancel-
+  // on-stale so we don't apply a response that's no longer relevant.
+  useEffect(() => {
+    const slug = businessName.toLowerCase().replace(/[^a-z0-9]/g, '')
+    if (slug.length < 3) {
+      setSlugCheck(null)
+      setSlugChecking(false)
+      return
+    }
+    setSlugChecking(true)
+    setSlugCheck(null)
+    const handle = setTimeout(() => {
+      let cancelled = false
+      checkSubdomain(slug)
+        .then(res => {
+          if (cancelled) return
+          const liveSlug = businessName.toLowerCase().replace(/[^a-z0-9]/g, '')
+          if (liveSlug === slug) {
+            setSlugCheck(res)
+            setSlugChecking(false)
+          }
+        })
+        .catch(() => {
+          if (! cancelled) {
+            setSlugCheck(null)
+            setSlugChecking(false)
+          }
+        })
+      return () => { cancelled = true }
+    }, 400)
+    return () => clearTimeout(handle)
+  }, [businessName])
 
   // Missing handoff means someone hit this URL directly (refresh, bookmark)
   // — bounce them back to /register instead of showing a broken form.
@@ -152,6 +190,32 @@ function CompleteInner() {
             <span>
               Your site will be at{' '}
               <span className="font-semibold text-near-black">{slugPreview}.bkrdy.me</span>
+              {/* A7 mirror — live availability indicator. */}
+              <span className="ml-2 inline-flex items-center gap-1 align-middle">
+                {slugChecking && businessName.length >= 3 && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-muted-text">
+                    <Loader2 size={10} className="animate-spin" /> Checking…
+                  </span>
+                )}
+                {! slugChecking && slugCheck?.available && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-[#0f6f3d] font-semibold">
+                    <Check size={11} strokeWidth={2.5} /> Available
+                  </span>
+                )}
+                {! slugChecking && slugCheck && ! slugCheck.available && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-[#b42828] font-semibold">
+                    <X size={11} strokeWidth={2.5} />
+                    {slugCheck.reason === 'reserved' ? 'Reserved' : 'Taken'}
+                  </span>
+                )}
+              </span>
+              {! slugChecking && slugCheck?.suggested && (
+                <span className="block text-[10px] text-muted-text mt-1">
+                  Try{' '}
+                  <span className="font-semibold text-near-black">{slugCheck.suggested}.bkrdy.me</span>
+                  {' '}— available.
+                </span>
+              )}
               <span className="block text-[10px] text-muted-text mt-0.5">
                 Letters and numbers only, no dashes.
               </span>
@@ -237,7 +301,13 @@ function CompleteInner() {
 
         <button
           type="submit"
-          disabled={loading || ! businessName.trim() || ! termsAccepted}
+          disabled={
+            loading
+            || ! businessName.trim()
+            || ! termsAccepted
+            || (slugCheck != null && !slugCheck.available)
+            || slugChecking
+          }
           className={submitCls}
         >
           {loading ? 'Creating workspace…' : 'Finish signup'}

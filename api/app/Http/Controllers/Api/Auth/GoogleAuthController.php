@@ -396,6 +396,29 @@ class GoogleAuthController extends Controller
         $owner->terms_version     = RegisterController::TERMS_VERSION;
         $owner->save();
 
+        // #159 — Create the unified identity row so password resets +
+        // role pickers work later. Without this, the User has identity_id
+        // = NULL, and AuthController::login + isBillingSetup either
+        // misfire or fall through to legacy heuristics. Random password
+        // mirrors the one stamped on $owner above. Guarded by Schema
+        // check so the controller stays bootable on environments where
+        // the identities migration hasn't run.
+        if (\Illuminate\Support\Facades\Schema::hasTable('identities')) {
+            $identityId = \Illuminate\Support\Facades\DB::table('identities')->insertGetId([
+                'email'             => strtolower($owner->email),
+                'password'          => $owner->password, // already-hashed Str::random(32)
+                'name'              => $owner->name,
+                'phone'             => null,
+                'email_verified_at' => $owner->email_verified_at,
+                'created_at'        => now(),
+                'updated_at'        => now(),
+            ]);
+            \Illuminate\Support\Facades\DB::table('users')->where('id', $owner->id)->update([
+                'identity_id' => $identityId,
+                'updated_at'  => now(),
+            ]);
+        }
+
         // One-shot: this handoff token must never be replayable.
         Cache::forget($cacheKey);
 

@@ -92,9 +92,24 @@ function Inner() {
     setIntent(merged)
 
     // Pull the plan catalog so we can show real prices.
-    getBillingPlans().then(setPlans).catch(() => {
-      setError('Could not load your plan details. Refresh the page.')
-    })
+    // A11 — 15-second timeout so a hung fetch (CORS preflight failure
+    // mid-cookie-propagation after Google signup, intermittent network,
+    // etc.) doesn't leave the user staring at a loading spinner forever.
+    // Whatever resolves first wins; the timeout surfaces a real error
+    // banner with a hint instead of an infinite spinner.
+    const timeoutMs = 15_000
+    const planPromise = getBillingPlans()
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), timeoutMs),
+    )
+    Promise.race([planPromise, timeoutPromise])
+      .then(p => setPlans(p as Awaited<typeof planPromise>))
+      .catch(e => {
+        const msg = e instanceof Error && e.message === 'timeout'
+          ? 'Plan details took too long to load. Refresh the page and try again — or click "Skip for now" below to continue.'
+          : 'Could not load your plan details. Refresh the page.'
+        setError(msg)
+      })
   }, [router, searchParams])
 
   // Compute the price the same way BillingHub does — uplift driven by
