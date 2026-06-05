@@ -1218,27 +1218,66 @@ const PETALE_CSS = `
   font-family: var(--petale-display);
 }
 
-/* Reviews — italic blockquote, gold ✦ ornament corner. */
+/* Reviews — pressed-flower polaroid cards. Each card carries a soft
+   alternating tilt (like keepsakes laid into a wedding album), a doubled
+   gold border (outer ring → space → inner ring), and a soft shadow that
+   lifts it off the pink canvas. The inner ring is drawn via ::before
+   positioned 10px inside the outer border. Content sits 16px inside the
+   inner ring (26px outer padding − 10px inset = 16px content padding). */
+.petale-template .brk-review {
+  position: relative;
+  background: var(--petale-surface);
+  border: 1px solid color-mix(in srgb, var(--petale-accent) 55%, transparent);
+  border-radius: 4px;
+  padding: 26px;
+  box-shadow: 0 8px 22px rgba(61,32,39,0.10);
+  transform: rotate(-1.2deg);
+  transition: transform 240ms ease, box-shadow 240ms ease;
+}
+.petale-template .brk-review:nth-child(even)  { transform: rotate(0.9deg); }
+.petale-template .brk-review:nth-child(3n)    { transform: rotate(-0.6deg); }
+.petale-template .brk-review:hover {
+  transform: rotate(0deg) scale(1.015);
+  box-shadow: 0 14px 30px rgba(61,32,39,0.16);
+}
+.petale-template .brk-review::before {
+  content: '';
+  position: absolute;
+  inset: 10px;
+  border: 1px solid color-mix(in srgb, var(--petale-accent) 45%, transparent);
+  border-radius: 2px;
+  pointer-events: none;
+}
 .petale-template .brk-review blockquote {
   font-family: var(--petale-display);
   font-style: italic;
   font-size: 18px;
   line-height: 1.55;
   color: var(--petale-ink);
+  position: relative; /* keep text above the ::before inner ring */
 }
 .petale-template .brk-review-stars {
   color: var(--petale-accent);
   letter-spacing: 0.22em;
+  position: relative;
 }
 .petale-template .brk-review-attr {
   font-family: var(--petale-body);
   letter-spacing: 0.22em;
+  position: relative;
 }
 
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   .petale-tab-pill,
   .petale-social-btn { transition: none !important; }
+  .petale-template .brk-review,
+  .petale-template .brk-review:hover,
+  .petale-template .brk-review:nth-child(even),
+  .petale-template .brk-review:nth-child(3n) {
+    transform: none !important;
+    transition: none !important;
+  }
 }
 
 /* ── Mobile tweaks ── */
