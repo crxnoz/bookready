@@ -652,7 +652,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 groups={site.results_groups ?? site.before_after_groups}
                 heading="Before & after"
                 eyebrow={tabLabelById.results}
-                separator="✦"
+                separator={'✦︎'}
                 labels
                 emptyText="Before-and-after results will be shown here."
                 ariaLabel={tabLabelById.results ?? 'Results'}
@@ -716,7 +716,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                   heading="House rules"
                   eyebrow={tabLabelById.policies}
                   marker="glyph"
-                  markGlyph="✦"
+                  markGlyph={'✦︎'}
                   emptyText="Booking policies will appear here."
                   ariaLabel={tabLabelById.policies ?? 'Policies'}
                 />
@@ -1286,7 +1286,7 @@ const LUSH_SECTIONS_SKIN = `
    the heart as the template's floating motif; reusing it here ties the
    ritual cards to the brand without dragging in the policy ✦. */
 .lush-template .brk-instructions--plain .brk-instruction-body h3::before {
-  content: "\\2665";
+  content: "\\2665\\FE0E";
   font-family: var(--lush-ui);
   font-size: 0.78em;
   line-height: 1;

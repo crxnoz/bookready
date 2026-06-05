@@ -171,7 +171,9 @@ export default function BlacklineTemplate({ site, slug }: Props) {
             <img className="blackline-cover" src={header.cover_image_url} alt="" />
           )}
           <div className="blackline-header-inner">
-            <p className="blackline-eyebrow">The Shop</p>
+            {/* Hardcoded "The Shop" eyebrow removed — wasn't editable and
+                read as confusing copy in the editor preview. The hero
+                already carries the cover + business name + business type. */}
             <h1 className="blackline-name">{display}</h1>
             {p?.business_type && (
               <p className="blackline-business-type">{p.business_type}</p>
@@ -408,7 +410,7 @@ export default function BlacklineTemplate({ site, slug }: Props) {
           servicesCount={services.length}
           onBook={goBook}
           ctaLabel="Reserve the chair"
-          brandLabel="The Shop"
+          brandLabel="The Studio"
           hoursLabel="Hours"
           contactLabel="Contact"
           show={{

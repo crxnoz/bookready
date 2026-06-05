@@ -1596,7 +1596,10 @@ export const LUSH_CSS = `
 .lush-femme .lush-header-section { position: relative; overflow: hidden; }
 .lush-femme .lush-header-section::before,
 .lush-femme .lush-header-section::after {
-  content: '✦';
+  /* Escaped codepoint + text-variation selector so iOS/Android render
+     this as a TEXT glyph (per the Unicode "Plain Text" property) instead
+     of swapping to a color emoji. Same fix applied to ♡ below. */
+  content: '\\2726\\FE0E';
   position: absolute;
   font-family: serif;
   color: rgba(var(--lush-pink-rgb), 0.65);
@@ -1648,7 +1651,9 @@ export const LUSH_CSS = `
 /* Service prices get a tiny heart marker — fun + feminine. Targets the
    common service-row price node. Safe no-op if the class doesn't render. */
 .lush-femme [class*="brk-booking-service"] [class*="price"]::before {
-  content: '♡';
+  /* Escaped codepoint + \\FE0E text-variation selector keeps this as a
+     text glyph instead of an iOS color emoji. */
+  content: '\\2661\\FE0E';
   margin-right: 6px;
   opacity: 0.55;
   font-family: serif;

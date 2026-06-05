@@ -48,6 +48,11 @@ const manifest: TemplateManifest = {
     'business_name_override',
     'subtext',
   ],
+
+  // Blackline's About surface is body + highlights only — no eyebrow,
+  // no images. Declaring the subset hides those editor controls so the
+  // owner doesn't fill in fields the template silently ignores.
+  about_fields: ['highlights'],
 }
 
 export default manifest

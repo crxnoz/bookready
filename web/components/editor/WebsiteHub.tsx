@@ -361,6 +361,7 @@ export default function WebsiteHub() {
                 <ContentTabsPanel
                   settings={settings}
                   sections={sections}
+                  manifest={manifest}
                   onSaveSettings={saveSettings}
                   onToggleSection={toggleSection}
                 />
@@ -1289,10 +1290,11 @@ const TAB_LABEL_FIELDS: { key: keyof TemplateSettings['tabs']; sectionKey: strin
 ]
 
 function ContentTabsPanel({
-  settings, sections, onSaveSettings, onToggleSection,
+  settings, sections, manifest, onSaveSettings, onToggleSection,
 }: {
   settings: TemplateSettings
   sections: WebsiteSection[]
+  manifest: TemplateManifest | null
   onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
   onToggleSection: (id: number, enabled: boolean) => Promise<void>
 }) {
@@ -1409,6 +1411,7 @@ function ContentTabsPanel({
 
       <AboutEditorPanel
         about={settings.about}
+        manifest={manifest}
         onSave={(next) => onSaveSettings({ about: next })}
       />
     </div>
@@ -1633,11 +1636,18 @@ function InstructionsEditorPanel({
 const ABOUT_MAX_HIGHLIGHTS = 3
 
 function AboutEditorPanel({
-  about, onSave,
+  about, manifest, onSave,
 }: {
   about: TemplateAboutSettings | undefined
+  manifest: TemplateManifest | null
   onSave: (next: TemplateAboutSettings) => Promise<void>
 }) {
+  // Manifest gating — when the template declares `about_fields`, only show
+  // controls for fields it actually renders. Null manifest = show everything
+  // (the deep-merge default; matches header/footer panel behavior).
+  const showEyebrow    = !manifest?.about_fields || manifest.about_fields.includes('eyebrow')
+  const showImages     = !manifest?.about_fields || manifest.about_fields.includes('images')
+  const showHighlights = !manifest?.about_fields || manifest.about_fields.includes('highlights')
   // Always normalize images to length 3 — the TFR template renders 3 slots
   // unconditionally and we don't want sparse arrays leaking into save payloads.
   const seedImages = about?.images ?? []
@@ -1683,30 +1693,36 @@ function AboutEditorPanel({
       statusBadge={<StatusBadge tone={filled ? 'neutral' : 'muted'}>{filled ? 'Set' : 'Default'}</StatusBadge>}
     >
       {/* Three image slots rendered above the heading on the public site.
-          Left + right sit slightly offset, the middle one is the hero. */}
-      <div>
-        <FieldLabel hint="Recommended portrait — about 600×1000px each.">Photos (3 slots)</FieldLabel>
-        <div className="grid grid-cols-3 gap-2 mt-1.5">
-          {[0, 1, 2].map(i => (
-            <ImageUploadField
-              key={i}
-              label={`Photo ${i + 1}`}
-              value={images[i] ?? null}
-              onChange={url => setImage(i as 0 | 1 | 2, url)}
-              kind="about"
-              aspectClass="aspect-[3/5]"
-            />
-          ))}
+          Left + right sit slightly offset, the middle one is the hero.
+          Manifest-gated: hidden when the template's about_fields omits 'images'. */}
+      {showImages && (
+        <div>
+          <FieldLabel hint="Recommended portrait — about 600×1000px each.">Photos (3 slots)</FieldLabel>
+          <div className="grid grid-cols-3 gap-2 mt-1.5">
+            {[0, 1, 2].map(i => (
+              <ImageUploadField
+                key={i}
+                label={`Photo ${i + 1}`}
+                value={images[i] ?? null}
+                onChange={url => setImage(i as 0 | 1 | 2, url)}
+                kind="about"
+                aspectClass="aspect-[3/5]"
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      <TextField
-        label="Eyebrow (renders as the large backdrop word behind the heading)"
-        value={value.eyebrow ?? ''}
-        onChange={v => patch({ eyebrow: v })}
-        placeholder="The Studio"
-        maxLength={60}
-      />
+      {/* Manifest-gated — hidden when about_fields omits 'eyebrow'. */}
+      {showEyebrow && (
+        <TextField
+          label="Eyebrow (renders as the large backdrop word behind the heading)"
+          value={value.eyebrow ?? ''}
+          onChange={v => patch({ eyebrow: v })}
+          placeholder="The Studio"
+          maxLength={60}
+        />
+      )}
       <TextField
         label="Heading"
         value={value.heading ?? ''}
@@ -1723,6 +1739,7 @@ function AboutEditorPanel({
         maxLength={2000}
       />
 
+      {showHighlights && (
       <div className="space-y-2.5 pt-2 border-t border-[rgba(18,18,18,0.08)]">
         <div className="flex items-center justify-between gap-3">
           <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
@@ -1774,6 +1791,7 @@ function AboutEditorPanel({
           </div>
         ))}
       </div>
+      )}
 
       <SaveBar dirty={dirty} saving={saving} saved={saved} error={error} onSave={doSave} />
     </CollapsibleSection>

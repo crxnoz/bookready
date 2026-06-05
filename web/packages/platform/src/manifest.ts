@@ -30,6 +30,22 @@ export type HeaderField =
   | 'business_type'    // profile.business_type rendered in header
   | 'social_buttons'   // header.show_*_button + header.*_button_url (11 entries)
 
+// ─── About fields a template MAY surface ──────────────────────────────────────
+//
+// All About content lives in template_settings.about.* regardless of which
+// template is active. about_fields lets a template declare which of those
+// fields it actually renders, so the editor can hide controls the template
+// would silently ignore (e.g. Blackline About has no eyebrow and no images;
+// only the highlights list + heading + body show up).
+//
+// Default (when about_fields is undefined): show all controls — backward
+// compatible with templates that pre-date this field.
+
+export type AboutField =
+  | 'eyebrow'      // about.eyebrow rendered above the heading
+  | 'images'       // about.images[3] rendered in the section
+  | 'highlights'   // about.highlights[].{title,body} rendered as a list
+
 // ─── Footer fields a template MAY support ──────────────────────────────────────
 //
 // One token per footer.show_* toggle plus the two text fields. A template that
@@ -102,6 +118,14 @@ export interface TemplateManifest {
    * header_fields.
    */
   footer_fields: FooterField[]
+
+  /**
+   * About fields this template surfaces. Optional for backward-compat with
+   * older manifests; treated as ['eyebrow', 'images', 'highlights'] (all on)
+   * when omitted. Declare an explicit subset to hide editor controls the
+   * template doesn't render.
+   */
+  about_fields?: AboutField[]
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -125,6 +149,17 @@ export function supportsFooterField(
   field: FooterField,
 ): boolean {
   return manifest.footer_fields.includes(field)
+}
+
+/**
+ * True if the template surfaces a given About field. Undeclared
+ * about_fields = backward-compat default of "all on".
+ */
+export function supportsAboutField(
+  manifest: TemplateManifest,
+  field: AboutField,
+): boolean {
+  return manifest.about_fields ? manifest.about_fields.includes(field) : true
 }
 
 /** Runtime guard so registry consumers can validate at load time. */
