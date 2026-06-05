@@ -71,7 +71,7 @@ const VARIANTS: Record<string, Variant> = {
   '#0F2620': { bg: '#0F2620', fg: '#F5EFE6', fgMuted: 'rgba(245,239,230,0.62)', rule: 'rgba(245,239,230,0.18)' },
   '#1F1130': { bg: '#1F1130', fg: '#F5EFE6', fgMuted: 'rgba(245,239,230,0.62)', rule: 'rgba(245,239,230,0.18)' },
   '#1A1A1C': { bg: '#1A1A1C', fg: '#F5EFE6', fgMuted: 'rgba(245,239,230,0.55)', rule: 'rgba(245,239,230,0.16)' },
-  '#F5EFE6': { bg: '#F5EFE6', fg: '#2D0F19', fgMuted: 'rgba(45,15,25,0.62)',     rule: 'rgba(45,15,25,0.18)' },
+  // Bone (#F5EFE6) light variant removed — Velvet Theory is dark-only by design.
 }
 const DEFAULT_VARIANT_HEX = '#2D0F19'
 

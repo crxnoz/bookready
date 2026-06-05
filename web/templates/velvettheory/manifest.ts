@@ -29,7 +29,6 @@ const manifest: TemplateManifest = {
     { hex: '#0F2620', label: 'Emerald' },
     { hex: '#1F1130', label: 'Plum' },
     { hex: '#1A1A1C', label: 'Charcoal' },
-    { hex: '#F5EFE6', label: 'Bone (light)' },
   ],
 
   header_fields: [
