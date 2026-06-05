@@ -1170,24 +1170,9 @@ const BOTTEGA_CSS = `
   background: rgba(251,248,241,0.85);
 }
 
-/* ── Gallery: force 2 columns at every desktop width (default shared
-   grid goes to 3 at ≥1025px; Bottega prefers the larger images and the
-   more deliberate cadence of a 2-up grid). Mobile stays 1-col. ── */
-.bottega-template .brk-gallery-grid {
-  grid-template-columns: 1fr;
-}
-@media (min-width: 641px) {
-  .bottega-template .brk-gallery-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 22px;
-  }
-}
-@media (min-width: 1025px) {
-  .bottega-template .brk-gallery-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 28px;
-  }
-}
+/* ── Gallery uses the default shared grid (1 col mobile → 2 col tablet →
+   3 col desktop). With Bottega's 6 seed items that lands as a 3×2 grid
+   on desktop — two rows of three, the layout the brief calls for. ── */
 
 /* ── Before & After: 2-column grid of PAIRS at desktop, each pair stacked
    vertically (before on top, after below) so a narrower per-pair column
