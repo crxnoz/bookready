@@ -641,7 +641,7 @@ const BOTTEGA_CSS = `
   background-color: var(--bottega-bg);
   background-image:
     linear-gradient(rgba(242,239,232,0.92), rgba(242,239,232,0.92)),
-    url('/templates/bottega/terrazzo.png');
+    url('/templates/bottega/terrazzo.jpg');
   background-size: auto, 800px 800px;
   background-repeat: no-repeat, repeat;
   background-attachment: scroll, scroll;
