@@ -910,20 +910,25 @@ const TFR_CSS = `
 }
 
 /* Layered title — backdrop DM Serif eyebrow at low opacity with the
-   Dancing Script heading overlaid centered. The two type families and
-   contrasting sizes give the section a museum-placard-meets-neon-sign
-   feel that the simpler section-title can't carry. */
+   Dancing Script heading overlaid LEFT-aligned (was centered, but that
+   anchored the heading to the eyebrow's bounding box which could push
+   the heading off-screen on narrow viewports when the eyebrow's
+   nowrap'd 14vw text overflowed). Now both are anchored to the section's
+   left edge; overflow on the eyebrow is clipped instead of pushing the
+   heading along with it. The two type families + contrasting sizes
+   still give the museum-placard-meets-neon-sign feel. */
 .tfr-layered-title {
   position: relative;
-  display: inline-block;
+  display: block;
   margin: 0 0 var(--brk-space-2xl);
   line-height: 1;
   max-width: 100%;
+  overflow: hidden;
 }
 .tfr-layered-eyebrow {
   display: block;
   font-family: var(--tfr-serif);
-  font-size: clamp(80px, 14vw, 140px);
+  font-size: clamp(56px, 12vw, 140px);
   line-height: 1;
   opacity: 0.14;
   margin: 0;
@@ -938,9 +943,9 @@ const TFR_CSS = `
   inset: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   font-family: var(--tfr-script);
-  font-size: clamp(40px, 6vw, 64px);
+  font-size: clamp(36px, 6vw, 64px);
   font-weight: 700;
   letter-spacing: 0;
   line-height: 1;
@@ -948,7 +953,7 @@ const TFR_CSS = `
   text-shadow: var(--tfr-neon-shadow);
   margin: 0;
   white-space: nowrap;
-  padding: 0.05em 0;
+  padding: 0.05em 0.1em;
   pointer-events: none;
 }
 
