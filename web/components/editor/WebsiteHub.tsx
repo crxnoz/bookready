@@ -69,6 +69,7 @@ import {
   useTemplateManifest,
   supportsHeaderField,
   supportsFooterField,
+  aboutImageCountFor,
   type TemplateManifest,
 } from '@bkrdy/platform'
 
@@ -1644,10 +1645,16 @@ function AboutEditorPanel({
 }) {
   // Manifest gating — when the template declares `about_fields`, only show
   // controls for fields it actually renders. Null manifest = show everything
-  // (the deep-merge default; matches header/footer panel behavior).
-  const showEyebrow    = !manifest?.about_fields || manifest.about_fields.includes('eyebrow')
+  // (the deep-merge default; matches header/footer panel behavior). Eyebrow
+  // is no longer an editable input here — every template derives it from
+  // the About tab name — so we only gate images + highlights.
   const showImages     = !manifest?.about_fields || manifest.about_fields.includes('images')
   const showHighlights = !manifest?.about_fields || manifest.about_fields.includes('highlights')
+  // How many slots to expose in the editor — Blackline opts into 1, all
+  // others get the legacy default of 3. The stored array still stays
+  // length-3 so existing data isn't truncated; we just hide the extra
+  // slots from the UI.
+  const imageSlots = manifest ? aboutImageCountFor(manifest) : 3
   // Always normalize images to length 3 — the TFR template renders 3 slots
   // unconditionally and we don't want sparse arrays leaking into save payloads.
   const seedImages = about?.images ?? []
@@ -1692,17 +1699,27 @@ function AboutEditorPanel({
       icon={Info}
       statusBadge={<StatusBadge tone={filled ? 'neutral' : 'muted'}>{filled ? 'Set' : 'Default'}</StatusBadge>}
     >
-      {/* Three image slots rendered above the heading on the public site.
-          Left + right sit slightly offset, the middle one is the hero.
+      {/* Image slots rendered with the About section. Most templates expose
+          three (e.g. TFR's offset triptych); Blackline opts into a single
+          hero via `about_image_count: 1` on its manifest.
           Manifest-gated: hidden when the template's about_fields omits 'images'. */}
       {showImages && (
         <div>
-          <FieldLabel hint="Recommended portrait — about 600×1000px each.">Photos (3 slots)</FieldLabel>
-          <div className="grid grid-cols-3 gap-2 mt-1.5">
-            {[0, 1, 2].map(i => (
+          <FieldLabel hint={imageSlots === 1 ? 'Recommended portrait — about 720×1080px.' : 'Recommended portrait — about 600×1000px each.'}>
+            {imageSlots === 1 ? 'Photo' : `Photos (${imageSlots} slots)`}
+          </FieldLabel>
+          <div
+            className={cn(
+              'gap-2 mt-1.5',
+              imageSlots === 1 ? 'grid grid-cols-1 max-w-[260px]' :
+              imageSlots === 2 ? 'grid grid-cols-2' :
+              'grid grid-cols-3',
+            )}
+          >
+            {Array.from({ length: Math.min(imageSlots, 3) }).map((_, i) => (
               <ImageUploadField
                 key={i}
-                label={`Photo ${i + 1}`}
+                label={imageSlots === 1 ? 'Photo' : `Photo ${i + 1}`}
                 value={images[i] ?? null}
                 onChange={url => setImage(i as 0 | 1 | 2, url)}
                 kind="about"
@@ -1802,7 +1819,7 @@ const POLICY_FIELDS: { key: keyof BusinessPolicy; label: string; placeholder: st
   { key: 'extra_notes',         label: 'Additional notes',    placeholder: 'Anything else clients should know.' },
 ]
 
-function PoliciesHeadingPanel({ settings, onSaveSettings }: {
+function PoliciesHeadingInline({ settings, onSaveSettings }: {
   settings: TemplateSettings
   onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
 }) {
@@ -1811,20 +1828,16 @@ function PoliciesHeadingPanel({ settings, onSaveSettings }: {
     async (next) => { await onSaveSettings({ policy: { heading: next.heading || null } }) },
   )
   return (
-    <CollapsibleSection
-      title="Section heading"
-      subtitle="The h1 shown above the policies on your public site. Leave blank to use the template default; the small eyebrow above it comes from the tab name (edit it in Content)."
-      icon={ListChecks}
-    >
+    <div className="space-y-2 pb-3 border-b border-[rgba(18,18,18,0.06)]">
       <TextField
-        label="Policies heading"
+        label="Section heading (the h1 above the policies)"
         value={form.value.heading}
         onChange={v => form.patch({ heading: v })}
         placeholder="House Rules"
         maxLength={80}
       />
       <SaveBar dirty={form.dirty} saving={form.saving} saved={form.saved} error={form.error} onSave={form.doSave} />
-    </CollapsibleSection>
+    </div>
   )
 }
 
@@ -1905,8 +1918,6 @@ function PoliciesEditorPanel({ settings, onSaveSettings }: {
   }
 
   return (
-    <>
-    <PoliciesHeadingPanel settings={settings} onSaveSettings={onSaveSettings} />
     <CollapsibleSection
       title="Policies"
       subtitle="Cancellation, late arrival, no-show, deposit, and reschedule policies shown on the Policy tab."
@@ -1917,6 +1928,7 @@ function PoliciesEditorPanel({ settings, onSaveSettings }: {
         </StatusBadge>
       )}
     >
+      <PoliciesHeadingInline settings={settings} onSaveSettings={onSaveSettings} />
       {loading && <p className="text-xs text-muted-text">Loading…</p>}
       {!loading && !policies && error && <p className="text-xs text-red-700">{error}</p>}
       {policies && (
@@ -1954,7 +1966,6 @@ function PoliciesEditorPanel({ settings, onSaveSettings }: {
         </>
       )}
     </CollapsibleSection>
-    </>
   )
 }
 
@@ -2452,7 +2463,11 @@ function PreviewPanel({ url, refreshKey }: { url: string; refreshKey: number }) 
 const GALLERY_MAX_GROUPS         = 3
 const GALLERY_MAX_ITEMS_PER_GROUP = 6
 
-function GalleryHeadingPanel({ settings, onSaveSettings }: {
+// Inline heading editor — rendered INSIDE the Gallery manager's
+// CollapsibleSection content so the heading lives with the rest of the
+// gallery settings instead of in a separate panel above it. Self-saves
+// via its own form (independent from the items API).
+function GalleryHeadingInline({ settings, onSaveSettings }: {
   settings: TemplateSettings
   onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
 }) {
@@ -2461,20 +2476,16 @@ function GalleryHeadingPanel({ settings, onSaveSettings }: {
     async (next) => { await onSaveSettings({ gallery: { heading: next.heading || null } }) },
   )
   return (
-    <CollapsibleSection
-      title="Section heading"
-      subtitle="The h1 shown above the gallery on your public site. Leave blank to use the template default; the small eyebrow above it comes from the tab name (edit it in Content)."
-      icon={ListChecks}
-    >
+    <div className="space-y-2 pb-3 border-b border-[rgba(18,18,18,0.06)]">
       <TextField
-        label="Gallery heading"
+        label="Section heading (the h1 above the gallery)"
         value={form.value.heading}
         onChange={v => form.patch({ heading: v })}
         placeholder="Recent work"
         maxLength={80}
       />
       <SaveBar dirty={form.dirty} saving={form.saving} saved={form.saved} error={form.error} onSave={form.doSave} />
-    </CollapsibleSection>
+    </div>
   )
 }
 
@@ -2593,8 +2604,6 @@ function GalleryManagerPanel({ settings, onSaveSettings }: {
   const ungrouped   = itemsForGroup(null)
 
   return (
-    <>
-    <GalleryHeadingPanel settings={settings} onSaveSettings={onSaveSettings} />
     <CollapsibleSection
       title="Gallery"
       subtitle="Organize your work into up to 3 collections — each can hold up to 6 photos."
@@ -2603,6 +2612,7 @@ function GalleryManagerPanel({ settings, onSaveSettings }: {
         <StatusBadge>{totalImages} image{totalImages === 1 ? '' : 's'}</StatusBadge>
       )}
     >
+      <GalleryHeadingInline settings={settings} onSaveSettings={onSaveSettings} />
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-xs text-muted-text">
           {loading
@@ -2682,7 +2692,6 @@ function GalleryManagerPanel({ settings, onSaveSettings }: {
         />
       )}
     </CollapsibleSection>
-    </>
   )
 }
 
@@ -3045,7 +3054,7 @@ function GalleryItemDialog({
 const BA_MAX_GROUPS         = 3
 const BA_MAX_ITEMS_PER_GROUP = 6
 
-function ResultsHeadingPanel({ settings, onSaveSettings }: {
+function ResultsHeadingInline({ settings, onSaveSettings }: {
   settings: TemplateSettings
   onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
 }) {
@@ -3054,20 +3063,16 @@ function ResultsHeadingPanel({ settings, onSaveSettings }: {
     async (next) => { await onSaveSettings({ results: { heading: next.heading || null } }) },
   )
   return (
-    <CollapsibleSection
-      title="Section heading"
-      subtitle="The h1 shown above the before & after section on your public site. Leave blank to use the template default; the small eyebrow above it comes from the tab name (edit it in Content)."
-      icon={ListChecks}
-    >
+    <div className="space-y-2 pb-3 border-b border-[rgba(18,18,18,0.06)]">
       <TextField
-        label="Before & After heading"
+        label="Section heading (the h1 above the before & after section)"
         value={form.value.heading}
         onChange={v => form.patch({ heading: v })}
         placeholder="Before & After"
         maxLength={80}
       />
       <SaveBar dirty={form.dirty} saving={form.saving} saved={form.saved} error={form.error} onSave={form.doSave} />
-    </CollapsibleSection>
+    </div>
   )
 }
 
@@ -3183,8 +3188,6 @@ function ResultsManagerPanel({ settings, onSaveSettings }: {
   const ungrouped  = itemsForGroup(null)
 
   return (
-    <>
-    <ResultsHeadingPanel settings={settings} onSaveSettings={onSaveSettings} />
     <CollapsibleSection
       title="Before & After"
       subtitle="Group your transformations into up to 3 collections — each holds up to 6 pairs."
@@ -3193,6 +3196,7 @@ function ResultsManagerPanel({ settings, onSaveSettings }: {
         <StatusBadge>{totalPairs} pair{totalPairs === 1 ? '' : 's'}</StatusBadge>
       )}
     >
+      <ResultsHeadingInline settings={settings} onSaveSettings={onSaveSettings} />
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-xs text-muted-text">
           {loading
@@ -3270,7 +3274,6 @@ function ResultsManagerPanel({ settings, onSaveSettings }: {
         />
       )}
     </CollapsibleSection>
-    </>
   )
 }
 

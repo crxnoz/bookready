@@ -1316,15 +1316,17 @@ export default function LushStudioBooking({
             </label>
 
             {/* SMS consent — only shown when a phone is provided.
-                Unchecked by default. Required for TCR compliance:
-                outbound appointment SMS only goes to customers who
-                have explicitly opted in PER booking. The label is
-                the canonical TCR / 10DLC consent string — names the
-                BookReady brand (carrier requirement) and exactly
-                matches the wording in the Twilio A2P campaign's consent
-                description, so reviewers can verify the deployed UI
-                matches the claim on file. Consent is never a condition
-                of completing the booking. */}
+                Unchecked by default. Required for compliance: outbound
+                appointment SMS only goes to customers who have explicitly
+                opted in PER booking. The label names the end business
+                (the salon/barber/studio the client is actually booking
+                with) so recipients understand who they're consenting to
+                hear from, and discloses BookReady as the platform sender
+                of record. This wording must match the quote in the
+                Privacy Policy (/privacy) and the consent description in
+                the Twilio TFV submission verbatim, so reviewers can
+                verify the deployed UI matches the claim on file.
+                Consent is never a condition of completing the booking. */}
             {phone.trim() !== '' && (
               <label className="brk-booking-sms-consent">
                 <input
@@ -1333,9 +1335,11 @@ export default function LushStudioBooking({
                   onChange={e => setSmsConsent(e.target.checked)}
                 />
                 <span>
-                  Send me appointment reminders from BookReady. Msg &amp;
-                  data rates may apply. Msg frequency varies. Reply STOP
-                  to opt out, HELP for help. View our{' '}
+                  I agree to receive appointment confirmations, reminders,
+                  and updates from <strong>{displayName}</strong> about my
+                  booking. Sent via BookReady. Msg &amp; data rates may
+                  apply. Msg frequency varies. Reply STOP to opt out, HELP
+                  for help. View our{' '}
                   <a
                     href="https://app.bkrdy.me/privacy"
                     target="_blank"

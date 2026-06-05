@@ -126,6 +126,14 @@ export interface TemplateManifest {
    * template doesn't render.
    */
   about_fields?: AboutField[]
+
+  /**
+   * How many About image slots the editor should expose, when the template
+   * supports the 'images' field at all. Omit (or set to undefined) to use
+   * the legacy default of 3. Currently used by Blackline, which only
+   * renders about.images[0] as a single hero image.
+   */
+  about_image_count?: number
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -160,6 +168,18 @@ export function supportsAboutField(
   field: AboutField,
 ): boolean {
   return manifest.about_fields ? manifest.about_fields.includes(field) : true
+}
+
+/**
+ * How many About image slots the editor should render. Honors the
+ * manifest's `about_image_count` when set, otherwise falls back to the
+ * legacy default of 3. Caller should still gate on supportsAboutField
+ * (manifest, 'images') first.
+ */
+export function aboutImageCountFor(manifest: TemplateManifest): number {
+  const n = manifest.about_image_count
+  if (typeof n === 'number' && Number.isFinite(n) && n > 0) return Math.floor(n)
+  return 3
 }
 
 /** Runtime guard so registry consumers can validate at load time. */

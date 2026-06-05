@@ -53,6 +53,7 @@ const manifest: TemplateManifest = {
   // image (the first slot of about.images). Eyebrow is omitted because
   // every template now derives the about eyebrow from the About tab name.
   about_fields: ['highlights', 'images'],
+  about_image_count: 1,
 }
 
 export default manifest
