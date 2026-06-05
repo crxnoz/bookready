@@ -25,7 +25,12 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // Run on all paths except Next.js internals and static files
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    // Run on all paths except Next.js internals and static files.
+    // `templates/` excludes built-in template assets shipped under
+    // web/public/templates/ — e.g. Bottega's terrazzo.jpg backdrop.
+    // Without it, tenant subdomains rewrite the asset URL into the
+    // tenant render flow and 404. (First surfaced when Bottega's
+    // terrazzo PNG 404'd on bottega.bkrdy.me but loaded on app.bkrdy.me.)
+    '/((?!_next/static|_next/image|favicon.ico|templates/).*)',
   ],
 }
