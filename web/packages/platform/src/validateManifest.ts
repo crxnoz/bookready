@@ -15,7 +15,7 @@
  * must land in both files.
  */
 
-import type { HeaderField, FooterField, TemplateManifest } from './manifest'
+import type { HeaderField, FooterField, AboutField, TemplateManifest } from './manifest'
 
 const ALLOWED_HEADER_FIELDS: ReadonlyArray<HeaderField> = [
   'cover_image',
@@ -32,6 +32,12 @@ const ALLOWED_FOOTER_FIELDS: ReadonlyArray<FooterField> = [
   'show_contact_links',
   'business_name_override',
   'subtext',
+]
+
+const ALLOWED_ABOUT_FIELDS: ReadonlyArray<AboutField> = [
+  'eyebrow',
+  'images',
+  'highlights',
 ]
 
 const SLUG_RE    = /^[a-z][a-z0-9-]{1,40}$/
@@ -137,10 +143,27 @@ export function validateManifest(candidate: unknown): ValidationError[] {
   // ─── footer_fields ────────────────────────────────────────────────
   validateFieldArray(m, 'footer_fields', ALLOWED_FOOTER_FIELDS, errs)
 
+  // ─── about_fields (optional) ──────────────────────────────────────
+  if (m.about_fields !== undefined) {
+    validateOptionalFieldArray(m, 'about_fields', ALLOWED_ABOUT_FIELDS, errs)
+  }
+
+  // ─── about_image_count (optional) ─────────────────────────────────
+  if (m.about_image_count !== undefined) {
+    const v = m.about_image_count
+    if (typeof v !== 'number' || !Number.isFinite(v) || v < 1 || v > 3 || !Number.isInteger(v)) {
+      errs.push({
+        path: 'about_image_count',
+        message: 'Optional. Must be an integer between 1 and 3.',
+      })
+    }
+  }
+
   // ─── unknown top-level keys ───────────────────────────────────────
   const ALLOWED_TOP_LEVEL = new Set([
     'slug', 'name', 'version', 'color_role', 'color_palette',
     'header_fields', 'footer_fields',
+    'about_fields', 'about_image_count',
   ])
   Object.keys(m).forEach(k => {
     if (! ALLOWED_TOP_LEVEL.has(k)) {
@@ -166,6 +189,40 @@ function validateFieldArray(
     errs.push({
       path: key,
       message: `Required. Must be an array of ${key === 'header_fields' ? 'HeaderField' : 'FooterField'} strings.`,
+    })
+    return
+  }
+  const seen = new Set<string>()
+  value.forEach((entry, i) => {
+    const path = `${key}[${i}]`
+    if (typeof entry !== 'string') {
+      errs.push({ path, message: 'Each entry must be a string.' })
+      return
+    }
+    if (! allowed.includes(entry)) {
+      errs.push({
+        path,
+        message: `Unknown value "${entry}". Allowed: ${allowed.join(', ')}.`,
+      })
+    }
+    if (seen.has(entry)) {
+      errs.push({ path, message: `Duplicate entry "${entry}".` })
+    }
+    seen.add(entry)
+  })
+}
+
+function validateOptionalFieldArray(
+  m: Record<string, unknown>,
+  key: 'about_fields',
+  allowed: ReadonlyArray<string>,
+  errs: ValidationError[],
+): void {
+  const value = m[key]
+  if (! Array.isArray(value)) {
+    errs.push({
+      path: key,
+      message: `Optional. When set, must be an array of ${key === 'about_fields' ? 'AboutField' : 'string'} values.`,
     })
     return
   }

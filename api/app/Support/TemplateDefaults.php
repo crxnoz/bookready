@@ -19,7 +19,7 @@ class TemplateDefaults
      * outside this set is not a real template and must fall back to the
      * default rather than seeding a tenant with a broken slug.
      */
-    public const KNOWN_SLUGS = ['thefaderoom', 'lushstudio', 'velvettheory', 'blackline', 'opaline'];
+    public const KNOWN_SLUGS = ['thefaderoom', 'lushstudio', 'velvettheory', 'blackline', 'opaline', 'petale'];
 
     /**
      * Map any signup/registry template value to a canonical, KNOWN slug.
@@ -44,6 +44,7 @@ class TemplateDefaults
             'velvettheory' => self::velvetTheorySettings(),
             'blackline'    => self::blacklineSettings(),
             'opaline'      => self::opalineSettings(),
+            'petale'       => self::petaleSettings(),
             default        => self::theFadeRoomSettings(),
         };
     }
@@ -56,6 +57,7 @@ class TemplateDefaults
             'velvettheory' => self::velvetTheorySections(),
             'blackline'    => self::blacklineSections(),
             'opaline'      => self::opalineSections(),
+            'petale'       => self::petaleSections(),
             default        => self::theFadeRoomSections(),
         };
     }
@@ -439,6 +441,81 @@ class TemplateDefaults
     private static function opalineSections(): array
     {
         return self::theFadeRoomSections();
+    }
+
+    // ─── Pétale ─────────────────────────────────────────────────────────────────
+    //
+    // Soft pink bridal/luxe-feminine. Voice: airy, romantic, wedding-paper.
+    // Niche: brides, bridal makeup, lash artists for brides, hair-for-events,
+    // makeup artists. Pink canvases with a constant champagne-gold accent
+    // and Pinyon Script signatures.
+
+    private static function petaleSettings(): array
+    {
+        $base = self::theFadeRoomSettings();
+        $base['header']['announcement_text'] = 'Now booking weddings — limited dates each season.';
+        $base['tabs'] = [
+            'book_label'     => 'Reserve',
+            'gallery_label'  => 'Gallery',
+            'policy_label'   => 'Details',
+            'about_label'    => 'About',
+            'results_label'  => 'Transformations',
+            'advice_label'   => 'Care',
+            'timeline_label' => 'Your day',
+        ];
+        $base['about'] = [
+            'heading'    => 'A studio for the moments that matter',
+            'eyebrow'    => 'The Atelier',
+            'body'       => "Tell visitors who you are, who you work with, and the kind of day you help them feel ready for. A few sentences about your craft, your training, your favourite kind of bride or client — anything that makes the work feel like yours.\n\nKeep it warm. Keep it personal. The people reading this are choosing more than a service; they are choosing the hands they want with them on a day they will remember.",
+            'highlights' => [
+                ['title' => 'Considered, never rushed', 'body' => 'Every appointment runs at its own pace. We take fewer bookings each day so yours is held with care.'],
+                ['title' => 'Tailored to you',          'body' => 'Each look is shaped around your features, your story, and the day you are stepping into.'],
+            ],
+            'images'     => [null, null, null],
+        ];
+        $base['advice'] = [
+            'heading'     => 'Care notes',
+            'card_kicker' => '',
+            'items'       => [
+                ['title' => 'Arrive ready',         'body' => 'Come with clean skin and clean, dry hair — no oils, no leave-ins. A fresh canvas helps every product land.'],
+                ['title' => 'Hydrate, gently',      'body' => 'Water in the days before, a calm skincare routine the night before. Soft, prepped skin photographs beautifully.'],
+                ['title' => 'Bring inspiration',    'body' => 'A few reference images — even rough ones — help us land what you want quickly and with confidence.'],
+                ['title' => 'Plan the morning',     'body' => 'Build in 15 minutes of margin. Mornings that feel calm produce calmer faces on camera.'],
+            ],
+        ];
+        $base['timeline'] = [
+            'heading'     => 'Your day, gently planned',
+            'card_kicker' => '',
+            'items'       => [
+                ['title' => 'Choose your service',  'body' => 'Pick the look that suits your day, your venue, and how you want to feel walking in.'],
+                ['title' => 'Reserve your date',    'body' => 'Hold your morning with the calendar — a small deposit secures the time.'],
+                ['title' => 'Share the brief',      'body' => 'A few notes about your day, your dress, your venue, your inspiration. We listen first, plan second.'],
+                ['title' => 'Arrive and exhale',    'body' => 'On the day, the room is set, the tools are warm, and we take it from there.'],
+            ],
+        ];
+        $base['gallery'] = [ 'heading' => 'Lookbook' ];
+        $base['results'] = [ 'heading' => 'Before & After' ];
+        $base['policy']  = [ 'heading' => 'The fine print' ];
+        $base['additionals']['thank_you_eyebrow'] = 'With love';
+        $base['additionals']['thank_you_title']   = 'Thank you, truly';
+        $base['additionals']['thank_you_body']    = 'It is a privilege to be part of your day. We can\'t wait to see you in the chair.';
+        $base['footer']['brand_label'] = 'The Atelier';
+        $base['footer']['subtext']     = 'By appointment. We reply within the day to every enquiry.';
+        return $base;
+    }
+
+    private static function petaleSections(): array
+    {
+        // Pétale's designed tab order is Gallery, About, Results, Care,
+        // Your day, Details — About comes early so the relationship-building
+        // copy is one tab away from Reserve.
+        $sections = self::theFadeRoomSections();
+        $order = ['gallery' => 3, 'about' => 4, 'results' => 5, 'advice' => 6, 'timeline' => 7, 'policy' => 8];
+        foreach ($sections as &$s) {
+            if (isset($order[$s['section_key']])) $s['sort_order'] = $order[$s['section_key']];
+        }
+        unset($s);
+        return $sections;
     }
 
     /**

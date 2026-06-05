@@ -21,6 +21,7 @@ const REGISTRY: Record<string, TemplateLoader> = {
   velvettheory: () => import('./velvettheory/VelvetTheoryTemplate'),
   blackline:    () => import('./blackline/BlacklineTemplate'),
   opaline:      () => import('./opaline/OpalineTemplate'),
+  petale:       () => import('./petale/PetaleTemplate'),
 }
 
 /**
@@ -36,6 +37,7 @@ const MANIFESTS: Record<string, ManifestLoader> = {
   velvettheory: () => import('./velvettheory/manifest'),
   blackline:    () => import('./blackline/manifest'),
   opaline:      () => import('./opaline/manifest'),
+  petale:       () => import('./petale/manifest'),
 }
 
 export function resolveTemplate(site: PublicSite): TemplateLoader | null {
