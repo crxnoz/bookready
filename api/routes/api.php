@@ -82,6 +82,13 @@ Route::prefix('v1')->group(function () {
     // attack rather than 200-ing every burst.
     Route::get('public/sites/{slug}',                     [PublicSiteController::class,       'show'])
         ->middleware('throttle:60,1');
+    // A7 — subdomain availability check called from the signup form
+    // as the user types their business name. Cheap (single tenants
+    // table lookup) and high-frequency, so throttle generously enough
+    // that a fast typist doesn't 429 themselves; tight enough that a
+    // scripted slug-enumeration scan is uncomfortable.
+    Route::get('public/check-subdomain', [PublicSiteController::class, 'checkSubdomain'])
+        ->middleware('throttle:60,1');
     Route::get('public/sites/{slug}/availability',        [PublicAvailabilityController::class, 'show'])
         ->middleware('throttle:60,1');
     // Phase S5 — booking POST throttled to 10/min per IP. Tight enough

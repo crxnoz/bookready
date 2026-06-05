@@ -656,4 +656,65 @@ class PublicSiteController extends Controller
             'booking_settings' => $bookingSettings,
         ]);
     }
+
+    /**
+     * A7 — signup-time subdomain availability check.
+     *
+     * GET /api/v1/public/check-subdomain?slug=lushstudio
+     *
+     * Returns { slug, available, suggested } so the registration form
+     * can show a live ✓/✗ indicator as the owner types their business
+     * name. The slug normalization mirrors
+     * TenantProvisioningService::generateSlug — letters + digits only,
+     * lowercased — so the check matches what the provisioner will
+     * actually do at registration time.
+     *
+     * Returns 200 even on invalid input (with available=false +
+     * suggested=null) so the frontend never has to differentiate
+     * network errors from "this slug is no good".
+     */
+    public function checkSubdomain(Request $request): JsonResponse
+    {
+        $raw  = (string) $request->query('slug', '');
+        $slug = preg_replace('/[^a-z0-9]/', '', strtolower($raw)) ?? '';
+
+        // Reserved: must not collide with a routing prefix or a system
+        // word that would confuse customers (e.g. www.bkrdy.me).
+        $reserved = ['app', 'api', 'admin', 'www', 'mail', 'support', 'help', 'about', 'contact'];
+
+        // Empty / too short / too long → unavailable + no suggestion.
+        if ($slug === '' || strlen($slug) < 3 || strlen($slug) > 40 || in_array($slug, $reserved, true)) {
+            return response()->json([
+                'slug'      => $slug,
+                'available' => false,
+                'suggested' => null,
+                'reason'    => $slug === '' ? null : (in_array($slug, $reserved, true) ? 'reserved' : 'invalid'),
+            ]);
+        }
+
+        $exists = Tenant::where('id', $slug)->exists();
+
+        if (! $exists) {
+            return response()->json([
+                'slug'      => $slug,
+                'available' => true,
+                'suggested' => null,
+            ]);
+        }
+
+        // Mirror the provisioner's suffixing strategy so the
+        // suggestion lines up with what they'd actually get if they
+        // submitted as-is.
+        $i = 1;
+        while (Tenant::where('id', $slug . $i)->exists() && $i < 100) {
+            $i++;
+        }
+
+        return response()->json([
+            'slug'      => $slug,
+            'available' => false,
+            'suggested' => $slug . $i,
+            'reason'    => 'taken',
+        ]);
+    }
 }

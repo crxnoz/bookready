@@ -232,6 +232,20 @@ export async function verifyEmailCode(code: string): Promise<{ verified: boolean
   })
 }
 
+// A7 — signup-form availability check. Public + throttled (60/min/IP);
+// safe to call as the owner types. Returns the normalized slug + an
+// availability flag and, when taken, a suggested free alternative.
+export interface SubdomainCheckResponse {
+  slug:      string
+  available: boolean
+  suggested: string | null
+  reason?:   'taken' | 'reserved' | 'invalid'
+}
+export async function checkSubdomain(rawSlug: string): Promise<SubdomainCheckResponse> {
+  const qs = `?slug=${encodeURIComponent(rawSlug)}`
+  return request<SubdomainCheckResponse>(`/public/check-subdomain${qs}`)
+}
+
 export async function logout(): Promise<void> {
   await request('/auth/logout', { method: 'POST' })
 }

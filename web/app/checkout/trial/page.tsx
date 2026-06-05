@@ -22,7 +22,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { CheckCircle2, CreditCard, ShieldCheck, Loader2, AlertCircle, ChevronLeft } from 'lucide-react'
+import { CheckCircle2, CreditCard, ShieldCheck, Loader2, AlertCircle, ChevronLeft, Pencil, X } from 'lucide-react'
 import { startTrial, getBillingPlans, selectActiveTemplate, type BillingPlansResponse } from '@/lib/api'
 import { isLoggedIn } from '@/lib/auth'
 import type { BillingCycle } from '@/lib/types'
@@ -57,6 +57,10 @@ function Inner() {
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
   const [cancelled, setCancelled] = useState(false)
+  // A9 — inline picker visibility. Closed by default so the screen stays
+  // focused on "start trial". Open click reveals plan/billing/sms/template
+  // selects that mutate intent + persist back to localStorage on every change.
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   // Boot: confirm signed-in, read intent, pull plan catalog.
   useEffect(() => {
@@ -117,6 +121,17 @@ function Inner() {
     }
   }, [plans, intent])
 
+  // A9 — write back to localStorage on every intent change so a refresh
+  // doesn't lose the user's edits. Backend selectActiveTemplate runs at
+  // Start-trial time so the template choice carries into the editor.
+  function updateIntent(patch: Partial<SignupIntent>) {
+    setIntent(prev => {
+      const next = { ...prev, ...patch }
+      try { localStorage.setItem(INTENT_KEY, JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
+  }
+
   async function handleStartTrial() {
     if (! intent.plan || ! intent.billing) {
       setError('Missing plan info. Pick a plan from the pricing page.')
@@ -174,16 +189,30 @@ function Inner() {
 
       {/* Plan summary */}
       <section className="bg-white border border-[rgba(18,18,18,0.10)] p-5 mb-5">
-        <p className="text-[10px] font-bold tracking-[0.16em] uppercase text-muted-text mb-3">
-          Your trial includes
-        </p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[10px] font-bold tracking-[0.16em] uppercase text-muted-text">
+            Your trial includes
+          </p>
+          {/* A9 — change-plan toggle. Hidden inside the picker prevents
+              accidental re-edits once the user is happy with the pick. */}
+          <button
+            type="button"
+            onClick={() => setPickerOpen(o => !o)}
+            disabled={! plans}
+            className="text-[11px] font-bold tracking-[0.10em] uppercase text-near-black inline-flex items-center gap-1 hover:opacity-70 disabled:opacity-40"
+          >
+            {pickerOpen
+              ? <><X size={11} /> Done</>
+              : <><Pencil size={11} /> Change</>}
+          </button>
+        </div>
         {summary ? (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
               <Stat label="Plan"     value={summary.planLabel} />
               <Stat label="Billing"  value={summary.cycleLabel} />
               <Stat label="SMS"      value={summary.smsLabel} />
-              <Stat label="Template" value={intent.template ?? '—'} />
+              <Stat label="Template" value={prettyTemplate(intent.template)} />
             </div>
             <div className="border-t border-[rgba(18,18,18,0.08)] pt-3 flex items-baseline justify-between">
               <p className="text-[11px] text-muted-text">After trial ({summary.cycleLabel.toLowerCase()})</p>
@@ -198,6 +227,66 @@ function Inner() {
           </div>
         )}
       </section>
+
+      {/* A9 — inline picker. Mutates intent on every change; updates
+          localStorage so a refresh doesn't lose the edit. Closed by
+          default to keep the screen focused on the trial CTA. */}
+      {pickerOpen && plans && (
+        <section className="bg-cream border border-[rgba(18,18,18,0.15)] p-5 mb-5">
+          <p className="text-[10px] font-bold tracking-[0.16em] uppercase text-muted-text mb-4">
+            Change your plan
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Picker label="Plan">
+              <select
+                value={intent.plan ?? 'studio'}
+                onChange={e => updateIntent({ plan: e.target.value as PlanKey })}
+                className={selectCls}
+              >
+                {(Object.entries(plans.plans) as Array<[PlanKey, { label: string }]>).map(([k, v]) => (
+                  <option key={k} value={k}>{v.label}</option>
+                ))}
+              </select>
+            </Picker>
+            <Picker label="Billing">
+              <select
+                value={intent.billing ?? 'monthly'}
+                onChange={e => updateIntent({ billing: e.target.value as BillingCycle })}
+                className={selectCls}
+              >
+                {(Object.entries(plans.cycles) as Array<[BillingCycle, { label: string }]>).map(([k, v]) => (
+                  <option key={k} value={k}>{v.label}</option>
+                ))}
+              </select>
+            </Picker>
+            <Picker label="SMS bundle">
+              <select
+                value={String(intent.sms_mult ?? 1)}
+                onChange={e => updateIntent({ sms_mult: parseInt(e.target.value, 10) as SmsMult })}
+                className={selectCls}
+              >
+                {(Object.entries(plans.sms_multipliers) as Array<[string, { label: string }]>).map(([k, v]) => (
+                  <option key={k} value={k}>{v.label}</option>
+                ))}
+              </select>
+            </Picker>
+            <Picker label="Template">
+              <select
+                value={intent.template ?? 'thefaderoom'}
+                onChange={e => updateIntent({ template: e.target.value })}
+                className={selectCls}
+              >
+                <option value="thefaderoom">The Fade Room</option>
+                <option value="lushstudio">Lush Studio</option>
+                <option value="velvettheory">Velvet Theory</option>
+              </select>
+            </Picker>
+          </div>
+          <p className="text-[10px] text-muted-text mt-3 leading-relaxed">
+            Changes apply when you start the trial. You can also switch plans + templates later from your editor.
+          </p>
+        </section>
+      )}
 
       {/* Trust strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-6">
@@ -275,4 +364,32 @@ function TrustLine({ icon: Icon, children }: { icon: React.ElementType; children
 
 function Spinner() {
   return <Loader2 size={14} className="animate-spin" />
+}
+
+// A9 — inline picker subcomponents. Mirror the editor's Tailwind palette
+// so the change-plan UX feels native to the rest of the auth surface.
+
+function Picker({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-[9px] font-bold tracking-[0.18em] uppercase text-muted-text mb-1.5">
+        {label}
+      </label>
+      {children}
+    </div>
+  )
+}
+
+const selectCls = 'w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black appearance-none cursor-pointer'
+
+/** A9 — friendly template name for the summary card. The slug stays
+ *  canonical (thefaderoom etc) so the picker + backend talk in slugs;
+ *  this is purely cosmetic. */
+function prettyTemplate(slug?: string): string {
+  switch (slug) {
+    case 'thefaderoom':  return 'The Fade Room'
+    case 'lushstudio':   return 'Lush Studio'
+    case 'velvettheory': return 'Velvet Theory'
+    default:             return slug ?? '—'
+  }
 }

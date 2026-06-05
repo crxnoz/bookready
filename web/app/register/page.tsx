@@ -3,7 +3,8 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { register } from '@/lib/api'
+import { Check, X, Loader2 } from 'lucide-react'
+import { register, checkSubdomain, type SubdomainCheckResponse } from '@/lib/api'
 import { setToken, setTenantId } from '@/lib/auth'
 import AuthShell from '@/components/auth/AuthShell'
 import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/auth/TurnstileWidget'
@@ -42,6 +43,10 @@ function RegisterForm() {
   // with a direct sign-in link pointed at the right surface.
   const [conflict, setConflict] = useState<{ role: 'owner' | 'customer'; redirect: string } | null>(null)
   const [loading, setLoading] = useState(false)
+  // A7 — subdomain availability state. Re-computed (debounced) every
+  // time business_name changes; the form's submit button gates on it.
+  const [slugCheck, setSlugCheck] = useState<SubdomainCheckResponse | null>(null)
+  const [slugChecking, setSlugChecking] = useState(false)
 
   // Surface any error bounced back from the Google OAuth bridge.
   useEffect(() => {
@@ -70,6 +75,44 @@ function RegisterForm() {
   }
 
   const slugPreview = form.business_name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'yourbusiness'
+
+  // A7 — debounced availability check. Re-runs on every business_name
+  // edit but waits 400ms after the last keystroke so we don't hammer
+  // the backend mid-type. Also clears prior result + flips checking
+  // state so the indicator reflects the live input, not stale data.
+  useEffect(() => {
+    const slug = form.business_name.toLowerCase().replace(/[^a-z0-9]/g, '')
+    if (slug.length < 3) {
+      setSlugCheck(null)
+      setSlugChecking(false)
+      return
+    }
+    setSlugChecking(true)
+    setSlugCheck(null)
+    const handle = setTimeout(() => {
+      let cancelled = false
+      checkSubdomain(slug)
+        .then(res => {
+          if (! cancelled) {
+            // Only apply if this is still the latest query — the slug
+            // may have changed between debounce fire + response.
+            const liveSlug = form.business_name.toLowerCase().replace(/[^a-z0-9]/g, '')
+            if (liveSlug === slug) {
+              setSlugCheck(res)
+              setSlugChecking(false)
+            }
+          }
+        })
+        .catch(() => {
+          if (! cancelled) {
+            setSlugCheck(null)
+            setSlugChecking(false)
+          }
+        })
+      return () => { cancelled = true }
+    }, 400)
+    return () => clearTimeout(handle)
+  }, [form.business_name])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -249,6 +292,13 @@ function RegisterForm() {
             className={inputCls}
             placeholder="At least 8 characters"
           />
+          {/* A8 — inline strength meter. 4-bar visual + label. Custom
+              heuristic (length + variety) instead of zxcvbn to keep
+              the bundle slim. The 8-char min is enforced server-side;
+              this is pure UX feedback. */}
+          {form.password.length > 0 && (
+            <PasswordStrength password={form.password} />
+          )}
         </Field>
 
         <Field label="Confirm password">
@@ -270,6 +320,34 @@ function RegisterForm() {
             <span>
               Your site will be at{' '}
               <span className="font-semibold text-near-black">{slugPreview}.bkrdy.me</span>
+              {/* A7 — live availability indicator. ✓ available / ✗ taken /
+                  spinner while checking. Suggests an alternative when taken. */}
+              <span className="ml-2 inline-flex items-center gap-1 align-middle">
+                {slugChecking && form.business_name.length >= 3 && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-muted-text">
+                    <Loader2 size={10} className="animate-spin" /> Checking…
+                  </span>
+                )}
+                {! slugChecking && slugCheck?.available && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-[#0f6f3d] font-semibold">
+                    <Check size={11} strokeWidth={2.5} /> Available
+                  </span>
+                )}
+                {! slugChecking && slugCheck && ! slugCheck.available && (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-[#b42828] font-semibold">
+                    <X size={11} strokeWidth={2.5} />
+                    {slugCheck.reason === 'reserved' ? 'Reserved' : 'Taken'}
+                  </span>
+                )}
+              </span>
+              {/* Show suggested alternative when current pick is taken. */}
+              {! slugChecking && slugCheck?.suggested && (
+                <span className="block text-[10px] text-muted-text mt-1">
+                  Try{' '}
+                  <span className="font-semibold text-near-black">{slugCheck.suggested}.bkrdy.me</span>
+                  {' '}— available.
+                </span>
+              )}
               <span className="block text-[10px] text-muted-text mt-0.5">
                 Letters and numbers only, no dashes.
               </span>
@@ -327,7 +405,22 @@ function RegisterForm() {
           onExpire={onTurnstileExpire}
         />
 
-        <button type="submit" disabled={loading || !termsAccepted || !turnstileToken} className={submitCls}>
+        {/* A7 — also gate submit on slug availability. If the form is
+            submitted with a taken slug the backend provisioner would
+            silently rename to slug+N, which is exactly the surprise we
+            want to avoid. The checker is best-effort UX (small race
+            window), the provisioner stays authoritative. */}
+        <button
+          type="submit"
+          disabled={
+            loading
+            || !termsAccepted
+            || !turnstileToken
+            || (slugCheck != null && !slugCheck.available)
+            || slugChecking
+          }
+          className={submitCls}
+        >
           {loading ? 'Creating account…' : 'Create account'}
         </button>
       </form>
@@ -374,6 +467,55 @@ export default function RegisterPage() {
     <Suspense>
       <RegisterForm />
     </Suspense>
+  )
+}
+
+/**
+ * A8 — password strength meter. 4-bar visual + label.
+ *
+ * Heuristic (0-4):
+ *   length >= 8       → +1
+ *   length >= 12      → +1
+ *   has digit         → +1 (max 1 across the variety bonuses below…)
+ *   has upper + lower → +1
+ *   has symbol        → +1
+ *
+ * Clamped to [0, 4]. Bands: 0 weak / 1 ok / 2 good / 3 strong / 4 very strong.
+ * No regex backtracking risk — all character-class scans are O(n).
+ */
+function PasswordStrength({ password }: { password: string }) {
+  const score = (() => {
+    let s = 0
+    if (password.length >= 8)  s++
+    if (password.length >= 12) s++
+    const variety = [
+      /\d/.test(password),
+      /[a-z]/.test(password) && /[A-Z]/.test(password),
+      /[^A-Za-z0-9]/.test(password),
+    ].filter(Boolean).length
+    s += variety
+    return Math.min(4, s)
+  })()
+  const label = ['Too short', 'Weak', 'OK', 'Good', 'Strong'][score]
+  const color = ['#b42828', '#b42828', '#c98a14', '#5d8a1c', '#1e7a3f'][score]
+  return (
+    <div className="mt-2">
+      <div className="flex gap-1.5 mb-1">
+        {[0, 1, 2, 3].map(i => (
+          <div
+            key={i}
+            className="flex-1 h-1"
+            style={{
+              backgroundColor: i < Math.max(1, score) ? color : 'rgba(18,18,18,0.10)',
+              opacity: i < Math.max(1, score) ? 1 : 1,
+            }}
+          />
+        ))}
+      </div>
+      <p className="text-[10px] font-semibold" style={{ color }}>
+        {label}
+      </p>
+    </div>
   )
 }
 
