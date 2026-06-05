@@ -766,49 +766,92 @@ const PETALE_CSS = `
   opacity: 0.75;
 }
 
-/* Hero buttons — soft hairline pills, mid-radius. */
+/* Hero contact buttons — "calling-card stack" design. Each contact (Call,
+   Email, Instagram, etc.) renders as a soft circular icon container with
+   an italic Playfair label stacked beneath. Reads as wedding-stationery
+   contact card, distinct from every other template's pill / sharp-square
+   treatments (TFR/Lush rounded neon pills, Opaline hairline rectangles,
+   Velvet bare icon-only, Blackline sharp rectangular rules).
+
+   The PRIMARY (Reserve) button breaks pattern: stays a wide italic
+   Playfair gold pill so the CTA still leads the row visually. */
 .petale-social {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 22px 24px;
   justify-content: center;
+  align-items: flex-end;
 }
 .petale-social-btn {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  padding: 13px 26px;
-  border: 1px solid var(--petale-rule);
-  border-radius: 4px;
-  background: var(--petale-surface);
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--petale-ink);
-  font-family: var(--petale-body);
-  font-size: 11px;
+  font-family: var(--petale-display);
+  font-style: italic;
+  font-size: 13px;
   font-weight: 500;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-transform: none;
   cursor: pointer;
-  transition: border-color 200ms ease, color 200ms ease, background 200ms ease;
+  transition: color 200ms ease, transform 200ms ease;
 }
 .petale-social-btn:hover {
-  border-color: var(--petale-accent);
   color: var(--petale-accent);
+  transform: translateY(-2px);
 }
-.petale-social-btn--primary {
-  background: var(--petale-accent);
+/* The icon container — circular, hairline gold border, soft warm overlay,
+   icon centered. The button label sits beneath via flex-column above. */
+.petale-social-ico {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--petale-accent) 36%, transparent);
+  background: var(--petale-surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--petale-accent);
+  transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
+}
+.petale-social-btn:hover .petale-social-ico {
   border-color: var(--petale-accent);
+  background: color-mix(in srgb, var(--petale-accent) 10%, var(--petale-surface));
+  box-shadow: 0 6px 18px rgba(201,168,118,0.18);
+}
+.petale-social-ico svg { display: block; }
+/* The Reserve CTA breaks the calling-card pattern — a wide italic Playfair
+   pill in gold so the primary action visually leads the strip. */
+.petale-social-btn--primary {
+  flex-direction: row;
+  gap: 0;
+  padding: 14px 32px;
+  border-radius: 999px;
+  background: var(--petale-accent);
   color: var(--petale-on-accent);
+  font-family: var(--petale-display);
+  font-style: italic;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0;
+  align-self: center;
+  box-shadow: 0 6px 18px rgba(201,168,118,0.22);
+  transition: filter 200ms ease, transform 200ms ease, box-shadow 200ms ease;
 }
 .petale-social-btn--primary:hover {
   color: var(--petale-on-accent);
   filter: brightness(1.04);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(201,168,118,0.30);
 }
-.petale-social-ico {
-  display: inline-flex;
-  align-items: center;
-  margin-right: 9px;
-  color: currentColor;
-}
-.petale-social-ico svg { display: block; }
+/* When the Reserve CTA is the primary button, hide its calling-card icon
+   slot — the label alone carries it (visually). The icon shows on every
+   OTHER button as the calling-card mark. */
+.petale-social-btn--primary .petale-social-ico { display: none; }
 
 /* ── Sticky tab rail with scalloped active marker ── */
 .petale-tab-rail {
