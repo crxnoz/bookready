@@ -531,7 +531,7 @@ export const LUSH_CSS = `
   transition:color .22s ease, border-color .22s ease, background .22s ease;
 }
 .lush-tab-pill::before {
-  content:"\\2726"; /* ✦ — same glyph as ritual separators */
+  content:"\\2726\\FE0E"; /* ✦ — \\FE0E variation selector forces text rendering, not emoji */
   position:absolute; top:-12px; left:50%;
   transform:translateX(-50%) translateY(-2px);
   color:var(--lush-pink);

@@ -1356,7 +1356,7 @@ const LUSH_SECTIONS_SKIN = `
   color: var(--lush-text);
 }
 .lush-template .brk-instructions--numbered .brk-instruction-body h3::before {
-  content: "\\2726";
+  content: "\\2726\\FE0E";
   display: inline-block;
   margin-right: 8px;
   color: var(--lush-pink);
@@ -1598,8 +1598,8 @@ const LUSH_SECTIONS_SKIN = `
    .lush-gallery / .lush-ba-pair markup: ✺ ornaments flanking gallery
    group headings + tilted polaroid before/after panes. Scoped to
    .lush-femme so the Velvet embed (only .lush-template) is unaffected. */
-.lush-femme .brk-gallery-group-heading::before { content: "\\2733"; flex: none; max-width: none; height: auto; background: none; margin-right: 10px; opacity: 0.75; font-family: serif; color: currentColor; }
-.lush-femme .brk-gallery-group-heading::after  { content: "\\2733"; flex: none; max-width: none; height: auto; background: none; margin-left: 10px;  opacity: 0.75; font-family: serif; color: currentColor; }
+.lush-femme .brk-gallery-group-heading::before { content: "\\2733\\FE0E"; flex: none; max-width: none; height: auto; background: none; margin-right: 10px; opacity: 0.75; font-family: serif; color: currentColor; }
+.lush-femme .brk-gallery-group-heading::after  { content: "\\2733\\FE0E"; flex: none; max-width: none; height: auto; background: none; margin-left: 10px;  opacity: 0.75; font-family: serif; color: currentColor; }
 .lush-femme .brk-ba-pair .brk-ba-pane img {
   box-shadow:
     0 12px 28px rgba(118, 75, 90, 0.18),
