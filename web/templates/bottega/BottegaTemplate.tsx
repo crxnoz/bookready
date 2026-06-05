@@ -197,10 +197,25 @@ export default function BottegaTemplate({ site, slug }: Props) {
   const aboutImages: (string | null)[] = Array.isArray(about.images) ? about.images : []
   const policies: any = site.policies ?? {}
 
-  // Accent (tenant-picked or rust default). Canvas + terrazzo stay constant.
+  // Accent (tenant-picked or rust default). Canvas stays constant.
   const accentHex = settings?.theme?.accent_color || '#C9692C'
   const onAccent  = pickOnAccent(accentHex)
   const accentRgb = hexToRgbTriplet(accentHex)
+
+  // Pattern motif (tenant-picked or terrazzo default). Each entry sets the
+  // tile URL, the cream-overlay opacity that gates how loud the pattern
+  // reads (terrazzo at .92 → ~8%; floral linework at .78 → ~22% since the
+  // source is white-with-pink-line and would otherwise vanish), and the
+  // tile dimensions (terrazzo is a square 800; flowers is wider than tall
+  // so tileH is `auto` for proportional repeat).
+  const PATTERNS: Record<string, { url: string; overlay: number; tileW: string; tileH: string }> = {
+    terrazzo: { url: '/templates/bottega/terrazzo.jpg', overlay: 0.92, tileW: '800px', tileH: '800px' },
+    flowers:  { url: '/templates/bottega/flowers.png',  overlay: 0.78, tileW: '720px', tileH: 'auto' },
+  }
+  const patternKey = (settings?.theme?.pattern_motif as string) || 'terrazzo'
+  const pattern = PATTERNS[patternKey] ?? PATTERNS.terrazzo
+  const patternBg = `linear-gradient(rgba(242,239,232,${pattern.overlay}), rgba(242,239,232,${pattern.overlay})), url('${pattern.url}')`
+  const patternSize = `auto, ${pattern.tileW} ${pattern.tileH}`
 
   const [active, setActive] = useState<TabId>('book')
   const tabRailRef = useRef<HTMLDivElement>(null)
@@ -260,6 +275,11 @@ export default function BottegaTemplate({ site, slug }: Props) {
           ['--bottega-accent' as any]:     accentHex,
           ['--bottega-on-accent' as any]:  onAccent,
           ['--bottega-accent-rgb' as any]: accentRgb,
+          // Pattern motif: inline backgroundImage overrides the CSS default
+          // so the active pattern picks up immediately on tenant settings
+          // change without a build. background-size is paired in lockstep.
+          backgroundImage: patternBg,
+          backgroundSize:  patternSize,
         }}
       >
 

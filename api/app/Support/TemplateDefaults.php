@@ -580,6 +580,10 @@ class TemplateDefaults
         $base['additionals']['thank_you_body']    = 'Thank you for trusting us with the work. We are looking forward to having you in the chair.';
         $base['footer']['brand_label'] = 'The Bottega';
         $base['footer']['subtext']     = 'By appointment. Small studio, careful hands.';
+        // Pattern motif — Bottega's one editor-extended theme dimension
+        // beyond accent_color. 'terrazzo' (default) or 'flowers'. The
+        // template's PATTERNS map resolves the URL + overlay + tile size.
+        $base['theme']['pattern_motif'] = 'terrazzo';
         return $base;
     }
 
