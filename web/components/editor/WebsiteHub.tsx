@@ -9,7 +9,7 @@ import {
   Check, Loader2, Heart, Phone, Mail, Instagram, MapPin, Sparkles,
   Megaphone, MessageSquare, ChevronRight, AlertCircle, RefreshCw,
   Edit2, Trash2, X, Link as LinkIcon, ArrowUp, ArrowDown, ChevronDown,
-  Clock, Building2,
+  Clock, Building2, LayoutTemplate,
 } from 'lucide-react'
 import ImageUploadField from '@/components/editor/ImageUploadField'
 import {
@@ -44,7 +44,11 @@ import {
   deleteEditorResultsGroup,
   getEditorPolicies,
   updateEditorPolicies,
+  selectActiveTemplate,
 } from '@/lib/api'
+// Template catalog — the Overview tab's "Change Template" picker lists
+// every registered template and switches the tenant's active one.
+import { listTemplates } from '@/templates/registry'
 import type {
   TemplateSettings,
   TemplateHeaderSettings,
@@ -267,6 +271,22 @@ export default function WebsiteHub() {
     setPreviewKey(k => k + 1)
   }
 
+  // Switch the tenant's active template. The backend reseeds
+  // template_settings + the website_sections skeleton from the new
+  // template's defaults, so we re-fetch both rather than patch in place,
+  // then bump the preview so the iframe re-renders with the new template.
+  async function switchTemplate(newSlug: string): Promise<void> {
+    await selectActiveTemplate(newSlug)
+    const [tpl, secs] = await Promise.all([
+      getEditorTemplateSettings(),
+      getEditorWebsiteSections(),
+    ])
+    setTplSlug(tpl.template_slug)
+    setSettings(tpl.settings)
+    setSections(secs)
+    setPreviewKey(k => k + 1)
+  }
+
   async function toggleSection(id: number, enabled: boolean): Promise<void> {
     const updated = await updateEditorWebsiteSection(id, { is_enabled: enabled })
     setSections(prev => prev.map(s => s.id === id ? updated : s))
@@ -354,6 +374,7 @@ export default function WebsiteHub() {
                   onToggleSection={toggleSection}
                   onReorderSection={reorderSection}
                   onSaveSettings={saveSettings}
+                  onSwitchTemplate={switchTemplate}
                 />
               )}
 
@@ -755,7 +776,7 @@ function useSettingsForm<T extends object>(
 // ── Overview ─────────────────────────────────────────────────────────────────
 
 function OverviewPanel({
-  templateSlug, manifest, settings, sections, publicUrl, onToggleSection, onReorderSection, onSaveSettings,
+  templateSlug, manifest, settings, sections, publicUrl, onToggleSection, onReorderSection, onSaveSettings, onSwitchTemplate,
 }: {
   templateSlug: string
   manifest: TemplateManifest | null
@@ -765,6 +786,7 @@ function OverviewPanel({
   onToggleSection: (id: number, enabled: boolean) => Promise<void>
   onReorderSection: (id: number, direction: 'up' | 'down') => Promise<void>
   onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
+  onSwitchTemplate: (slug: string) => Promise<void>
 }) {
   const sorted = useMemo(
     () => [...sections].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id),
@@ -931,12 +953,9 @@ function OverviewPanel({
           <SeasonalThemesTeaser />
         </div>
 
-        <button
-          disabled
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.12)] bg-cream text-muted-text px-3 py-2 cursor-not-allowed"
-        >
-          Change Template — coming soon
-        </button>
+        <div className="pt-3 border-t border-[rgba(18,18,18,0.08)]">
+          <TemplateSwitcherBlock current={templateSlug} onSwitch={onSwitchTemplate} />
+        </div>
       </Panel>
 
       {/* Quick links */}
@@ -1077,6 +1096,181 @@ function OverviewPanel({
         <Panel title="Public site" subtitle="Your live website URL.">
           <p className="text-sm font-mono text-near-black break-all">{publicUrl}</p>
         </Panel>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Template switcher for the Website → Overview tab.
+ *
+ * Lists every registered template (slug + manifest name) and lets the
+ * owner switch the tenant's active one. Switching reseeds the template's
+ * default settings + section skeleton on the backend, so we gate the
+ * action behind an explicit confirm that spells out what resets.
+ */
+function TemplateSwitcherBlock({
+  current, onSwitch,
+}: {
+  current: string
+  onSwitch: (slug: string) => Promise<void>
+}) {
+  const [open, setOpen]           = useState(false)
+  const [catalog, setCatalog]     = useState<{ slug: string; name: string }[] | null>(null)
+  const [catalogError, setCatErr] = useState<string | null>(null)
+  const [pending, setPending]     = useState<string | null>(null)
+  const [switching, setSwitching] = useState(false)
+  const [switchError, setSwErr]   = useState<string | null>(null)
+
+  // Lazily load the catalog (slug + display name from each manifest) the
+  // first time the picker is opened, so the Overview tab doesn't pull
+  // every template's manifest on mount.
+  useEffect(() => {
+    if (!open || catalog) return
+    let cancelled = false
+    Promise.all(
+      listTemplates().map(async ({ slug, loadManifest }) => {
+        try {
+          const m = await loadManifest()
+          return { slug, name: m.default?.name ?? slug }
+        } catch {
+          return { slug, name: slug }
+        }
+      }),
+    )
+      .then(list => {
+        if (cancelled) return
+        setCatalog(list.sort((a, b) => a.name.localeCompare(b.name)))
+      })
+      .catch(e => {
+        if (cancelled) return
+        setCatErr(e instanceof Error ? e.message : 'Failed to load templates')
+      })
+    return () => { cancelled = true }
+  }, [open, catalog])
+
+  const pendingName = catalog?.find(t => t.slug === pending)?.name ?? pending
+
+  async function confirmSwitch() {
+    if (!pending) return
+    setSwitching(true); setSwErr(null)
+    try {
+      await onSwitch(pending)
+      setPending(null)
+      setOpen(false)
+    } catch (e) {
+      setSwErr(e instanceof Error ? e.message : 'Failed to switch template')
+    } finally {
+      setSwitching(false)
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-near-black bg-near-black text-white px-3 py-2 hover:bg-near-black/90"
+      >
+        <LayoutTemplate size={12} /> Change Template
+      </button>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+          Choose a template
+        </p>
+        <button
+          type="button"
+          onClick={() => { setOpen(false); setPending(null); setSwErr(null) }}
+          className="text-muted-text hover:text-near-black"
+          aria-label="Close template picker"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      {catalogError && (
+        <p className="text-[11px] text-red-700 flex items-center gap-1.5">
+          <AlertCircle size={12} /> {catalogError}
+        </p>
+      )}
+
+      {!catalog && !catalogError && (
+        <div className="flex items-center gap-2 text-xs text-muted-text">
+          <Loader2 size={12} className="animate-spin" /> Loading templates…
+        </div>
+      )}
+
+      {catalog && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {catalog.map(({ slug, name }) => {
+            const isActive  = slug === current
+            const isPending = slug === pending
+            return (
+              <button
+                key={slug}
+                type="button"
+                disabled={isActive || switching}
+                onClick={() => setPending(isPending ? null : slug)}
+                className={cn(
+                  'text-left border px-3 py-2.5 transition-colors disabled:cursor-default',
+                  isActive
+                    ? 'border-near-black bg-cream'
+                    : isPending
+                      ? 'border-near-black bg-white ring-2 ring-offset-1 ring-near-black/20'
+                      : 'border-[rgba(18,18,18,0.15)] bg-white hover:border-near-black',
+                )}
+              >
+                <span className="block text-sm font-semibold text-near-black truncate">{name}</span>
+                <span className="block text-[10px] text-muted-text font-mono truncate">{slug}</span>
+                {isActive && (
+                  <span className="mt-1 inline-flex items-center gap-1 text-[9px] font-bold tracking-[0.06em] uppercase text-[rgba(18,18,18,0.7)]">
+                    <Check size={9} /> Active
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      {pending && pending !== current && (
+        <div className="space-y-2 border border-[rgba(18,18,18,0.15)] bg-cream p-3">
+          <p className="text-xs text-near-black leading-relaxed">
+            Switch to <strong>{pendingName}</strong>? Your business info, services, bookings, staff,
+            customers, availability, and policies stay. Template-specific settings (header, content,
+            section layout) reset to {pendingName}&apos;s defaults.
+          </p>
+          {switchError && (
+            <p className="text-[11px] text-red-700 flex items-center gap-1.5">
+              <AlertCircle size={12} /> {switchError}
+            </p>
+          )}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={confirmSwitch}
+              disabled={switching}
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-near-black bg-near-black text-white px-3 py-2 disabled:opacity-50"
+            >
+              {switching
+                ? <><Loader2 size={12} className="animate-spin" /> Switching…</>
+                : <>Switch to {pendingName}</>}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setPending(null); setSwErr(null) }}
+              disabled={switching}
+              className="text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )
