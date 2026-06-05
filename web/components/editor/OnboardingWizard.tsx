@@ -981,26 +981,6 @@ function FinaleScene({ firstName, businessName, tenantId, stripeConnected, onCon
             </section>
           )}
 
-          {/* Iframe preview */}
-          {siteUrl && (
-            <section className="mb-7 max-w-2xl mx-auto">
-              <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-2">
-                Preview
-              </p>
-              <div className="bg-white border border-[rgba(18,18,18,0.10)] overflow-hidden" style={{ aspectRatio: '16 / 9' }}>
-                <iframe
-                  src={siteUrl}
-                  title={`${businessName} booking site`}
-                  className="w-full h-full"
-                  loading="lazy"
-                  // sandbox keeps this from running JS that could mess with the editor app context
-                  // but allow-same-origin is needed for the site to load its own assets
-                  sandbox="allow-same-origin allow-scripts allow-popups"
-                />
-              </div>
-            </section>
-          )}
-
           {/* What's next */}
           <section className="mb-7 max-w-2xl mx-auto">
             <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-3">
