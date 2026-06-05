@@ -811,7 +811,12 @@ const BOTTEGA_CSS = `
   }
 }
 
-/* Cover panel in split mode — image bleeds to its container edge, no veil. */
+/* Cover panel in split mode — image bleeds to its container edge, no veil.
+   Desktop: fills the grid cell height (min 320px / 60vw clamp on the cell).
+   Mobile (<880px): forces a 3/4 portrait aspect on the image so it reads
+   as a dramatic full-bleed hero instead of a short banner above the type.
+   At a 390px iPhone viewport that's a 520px-tall image; at a 360px Android
+   it's 480px — both strong opening shots. */
 .bottega-header--split .bottega-cover-wrap {
   height: 100%;
   min-height: clamp(320px, 60vw, 720px);
@@ -822,6 +827,15 @@ const BOTTEGA_CSS = `
   height: 100%;
   min-height: inherit;
   object-fit: cover;
+}
+@media (max-width: 879px) {
+  .bottega-header--split .bottega-cover-wrap {
+    aspect-ratio: 3 / 4;
+    min-height: 0;
+  }
+  .bottega-header--split .bottega-cover {
+    min-height: 0;
+  }
 }
 
 /* Identity panel in split mode — left-aligned column, centered vertically. */
