@@ -1017,6 +1017,14 @@ function FinaleScene({ firstName, businessName, tenantId, stripeConnected, onCon
             >
               Go to dashboard <ArrowRight size={13} />
             </button>
+            {/* #131 — point new owners at the Help Center right when they
+                land, while motivation is high. */}
+            <p className="text-[11px] text-muted-text mt-3">
+              New to all this?{' '}
+              <a href="/help/getting-started" className="font-semibold text-near-black hover:underline">
+                Read the 10-minute starter guide
+              </a>.
+            </p>
           </div>
         </div>
       </main>

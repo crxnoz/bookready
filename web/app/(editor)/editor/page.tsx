@@ -317,6 +317,18 @@ function DashboardBody() {
           </div>
         )}
       </section>
+
+      {/* ── A13/#131: help footer ── */}
+      <div className="pt-2 pb-1 text-center text-[11px] text-muted-text">
+        Need a hand?{' '}
+        <Link href="/help" className="font-semibold text-near-black hover:underline">
+          Visit the Help Center
+        </Link>
+        {' '}or email{' '}
+        <a href="mailto:hello@mybookready.com" className="font-semibold text-near-black hover:underline">
+          hello@mybookready.com
+        </a>.
+      </div>
     </div>
   )
 }
