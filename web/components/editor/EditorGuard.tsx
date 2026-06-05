@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { isLoggedIn, getTenantId, clearAuth } from '@/lib/auth'
 import { getCurrentUser } from '@/lib/api'
 import AppShell from '@/components/app/AppShell'
 
 export default function EditorGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [slug, setSlug] = useState<string | null>(null)
 
   useEffect(() => {
@@ -21,16 +22,31 @@ export default function EditorGuard({ children }: { children: React.ReactNode })
       return
     }
 
-    const cached = getTenantId()
-    if (cached) setSlug(cached)
+    // A5 — DON'T use cached getTenantId() to short-circuit slug-setting
+    // here. We must wait for /auth/me so the redirect_url check below
+    // can fire; rendering the editor on a stale cache would let an
+    // unverified / cardless user see the editor for a frame before
+    // being bounced. Spinner shown until /me resolves.
 
     getCurrentUser()
-      .then(user => setSlug(user.tenant_id))
+      .then(user => {
+        // A5 — backend is the single source of truth for "where should
+        // this user be right now?". If they're unverified or have no
+        // card on file, /auth/me returns a redirect_url pointing at
+        // the missing step. Bounce them there instead of rendering the
+        // editor. Without this, a user could sign up → sign out → sign
+        // back in → land in /editor without ever finishing setup.
+        if (user.redirect_url && user.redirect_url !== '/editor' && ! pathname?.startsWith(user.redirect_url)) {
+          router.replace(user.redirect_url)
+          return
+        }
+        setSlug(user.tenant_id)
+      })
       .catch(() => {
         clearAuth()
         router.replace('/login')
       })
-  }, [router])
+  }, [router, pathname])
 
   if (!slug) {
     return (

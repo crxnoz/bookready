@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\CustomerUser;
 use App\Models\Identity;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Support\AuthCookie;
 use App\Support\CustomerAuthCookie;
@@ -89,6 +90,14 @@ class AuthController extends Controller
             now()->addMinutes(AuthCookie::tokenTtlMinutes($remember)),
         )->plainTextToken;
 
+        // A5 — compute where this user should land. Login is the canonical
+        // single source of truth for "what step are they on?" so that
+        // signing back out and in can't bypass verify-email + payment.
+        // The frontend trusts redirect_url over its own router.push.
+        $emailVerified = (bool) $user->email_verified_at;
+        $isBillingSetup = self::isBillingSetup($user);
+        $redirectUrl = self::redirectFor($emailVerified, $isBillingSetup);
+
         // Phase S6 — also set the token as an httpOnly cookie so the
         // frontend doesn't need to stash it in localStorage. The token
         // is not returned in the JSON body.
@@ -107,6 +116,10 @@ class AuthController extends Controller
                 // users pick a side every login (per founder decision).
                 'available_roles' => $availableRoles,
                 'current_role'    => 'owner',
+                // A5 — onboarding state. Frontend routes to redirect_url.
+                'email_verified'    => $emailVerified,
+                'is_billing_setup'  => $isBillingSetup,
+                'redirect_url'      => $redirectUrl,
             ])
             ->withCookie(AuthCookie::make($token, $remember));
 
@@ -143,6 +156,9 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
+        $emailVerified = (bool) $user->email_verified_at;
+        $isBillingSetup = self::isBillingSetup($user);
+
         return response()->json([
             'id'                 => $user->id,
             'name'               => $user->name,
@@ -152,6 +168,43 @@ class AuthController extends Controller
             'is_admin'           => (bool) ($user->is_admin ?? false),
             // Phase S6 part 2 — frontend nag banner gates on this.
             'email_verified_at'  => $user->email_verified_at?->toAtomString(),
+            // A5 — onboarding state. EditorGuard reads these to bounce
+            // unverified / cardless users back to the missing step
+            // (so a direct nav to /editor can't bypass /verify-email
+            // or /checkout/trial).
+            'email_verified'     => $emailVerified,
+            'is_billing_setup'   => $isBillingSetup,
+            'redirect_url'       => self::redirectFor($emailVerified, $isBillingSetup),
         ]);
+    }
+
+    /**
+     * A5 — has this owner's tenant completed the trial-card-capture step?
+     * Signal: tenants.stripe_id is set (Stripe Checkout creates the
+     * customer record on entry) OR subscription_state is populated
+     * (set when the webhook fires post-checkout). Either means they've
+     * been through /checkout/trial at least once.
+     */
+    private static function isBillingSetup(User $user): bool
+    {
+        if (! $user->tenant_id) return false;
+        $tenant = Tenant::find($user->tenant_id);
+        if (! $tenant) return false;
+        return (bool) ($tenant->stripe_id || $tenant->subscription_state);
+    }
+
+    /**
+     * A5 — single source of truth for "what step is this user on?".
+     * Called from login + /me so the frontend can't disagree with the
+     * backend about where to land. Order matters:
+     *   1. Unverified email → /verify-email
+     *   2. Verified but no card → /checkout/trial
+     *   3. All set → /editor
+     */
+    private static function redirectFor(bool $emailVerified, bool $isBillingSetup): string
+    {
+        if (! $emailVerified) return '/verify-email';
+        if (! $isBillingSetup) return '/checkout/trial';
+        return '/editor';
     }
 }

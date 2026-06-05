@@ -53,13 +53,16 @@ function LoginInner() {
       setTenantId(tenantId)
       // #159 — multi-role identity → show the role picker. Cookie was
       // already set for owner on this endpoint; picker calls switch-role
-      // if user wants customer instead. Single-role goes straight to the
-      // editor as always.
+      // if user wants customer instead.
       if (res.available_roles && res.available_roles.length > 1) {
         setPickerRoles(res.available_roles)
         return
       }
-      router.push('/editor')
+      // A5 — backend is the canonical source of "where should they land".
+      // Trust redirect_url over a hardcoded /editor so signing out and
+      // back in can't bypass /verify-email or /checkout/trial. Falls
+      // back to /editor for backward-compat with older API responses.
+      router.push(res.redirect_url || '/editor')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed.')
     } finally {
