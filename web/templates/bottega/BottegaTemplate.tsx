@@ -1185,30 +1185,24 @@ const BOTTEGA_CSS = `
   .bottega-template .brk-gallery-grid { gap: 24px; }
 }
 
-/* ── Before & After: 2-column grid of PAIRS at every breakpoint, each
-   pair stacked vertically (before on top, after below). With 3 seed
-   pairs that's a 2×2 grid (row 1: pairs 1+2, row 2: pair 3). The
-   shared default is a vertical 1-col stack of horizontal pairs —
-   Bottega prefers the album-spread read with two cases visible at
-   once. The center separator is hidden because it's meaningless when
-   the pair stacks vertically. ── */
+/* ── Before & After: horizontal pairs (before LEFT, after RIGHT) flowing
+   into a 1-col stack on mobile and a 2-col grid on desktop. The
+   horizontal pair stays the canonical read; only the grid count
+   changes by breakpoint so 3 pairs land as 3 rows on mobile (each
+   pair full-width with both photos side-by-side) and as a 2×2 grid
+   on desktop (row 1: pairs 1+2, row 2: pair 3). ── */
 .bottega-template .brk-ba-stack {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px 14px;
+  grid-template-columns: 1fr;
+  gap: 32px;
   max-width: none;
 }
 @media (min-width: 821px) {
   .bottega-template .brk-ba-stack {
+    grid-template-columns: 1fr 1fr;
     gap: 40px 32px;
   }
 }
-.bottega-template .brk-ba-pair {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-}
-.bottega-template .brk-ba-sep { display: none; }
 
 /* ── Timeline numbered counter: big italic faded numerals + a vertical
    accent hairline running the height of the card body. Replaces the
