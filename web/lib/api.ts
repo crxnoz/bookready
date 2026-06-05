@@ -464,6 +464,16 @@ export async function startTrial(
   })
 }
 
+// A5 refinement — "Skip for now" on /checkout/trial. Sets
+// trial_acknowledged_at on the tenant so the post-login redirect lets
+// the user through to /editor without requiring a card. Trial countdown
+// still starts so the existing 14-day gate kicks in eventually.
+export async function skipTrialSetup(): Promise<{ message: string; trial_ends_at: string | null }> {
+  return request<{ message: string; trial_ends_at: string | null }>('/billing/skip-trial', {
+    method: 'POST',
+  })
+}
+
 /**
  * Plan catalog — drives the editor billing UI + the upgrade dialog.
  * Same shape as config/plans.php on the backend.

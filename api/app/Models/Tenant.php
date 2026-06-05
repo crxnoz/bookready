@@ -42,11 +42,15 @@ class Tenant extends BaseTenant implements TenantWithDatabase
      */
     public static function getCustomColumns(): array
     {
-        return ['id', 'plan', 'subscription_state', 'stripe_id', 'trial_ends_at', 'created_at', 'updated_at'];
+        // A5 refinement — trial_acknowledged_at gates the post-login
+        // redirect; without it, signing back in after closing Stripe
+        // mid-flow would bypass the trial-info page.
+        return ['id', 'plan', 'subscription_state', 'stripe_id', 'trial_ends_at', 'trial_acknowledged_at', 'created_at', 'updated_at'];
     }
 
     protected $casts = [
-        'trial_ends_at' => 'datetime',
+        'trial_ends_at'         => 'datetime',
+        'trial_acknowledged_at' => 'datetime',
     ];
 
     public function users()

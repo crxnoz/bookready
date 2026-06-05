@@ -208,6 +208,12 @@ Route::prefix('v1')->group(function () {
         // #155 — 14-day trial flow. Creates a Stripe Checkout Session
         // with trial_period_days set; tenant flipped to 'trialing'.
         Route::post('start-trial',                       [BillingController::class, 'startTrial']);
+        // A5 refinement — "Skip for now" button on /checkout/trial.
+        // Card capture is optional; this stamps trial_acknowledged_at +
+        // starts the 14-day clock so EnforceWriteGate still kicks in
+        // at day 14. Same auth surface as start-trial (verified_email
+        // + tenant_owner) so unverified users can't fast-forward.
+        Route::post('skip-trial',                        [BillingController::class, 'skipTrial']);
         Route::get('checkout-session/{sessionId}',       [BillingController::class, 'checkoutSession']);
         Route::get('portal',                             [BillingController::class, 'portal']);
         Route::get('subscription',                       [BillingController::class, 'subscription']);

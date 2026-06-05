@@ -179,17 +179,27 @@ class AuthController extends Controller
     }
 
     /**
-     * A5 — has this owner's tenant completed the trial-card-capture step?
-     * Signal: tenants.stripe_id is set (Stripe Checkout creates the
-     * customer record on entry) OR subscription_state is populated
-     * (set when the webhook fires post-checkout). Either means they've
-     * been through /checkout/trial at least once.
+     * A5 refinement — has this owner been through /checkout/trial?
+     * Only valid signal is trial_acknowledged_at, which is set by
+     * EITHER button on that page (Start free trial OR Skip for now).
+     *
+     * The earlier (stripe_id || subscription_state) heuristic broke
+     * because BillingController::startTrial sets both optimistically
+     * BEFORE the user finishes Stripe Checkout — a user who bailed
+     * mid-flow would have those set and skip the gate on next login.
+     *
+     * Falls back to the old check when the column doesn't exist
+     * (mid-deploy / fresh test envs).
      */
     private static function isBillingSetup(User $user): bool
     {
         if (! $user->tenant_id) return false;
         $tenant = Tenant::find($user->tenant_id);
         if (! $tenant) return false;
+        if (\Illuminate\Support\Facades\Schema::hasColumn('tenants', 'trial_acknowledged_at')) {
+            return (bool) $tenant->trial_acknowledged_at;
+        }
+        // Pre-migration fallback only.
         return (bool) ($tenant->stripe_id || $tenant->subscription_state);
     }
 

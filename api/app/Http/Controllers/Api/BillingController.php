@@ -252,9 +252,64 @@ class BillingController extends Controller
             $tenant->save();
         }
 
+        // A5 refinement — stamp trial_acknowledged_at so the post-login
+        // redirect can let this tenant through to /editor even if they
+        // bail on Stripe before completing checkout. The "Skip for now"
+        // button does the same thing via the skipTrial endpoint below.
+        if (\Illuminate\Support\Facades\Schema::hasColumn('tenants', 'trial_acknowledged_at')) {
+            $tenant->trial_acknowledged_at = now();
+            $tenant->save();
+        }
+
         return response()->json([
             'checkout_url'   => $session->url,
             'trial_ends_at'  => now()->addDays($trialDays)->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * A5 refinement — POST /billing/skip-trial.
+     *
+     * "Skip for now" button on /checkout/trial. Card capture is
+     * optional but the trial-info page is mandatory; clicking this
+     * stamps trial_acknowledged_at so the post-login redirect lets
+     * the tenant through to /editor.
+     *
+     * Trial countdown still starts on subscription_state for the
+     * existing EnforceWriteGate / parked-page machinery — same 14-day
+     * window, same eventual force-add-card path.
+     */
+    public function skipTrial(Request $request): JsonResponse
+    {
+        $user   = $request->user();
+        $tenant = $user->tenant_id ? Tenant::find($user->tenant_id) : null;
+        if (! $tenant) {
+            return response()->json([
+                'message' => 'No active workspace for this account.',
+            ], 400);
+        }
+
+        $trialDays = (int) config('plans.trial_days', 14);
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('tenants', 'trial_acknowledged_at')) {
+            $tenant->trial_acknowledged_at = now();
+        }
+        // Start the trial clock so the existing gating still kicks in
+        // at day 14 — without subscription_state set, EnforceWriteGate
+        // wouldn't ever lock the tenant out and free use would never end.
+        if (\Illuminate\Support\Facades\Schema::hasColumn('tenants', 'subscription_state')) {
+            // Only set if not already trialing/active — don't downgrade
+            // a tenant who already converted to paid by hitting skip.
+            if (! in_array($tenant->subscription_state, Tenant::STATES_ALIVE, true)) {
+                $tenant->subscription_state = Tenant::STATE_TRIALING;
+                $tenant->trial_ends_at      = now()->addDays($trialDays);
+            }
+        }
+        $tenant->save();
+
+        return response()->json([
+            'message'       => 'Trial started. Add a card any time from billing settings.',
+            'trial_ends_at' => $tenant->trial_ends_at?->toIso8601String(),
         ]);
     }
 
