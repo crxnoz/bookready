@@ -161,7 +161,12 @@ class BillingController extends Controller
             'plan'           => ['nullable', 'string', 'in:solo,studio,salon'],
             'billing_cycle'  => ['required', 'string', 'in:monthly,annual'],
             'sms_mult'       => ['nullable', 'integer', 'in:1,2,3'],
-            'template_slug'  => ['required', 'string', 'regex:/^[a-z0-9]+$/'],
+            // Validate against the templates that actually exist (single
+            // source of truth), exactly as checkout() does. The old loose
+            // /^[a-z0-9]+$/ regex let a typo'd or stale slug (e.g. "botegga")
+            // through into Stripe metadata + tenant_subscriptions, which then
+            // degraded the tenant's public site to the default template.
+            'template_slug'  => ['required', 'string', Rule::in(TemplateDefaults::KNOWN_SLUGS)],
         ]);
 
         if (($data['plan'] ?? null) === 'salon') {

@@ -573,7 +573,11 @@ class PublicSiteController extends Controller
                 ->orderByDesc('updated_at')
                 ->value('template_slug');
             if (! empty($storedSlug)) {
-                $templateSlug = (string) $storedSlug;
+                // Clamp to a template that actually exists. A stale or typo'd
+                // slug (e.g. "botegga") would otherwise be emitted verbatim and
+                // the frontend registry would silently fall back to the default,
+                // which is exactly how a "bottega" tenant ended up rendering TFR.
+                $templateSlug = TemplateDefaults::normalizeSlug((string) $storedSlug);
             }
         }
         $templateSettings = TemplateDefaults::settingsFor($templateSlug);
