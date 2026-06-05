@@ -109,10 +109,25 @@ class PasswordResetController extends Controller
             ], 422);
         }
 
-        // Set new password + revoke ALL existing Sanctum tokens — anyone
-        // who's currently signed in (legit or otherwise) gets booted.
-        $user->password = Hash::make($validated['password']);
-        $user->save();
+        // Set new password — write to BOTH users.password AND identities.password.
+        // After #159, login reads from identities.password but the legacy
+        // users.password column is still kept in sync for any code that
+        // hasn't migrated. Writing to only one was the original bug — the
+        // reset succeeded but the new password didn't actually work at login.
+        $hash = Hash::make($validated['password']);
+        DB::table('users')->where('id', $user->id)->update([
+            'password'   => $hash,
+            'updated_at' => now(),
+        ]);
+        if ($user->identity_id) {
+            DB::table('identities')->where('id', $user->identity_id)->update([
+                'password'   => $hash,
+                'updated_at' => now(),
+            ]);
+        }
+
+        // Revoke ALL existing Sanctum tokens — anyone who's currently
+        // signed in (legit or otherwise) gets booted.
         $user->tokens()->delete();
 
         // Burn the reset token.

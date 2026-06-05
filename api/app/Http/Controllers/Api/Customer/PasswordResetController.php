@@ -119,8 +119,21 @@ class PasswordResetController extends Controller
             ], 422);
         }
 
-        $user->password = $validated['password'];
-        $user->save();
+        // Set new password — write to BOTH customer_users.password AND
+        // identities.password. After #159, login reads from identities; the
+        // legacy customer_users column is kept in sync for any code that
+        // hasn't migrated. Single-table writes silently broke the reset.
+        $hash = Hash::make($validated['password']);
+        DB::table('customer_users')->where('id', $user->id)->update([
+            'password'   => $hash,
+            'updated_at' => now(),
+        ]);
+        if ($user->identity_id) {
+            DB::table('identities')->where('id', $user->identity_id)->update([
+                'password'   => $hash,
+                'updated_at' => now(),
+            ]);
+        }
 
         // Kick every existing customer session so an attacker who
         // stole the old password can't keep their stolen token alive.

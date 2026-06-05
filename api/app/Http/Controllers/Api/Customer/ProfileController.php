@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CustomerUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -118,17 +119,41 @@ class ProfileController extends Controller
             'new_password'     => 'required|string|min:8|confirmed',
         ]);
 
-        // Constant-time check. user->password could be null for a
+        // After #159, the canonical password lives on identities.password
+        // (login checks that). customer_users.password is kept in sync
+        // but is no longer authoritative — check against identities
+        // first so a previously-busted reset can't trap a user behind a
+        // stale customer_users.password hash.
+        $identityHash = null;
+        if ($user->identity_id) {
+            $identityHash = DB::table('identities')->where('id', $user->identity_id)->value('password');
+        }
+        $authoritativeHash = $identityHash ?: $user->password;
+
+        // Constant-time check. authoritativeHash could be null for a
         // future Google-OAuth-only signup path; treat missing as
         // mismatch rather than crashing.
-        if (! $user->password || ! Hash::check($validated['current_password'], $user->password)) {
+        if (! $authoritativeHash || ! Hash::check($validated['current_password'], $authoritativeHash)) {
             throw ValidationException::withMessages([
                 'current_password' => ['Current password is incorrect.'],
             ]);
         }
 
-        $user->password = $validated['new_password'];
-        $user->save();
+        // Write to BOTH customer_users.password AND identities.password
+        // so login sees the new hash. Skipping either side silently
+        // breaks the user — see Auth\PasswordResetController for the
+        // bug this fixes.
+        $hash = Hash::make($validated['new_password']);
+        DB::table('customer_users')->where('id', $user->id)->update([
+            'password'   => $hash,
+            'updated_at' => now(),
+        ]);
+        if ($user->identity_id) {
+            DB::table('identities')->where('id', $user->identity_id)->update([
+                'password'   => $hash,
+                'updated_at' => now(),
+            ]);
+        }
 
         // Phase 2 followup hardening — revoke every other Sanctum
         // token on password change. If an attacker had stolen the old

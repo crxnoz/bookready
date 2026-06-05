@@ -8,6 +8,7 @@ use App\Mail\EmailChangedMail;
 use App\Mail\PasswordChangedMail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -129,14 +130,36 @@ class AccountController extends Controller
             'new_password'     => 'required|string|min:8|confirmed',
         ]);
 
-        if (! Hash::check($validated['current_password'], $user->password)) {
+        // After #159, the canonical password lives on identities.password
+        // (that's what login checks). users.password is kept in sync but
+        // is no longer authoritative — check against identities first so
+        // a previously-busted password reset can't trap a user behind
+        // their own stale users.password hash.
+        $identityHash = null;
+        if ($user->identity_id) {
+            $identityHash = DB::table('identities')->where('id', $user->identity_id)->value('password');
+        }
+        $authoritativeHash = $identityHash ?: $user->password;
+
+        if (! Hash::check($validated['current_password'], $authoritativeHash)) {
             throw ValidationException::withMessages([
                 'current_password' => ['Current password is incorrect.'],
             ]);
         }
 
-        $user->password = Hash::make($validated['new_password']);
-        $user->save();
+        // Write to BOTH users.password AND identities.password so login
+        // sees the new hash. Skipping either side silently breaks the user.
+        $hash = Hash::make($validated['new_password']);
+        DB::table('users')->where('id', $user->id)->update([
+            'password'   => $hash,
+            'updated_at' => now(),
+        ]);
+        if ($user->identity_id) {
+            DB::table('identities')->where('id', $user->identity_id)->update([
+                'password'   => $hash,
+                'updated_at' => now(),
+            ]);
+        }
 
         // Phase S6 followup — revoke every other Sanctum token after a
         // successful password change. If an attacker had stolen the old
