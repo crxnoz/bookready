@@ -57,6 +57,7 @@ use App\Http\Controllers\Api\PublicManageBookingController;
 use App\Http\Controllers\Api\PublicSiteController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\MarketingLeadController;
+use App\Http\Controllers\Api\HealthController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -69,6 +70,15 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('v1')->group(function () {
+
+    // ── #123 Uptime / health probe (no auth) ───────────────────────────
+    // Returns {status, checks.database, time}. 200 healthy / 503 when the
+    // central DB is unreachable. Hit by the bookready-uptime.sh cron +
+    // any external monitor. Throttled generously — a monitor pings it
+    // every couple minutes, but we don't want it usable as a DB-ping
+    // amplifier, so 60/min/IP.
+    Route::get('health', [HealthController::class, 'show'])
+        ->middleware('throttle:60,1');
 
     // ── Marketing lead capture (no auth, from mybookready.com) ──────────
     Route::post('leads', [MarketingLeadController::class, 'store'])
