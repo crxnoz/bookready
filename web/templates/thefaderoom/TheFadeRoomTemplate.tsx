@@ -928,7 +928,7 @@ const TFR_CSS = `
 .tfr-layered-eyebrow {
   display: block;
   font-family: var(--tfr-serif);
-  font-size: clamp(56px, 12vw, 140px);
+  font-size: clamp(80px, 18vw, 200px);
   line-height: 1;
   opacity: 0.14;
   margin: 0;
