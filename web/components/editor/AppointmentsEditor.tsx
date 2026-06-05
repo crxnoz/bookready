@@ -256,7 +256,21 @@ export default function AppointmentsEditor() {
   // Allow deep-linking from the Bookings Overview cards (and anywhere
   // else that wants to land owners on a specific filter view).
   const searchParams = useSearchParams()
+  // A16 — `?date=YYYY-MM-DD` (used by the dashboard "This week" strip
+  // and the bookings-chart detail panel) lands the user on the day
+  // view scrolled to that exact date. Validated as a real ISO date
+  // before honoring it so a junk query param doesn't break the page.
+  const dateParam = (() => {
+    const raw = searchParams?.get('date')
+    if (! raw || ! /^\d{4}-\d{2}-\d{2}$/.test(raw)) return null
+    const parsed = new Date(raw + 'T00:00:00')
+    if (Number.isNaN(parsed.getTime())) return null
+    return raw
+  })()
   const initialFilter: Filter = (() => {
+    // ?date= takes precedence: if the caller wants a specific day, the
+    // day-view filter is the right home regardless of any other params.
+    if (dateParam) return 'today'
     const q = searchParams?.get('filter')
     if (q && (VALID_FILTERS as string[]).includes(q)) return q as Filter
     // Phase 13 — when arriving filtered to a customer, default to 'all'
@@ -266,6 +280,9 @@ export default function AppointmentsEditor() {
     if (searchParams?.get('customer_id')) return 'all'
     return 'upcoming'
   })()
+  // A16 — initial day-offset when ?date= is present. Negative for past
+  // days, positive for future days, 0 for today.
+  const initialDayOffset = dateParam ? offsetFromDate(dateParam) : 0
 
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [services, setServices] = useState<Service[]>([])
@@ -282,7 +299,9 @@ export default function AppointmentsEditor() {
   // Day offset relative to today, used only when filter === 'today'.
   // Zero = today; negative = past days; positive = future days. The label
   // gets a friendly "Yesterday / Today / Tomorrow" prefix when applicable.
-  const [dayOffset, setDayOffset] = useState(0)
+  // A16 — seeded from ?date= when present so the day view opens directly
+  // on the requested date (dashboard "This week" strip + chart drill-in).
+  const [dayOffset, setDayOffset] = useState(initialDayOffset)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState<FormState>(emptyForm())
