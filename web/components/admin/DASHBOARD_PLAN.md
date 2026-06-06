@@ -5,7 +5,23 @@ The page lives at `/admin` and is what the BookReady operator
 tenants. This doc captures the agreed-on plan so we can pick it up
 cleanly when build starts.
 
-**Status**: planned, not started.
+**Status**: Phase 1 SHIPPED (2026-06-06). Phases 2 + 3 pending.
+
+Phase 1 delivered: `AdminDashboardController::summary` (central-DB, 5min
+cache) + `DashboardSummary.tsx` (KPI bar, MRR 12-week stacked area,
+growth bars+cumulative line, activity feed). Charts are hand-rolled
+inline SVG — we did NOT add Recharts (deviation from the plan below;
+kept the codebase dependency-free + matched house style). The old
+4-card StatsSection was removed; its cross-tenant booking counts move
+to Phase 2's `/trends`.
+
+Deviations from the original plan, decided at build time:
+- Charts: hand-rolled SVG, not Recharts.
+- 4th KPI: "new signups (7d)" not "churn %" — churn isn't computable
+  from current state (canceled tenants are deleted; no history yet).
+  Moves to Phase 3 insights once the snapshot table accumulates.
+- MRR series is reconstructed from `tenants.created_at` until the
+  Phase 2 nightly snapshot job gives real daily history.
 
 ---
 
