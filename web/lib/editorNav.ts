@@ -76,15 +76,15 @@ export const EDITOR_SECTIONS: EditorSectionConfig[] = [
       // bookmarks + deep-links keep working. Icons intentionally omitted —
       // text labels alone read cleaner in this nav.
       { id: 'overview',     label: 'Overview' },
-      { id: 'header',       label: 'Hero' },
+      { id: 'header',       label: 'Top Banner' },
       { id: 'introduction', label: 'Introduction',   soon: true },
       { id: 'content',      label: 'Content' },
       { id: 'gallery',      label: 'Gallery' },
       { id: 'policies',     label: 'Policies' },
-      { id: 'additionals',  label: 'Additionals' },
+      { id: 'additionals',  label: 'Extras' },
       { id: 'announcements',label: 'Announcements',  soon: true },
       { id: 'footer',       label: 'Footer' },
-      { id: 'seo',          label: 'SEO',            soon: true },
+      { id: 'seo',          label: 'Get Found on Google', soon: true },
     ],
     defaultTitle:    'Website',
     defaultSubtitle: 'Manage your public site, template content, galleries, and brand details.',

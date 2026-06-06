@@ -1096,7 +1096,7 @@ function NotificationSettingsPanel() {
         <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Reminders</p>
         <Toggle
           label="Send appointment reminders"
-          hint="Email each client roughly N hours before their appointment. Runs hourly in the background."
+          hint="Email each client a set number of hours before their appointment."
           on={draft.reminder_email_enabled}
           onToggle={() => patch({ reminder_email_enabled: !draft.reminder_email_enabled })}
         />
@@ -1749,7 +1749,7 @@ function StripeConnectBlock({
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-0.5 mt-2 text-[11px]">
               {settings.stripe_connect_account_id && (
                 <div className="flex justify-between sm:block">
-                  <dt className="text-muted-text">Account</dt>
+                  <dt className="text-muted-text">Stripe reference</dt>
                   <dd className="font-mono text-near-black truncate">{settings.stripe_connect_account_id}</dd>
                 </div>
               )}
@@ -2204,13 +2204,13 @@ function PreferencesSettingsPanel() {
           options={[
             { value: '', label: 'Use BookReady default (US Eastern)' },
             ...COMMON_TIMEZONES.map(t => ({ value: t.value, label: t.label })),
-            { value: 'Other', label: 'Other (type IANA name)' },
+            { value: 'Other', label: 'Other (enter time zone manually)' },
           ]}
           hint="Affects how all dates and times display. Reminder schedules will start respecting this in the next release."
         />
         {tzSelect === 'Other' && (
           <TextField
-            label="Custom IANA time zone"
+            label="Time zone name"
             value={draft.time_zone ?? ''}
             onChange={v => patch({ time_zone: v || null })}
             placeholder="e.g. Europe/London"
@@ -2723,7 +2723,7 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
           <div className="bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] px-3.5 py-3 text-[12px] leading-relaxed text-[#7a1f1f]">
             <p className="font-semibold mb-1.5">This will permanently:</p>
             <ul className="list-disc list-outside pl-4 space-y-0.5">
-              <li>Cancel your BookReady subscription &mdash; no more charges</li>
+              <li>Cancel your BookReady subscription (no more charges)</li>
               <li>Delete your booking site at <span className="font-mono text-[11px]">{slug ?? '…'}.bkrdy.me</span></li>
               <li>Delete all appointments, customers, services, staff, and gallery items</li>
               <li>Delete your owner login and every active session</li>
@@ -2734,19 +2734,19 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
 
           <div>
             <label className="block text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-1.5">
-              Type your workspace slug to confirm
+              Type your site address to confirm
             </label>
             <input
               type="text"
               value={typedSlug}
               onChange={e => setTyped(e.target.value)}
-              placeholder={slug ?? 'yourslug'}
+              placeholder={slug ?? 'yoursite'}
               autoComplete="off"
               className="w-full bg-white border border-[rgba(18,18,18,0.20)] px-3 py-2.5 text-sm text-near-black font-mono placeholder:text-[#c4bcb6] focus:outline-none focus:border-[#b42828] transition-colors"
             />
             {typedSlug && slug && !slugMatches && (
               <p className="text-[11px] text-[#b42828] mt-1">
-                Doesn&rsquo;t match. Type <span className="font-mono">{slug}</span> exactly.
+                That doesn&rsquo;t match. Type <span className="font-mono">{slug}</span> exactly.
               </p>
             )}
           </div>
@@ -2809,36 +2809,36 @@ const EMAIL_TEMPLATES: EmailTemplateMeta[] = [
     key: 'booking_request_client',
     label: 'Booking request received',
     description: 'Sent right after a client submits a booking request.',
-    defaultSubject: 'Booking request received — Your business',
-    defaultIntro:   'We received your request and Your business will review and confirm shortly.',
+    defaultSubject: 'We received your booking request',
+    defaultIntro:   'Thanks for booking with us. We received your request and will confirm it shortly.',
   },
   {
     key: 'appointment_confirmed',
     label: 'Appointment confirmed',
     description: 'Sent when you confirm a booking (or it auto-confirms).',
-    defaultSubject: 'Appointment confirmed — Your business',
-    defaultIntro:   'Your business just confirmed your appointment. We will see you soon.',
+    defaultSubject: 'Your appointment is confirmed',
+    defaultIntro:   'Great news, your appointment is confirmed. We look forward to seeing you.',
   },
   {
     key: 'appointment_cancelled',
     label: 'Appointment cancelled',
     description: 'Sent when an appointment is cancelled (owner or client).',
-    defaultSubject: 'Appointment cancelled — Your business',
-    defaultIntro:   'Your business cancelled the appointment below.',
+    defaultSubject: 'Your appointment has been cancelled',
+    defaultIntro:   'We are letting you know that the appointment below has been cancelled.',
   },
   {
     key: 'appointment_rescheduled',
     label: 'Appointment rescheduled',
     description: 'Sent when an appointment moves to a new time.',
-    defaultSubject: 'Your appointment has been rescheduled — Your business',
-    defaultIntro:   'Your business moved your appointment to a new time. Details below.',
+    defaultSubject: 'Your appointment has been rescheduled',
+    defaultIntro:   'We have moved your appointment to a new time. The details are below.',
   },
   {
     key: 'appointment_reminder',
     label: 'Appointment reminder',
     description: 'Sent automatically a configurable number of hours before the appointment.',
-    defaultSubject: 'Reminder: your Your business appointment',
-    defaultIntro:   'Your appointment with Your business is coming up soon.',
+    defaultSubject: 'A reminder about your upcoming appointment',
+    defaultIntro:   'This is a friendly reminder about your upcoming appointment with us.',
   },
 ]
 

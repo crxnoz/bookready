@@ -49,6 +49,22 @@ import { cn } from '@/lib/cn'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// Friendly labels for the raw payment-status enum so owners never see
+// snake_case like "pending_payment". Falls back to a humanized version.
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  pending_payment:    'Deposit pending',
+  deposit_paid:       'Deposit paid',
+  paid:               'Paid',
+  failed:             'Payment failed',
+  refunded:           'Refunded',
+  partially_refunded: 'Partially refunded',
+}
+
+function prettyPaymentStatus(s: string | null | undefined): string {
+  if (!s) return 'None yet'
+  return PAYMENT_STATUS_LABELS[s] ?? s.replace(/_/g, ' ')
+}
+
 function fmtDate(d: string): string {
   return new Date(d + 'T00:00:00').toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
@@ -728,7 +744,7 @@ function DrawerContent({
             <SnapshotCell label="Total spent"  value={fmtMoney(c.total_spent)} accent="ink" />
             <SnapshotCell label="Deposits"     value={fmtMoney(c.deposits_paid)} />
             <SnapshotCell label="Outstanding"  value={fmtMoney(c.outstanding_balance)} accent={c.outstanding_balance > 0 ? 'warn' : undefined} />
-            <SnapshotCell label="Last payment" value={c.last_payment_status ? c.last_payment_status.replace(/_/g, ' ') : '—'} small />
+            <SnapshotCell label="Last payment" value={prettyPaymentStatus(c.last_payment_status)} small />
           </div>
         </DrawerSection>
 

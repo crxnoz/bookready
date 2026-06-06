@@ -700,6 +700,7 @@ function TransactionRow({ r }: { r: PaymentTransaction }) {
 
 function TxStatusPill({ r }: { r: PaymentTransaction }) {
   const map: Record<string, { label: string; cls: string }> = {
+    pending_payment:    { label: 'Deposit pending', cls: 'bg-white border border-[rgba(18,18,18,0.20)] text-muted-text' },
     deposit_paid:       { label: 'Deposit',      cls: 'bg-lavender text-near-black' },
     paid:               { label: 'Paid',         cls: 'bg-near-black text-white' },
     refunded:           { label: 'Refunded',     cls: 'bg-white border border-[rgba(18,18,18,0.20)] text-muted-text' },
@@ -713,7 +714,7 @@ function TxStatusPill({ r }: { r: PaymentTransaction }) {
       </span>
     )
   }
-  const cfg = map[r.payment_status] ?? { label: r.payment_status, cls: 'bg-cream text-muted-text' }
+  const cfg = map[r.payment_status] ?? { label: r.payment_status.replace(/_/g, ' '), cls: 'bg-cream text-muted-text' }
   return (
     <span className={cn('text-[9px] font-bold tracking-[0.06em] uppercase px-1.5 py-0.5', cfg.cls)}>
       {cfg.label}

@@ -40,7 +40,7 @@ export function PaymentPill({ appt }: { appt: Appointment }) {
     )
   }
 
-  const cfg = PAYMENT_CFG[status] ?? { label: status, cls: 'bg-white border border-[rgba(18,18,18,0.12)] text-near-black' }
+  const cfg = PAYMENT_CFG[status] ?? { label: status.replace(/_/g, ' '), cls: 'bg-white border border-[rgba(18,18,18,0.12)] text-near-black' }
   return (
     <span className={cn('text-[9px] font-bold tracking-[0.06em] uppercase px-2 py-0.5 flex-shrink-0 whitespace-nowrap', cfg.cls)}>
       {cfg.label}

@@ -844,7 +844,6 @@ function OverviewPanel({
           <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.12)] bg-white text-near-black px-1.5 py-0.5">
             {enabledCount} sections visible
           </span>
-          <span className="text-xs text-muted-text font-mono">{templateSlug}</span>
         </div>
         <p className="text-xs text-muted-text leading-relaxed">
           Changing templates keeps your business info, services, bookings, staff,
@@ -1443,10 +1442,10 @@ function SeoComingSoonPanel() {
       <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-2">
         Coming Soon
       </p>
-      <h2 className="text-base font-bold text-near-black mb-1">SEO &amp; meta tags</h2>
+      <h2 className="text-base font-bold text-near-black mb-1">Get found on Google</h2>
       <p className="text-xs text-muted-text max-w-md mx-auto">
-        Configure your site title, meta description, social share image,
-        and structured data here. We&apos;re finishing this up.
+        Set your page title, the short description that shows in Google results,
+        and the image people see when your site is shared. We&apos;re finishing this up.
       </p>
     </div>
   )
@@ -1846,7 +1845,7 @@ function PoliciesHeadingInline({ settings, onSaveSettings }: {
   return (
     <div className="space-y-2 pb-3 border-b border-[rgba(18,18,18,0.06)]">
       <TextField
-        label="Section heading (the h1 above the policies)"
+        label="Section heading (the big title above your policies)"
         value={form.value.heading}
         onChange={v => form.patch({ heading: v })}
         placeholder="House Rules"
@@ -2064,7 +2063,7 @@ function AdditionalsPanel({
           onToggle={() => form.patch({ show_thank_you: !(form.value.show_thank_you ?? true) })}
         />
         <TextField
-          label="Eyebrow"
+          label="Small label above the title"
           value={form.value.thank_you_eyebrow ?? ''}
           onChange={v => form.patch({ thank_you_eyebrow: v || null })}
           placeholder="Outro"
@@ -2312,7 +2311,7 @@ function FooterPanel({
       </div>
 
       <TextField
-        label="Brand label (eyebrow above your business name in the footer)"
+        label="Brand label (small text above your business name in the footer)"
         value={form.value.brand_label ?? ''}
         onChange={v => form.patch({ brand_label: v || null })}
         placeholder="The Studio"
@@ -2494,7 +2493,7 @@ function GalleryHeadingInline({ settings, onSaveSettings }: {
   return (
     <div className="space-y-2 pb-3 border-b border-[rgba(18,18,18,0.06)]">
       <TextField
-        label="Section heading (the h1 above the gallery)"
+        label="Section heading (the big title above your gallery)"
         value={form.value.heading}
         onChange={v => form.patch({ heading: v })}
         placeholder="Recent work"
@@ -3081,7 +3080,7 @@ function ResultsHeadingInline({ settings, onSaveSettings }: {
   return (
     <div className="space-y-2 pb-3 border-b border-[rgba(18,18,18,0.06)]">
       <TextField
-        label="Section heading (the h1 above the before & after section)"
+        label="Section heading (the big title above your before & after photos)"
         value={form.value.heading}
         onChange={v => form.patch({ heading: v })}
         placeholder="Before & After"
@@ -4050,7 +4049,7 @@ function AnnouncementsComingSoonPanel() {
     <ComingSoonHero
       eyebrow="Coming Soon"
       title="Announcements"
-      intro="Reach clients without leaving BookReady. Announcement bars, pop-ups, and one-off email blasts — all branded to your site and managed from one tab."
+      intro="Reach clients without leaving BookReady. Announcement bars, pop-ups, and one-off email blasts, all branded to your site and managed from one tab."
       features={[
         {
           icon:        MegaphoneIcon,
@@ -4066,7 +4065,7 @@ function AnnouncementsComingSoonPanel() {
         {
           icon:        BellIcon,
           title:       'Pop-ups',
-          description: 'A focused dialog that appears on first visit or after N seconds.',
+          description: 'A pop-up box that appears on the first visit or after a few seconds.',
           bullets: [
             'Capture emails for a waitlist or newsletter',
             'Push a high-margin add-on or service',
