@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 /**
  * BookReady operator admin — platform analytics dashboard.
@@ -318,5 +319,289 @@ class AdminDashboardController extends Controller
         if ($last->gte(now()->subDays(7)))  return 'alive';
         if ($last->gte(now()->subDays(30))) return 'slowing';
         return 'dormant';
+    }
+
+    /**
+     * GET /api/v1/admin/dashboard/insights
+     *
+     * Phase 3 — rule-based observations. Each rule only appears when it
+     * has something to say, so the panel reads as a triage list, not a
+     * wall of always-on cards. Computed from central tenants + the latest
+     * snapshot's per-tenant booking aggregates. Cached 15 min.
+     *
+     * Severity: 'warn' (needs attention) · 'good' (positive) · 'info'.
+     */
+    public function insights(): JsonResponse
+    {
+        $payload = Cache::remember('admin:dashboard:insights:v1', 900, function () {
+            $now = now();
+
+            $tenants = Tenant::query()->get(['id', 'plan', 'subscription_state', 'created_at', 'trial_ends_at']);
+
+            $snap = DB::table('platform_dashboard_snapshots')->orderByDesc('snapshot_date')->first();
+            $per  = $snap
+                ? collect(json_decode($snap->payload, true)['per_tenant'] ?? [])->keyBy('id')
+                : collect();
+
+            $insights = [];
+
+            // 1) Churn risk — active-subscription tenants with no booking in 30d.
+            $churnRisk = $tenants
+                ->filter(fn ($t) => $t->subscription_state === 'active')
+                ->filter(function ($t) use ($per) {
+                    $agg = $per->get($t->id);
+                    if (! $agg) return false;          // no snapshot row → skip
+                    return (int) ($agg['bookings_30d'] ?? 0) === 0;
+                })
+                ->map(fn ($t) => (string) $t->id)
+                ->values();
+            if ($churnRisk->isNotEmpty()) {
+                $insights[] = [
+                    'id'       => 'churn_risk',
+                    'severity' => 'warn',
+                    'title'    => $churnRisk->count() . ' active ' . str('tenant')->plural($churnRisk->count())
+                                  . ' with no bookings in 30 days',
+                    'detail'   => 'Paying tenants going quiet are the strongest churn signal. Reach out before renewal.',
+                    'tenants'  => $churnRisk->all(),
+                ];
+            }
+
+            // 2) Trials expiring within 7 days (still trialing).
+            $expiringSoon = $tenants
+                ->filter(fn ($t) => $t->subscription_state === 'trialing'
+                    && $t->trial_ends_at
+                    && $t->trial_ends_at->betweenIncluded($now, $now->copy()->addDays(7)))
+                ->sortBy(fn ($t) => $t->trial_ends_at)
+                ->map(fn ($t) => (string) $t->id)
+                ->values();
+            if ($expiringSoon->isNotEmpty()) {
+                $insights[] = [
+                    'id'       => 'trials_expiring',
+                    'severity' => 'warn',
+                    'title'    => $expiringSoon->count() . ' ' . str('trial')->plural($expiringSoon->count())
+                                  . ' expiring this week',
+                    'detail'   => 'Last-chance window to convert. A nudge email or check-in lands best now.',
+                    'tenants'  => $expiringSoon->all(),
+                ];
+            }
+
+            // 3) Stuck trials — trial window passed but still trialing (never
+            //    converted, never explicitly canceled).
+            $stuckTrials = $tenants
+                ->filter(fn ($t) => $t->subscription_state === 'trialing'
+                    && $t->trial_ends_at
+                    && $t->trial_ends_at->lt($now))
+                ->map(fn ($t) => (string) $t->id)
+                ->values();
+            if ($stuckTrials->isNotEmpty()) {
+                $insights[] = [
+                    'id'       => 'stuck_trials',
+                    'severity' => 'info',
+                    'title'    => $stuckTrials->count() . ' expired ' . str('trial')->plural($stuckTrials->count())
+                                  . ' never converted',
+                    'detail'   => 'Trial ended without a paid plan or an explicit cancel. Worth a win-back or cleanup.',
+                    'tenants'  => $stuckTrials->all(),
+                ];
+            }
+
+            // 4) Fastest growing — top tenant by 7d bookings whose last week
+            //    beat its prior 3-week weekly average (real acceleration).
+            $accelerating = $tenants
+                ->map(function ($t) use ($per) {
+                    $agg = $per->get($t->id);
+                    if (! $agg) return null;
+                    $d7  = (int) ($agg['bookings_7d'] ?? 0);
+                    $d30 = (int) ($agg['bookings_30d'] ?? 0);
+                    $priorWeeklyAvg = max(0, ($d30 - $d7)) / 3;
+                    return $d7 > 0 && $d7 > $priorWeeklyAvg
+                        ? ['id' => (string) $t->id, 'd7' => $d7, 'prior' => $priorWeeklyAvg]
+                        : null;
+                })
+                ->filter()
+                ->sortByDesc('d7')
+                ->values();
+            if ($accelerating->isNotEmpty()) {
+                $top = $accelerating->first();
+                $insights[] = [
+                    'id'       => 'fastest_growing',
+                    'severity' => 'good',
+                    'title'    => $top['id'] . ' is accelerating',
+                    'detail'   => $top['d7'] . ' bookings in the last 7 days — above its prior weekly pace. '
+                                  . ($accelerating->count() > 1
+                                      ? ($accelerating->count() - 1) . ' other '
+                                        . str('tenant')->plural($accelerating->count() - 1) . ' also picking up.'
+                                      : ''),
+                    'tenants'  => $accelerating->take(5)->pluck('id')->all(),
+                ];
+            }
+
+            // 5) Trial→paid conversion among tenants past their trial window.
+            $pastTrial = $tenants->filter(fn ($t) =>
+                $t->created_at && $t->created_at->lt($now->copy()->subDays(config('plans.trial_days', 14))));
+            if ($pastTrial->isNotEmpty()) {
+                $converted = $pastTrial->filter(fn ($t) => $t->subscription_state === 'active')->count();
+                $rate = (int) round($converted / $pastTrial->count() * 100);
+                $insights[] = [
+                    'id'       => 'conversion',
+                    'severity' => $rate >= 40 ? 'good' : 'info',
+                    'title'    => "Trial→paid conversion: {$rate}%",
+                    'detail'   => "{$converted} of {$pastTrial->count()} tenants past their "
+                                  . config('plans.trial_days', 14) . "-day trial are on a paid plan. "
+                                  . '(Lifetime, not month-over-month — needs the snapshot history to trend.)',
+                    'tenants'  => [],
+                ];
+            }
+
+            // 6) Never-booked tenants (signed up, zero appointments ever).
+            $neverBooked = $tenants
+                ->filter(function ($t) use ($per) {
+                    $agg = $per->get($t->id);
+                    return $agg && (int) ($agg['bookings_total'] ?? 0) === 0;
+                })
+                ->map(fn ($t) => (string) $t->id)
+                ->values();
+            if ($neverBooked->isNotEmpty()) {
+                $insights[] = [
+                    'id'       => 'never_booked',
+                    'severity' => 'info',
+                    'title'    => $neverBooked->count() . ' ' . str('tenant')->plural($neverBooked->count())
+                                  . ' with zero bookings ever',
+                    'detail'   => 'Signed up but never took a booking — onboarding drop-off or test accounts.',
+                    'tenants'  => $neverBooked->all(),
+                ];
+            }
+
+            return [
+                'insights'      => $insights,
+                'snapshot_date' => $snap?->snapshot_date,
+                'computed_at'   => $now->toIso8601String(),
+            ];
+        });
+
+        return response()->json($payload);
+    }
+
+    /**
+     * GET /api/v1/admin/dashboard/health
+     *
+     * Phase 3 — operational health. Four independently-guarded probes so
+     * one failure (a missing log, a down mailer) degrades that one metric
+     * rather than blanking the card. Cached 120s.
+     */
+    public function health(): JsonResponse
+    {
+        $payload = Cache::remember('admin:dashboard:health:v1', 120, function () {
+            return [
+                'api_errors' => $this->probeApiErrors(),
+                'queue'      => $this->probeQueue(),
+                'deploy'     => $this->probeDeploy(),
+                'mailer'     => $this->probeMailer(),
+                'computed_at'=> now()->toIso8601String(),
+            ];
+        });
+
+        return response()->json($payload);
+    }
+
+    /** Count ERROR/CRITICAL log lines in the last 24h from the Laravel log. */
+    private function probeApiErrors(): array
+    {
+        try {
+            $path = storage_path('logs/laravel.log');
+            if (! is_file($path)) {
+                return ['status' => 'unknown', 'count_24h' => null, 'note' => 'No log file.'];
+            }
+            // Read the tail (logs rotate, but cap the read regardless).
+            $size = filesize($path);
+            $read = 512 * 1024; // last 512KB is plenty for a 24h window
+            $fh = fopen($path, 'rb');
+            if ($size > $read) fseek($fh, -$read, SEEK_END);
+            $contents = stream_get_contents($fh);
+            fclose($fh);
+
+            $cutoff = now()->subDay();
+            $count = 0;
+            foreach (explode("\n", $contents) as $line) {
+                if (! preg_match('/^\[(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\]\s+\S+\.(ERROR|CRITICAL|ALERT|EMERGENCY)/', $line, $m)) {
+                    continue;
+                }
+                try {
+                    if (Carbon::parse($m[1])->gte($cutoff)) $count++;
+                } catch (\Throwable) { /* skip unparseable */ }
+            }
+            return [
+                'status'    => $count === 0 ? 'ok' : ($count < 10 ? 'warn' : 'bad'),
+                'count_24h' => $count,
+                'note'      => $count === 0 ? 'No errors in 24h.' : "{$count} in the last 24h.",
+            ];
+        } catch (\Throwable $e) {
+            return ['status' => 'unknown', 'count_24h' => null, 'note' => 'Log read failed.'];
+        }
+    }
+
+    /** Queue connection + best-effort depth (Redis llen on the default queue). */
+    private function probeQueue(): array
+    {
+        $conn = (string) config('queue.default', 'sync');
+        $depth = null;
+        try {
+            if ($conn === 'redis') {
+                // Laravel Horizon/queue stores jobs under "queues:{name}".
+                $depth = (int) \Illuminate\Support\Facades\Redis::connection()->llen('queues:default');
+            } elseif (\Illuminate\Support\Facades\Schema::hasTable('jobs')) {
+                $depth = (int) DB::table('jobs')->count();
+            }
+        } catch (\Throwable) {
+            $depth = null;
+        }
+        return [
+            'status'     => $depth === null ? 'ok' : ($depth < 50 ? 'ok' : ($depth < 500 ? 'warn' : 'bad')),
+            'connection' => $conn,
+            'depth'      => $depth,
+            'note'       => $depth === null
+                ? ucfirst($conn) . ' queue.'
+                : "{$depth} job" . ($depth === 1 ? '' : 's') . ' pending.',
+        ];
+    }
+
+    /** Last deploy from storage/app/last-deploy.json (written by the deploy). */
+    private function probeDeploy(): array
+    {
+        try {
+            $path = storage_path('app/last-deploy.json');
+            if (! is_file($path)) {
+                return ['status' => 'unknown', 'commit' => null, 'deployed_at' => null, 'note' => 'No deploy stamp.'];
+            }
+            $data = json_decode((string) file_get_contents($path), true) ?: [];
+            $at = $data['deployed_at'] ?? null;
+            return [
+                'status'      => 'ok',
+                'commit'      => isset($data['commit']) ? substr((string) $data['commit'], 0, 7) : null,
+                'deployed_at' => $at,
+                'note'        => $at ? Carbon::parse($at)->diffForHumans() : 'Deployed.',
+            ];
+        } catch (\Throwable $e) {
+            return ['status' => 'unknown', 'commit' => null, 'deployed_at' => null, 'note' => 'Stamp read failed.'];
+        }
+    }
+
+    /** Resend mailer reachability — cached auth ping, timeout-guarded. */
+    private function probeMailer(): array
+    {
+        $from = (string) config('mail.from.address', '');
+        $key  = (string) (config('services.resend.key') ?: env('RESEND_API_KEY', ''));
+        if ($key === '') {
+            return ['status' => 'unknown', 'from' => $from, 'note' => 'RESEND_API_KEY not configured.'];
+        }
+        try {
+            $res = Http::withToken($key)->timeout(3)->get('https://api.resend.com/domains');
+            return [
+                'status' => $res->successful() ? 'ok' : 'bad',
+                'from'   => $from,
+                'note'   => $res->successful() ? 'Resend reachable.' : 'Resend returned ' . $res->status() . '.',
+            ];
+        } catch (\Throwable $e) {
+            return ['status' => 'unknown', 'from' => $from, 'note' => 'Resend ping failed.'];
+        }
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AdminDashboardController;
+use App\Http\Controllers\Api\Admin\AdminTenantDetailController;
 use App\Http\Controllers\Api\Admin\AdminTenantsController;
 use App\Http\Controllers\Api\TwilioWebhookController;
 use App\Http\Controllers\Api\PlatformAnnouncementsController;
@@ -386,9 +387,12 @@ Route::prefix('v1')->group(function () {
     // ── BookReady platform admin (super-admin only) ──────────────────────
     Route::middleware(['auth:sanctum', 'verified_email', 'admin'])->prefix('admin')->group(function () {
         Route::get   ('stats',            [AdminTenantsController::class, 'stats']);
-        Route::get   ('dashboard/summary',[AdminDashboardController::class, 'summary']);
-        Route::get   ('dashboard/trends', [AdminDashboardController::class, 'trends']);
+        Route::get   ('dashboard/summary', [AdminDashboardController::class, 'summary']);
+        Route::get   ('dashboard/trends',  [AdminDashboardController::class, 'trends']);
+        Route::get   ('dashboard/insights',[AdminDashboardController::class, 'insights']);
+        Route::get   ('dashboard/health',  [AdminDashboardController::class, 'health']);
         Route::get   ('tenants',          [AdminTenantsController::class, 'index']);
+        Route::get   ('tenants/{slug}',   [AdminTenantDetailController::class, 'show']);
         Route::delete('tenants/{id}',     [AdminTenantsController::class, 'destroy']);
         // Platform announcements (admin CRUD)
         Route::get   ('announcements',        [PlatformAnnouncementsController::class, 'adminIndex']);
