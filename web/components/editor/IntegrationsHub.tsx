@@ -228,13 +228,13 @@ function stripeTile(settings: PaymentSettings | null): IntegrationTile {
   return {
     key:         'stripe',
     name:        'Stripe',
-    description: 'Charge deposits and full payments through Stripe Connect. PayPal acceptance available as a Stripe payment method.',
+    description: 'Charge deposits and full payments through Stripe. PayPal is supported as a Stripe payment method.',
     icon:        CreditCard,
     status,
     manageHref:  '/editor/payments',
     connectHref: '/editor/payments',
     hint:        status === 'action_required'
-      ? 'Stripe onboarding incomplete. Finish it to start accepting payments.'
+      ? 'Stripe setup not finished. Finish it to start accepting payments.'
       : undefined,
   }
 }

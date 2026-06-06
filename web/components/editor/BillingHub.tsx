@@ -184,7 +184,7 @@ export default function BillingHub() {
           <div className="mt-2 p-4 bg-cream border border-[rgba(18,18,18,0.10)]">
             <p className="text-[13px] text-near-black font-semibold">No active subscription</p>
             <p className="text-[12px] text-muted-text mt-1">
-              Pick a plan below to start. You can switch or cancel any time from the Stripe billing portal.
+              Pick a plan below to start. You can switch or cancel any time from your billing portal.
             </p>
           </div>
         )}
@@ -192,7 +192,7 @@ export default function BillingHub() {
         {sub?.subscribed && (
           <div className="mt-4 pt-4 border-t border-[rgba(18,18,18,0.08)] flex items-center justify-between flex-wrap gap-2">
             <p className="text-[11px] text-muted-text">
-              Manage card, invoices, and cancellation in the Stripe billing portal.
+              Manage your card, invoices, and cancellation in the billing portal.
             </p>
             <button
               type="button"
@@ -201,7 +201,7 @@ export default function BillingHub() {
               className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2 hover:border-near-black"
             >
               {portalLoading ? <Loader2 size={11} className="animate-spin" /> : <ExternalLink size={11} />}
-              Open Stripe portal
+              Open billing portal
             </button>
           </div>
         )}
@@ -214,7 +214,7 @@ export default function BillingHub() {
             {sub?.subscribed ? 'Change plan' : 'Pick a plan'}
           </h2>
           <p className="text-xs text-muted-text mt-0.5">
-            Switching plans is prorated by Stripe. The SMS bundle determines how many texts are included each cycle.
+            Switching plans is prorated automatically. Your text pack sets how many texts are included each cycle.
           </p>
         </header>
 

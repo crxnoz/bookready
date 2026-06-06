@@ -375,8 +375,8 @@ function PaymentSettingsPanel() {
       <header className="px-1">
         <h1 className="text-base font-bold text-near-black">Payment Settings</h1>
         <p className="text-xs text-muted-text mt-0.5">
-          Connect Stripe, decide whether clients pay a deposit when they
-          book, and configure how much.
+          Set up Stripe to accept customer payments, decide whether clients
+          pay a deposit when they book, and choose how much.
         </p>
       </header>
 
@@ -402,8 +402,8 @@ function PaymentSettingsPanel() {
         {draft.payments_enabled && draft.stripe_connect_status !== 'active' && (
           <p className="text-[11px] text-[#8a5a00] inline-flex items-start gap-1.5 mt-1">
             <AlertCircle size={11} className="mt-0.5 flex-shrink-0" />
-            Connect Stripe above so customers can actually pay. Until then,
-            payment-required bookings will be blocked.
+            Finish your Stripe setup above so customers can actually pay.
+            Until then, bookings that require payment will be blocked.
           </p>
         )}
       </section>
@@ -502,8 +502,8 @@ function PaymentSettingsPanel() {
         />
 
         <Toggle
-          label="Split-pay (Klarna, Afterpay, Affirm)"
-          hint="Show Buy-Now-Pay-Later options alongside card in Stripe Checkout. Stripe handles eligibility per region and amount."
+          label="Buy Now, Pay Later (Klarna, Afterpay, Affirm)"
+          hint="Show Buy Now, Pay Later options next to the card field at checkout. Stripe decides eligibility based on the client's region and amount."
           icon={Check}
           on={(draft.allow_split_pay ?? false) && !paymentsOff}
           onToggle={() => patch({ allow_split_pay: !(draft.allow_split_pay ?? false) })}
@@ -512,7 +512,7 @@ function PaymentSettingsPanel() {
 
         <Toggle
           label="Collect sales tax"
-          hint="Adds tax to every payment via Stripe Tax. You must also enable Stripe Tax inside your connected account's Stripe dashboard."
+          hint="Adds sales tax to every payment. You also need to turn on Tax inside your Stripe dashboard."
           icon={Check}
           on={(draft.collect_tax ?? false) && !paymentsOff}
           onToggle={() => patch({ collect_tax: !(draft.collect_tax ?? false) })}
@@ -521,7 +521,7 @@ function PaymentSettingsPanel() {
 
         <Toggle
           label="Save cards for repeat customers"
-          hint="Returning clients see their saved card in Checkout. Also unlocks no-show / late-cancel fees below. Card-only, so it disables split-pay for that session."
+          hint="Returning clients see their saved card at checkout. This also unlocks no-show and late-cancel fees below. Card-only, so Buy Now, Pay Later is turned off for that session."
           icon={Check}
           on={(draft.save_cards_for_reuse ?? false) && !paymentsOff}
           onToggle={() => patch({ save_cards_for_reuse: !(draft.save_cards_for_reuse ?? false) })}
@@ -1675,37 +1675,37 @@ function StripeConnectBlock({
         return {
           tone:  'positive' as const,
           icon:  ShieldCheck,
-          title: 'Stripe connected',
-          body:  'Customer payments are ready. Deposits will route to your Stripe account.',
+          title: 'Stripe is connected',
+          body:  'Customer payments are ready. Deposits route to your Stripe account and then to your bank.',
         }
       case 'pending':
         return {
           tone:  'warn' as const,
           icon:  AlertCircle,
           title: 'Pending review',
-          body:  'You finished onboarding. Stripe is still verifying your details, and payments will turn on once they finish.',
+          body:  'You finished setup. Stripe is verifying your details. Payments will turn on once they finish.',
         }
       case 'onboarding_started':
         return {
           tone:  'warn' as const,
           icon:  AlertCircle,
-          title: 'Onboarding in progress',
-          body:  'You started Stripe onboarding but haven’t finished yet. Continue where you left off.',
+          title: 'Setup in progress',
+          body:  'You started your Stripe setup but haven’t finished yet. Continue where you left off.',
         }
       case 'restricted':
         return {
           tone:  'danger' as const,
           icon:  AlertTriangle,
           title: 'Action required',
-          body:  'Stripe needs more information before your account can accept payments. Continue onboarding to resolve.',
+          body:  'Stripe needs more information before your account can accept payments. Continue setup to resolve.',
         }
       case 'not_connected':
       default:
         return {
           tone:  'neutral' as const,
           icon:  CreditCard,
-          title: 'Connect Stripe',
-          body:  'Connect a Stripe account so customer deposits and payments land in your bank.',
+          title: 'Set up Stripe',
+          body:  'Set up a Stripe account so customer deposits and payments land in your bank.',
         }
     }
   })()
@@ -1755,20 +1755,20 @@ function StripeConnectBlock({
               )}
               {settings.stripe_details_submitted !== undefined && (
                 <div className="flex justify-between sm:block">
-                  <dt className="text-muted-text">Onboarding</dt>
-                  <dd className="text-near-black">{settings.stripe_details_submitted ? 'Submitted' : 'Incomplete'}</dd>
+                  <dt className="text-muted-text">Setup</dt>
+                  <dd className="text-near-black">{settings.stripe_details_submitted ? 'Done' : 'Not done'}</dd>
                 </div>
               )}
               {settings.stripe_charges_enabled !== undefined && (
                 <div className="flex justify-between sm:block">
-                  <dt className="text-muted-text">Charges</dt>
-                  <dd className="text-near-black">{settings.stripe_charges_enabled ? 'Enabled' : 'Disabled'}</dd>
+                  <dt className="text-muted-text">Accepting payments</dt>
+                  <dd className="text-near-black">{settings.stripe_charges_enabled ? 'Yes' : 'No'}</dd>
                 </div>
               )}
               {settings.stripe_payouts_enabled !== undefined && (
                 <div className="flex justify-between sm:block">
-                  <dt className="text-muted-text">Payouts</dt>
-                  <dd className="text-near-black">{settings.stripe_payouts_enabled ? 'Enabled' : 'Disabled'}</dd>
+                  <dt className="text-muted-text">Bank deposits</dt>
+                  <dd className="text-near-black">{settings.stripe_payouts_enabled ? 'Yes' : 'No'}</dd>
                 </div>
               )}
             </dl>
@@ -1792,7 +1792,7 @@ function StripeConnectBlock({
           >
             {busy === 'starting'
               ? <><Loader2 size={11} className="animate-spin" /> Starting</>
-              : <><CreditCard size={12} /> Connect Stripe</>}
+              : <><CreditCard size={12} /> Set up Stripe</>}
           </button>
         )}
         {(status === 'onboarding_started' || status === 'pending' || status === 'restricted') && (
@@ -1804,7 +1804,7 @@ function StripeConnectBlock({
           >
             {busy === 'refreshing'
               ? <><Loader2 size={11} className="animate-spin" /> Opening</>
-              : <><ExternalLink size={12} /> Continue onboarding</>}
+              : <><ExternalLink size={12} /> Continue setup</>}
           </button>
         )}
         {settings.stripe_connect_account_id && (

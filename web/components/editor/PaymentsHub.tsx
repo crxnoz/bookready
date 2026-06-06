@@ -167,7 +167,7 @@ function PaymentsOverview() {
           <div className="min-w-0 flex-1">
             <p className="text-[13px] font-semibold text-[#8a5a00]">Stripe not fully connected</p>
             <p className="text-[11px] text-muted-text mt-0.5">
-              Customers can&apos;t complete payment until Stripe is active. Finish onboarding to start accepting deposits.
+              Your customers can&apos;t complete payment until your Stripe setup is finished. Finish setup to start accepting deposits.
             </p>
           </div>
           <Link
@@ -267,7 +267,7 @@ function PaymentsOverview() {
           href="/editor/settings?tab=payments"
           icon={SettingsIcon}
           title="Manage payment settings"
-          body="Connect Stripe, configure deposits, choose currency."
+          body="Set up Stripe, choose how deposits work, set your currency."
           external
           primary
         />
@@ -752,10 +752,10 @@ function PayoutsList() {
             <Banknote size={18} strokeWidth={1.8} />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-bold text-near-black">No payouts yet</h2>
+            <h2 className="text-sm font-bold text-near-black">No bank deposits yet</h2>
             <p className="text-xs text-muted-text mt-1 max-w-md">
               {isConnectMissing
-                ? 'Connect your Stripe account in Settings → Payments to start receiving payouts to your bank.'
+                ? 'Set up Stripe in Settings → Payments to start receiving deposits to your bank.'
                 : data.status === 'error'
                   ? 'We couldn’t load payouts from Stripe right now. Try again in a moment.'
                   : 'Payouts show up here once Stripe sends a deposit to your bank, typically 1–2 business days after a charge.'}
@@ -785,12 +785,12 @@ function PayoutRow({ p }: { p: StripePayout }) {
   const sym = p.currency === 'USD' ? '$' : ''
   const status = (() => {
     switch (p.status) {
-      case 'paid':       return { label: 'Paid',        cls: 'bg-near-black text-white' }
-      case 'pending':    return { label: 'Pending',     cls: 'bg-blush text-near-black' }
-      case 'in_transit': return { label: 'In transit',  cls: 'bg-lavender text-near-black' }
-      case 'canceled':   return { label: 'Canceled',    cls: 'bg-white border border-[rgba(18,18,18,0.20)] text-muted-text' }
-      case 'failed':     return { label: 'Failed',      cls: 'bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] text-[#b42828]' }
-      default:           return { label: p.status,      cls: 'bg-cream text-muted-text' }
+      case 'paid':       return { label: 'In your bank', cls: 'bg-near-black text-white' }
+      case 'pending':    return { label: 'Pending',      cls: 'bg-blush text-near-black' }
+      case 'in_transit': return { label: 'On the way',   cls: 'bg-lavender text-near-black' }
+      case 'canceled':   return { label: 'Canceled',     cls: 'bg-white border border-[rgba(18,18,18,0.20)] text-muted-text' }
+      case 'failed':     return { label: 'Failed',       cls: 'bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] text-[#b42828]' }
+      default:           return { label: p.status.replace(/_/g, ' '), cls: 'bg-cream text-muted-text' }
     }
   })()
   const arrival = new Date(p.arrival_date * 1000)
@@ -812,7 +812,7 @@ function PayoutRow({ p }: { p: StripePayout }) {
             )}
           </div>
           <p className="text-[11px] text-muted-text">
-            Initiated {created.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            Started {created.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             <span className="mx-1">·</span>
             Arrives {arrival.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </p>
