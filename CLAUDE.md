@@ -69,6 +69,15 @@ php artisan tenants:migrate --force
 php artisan optimize:clear
 chown -R www-data:www-data bootstrap/cache storage
 
+# Deploy stamp the admin dashboard's System Health card reads
+# (storage/app/last-deploy.json → "Last deploy" tile). Cheap; keep it
+# in every deploy so the card never reads "unknown".
+mkdir -p storage/app
+printf '{"commit":"%s","deployed_at":"%s","message":"deploy"}' \
+  "$(git -C /var/www/bookready-api rev-parse HEAD)" \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > storage/app/last-deploy.json
+chown www-data:www-data storage/app/last-deploy.json
+
 cd ../web
 npm install
 rm -rf .next                # defensive: kill any partial build from a prior aborted run

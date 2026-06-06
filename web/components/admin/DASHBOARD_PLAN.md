@@ -5,7 +5,22 @@ The page lives at `/admin` and is what the BookReady operator
 tenants. This doc captures the agreed-on plan so we can pick it up
 cleanly when build starts.
 
-**Status**: Phases 1 + 2 SHIPPED (2026-06-06). Phase 3 pending.
+**Status**: ALL THREE PHASES SHIPPED (2026-06-06). Dashboard complete.
+
+Phase 3 delivered: `insights` endpoint (6 rule-based observations,
+fire-only-when-relevant) + `health` endpoint (api-errors log scan,
+redis queue depth, deploy stamp, mailer config check — each guarded) +
+`AdminTenantDetailController` + `/admin/tenants/[slug]` drill-in page
+(live single-tenant booking series, recent bookings, account panel).
+Heatmap tiles, top-tenant labels, and tenant-table slugs now link to
+the detail page. The deploy script writes `storage/app/last-deploy.json`
+(added to CLAUDE.md's canonical deploy block) which the health card's
+"Last deploy" tile reads.
+
+Mailer probe note: the prod Resend key is send-scoped, so a live
+/domains ping 401s and false-alarms. The probe is a config-presence
+check (driver + re_ key shape) instead — real send failures surface
+via the api-errors probe.
 
 Phase 2 delivered: `platform_dashboard_snapshots` central table +
 `admin:snapshot` command (nightly 03:00, walks every tenant DB, builds
