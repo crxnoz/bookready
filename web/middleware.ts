@@ -1,8 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { parseHost } from '@/lib/domain'
 
+// bkrdy.me and www.bkrdy.me are the product domain. Their ROOT page used
+// to serve a marketing-shaped homepage that duplicated mybookready.com
+// (the actual marketing site), which made it feel like the platform had
+// two home pages. Redirect just the apex `/` to mybookready.com so there's
+// only one home page, while keeping every other path on bkrdy.me alive
+// (login, register, /auth/google/complete, /register/complete, etc. — all
+// whitelisted in GoogleAuthController::APP_BASES as valid app surfaces).
+const APEX_HOMEPAGE_REDIRECT_HOSTS = new Set(['bkrdy.me', 'www.bkrdy.me'])
+const MARKETING_HOME = 'https://mybookready.com'
+
 export function middleware(req: NextRequest) {
   const host = req.headers.get('host')
+  const hostname = (host ?? '').split(':')[0].toLowerCase()
+
+  // Apex homepage → marketing site. Scoped to pathname === '/' so auth
+  // flows on bkrdy.me keep working untouched.
+  if (
+    APEX_HOMEPAGE_REDIRECT_HOSTS.has(hostname) &&
+    req.nextUrl.pathname === '/'
+  ) {
+    return NextResponse.redirect(MARKETING_HOME, 308)
+  }
+
   const parsed = parseHost(host)
 
   if (parsed.kind === 'tenant') {
@@ -19,7 +40,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.rewrite(url)
   }
 
-  // app.daysbookings.site and localhost: pass through normally
+  // app.bkrdy.me, app.daysbookings.site, localhost: pass through normally
   return NextResponse.next()
 }
 
