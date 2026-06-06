@@ -16,7 +16,7 @@ export default function HelpIndexPage() {
         How can we <span className="italic">help?</span>
       </h1>
       <p className="text-[16px] text-muted-text leading-relaxed mb-9 max-w-2xl">
-        Everything you need to run your booking business on BookReady — from
+        Everything you need to run your booking business on BookReady, from
         your first setup to taking payments. Pick a topic below, or email{' '}
         <a href="mailto:hello@mybookready.com" className="text-near-black underline underline-offset-2 hover:opacity-75">
           hello@mybookready.com

@@ -25,7 +25,7 @@ export const HELP_ARTICLES: HelpArticleMeta[] = [
   {
     slug:  'getting-started',
     title: 'Getting started',
-    blurb: 'Your first 10 minutes — the setup wizard, your dashboard, and going live.',
+    blurb: 'Your first 10 minutes: the setup wizard, your dashboard, and going live.',
     icon:  Rocket,
   },
   {
@@ -37,13 +37,13 @@ export const HELP_ARTICLES: HelpArticleMeta[] = [
   {
     slug:  'services-and-pricing',
     title: 'Services & pricing',
-    blurb: 'Add services, categories, add-ons, durations, deposits, and buffers.',
+    blurb: 'Add services, categories, add-ons, durations, deposits, and gaps between appointments.',
     icon:  Scissors,
   },
   {
     slug:  'hours-and-availability',
     title: 'Hours & availability',
-    blurb: 'Set your open hours, blocked dates, booking window, and slot intervals.',
+    blurb: 'Set your open hours, blocked dates, booking window, and time between start times.',
     icon:  Clock,
   },
   {
@@ -55,7 +55,7 @@ export const HELP_ARTICLES: HelpArticleMeta[] = [
   {
     slug:  'customers',
     title: 'Customers',
-    blurb: 'Your client list, visit history, VIP flags, notes, and tags.',
+    blurb: 'Your customer list, visit history, VIP flags, notes, and tags.',
     icon:  Users,
   },
   {
@@ -67,7 +67,7 @@ export const HELP_ARTICLES: HelpArticleMeta[] = [
   {
     slug:  'policies',
     title: 'Policies',
-    blurb: 'Cancellation, no-show, late, and deposit policies — and how clients see them.',
+    blurb: 'Cancellation, no-show, late, and deposit policies, and how customers see them.',
     icon:  ShieldCheck,
   },
   {
