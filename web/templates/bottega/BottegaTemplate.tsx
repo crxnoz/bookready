@@ -219,11 +219,11 @@ export default function BottegaTemplate({ site, slug }: Props) {
   // the mid-density oceanic motif lands between. Tile sizes are picked
   // per artwork's natural aspect.
   const PATTERNS: Record<string, { url: string; overlay: number; tileW: string; tileH: string }> = {
-    ceramic:  { url: '/templates/bottega/ceramic.jpeg',        overlay: 0.90, tileW: '720px', tileH: 'auto' },
+    ceramic:  { url: '/templates/bottega/ceramic.jpeg',        overlay: 0.95, tileW: '720px', tileH: 'auto' },
     flowers:  { url: '/templates/bottega/flowers.png',         overlay: 0.50, tileW: '720px', tileH: 'auto' },
-    leaves:   { url: '/templates/bottega/leaves.jpeg',         overlay: 0.55, tileW: '600px', tileH: 'auto' },
+    leaves:   { url: '/templates/bottega/leaves.jpeg',         overlay: 0.72, tileW: '600px', tileH: 'auto' },
     marble:   { url: '/templates/bottega/marble.jpeg',         overlay: 0.88, tileW: '900px', tileH: 'auto' },
-    oceanic:  { url: '/templates/bottega/oceanic-pattern.jpg', overlay: 0.74, tileW: '700px', tileH: 'auto' },
+    oceanic:  { url: '/templates/bottega/oceanic-pattern.jpg', overlay: 0.86, tileW: '700px', tileH: 'auto' },
   }
   const patternKey = (settings?.theme?.pattern_motif as string) || 'ceramic'
   const pattern = PATTERNS[patternKey] ?? PATTERNS.ceramic
@@ -680,7 +680,7 @@ const BOTTEGA_CSS = `
      the initial paint a sensible look before the inline style applies. */
   background-color: var(--bottega-bg);
   background-image:
-    linear-gradient(rgba(242,239,232,0.90), rgba(242,239,232,0.90)),
+    linear-gradient(rgba(242,239,232,0.95), rgba(242,239,232,0.95)),
     url('/templates/bottega/ceramic.jpeg');
   background-size: auto, 720px auto;
   background-repeat: no-repeat, repeat;
@@ -1199,18 +1199,26 @@ const BOTTEGA_CSS = `
   .bottega-template .brk-gallery-grid { gap: 24px; }
 }
 
-/* ── Before & After: one horizontal pair per row at every breakpoint
-   (before LEFT, after RIGHT). Counted as panes, 3 pairs = a 2×3 grid
-   — 2 columns (before + after) × 3 rows (one per pair). Each pair
-   gets full available width so the photos breathe. ── */
+/* ── Before & After: pairs stay LEFT-to-RIGHT (before left, after right)
+   at every breakpoint. The grid count is what changes:
+     - Mobile (<821px): 2 cols → 6 pairs render as 3 rows of 2 pairs
+       each. Photos are smaller per pane (~70-90px) but the tap-to-
+       reveal interaction on the after image makes the small thumbnail
+       view acceptable.
+     - Desktop (≥821px): 1 col → each pair gets the full container
+       width with the before/after side-by-side at full size.
+   ── */
 .bottega-template .brk-ba-stack {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 32px;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px 14px;
   max-width: none;
 }
 @media (min-width: 821px) {
-  .bottega-template .brk-ba-stack { gap: 48px; }
+  .bottega-template .brk-ba-stack {
+    grid-template-columns: 1fr;
+    gap: 48px;
+  }
 }
 
 /* ── Timeline numbered counter: big italic faded numerals + a vertical
