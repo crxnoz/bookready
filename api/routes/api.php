@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\AdminDashboardController;
 use App\Http\Controllers\Api\Admin\AdminTenantsController;
 use App\Http\Controllers\Api\TwilioWebhookController;
 use App\Http\Controllers\Api\PlatformAnnouncementsController;
@@ -385,6 +386,7 @@ Route::prefix('v1')->group(function () {
     // ── BookReady platform admin (super-admin only) ──────────────────────
     Route::middleware(['auth:sanctum', 'verified_email', 'admin'])->prefix('admin')->group(function () {
         Route::get   ('stats',            [AdminTenantsController::class, 'stats']);
+        Route::get   ('dashboard/summary',[AdminDashboardController::class, 'summary']);
         Route::get   ('tenants',          [AdminTenantsController::class, 'index']);
         Route::delete('tenants/{id}',     [AdminTenantsController::class, 'destroy']);
         // Platform announcements (admin CRUD)
