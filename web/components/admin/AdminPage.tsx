@@ -7,10 +7,10 @@ import {
   Megaphone, Plus, Pencil, Eye, EyeOff, Check, X, Sparkles,
 } from 'lucide-react'
 import {
-  getCurrentUser, getAdminTenants, deleteAdminTenant, getAdminStats,
+  getCurrentUser, getAdminTenants, deleteAdminTenant,
   getAdminAnnouncements, createAdminAnnouncement, updateAdminAnnouncement, deleteAdminAnnouncement,
-  type AdminStats,
 } from '@/lib/api'
+import DashboardSummary from './DashboardSummary'
 import { isLoggedIn, clearAuth } from '@/lib/auth'
 import type { AdminTenantRow, AuthUser, PlatformAnnouncement, PlatformAnnouncementPayload } from '@/lib/types'
 import { cn } from '@/lib/cn'
@@ -141,7 +141,7 @@ export default function AdminPage() {
 
   return (
     <Shell signedInAs={me?.email} onSignOut={signOut}>
-      <StatsSection />
+      <DashboardSummary />
 
       <header className="flex items-center justify-between gap-3 mb-3 mt-8 flex-wrap">
         <div>
@@ -387,107 +387,6 @@ function DeleteDialog({
           </button>
         </footer>
       </div>
-    </div>
-  )
-}
-
-// ── Stats grid (top of admin page) ──────────────────────────────────────────
-
-function StatsSection() {
-  const [stats,  setStats]  = useState<AdminStats | null>(null)
-  const [err,    setErr]    = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  async function load() {
-    setErr(null)
-    try {
-      const next = await getAdminStats()
-      setStats(next)
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not load stats')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { void load() }, [])
-
-  return (
-    <section className="mb-2">
-      <header className="flex items-end justify-between gap-3 mb-3">
-        <div>
-          <h2 className="text-xl font-bold text-near-black tracking-tight">Platform stats</h2>
-          <p className="text-xs text-muted-text">
-            {loading ? 'Loading…' : (
-              stats
-                ? <>Cached up to 5 minutes. Last computed {new Date(stats.computed_at).toLocaleTimeString()}.</>
-                : 'Stats unavailable.'
-            )}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={load}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-50"
-        >
-          {loading ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
-          Refresh
-        </button>
-      </header>
-
-      {err && (
-        <div className="bg-white border border-[rgba(180,40,40,0.20)] p-3 text-xs text-[#b42828] flex items-center gap-2 mb-3">
-          <AlertCircle size={14} /> {err}
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard
-          label="Tenants"
-          value={stats?.tenants_count}
-          hint={stats ? `+${stats.new_tenants_7d} this week` : null}
-        />
-        <StatCard
-          label="Customer accounts"
-          value={stats?.customers_count}
-          hint={stats
-            ? `${stats.verified_customers} verified`
-            : null}
-        />
-        <StatCard
-          label="Bookings (all time)"
-          value={stats?.bookings_total}
-        />
-        <StatCard
-          label="Bookings (7d)"
-          value={stats?.bookings_7d}
-          hint={stats
-            ? `${stats.active_tenants_7d} active tenant${stats.active_tenants_7d === 1 ? '' : 's'}`
-            : null}
-        />
-      </div>
-    </section>
-  )
-}
-
-function StatCard({ label, value, hint }: {
-  label: string
-  value: number | undefined
-  hint?: string | null
-}) {
-  const display = value === undefined ? '—' : value.toLocaleString()
-  return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
-      <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">
-        {label}
-      </p>
-      <p className="text-3xl font-bold text-near-black tracking-tight mt-1.5 leading-none">
-        {display}
-      </p>
-      {hint && (
-        <p className="text-[11px] text-muted-text mt-2">{hint}</p>
-      )}
     </div>
   )
 }

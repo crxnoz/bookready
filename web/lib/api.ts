@@ -803,6 +803,38 @@ export async function getAdminStats(): Promise<AdminStats> {
   return request<AdminStats>('/admin/stats')
 }
 
+// ── Platform admin dashboard (Phase 1) ──────────────────────────────────────
+
+export interface AdminDashboardSummary {
+  kpis: {
+    active_tenants:      number
+    active_delta_7d:     number
+    trial_tenants:       number
+    trial_delta_7d:      number
+    mrr_cents:           number
+    mrr_delta_cents:     number
+    new_signups_7d:      number
+    new_signups_prev_7d: number
+  }
+  /** 12 weekly buckets; cents per plan. */
+  mrr_series: { week: string; solo: number; studio: number; salon: number }[]
+  /** 13 weekly buckets (~90d); exact from created_at. */
+  growth_series: { week: string; signups: number; cumulative: number }[]
+  activity: {
+    ts:     string
+    type:   string
+    tenant: string
+    plan:   string | null
+    state:  string | null
+  }[]
+  plan_catalog: Record<string, { label: string; monthly_cents: number }>
+  computed_at: string
+}
+
+export async function getAdminDashboardSummary(): Promise<AdminDashboardSummary> {
+  return request<AdminDashboardSummary>('/admin/dashboard/summary')
+}
+
 // ── Platform announcements ──────────────────────────────────────────────────
 
 /** Public-ish — any authed user can fetch active announcements for the
