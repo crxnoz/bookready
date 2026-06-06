@@ -5,7 +5,21 @@ The page lives at `/admin` and is what the BookReady operator
 tenants. This doc captures the agreed-on plan so we can pick it up
 cleanly when build starts.
 
-**Status**: Phase 1 SHIPPED (2026-06-06). Phases 2 + 3 pending.
+**Status**: Phases 1 + 2 SHIPPED (2026-06-06). Phase 3 pending.
+
+Phase 2 delivered: `platform_dashboard_snapshots` central table +
+`admin:snapshot` command (nightly 03:00, walks every tenant DB, builds
+a 90-day cross-tenant daily booking series + per-tenant aggregates) +
+`AdminDashboardController::trends` (reads the latest snapshot, merges
+with central tenant data + per-tenant MRR + activity tier) +
+`DashboardTrends.tsx` (booking-volume area chart, top-tenants bars,
+activity heatmap tile grid) + extended tenant table (MRR / bookings-30d
+/ last-booking columns). Scheduler cron confirmed installed on the
+server, so the snapshot self-refreshes nightly. Verified end-to-end
+against live data (10 tenants, 62 bookings).
+
+Phase 3 remaining: insights rules, system-health card, per-tenant
+detail drill-in page.
 
 Phase 1 delivered: `AdminDashboardController::summary` (central-DB, 5min
 cache) + `DashboardSummary.tsx` (KPI bar, MRR 12-week stacked area,
