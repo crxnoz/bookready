@@ -50,3 +50,9 @@ web/tsconfig.tsbuildinfo
 # the parent NOT be wholesale-ignored, hence the trailing * (not /).
 .claude/*
 !.claude/skills/
+
+# Local-only scratchpad for one-shot scripts (e.g. tenant seed scripts
+# piped to prod via SSH, manifest validators, ad-hoc tinker bodies).
+# These are utilities — they run on prod once and don't belong in git,
+# but we keep them on disk for reference + iteration.
+tmp/
