@@ -1199,34 +1199,29 @@ const BOTTEGA_CSS = `
   .bottega-template .brk-gallery-grid { gap: 24px; }
 }
 
-/* ── Before & After: pairs stay LEFT-to-RIGHT (before left, after right)
-   at every breakpoint. The grid count is what changes:
-     - Mobile (<821px): 2 cols → 6 pairs render as 3 rows of 2 pairs
-       each. Photos are smaller per pane (~70-90px) but the tap-to-
-       reveal interaction on the after image makes the small thumbnail
-       view acceptable.
-     - Desktop (≥821px): 1 col → each pair gets the full container
-       width with the before/after side-by-side at full size.
+/* ── Before & After: one pair per column at every breakpoint. The grid
+   is always a single column of full-width horizontal pairs (before
+   LEFT, after RIGHT). With 6 seed pairs that's 6 rows on every viewport.
 
-   The shared default forcibly collapses .brk-ba-pair to 1 column at
-   <640px (stacks before above after) — we override that so the pair
-   stays horizontal at every width, matching the "left to right" read
-   the user asked for. ── */
+   Two overrides on top of the shared SECTIONS_CSS:
+     1. .brk-ba-stack stays 1-col (no 2-col mobile grid)
+     2. .brk-ba-pair stays 2-col-LEFT-RIGHT — the shared default
+        collapses to 1 col at <=640px which would stack before above
+        after; we keep it side-by-side everywhere so the read stays
+        consistent.
+   ── */
 .bottega-template .brk-ba-stack {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px 14px;
+  grid-template-columns: 1fr;
+  gap: 32px;
   max-width: none;
 }
 @media (min-width: 821px) {
-  .bottega-template .brk-ba-stack {
-    grid-template-columns: 1fr;
-    gap: 48px;
-  }
+  .bottega-template .brk-ba-stack { gap: 48px; }
 }
 .bottega-template .brk-ba-pair {
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 12px;
 }
 @media (min-width: 821px) {
   .bottega-template .brk-ba-pair { gap: 18px; }
