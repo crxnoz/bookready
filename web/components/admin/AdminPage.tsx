@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import {
   AlertCircle, Loader2, ShieldAlert, Trash2, RefreshCw, LogOut, ExternalLink,
   Megaphone, Plus, Pencil, Eye, EyeOff, Check, X, Sparkles,
@@ -13,6 +14,8 @@ import {
 } from '@/lib/api'
 import DashboardSummary from './DashboardSummary'
 import DashboardTrends from './DashboardTrends'
+import DashboardInsights from './DashboardInsights'
+import DashboardSystemHealth from './DashboardSystemHealth'
 import { isLoggedIn, clearAuth } from '@/lib/auth'
 import type { AdminTenantRow, AuthUser, PlatformAnnouncement, PlatformAnnouncementPayload } from '@/lib/types'
 import { cn } from '@/lib/cn'
@@ -174,6 +177,10 @@ export default function AdminPage() {
 
       <DashboardTrends trends={trends} loading={trendsLoading} error={trendsErr} />
 
+      <DashboardInsights />
+
+      <DashboardSystemHealth />
+
       <header className="flex items-center justify-between gap-3 mb-3 mt-8 flex-wrap">
         <div>
           <h1 className="text-xl font-bold text-near-black tracking-tight">Tenants</h1>
@@ -291,14 +298,23 @@ function TenantTable({
             return (
               <tr key={t.id} className="border-b border-[rgba(18,18,18,0.06)] last:border-b-0">
                 <Td>
-                  <a
-                    href={`https://${t.id}.bkrdy.me`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-near-black font-semibold hover:underline inline-flex items-center gap-1"
-                  >
-                    {t.id} <ExternalLink size={10} className="text-muted-text" />
-                  </a>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Link
+                      href={`/admin/tenants/${t.id}`}
+                      className="text-near-black font-semibold hover:underline"
+                    >
+                      {t.id}
+                    </Link>
+                    <a
+                      href={`https://${t.id}.bkrdy.me`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Open public site"
+                      className="text-muted-text hover:text-near-black"
+                    >
+                      <ExternalLink size={10} />
+                    </a>
+                  </span>
                   <p className="text-[10px] text-muted-text mt-0.5">
                     {t.created_at ? new Date(t.created_at).toLocaleDateString() : '—'}
                   </p>

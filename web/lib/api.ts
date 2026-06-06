@@ -878,6 +878,73 @@ export async function getAdminDashboardTrends(): Promise<AdminDashboardTrends> {
   return request<AdminDashboardTrends>('/admin/dashboard/trends')
 }
 
+// ── Platform admin dashboard (Phase 3 — insights, health, detail) ───────────
+
+export type InsightSeverity = 'good' | 'info' | 'warn'
+
+export interface AdminInsight {
+  id:       string
+  severity: InsightSeverity
+  title:    string
+  detail:   string
+  tenants:  string[]
+}
+
+export interface AdminDashboardInsights {
+  insights:      AdminInsight[]
+  snapshot_date: string | null
+  computed_at:   string
+}
+
+export async function getAdminDashboardInsights(): Promise<AdminDashboardInsights> {
+  return request<AdminDashboardInsights>('/admin/dashboard/insights')
+}
+
+export type HealthStatus = 'ok' | 'warn' | 'bad' | 'unknown'
+
+export interface AdminDashboardHealth {
+  api_errors: { status: HealthStatus; count_24h: number | null; note: string }
+  queue:      { status: HealthStatus; connection: string; depth: number | null; note: string }
+  deploy:     { status: HealthStatus; commit: string | null; deployed_at: string | null; note: string }
+  mailer:     { status: HealthStatus; from: string; note: string }
+  computed_at: string
+}
+
+export async function getAdminDashboardHealth(): Promise<AdminDashboardHealth> {
+  return request<AdminDashboardHealth>('/admin/dashboard/health')
+}
+
+export interface AdminTenantDetail {
+  id:              string
+  plan:            string | null
+  state:           string | null
+  created_at:      string | null
+  trial_ends_at:   string | null
+  domain:          string | null
+  owner_name:      string | null
+  owner_email:     string | null
+  mrr_cents:       number
+  bookings_total:  number
+  bookings_30d:    number
+  bookings_7d:     number
+  last_booking_at: string | null
+  daily_bookings:  { date: string; count: number }[]
+  recent: {
+    service_name:     string | null
+    customer_name:    string | null
+    status:           string | null
+    payment_status:   string | null
+    appointment_date: string | null
+    created_at:       string | null
+  }[]
+  scan_ok:     boolean
+  computed_at: string
+}
+
+export async function getAdminTenantDetail(slug: string): Promise<AdminTenantDetail> {
+  return request<AdminTenantDetail>(`/admin/tenants/${slug}`)
+}
+
 // ── Platform announcements ──────────────────────────────────────────────────
 
 /** Public-ish — any authed user can fetch active announcements for the

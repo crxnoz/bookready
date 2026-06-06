@@ -1,6 +1,7 @@
 'use client'
 
-import { AlertCircle, Loader2, ExternalLink } from 'lucide-react'
+import Link from 'next/link'
+import { AlertCircle, Loader2 } from 'lucide-react'
 import type { AdminDashboardTrends, ActivityTier } from '@/lib/api'
 import { cn } from '@/lib/cn'
 
@@ -169,15 +170,13 @@ function TopTenants({ rows }: { rows: AdminDashboardTrends['top_tenants'] }) {
     <div className="space-y-2">
       {rows.map(r => (
         <div key={r.id} className="flex items-center gap-2">
-          <a
-            href={`https://${r.id}.bkrdy.me`}
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href={`/admin/tenants/${r.id}`}
             className="text-[11px] font-semibold text-near-black w-28 truncate hover:underline flex-shrink-0"
             title={r.id}
           >
             {r.id}
-          </a>
+          </Link>
           <div className="flex-1 h-5 bg-cream relative overflow-hidden">
             <div
               className="absolute inset-y-0 left-0 bg-[#B98AA8]"
@@ -206,11 +205,9 @@ function Heatmap({ tiles }: { tiles: AdminDashboardTrends['heatmap'] }) {
     <div>
       <div className="flex flex-wrap gap-1.5">
         {sorted.map(t => (
-          <a
+          <Link
             key={t.id}
-            href={`https://${t.id}.bkrdy.me`}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={`/admin/tenants/${t.id}`}
             title={`${t.id} · ${t.bookings_30d} bookings/30d · last ${relativeTime(t.last_booking_at)}`}
             className="w-7 h-7 rounded-sm hover:ring-2 hover:ring-near-black/30 transition-shadow"
             style={{ background: TIER_COLOR[t.tier] }}
