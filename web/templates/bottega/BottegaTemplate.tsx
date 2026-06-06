@@ -1207,7 +1207,11 @@ const BOTTEGA_CSS = `
        view acceptable.
      - Desktop (≥821px): 1 col → each pair gets the full container
        width with the before/after side-by-side at full size.
-   ── */
+
+   The shared default forcibly collapses .brk-ba-pair to 1 column at
+   <640px (stacks before above after) — we override that so the pair
+   stays horizontal at every width, matching the "left to right" read
+   the user asked for. ── */
 .bottega-template .brk-ba-stack {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1220,6 +1224,14 @@ const BOTTEGA_CSS = `
     gap: 48px;
   }
 }
+.bottega-template .brk-ba-pair {
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+@media (min-width: 821px) {
+  .bottega-template .brk-ba-pair { gap: 18px; }
+}
+.bottega-template .brk-ba-sep { display: none; }
 
 /* ── Timeline numbered counter: big italic faded numerals + a vertical
    accent hairline running the height of the card body. Replaces the
