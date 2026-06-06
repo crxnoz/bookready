@@ -47,24 +47,49 @@ php artisan tinker --execute='...'           # inline debugging (laravel/tinker 
 ```
 
 ### Deploy
+
+Always push first, then run the deploy script. The remote script uses
+`set -euo pipefail` so any failing step (Composer, migrations, Next
+build, etc.) aborts before pm2 restart and `DEPLOY_OK` is only printed
+on full success.
+
 ```
 git push origin main
-ssh root@198.211.116.44 'cd /var/www/bookready-api && \
-  git pull origin main && \
-  cd api && composer install --no-dev --optimize-autoloader && \
-  rm -f bootstrap/cache/packages.php bootstrap/cache/services.php && \
-  php artisan package:discover --ansi && \
-  php artisan migrate --force && \
-  php artisan tenants:migrate --force && \
-  php artisan optimize:clear && \
-  chown -R www-data:www-data bootstrap/cache storage && \
-  cd ../web && npm install && npm run build && \
-  pm2 restart bookready-web'
+ssh root@198.211.116.44 'bash -se' <<'REMOTE'
+set -euo pipefail
+cd /var/www/bookready-api
+git pull origin main
+
+cd api
+composer install --no-dev --optimize-autoloader
+rm -f bootstrap/cache/packages.php bootstrap/cache/services.php
+php artisan package:discover --ansi
+php artisan migrate --force
+php artisan tenants:migrate --force
+php artisan optimize:clear
+chown -R www-data:www-data bootstrap/cache storage
+
+cd ../web
+npm install
+rm -rf .next                # defensive: kill any partial build from a prior aborted run
+npm run build
+pm2 restart bookready-web
+
+echo DEPLOY_OK
+REMOTE
 ```
 
-The `rm -f bootstrap/cache/packages.php services.php && package:discover` step is required: `package:discover` upserts into the existing file rather than clearing it, so stale entries from an earlier composer state (we've been bitten by `laravel/sail`, `laravel/sentinel`, `laravel/telescope` lingering from a long-gone `composer require`) survive every deploy and crash the app with `Class "...ServiceProvider" not found` on every request.
+**Why each piece matters:**
 
-The final `chown -R www-data:www-data bootstrap/cache storage` is also required: when `composer install`, `php artisan tinker`, or any artisan command runs over SSH as `root`, it recreates `storage/logs/laravel.log` and `bootstrap/cache/*` as root-owned. The next request then 500s because php-fpm runs as `www-data` and can't write to root-owned files.
+- **`set -euo pipefail`** is non-negotiable. `-e` aborts on any failing command; `-o pipefail` makes a pipeline fail if *any* stage in it fails. Without `pipefail`, a Claude session that later adds `npm run build 2>&1 | tail -8` for terser output would silently swallow `next build` failures (the pipeline's exit code becomes `tail`'s, which is always 0) and pm2 would happily restart against a stale `.next`. **Never deploy without `set -euo pipefail` in the script, and never pipe `npm run build` or `php artisan migrate` to `tail`/`head` without it.** If you want quieter output, redirect to a log file and `tail` the file after, don't pipe the build itself.
+
+- **`rm -rf .next`** before `npm run build` guarantees a clean output directory. We hit this on 2026-06-06: a prior `next build` was killed mid-flight, leaving a partial `.next/` that the next run couldn't recover from (`ENOENT: .next/package.json`). The cost of rebuilding from scratch is small compared to the cost of pm2 serving a stale build.
+
+- **`rm -f bootstrap/cache/packages.php services.php && package:discover`** is required because `package:discover` upserts into the existing file rather than clearing it. Stale entries from an earlier composer state (we've been bitten by `laravel/sail`, `laravel/sentinel`, `laravel/telescope` lingering from a long-gone `composer require`) survive every deploy and crash the app with `Class "...ServiceProvider" not found` on every request.
+
+- **`chown -R www-data:www-data bootstrap/cache storage`** is required because `composer install`, `php artisan tinker`, or any artisan command running over SSH as `root` recreates `storage/logs/laravel.log` and `bootstrap/cache/*` as root-owned. The next request then 500s because php-fpm runs as `www-data` and can't write to root-owned files.
+
+- **`echo DEPLOY_OK`** as the last line: if it appears in the output, the entire chain succeeded. If it doesn't, treat the deploy as failed regardless of what pm2 says.
 
 ## Architecture essentials
 
