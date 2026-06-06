@@ -44,7 +44,9 @@ import {
   deleteEditorResultsGroup,
   getEditorPolicies,
   updateEditorPolicies,
+  selectActiveTemplate,
 } from '@/lib/api'
+import { SITE_TEMPLATES } from '@/lib/templates'
 import type {
   TemplateSettings,
   TemplateHeaderSettings,
@@ -931,12 +933,7 @@ function OverviewPanel({
           <SeasonalThemesTeaser />
         </div>
 
-        <button
-          disabled
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.12)] bg-cream text-muted-text px-3 py-2 cursor-not-allowed"
-        >
-          Change Template — coming soon
-        </button>
+        <ChangeTemplateBlock currentSlug={templateSlug} />
       </Panel>
 
       {/* Quick links */}
@@ -3847,6 +3844,150 @@ function PatternPickerBlock({
           <AlertCircle size={12} /> {error}
         </p>
       )}
+    </div>
+  )
+}
+
+/**
+ * ChangeTemplateBlock — the editor's live template switcher. Replaces the
+ * "coming soon" placeholder with a disclosure-style picker that lists every
+ * registered template, lets the owner pick one, and on confirm calls
+ * selectActiveTemplate() (PUT /editor/website/template/active). The backend
+ * reseeds settings_json + the section skeleton from the new template's
+ * defaults, so the page hard-reloads on success to pull the fresh markup
+ * for the new template AND so any preview iframe re-renders.
+ *
+ * Warning copy is explicit: changing templates RESETS template-specific
+ * settings (colors, tab labels, section order, etc.). Business data
+ * (services, hours, gallery photos, customers, bookings) is preserved.
+ */
+function ChangeTemplateBlock({ currentSlug }: { currentSlug: string }) {
+  const [open, setOpen]       = useState(false)
+  const [picked, setPicked]   = useState<string | null>(null)
+  const [saving, setSaving]   = useState(false)
+  const [error,  setError]    = useState<string | null>(null)
+
+  // Resolve the current template's label for the disclosure summary.
+  const currentChoice = SITE_TEMPLATES.find(t => t.slug === currentSlug)
+  const currentLabel  = currentChoice?.label ?? currentSlug
+
+  async function confirm(slug: string) {
+    if (slug === currentSlug) { setError('This template is already active.'); return }
+    setSaving(true); setError(null)
+    try {
+      await selectActiveTemplate(slug)
+      // Hard reload so the new template's CSS/markup paints + the preview
+      // iframe re-keys with the new section skeleton.
+      if (typeof window !== 'undefined') window.location.reload()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to change template')
+      setSaving(false)
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => { setOpen(true); setPicked(null); setError(null) }}
+        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.18)] bg-white text-near-black px-3 py-2 hover:bg-cream hover:border-near-black transition-colors"
+      >
+        Change Template
+      </button>
+    )
+  }
+
+  return (
+    <div className="space-y-3 border border-[rgba(18,18,18,0.12)] bg-white p-3.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+            Change Template
+          </p>
+          <p className="text-[11px] text-muted-text mt-0.5">
+            Currently <span className="font-semibold text-near-black">{currentLabel}</span>
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => { setOpen(false); setPicked(null); setError(null) }}
+          disabled={saving}
+          className="text-[10px] font-semibold tracking-[0.06em] uppercase text-muted-text hover:text-near-black disabled:opacity-50"
+        >
+          Cancel
+        </button>
+      </div>
+
+      <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1.5 leading-snug">
+        Heads up: changing template <span className="font-semibold">resets template-specific settings</span> (colors, tab labels, section order, about/advice copy). Business data — services, hours, gallery, customers, bookings — is preserved.
+      </p>
+
+      <div className="space-y-1.5">
+        {SITE_TEMPLATES.map(t => {
+          const isCurrent  = t.slug === currentSlug
+          const isPicked   = t.slug === picked
+          const isSaving   = saving && isPicked
+          return (
+            <button
+              key={t.slug}
+              type="button"
+              onClick={() => { if (!isCurrent && !saving) setPicked(t.slug) }}
+              disabled={saving}
+              className={`w-full text-left flex items-center gap-3 px-3 py-2.5 border transition-colors disabled:cursor-not-allowed ${
+                isCurrent
+                  ? 'border-[rgba(18,18,18,0.10)] bg-cream cursor-default'
+                  : isPicked
+                    ? 'border-near-black bg-white'
+                    : 'border-[rgba(18,18,18,0.12)] bg-white hover:bg-cream'
+              }`}
+            >
+              <span
+                className="w-6 h-6 flex-shrink-0 border border-[rgba(18,18,18,0.10)]"
+                style={{ background: t.color }}
+              />
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-semibold text-near-black leading-tight">{t.label}</span>
+                <span className="block text-[11px] text-muted-text truncate">{t.desc}</span>
+              </span>
+              {isCurrent && (
+                <span className="text-[9px] font-bold tracking-[0.06em] uppercase bg-blush text-[rgba(18,18,18,0.7)] px-1.5 py-0.5 flex-shrink-0">
+                  Active
+                </span>
+              )}
+              {!isCurrent && isPicked && !isSaving && (
+                <span className="text-[9px] font-bold tracking-[0.06em] uppercase bg-near-black text-white px-1.5 py-0.5 flex-shrink-0">
+                  Selected
+                </span>
+              )}
+              {isSaving && (
+                <Loader2 size={14} className="animate-spin text-muted-text flex-shrink-0" />
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {error && (
+        <p className="text-[11px] text-red-700 flex items-center gap-1.5">
+          <AlertCircle size={12} /> {error}
+        </p>
+      )}
+
+      <div className="flex items-center gap-2 pt-1">
+        <button
+          type="button"
+          onClick={() => picked && confirm(picked)}
+          disabled={!picked || saving}
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-near-black bg-near-black text-white px-3.5 py-2 hover:bg-[#222] disabled:bg-cream disabled:text-muted-text disabled:border-[rgba(18,18,18,0.12)] disabled:cursor-not-allowed"
+        >
+          {saving ? <><Loader2 size={12} className="animate-spin" /> Switching…</> : 'Switch to this template'}
+        </button>
+        <p className="text-[10px] text-muted-text">
+          {picked
+            ? <>Switching to <span className="font-semibold text-near-black">{SITE_TEMPLATES.find(t => t.slug === picked)?.label}</span></>
+            : 'Pick a template above'}
+        </p>
+      </div>
     </div>
   )
 }
