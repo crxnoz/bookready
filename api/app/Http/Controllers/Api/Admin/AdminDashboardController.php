@@ -9,7 +9,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 
 /**
  * BookReady operator admin — platform analytics dashboard.
@@ -529,8 +528,10 @@ class AdminDashboardController extends Controller
                     if (Carbon::parse($m[1])->gte($cutoff)) $count++;
                 } catch (\Throwable) { /* skip unparseable */ }
             }
+            // A stray error or two in 24h is normal noise — only flag warn
+            // at a small cluster, bad at a real spike.
             return [
-                'status'    => $count === 0 ? 'ok' : ($count < 10 ? 'warn' : 'bad'),
+                'status'    => $count <= 2 ? 'ok' : ($count < 20 ? 'warn' : 'bad'),
                 'count_24h' => $count,
                 'note'      => $count === 0 ? 'No errors in 24h.' : "{$count} in the last 24h.",
             ];
@@ -585,23 +586,26 @@ class AdminDashboardController extends Controller
         }
     }
 
-    /** Resend mailer reachability — cached auth ping, timeout-guarded. */
+    /**
+     * Mailer config check. We deliberately do NOT live-ping Resend: the
+     * production key is send-scoped, so privileged endpoints like /domains
+     * return 401 and would false-alarm "bad" on a perfectly healthy mailer.
+     * Instead we verify the driver + key are configured (key shape "re_…")
+     * — the real send liveness shows up in the api-errors probe if Resend
+     * ever starts rejecting sends.
+     */
     private function probeMailer(): array
     {
-        $from = (string) config('mail.from.address', '');
-        $key  = (string) (config('services.resend.key') ?: env('RESEND_API_KEY', ''));
-        if ($key === '') {
-            return ['status' => 'unknown', 'from' => $from, 'note' => 'RESEND_API_KEY not configured.'];
-        }
-        try {
-            $res = Http::withToken($key)->timeout(3)->get('https://api.resend.com/domains');
-            return [
-                'status' => $res->successful() ? 'ok' : 'bad',
-                'from'   => $from,
-                'note'   => $res->successful() ? 'Resend reachable.' : 'Resend returned ' . $res->status() . '.',
-            ];
-        } catch (\Throwable $e) {
-            return ['status' => 'unknown', 'from' => $from, 'note' => 'Resend ping failed.'];
-        }
+        $from   = (string) config('mail.from.address', '');
+        $mailer = (string) config('mail.default', '');
+        $key    = (string) (config('services.resend.key') ?: env('RESEND_API_KEY', ''));
+        $configured = $key !== '' && str_starts_with($key, 're_');
+        return [
+            'status' => $configured ? 'ok' : 'unknown',
+            'from'   => $from,
+            'note'   => $configured
+                ? 'Resend configured (' . ($mailer ?: 'resend') . ').'
+                : 'RESEND_API_KEY missing or malformed.',
+        ];
     }
 }
