@@ -758,7 +758,7 @@ function PayoutsList() {
                 ? 'Connect your Stripe account in Settings → Payments to start receiving payouts to your bank.'
                 : data.status === 'error'
                   ? 'We couldn’t load payouts from Stripe right now. Try again in a moment.'
-                  : 'Payouts show up here once Stripe sends a deposit to your bank — typically 1–2 business days after a charge.'}
+                  : 'Payouts show up here once Stripe sends a deposit to your bank, typically 1–2 business days after a charge.'}
             </p>
             {isConnectMissing && (
               <Link

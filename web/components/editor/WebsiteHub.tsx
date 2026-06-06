@@ -140,7 +140,7 @@ function colorPickerLabels(manifest: TemplateManifest | null): { title: string; 
   if (manifest?.color_role === 'background') {
     return {
       title:      'Background variant',
-      hint:       'Changes the page background — accent stays',
+      hint:       'Changes the page background. Your accent color stays the same.',
       ariaPrefix: 'Background',
     }
   }
@@ -1061,7 +1061,7 @@ function OverviewPanel({
       {/* Core data hints */}
       <Panel
         title="Bookings data"
-        subtitle="Services and availability live under Bookings — change them once and they update everywhere."
+        subtitle="Services and availability live under Bookings. Change them once and they update everywhere."
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <CoreLink href="/editor/services"  label="Services"      hint="Lives under Bookings" />
@@ -1115,7 +1115,7 @@ function HeaderPanel({
   return (
     <Panel
       title="Header / Hero"
-      subtitle="The top of your public website — announcement, cover, business identity, and contact buttons."
+      subtitle="The top of your public website: announcement, cover, business identity, and contact buttons."
     >
       {/* Announcement */}
       <div className="space-y-2.5">
@@ -1123,7 +1123,7 @@ function HeaderPanel({
           label="Announcement bar text"
           value={form.value.announcement_text ?? ''}
           onChange={v => form.patch({ announcement_text: v })}
-          placeholder="Now booking for the season — limited weekend slots."
+          placeholder="Now booking for the season, limited weekend slots."
           maxLength={200}
         />
         <ToggleRow
@@ -1406,7 +1406,7 @@ function ContentTabsPanel({
         title="Advice"
         subtitle="Tips, advice, or care instructions shown on the Advice tab."
         addLabel="Add Tip"
-        emptyText="No tips yet — add your first one."
+        emptyText="No tips yet. Add your first one."
         block={settings.advice ?? { heading: 'Advice', items: [] }}
         defaultHeading="Advice"
         icon={ListChecks}
@@ -1416,9 +1416,9 @@ function ContentTabsPanel({
 
       <InstructionsEditorPanel
         title="Timeline"
-        subtitle="A numbered list shown on the Timeline tab — great for booking flow or appointment prep."
+        subtitle="A numbered list shown on the Timeline tab, great for booking flow or appointment prep."
         addLabel="Add Step"
-        emptyText="No steps yet — add your first one."
+        emptyText="No steps yet. Add your first one."
         block={settings.timeline ?? { heading: 'Timeline', items: [] }}
         defaultHeading="Timeline"
         icon={Clock}
@@ -1610,7 +1610,7 @@ function InstructionsEditorPanel({
               <textarea
                 value={item.body}
                 onChange={e => updateItem(i, { body: e.target.value })}
-                placeholder="Body — what should happen at this step?"
+                placeholder="Body: what should happen at this step?"
                 rows={2}
                 maxLength={500}
                 className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black resize-y"
@@ -1710,7 +1710,7 @@ function AboutEditorPanel({
   return (
     <CollapsibleSection
       title="About"
-      subtitle="The story shown on your About tab — who you are, what you do, what makes your work different."
+      subtitle="The story shown on your About tab: who you are, what you do, what makes your work different."
       icon={Info}
       statusBadge={<StatusBadge tone={filled ? 'neutral' : 'muted'}>{filled ? 'Set' : 'Default'}</StatusBadge>}
     >
@@ -1720,7 +1720,7 @@ function AboutEditorPanel({
           Manifest-gated: hidden when the template's about_fields omits 'images'. */}
       {showImages && (
         <div>
-          <FieldLabel hint={imageSlots === 1 ? 'Recommended portrait — about 720×1080px.' : 'Recommended portrait — about 600×1000px each.'}>
+          <FieldLabel hint={imageSlots === 1 ? 'Recommended portrait, about 720×1080px.' : 'Recommended portrait, about 600×1000px each.'}>
             {imageSlots === 1 ? 'Photo' : `Photos (${imageSlots} slots)`}
           </FieldLabel>
           <div
@@ -1780,7 +1780,7 @@ function AboutEditorPanel({
           </button>
         </div>
         {highlights.length === 0 && (
-          <p className="text-xs text-muted-text">Optional — add small highlight cards under your About copy.</p>
+          <p className="text-xs text-muted-text">Optional: add small highlight cards under your About copy.</p>
         )}
         {highlights.map((h, i) => (
           <div key={i} className="bg-white border border-[rgba(18,18,18,0.10)] p-3 space-y-2">
@@ -2128,7 +2128,7 @@ function AdditionalsPanel({
             </button>
           </div>
           {(faq.items ?? []).length === 0 && (
-            <p className="text-xs text-muted-text">No questions yet — add up to {FAQ_MAX_ITEMS}.</p>
+            <p className="text-xs text-muted-text">No questions yet. Add up to {FAQ_MAX_ITEMS}.</p>
           )}
           {(faq.items ?? []).map((it, i) => (
             <div key={i} className="bg-white border border-[rgba(18,18,18,0.10)] p-3 space-y-2">
@@ -2156,7 +2156,7 @@ function AdditionalsPanel({
                 label="Answer"
                 value={it.answer}
                 onChange={v => updateFaqItem(i, { answer: v })}
-                placeholder="Walk-ins are welcome when there's an open slot — booking ahead is always safest."
+                placeholder="Walk-ins are welcome when there's an open slot, though booking ahead is always safest."
                 rows={3}
                 maxLength={1000}
               />
@@ -2198,7 +2198,7 @@ function AdditionalsPanel({
             </button>
           </div>
           {(reviews.items ?? []).length === 0 && (
-            <p className="text-xs text-muted-text">No reviews yet — add a few of your favorites.</p>
+            <p className="text-xs text-muted-text">No reviews yet. Add a few of your favorites.</p>
           )}
           {(reviews.items ?? []).map((r, i) => (
             <div key={i} className="bg-white border border-[rgba(18,18,18,0.10)] p-3 space-y-2">
@@ -2219,7 +2219,7 @@ function AdditionalsPanel({
                 label="Quote"
                 value={r.body}
                 onChange={v => updateReview(i, { body: v })}
-                placeholder="“Best haircut I've ever had — Anna nailed exactly what I asked for.”"
+                placeholder="“Best haircut I've ever had. Anna nailed exactly what I asked for.”"
                 rows={3}
                 maxLength={500}
               />
@@ -2299,7 +2299,7 @@ function FooterPanel({
   return (
     <Panel
       title="Footer"
-      subtitle="The bottom of your public site — name, links, hours, and the BookReady badge."
+      subtitle="The bottom of your public site: name, links, hours, and the BookReady badge."
     >
       <div className="bg-cream border border-[rgba(18,18,18,0.08)] px-3 py-2.5 flex items-start gap-2">
         <Info size={13} className="text-muted-text flex-shrink-0 mt-0.5" />
@@ -2428,7 +2428,7 @@ function PreviewPanel({ url, refreshKey }: { url: string; refreshKey: number }) 
           <iframe
             key={`mob-${cacheKey}`}
             src={src}
-            title="Public site preview — mobile"
+            title="Public site preview, mobile"
             style={{
               width:  PREVIEW_MOBILE_W,
               height: PREVIEW_HEIGHT,
@@ -2450,7 +2450,7 @@ function PreviewPanel({ url, refreshKey }: { url: string; refreshKey: number }) 
             <iframe
               key={`desk-${cacheKey}`}
               src={src}
-              title="Public site preview — desktop"
+              title="Public site preview, desktop"
               style={{
                 width:  PREVIEW_DESKTOP_W,
                 height: PREVIEW_HEIGHT,
@@ -2621,7 +2621,7 @@ function GalleryManagerPanel({ settings, onSaveSettings }: {
   return (
     <CollapsibleSection
       title="Gallery"
-      subtitle="Organize your work into up to 3 collections — each can hold up to 6 photos."
+      subtitle="Organize your work into up to 3 collections. Each can hold up to 6 photos."
       icon={ImageIcon}
       statusBadge={!loading && (
         <StatusBadge>{totalImages} image{totalImages === 1 ? '' : 's'}</StatusBadge>
@@ -3205,7 +3205,7 @@ function ResultsManagerPanel({ settings, onSaveSettings }: {
   return (
     <CollapsibleSection
       title="Before & After"
-      subtitle="Group your transformations into up to 3 collections — each holds up to 6 pairs."
+      subtitle="Group your transformations into up to 3 collections. Each holds up to 6 pairs."
       icon={Sparkles}
       statusBadge={!loading && (
         <StatusBadge>{totalPairs} pair{totalPairs === 1 ? '' : 's'}</StatusBadge>
@@ -3667,7 +3667,7 @@ function WebsiteCustomPolicyGroupsEditor({
         <div>
           <p className="text-[11px] font-bold tracking-[0.14em] uppercase text-near-black">Custom sections</p>
           <p className="text-[10px] text-muted-text mt-0.5">
-            Up to {WEBSITE_POLICY_MAX_GROUPS} sections × {WEBSITE_POLICY_MAX_ITEMS_PER_GROUP} items — appears below the named policies on your public site.
+            Up to {WEBSITE_POLICY_MAX_GROUPS} sections × {WEBSITE_POLICY_MAX_ITEMS_PER_GROUP} items, shown below the named policies on your public site.
           </p>
         </div>
         <div className="flex items-center gap-2 whitespace-nowrap">
@@ -3918,7 +3918,7 @@ function ChangeTemplateBlock({ currentSlug }: { currentSlug: string }) {
       </div>
 
       <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1.5 leading-snug">
-        Heads up: changing template <span className="font-semibold">resets template-specific settings</span> (colors, tab labels, section order, about/advice copy). Business data — services, hours, gallery, customers, bookings — is preserved.
+        Heads up: changing template <span className="font-semibold">resets template-specific settings</span> (colors, tab labels, section order, about/advice copy). Your business data (services, hours, gallery, customers, bookings) is preserved.
       </p>
 
       <div className="space-y-1.5">
@@ -4023,7 +4023,7 @@ function SeasonalThemesTeaser() {
               key={t.label}
               type="button"
               disabled
-              title={`${t.label} — coming soon`}
+              title={`${t.label} (coming soon)`}
               className="relative inline-flex items-center gap-1.5 border border-[rgba(18,18,18,0.12)] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-near-black opacity-60 cursor-not-allowed"
             >
               <span
@@ -4069,13 +4069,13 @@ function AnnouncementsComingSoonPanel() {
           bullets: [
             'Capture emails for a waitlist or newsletter',
             'Push a high-margin add-on or service',
-            'Show once per device — no annoyance',
+            'Show once per device, no annoyance',
           ],
         },
         {
           icon:        MailIcon,
           title:       'Email notifications',
-          description: 'One-off email blasts to your whole client list — sent through your verified BookReady domain.',
+          description: 'One-off email blasts to your whole client list, sent through your verified BookReady domain.',
           bullets: [
             'Schedule for the best time of day',
             'Pick segments: VIPs, recent visitors, no-shows',
@@ -4092,7 +4092,7 @@ function IntroductionComingSoonPanel() {
     <ComingSoonHero
       eyebrow="Coming Soon"
       title="Introduction sections"
-      intro="Personality blocks for the gap between your hero and the booking form. Tell clients what's special about your studio — and what's right around the corner."
+      intro="Personality blocks for the gap between your hero and the booking form. Tell clients what's special about your studio, and what's right around the corner."
       features={[
         {
           icon:        UserIcon,

@@ -53,10 +53,10 @@ export default function EmailVerifyBanner() {
     <div className="bg-[#fff8e6] border-b border-[#f1d486] px-4 py-2.5 flex items-center gap-3">
       <AlertTriangle size={14} className="text-[#7a5c00] flex-shrink-0" />
       <p className="text-[12px] text-[#5a4500] leading-snug flex-1 min-w-0">
-        <strong className="font-bold">Verify your email</strong> &mdash;
-        we sent a link when you signed up.{' '}
+        <strong className="font-bold">Verify your email</strong>.{' '}
+        We sent a link when you signed up.{' '}
         {sent
-          ? <span className="text-[#3d6b16]">Sent &mdash; check your inbox.</span>
+          ? <span className="text-[#3d6b16]">Sent. Check your inbox.</span>
           : err
             ? <span className="text-[#7a1f1f]">{err}</span>
             : null}

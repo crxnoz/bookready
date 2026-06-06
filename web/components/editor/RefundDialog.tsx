@@ -202,7 +202,7 @@ export default function RefundDialog({ appt, onClose, onSubmit }: RefundDialogPr
           ) : (
             <p className="text-[11px] text-muted-text">
               You&rsquo;re recording a refund of a {methodLbl || 'manual'} payment. No
-              money moves through Stripe &mdash; refund the customer however you took
+              money moves through Stripe. Refund the customer however you took
               the payment (cash back, Venmo, etc), then click confirm.
             </p>
           )}

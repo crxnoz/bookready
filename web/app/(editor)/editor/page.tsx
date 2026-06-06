@@ -513,7 +513,7 @@ function SetupChecklist({
         icon={CheckCircle2}
         label="Setup checklist"
         subtitle={pct === 100
-          ? 'All set — your site is fully configured.'
+          ? 'All set. Your site is fully configured.'
           : `${doneCount} of ${items.length} complete (${pct}%).`}
       />
       <div className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5">
@@ -1725,17 +1725,17 @@ function computeRepeatRatio(appts: Appointment[]): RepeatRatio {
 // repeat once a month, low enough to stay novel for early operators.
 const DAILY_TIPS = [
   'A short tagline on your booking page makes a stronger first impression than a long bio.',
-  'Block off your own buffer between clients — clients respect schedules that respect you.',
+  'Block off your own buffer between clients. Clients respect schedules that respect you.',
   'A clear cancellation policy actually reduces cancellations, not increases them.',
   'Photos in your gallery sell more than descriptions do. Two minutes of phone uploads goes a long way.',
   'Confirmation emails are quiet brand moments. Make them sound like you.',
   'A deposit of even 20% cuts no-shows by half. Sweet spot for most brands.',
   'Returning clients are 7× more valuable than new ones. Treat them like it.',
-  'Empty slots? Post one or two on Instagram Stories with your booking link — fastest fill.',
+  'Empty slots? Post one or two on Instagram Stories with your booking link. Fastest fill there is.',
   'Quick win: send a "thanks, see you again" note 24 hours after their appointment.',
   'Saturday afternoons fill up fastest. Don\'t leave them last on your calendar.',
   'A 5-photo gallery converts twice as well as a 15-photo one. Curate, don\'t cram.',
-  'The fastest growth lever is making the booking page easy to share — copy it now.',
+  'The fastest growth lever is making the booking page easy to share, so copy it now.',
   'Add a tip prompt to your confirmation emails. Most clients want to; few remember unless asked.',
   'Re-engage a "we haven\'t seen you in a while" client with a personal note, not a discount.',
   'New clients book based on your photos. Returning clients book based on your reliability.',
@@ -1744,11 +1744,11 @@ const DAILY_TIPS = [
   'The clients who tip the best are the ones who feel remembered. Use your notes column.',
   'A "what to expect" section reduces first-visit anxiety dramatically.',
   'Your booking confirmation page is your second chance at a first impression.',
-  'Don\'t apologize for full days — booked-out is your strongest marketing.',
+  'Don\'t apologize for full days. Booked-out is your strongest marketing.',
   'Add buffer time between back-to-back services. Burnout is a slow leak.',
   'A simple "running 10 minutes behind" text from you is worth more than a long apology after.',
   'Refer-a-friend works best as a thank-you, not a transaction. No formal discount needed.',
-  'Group your services by occasion (weekend reset, before vacation) on your page — not just by name.',
+  'Group your services by occasion (weekend reset, before vacation) on your page, not just by name.',
   'A handful of well-priced staple services beats a sprawling menu, every time.',
   'Photograph the chair you actually use. Authenticity reads in seconds.',
   'A "what to bring / what to wear" line on your booking page prevents reschedules.',

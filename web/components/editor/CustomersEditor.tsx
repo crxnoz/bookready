@@ -304,7 +304,7 @@ export default function CustomersEditor() {
                   <Icon size={10} className="text-muted-text flex-shrink-0" />
                   <p className="text-[8px] font-bold tracking-[0.10em] uppercase text-muted-text truncate">{label}</p>
                 </div>
-                <p className="text-2xl font-bold text-near-black tabular-nums">{loading ? '—' : value}</p>
+                <p className="text-2xl font-bold text-near-black tabular-nums">{loading ? 'None' : value}</p>
                 <p className="text-[9px] font-semibold text-muted-text group-hover:text-near-black mt-0.5 inline-flex items-center gap-0.5">
                   {isActive ? 'Viewing' : 'View'} <ChevronRight size={10} />
                 </p>
@@ -352,7 +352,7 @@ export default function CustomersEditor() {
         ) : filtered.length === 0 ? (
           <EmptyMessage>
             {customers.length === 0
-              ? 'No customers yet — add one with the button above or wait for your first public booking.'
+              ? 'No customers yet. Add one with the button above, or wait for your first public booking.'
               : 'No customers match those filters.'}
           </EmptyMessage>
         ) : (
@@ -479,7 +479,7 @@ function CustomerRow({ customer: c, onOpen }: { customer: Customer; onOpen: () =
           {c.is_account_holder && (
             <span
               className="inline-flex items-center gap-1 text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.20)] bg-lavender text-near-black px-2 py-0.5"
-              title="This customer has a BookReady account — verified email, stable identity, can self-manage bookings."
+              title="This customer has a BookReady account: verified email, stable identity, can self-manage bookings."
             >
               Account
             </span>
@@ -728,7 +728,7 @@ function DrawerContent({
         {/* Preferences (Phase 14) */}
         <DrawerSection
           title="Preferences"
-          subtitle="What they like — drives smarter pre-fills in future bookings."
+          subtitle="What they like, to drive smarter pre-fills in future bookings."
         >
           <PreferencesForm
             customer={c}
@@ -770,7 +770,7 @@ function DrawerContent({
         {/* Private notes */}
         <DrawerSection
           title="Private notes"
-          subtitle="Only visible to your team — not shared with the customer."
+          subtitle="Only visible to your team, never shared with the customer."
           badge={notesSaved ? <span className="text-[9px] font-bold tracking-[0.08em] uppercase text-[#0f6f3d]">Saved</span> : null}
         >
           <textarea
@@ -860,7 +860,7 @@ function ContactRow({ icon, label, value }: { icon: React.ReactNode; label: stri
       <span className="text-muted-text flex-shrink-0">{icon}</span>
       <div className="min-w-0 flex-1">
         <p className="text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text">{label}</p>
-        <p className="text-xs text-near-black truncate">{value || '—'}</p>
+        <p className="text-xs text-near-black truncate">{value || 'None'}</p>
       </div>
     </div>
   )
@@ -1183,7 +1183,7 @@ function TagsPicker({
                 {filtered.length === 0 ? (
                   <p className="text-[11px] text-muted-text px-1.5 py-2">
                     {available.length === 0
-                      ? 'No tags yet — create one below.'
+                      ? 'No tags yet. Create one below.'
                       : 'No matching tags.'}
                   </p>
                 ) : filtered.map(t => (
@@ -1501,7 +1501,7 @@ function ManageTagsModal({
 
         <div className="p-5 space-y-3">
           {tags.length === 0 && ! creating && (
-            <p className="text-xs text-muted-text">No tags yet — create your first one below.</p>
+            <p className="text-xs text-muted-text">No tags yet. Create your first one below.</p>
           )}
 
           {tags.map(t => (

@@ -69,12 +69,12 @@ const STEPS: StepMeta[] = [
   {
     id: 'business', label: 'Business',  icon: Building2,
     estimate: '~30 seconds',
-    why: 'This is what shows at the top of your booking page — your name, where you are, how clients reach you.',
+    why: 'This is what shows at the top of your booking page: your name, where you are, how clients reach you.',
   },
   {
     id: 'services', label: 'Services',  icon: Scissors,
     estimate: '~1 minute',
-    why: 'Clients pick one of these to book. Names + prices show right on your page — make them sound like you.',
+    why: 'Clients pick one of these to book. Names + prices show right on your page, so make them sound like you.',
   },
   {
     id: 'hours',    label: 'Hours',     icon: Clock,
@@ -89,7 +89,7 @@ const STEPS: StepMeta[] = [
   {
     id: 'stripe',   label: 'Payments',  icon: CreditCard,
     estimate: '~2 minutes (skippable)',
-    why: 'Connect Stripe to take deposits at booking. Skip for now — you can add it any time from Payments.',
+    why: 'Connect Stripe to take deposits at booking. Skip for now. You can add it any time from Payments.',
   },
 ]
 
@@ -506,7 +506,7 @@ function BusinessStep({ business, onChange, estimate, why }: {
       <Field label="Business name">
         <input className={inputCls} value={business.business_name ?? ''} onChange={set('business_name')} placeholder="Lush Studio" />
       </Field>
-      <Field label="Tagline" hint="A short line under your name — optional.">
+      <Field label="Tagline" hint="A short line under your name (optional).">
         <input className={inputCls} value={business.tagline ?? ''} onChange={set('tagline')} placeholder="Soft glow, soft hands." />
       </Field>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -590,7 +590,7 @@ function ServicesStep({ services, onChange, bizName, estimate, why }: {
           </div>
         ))}
         {visible.length === 0 && (
-          <p className="text-[12px] text-muted-text py-2">No services yet — add at least one so clients can book.</p>
+          <p className="text-[12px] text-muted-text py-2">No services yet. Add at least one so clients can book.</p>
         )}
       </div>
       <button
@@ -735,7 +735,7 @@ function StripeStep({ connected, saving, bizName, estimate, why, onConnect, onSk
           disabled={saving}
           className="text-[11px] font-semibold text-muted-text hover:text-near-black disabled:opacity-50"
         >
-          {connected ? 'Finish' : 'Skip for now — finish setup'}
+          {connected ? 'Finish' : 'Skip for now, finish setup'}
         </button>
         {connected && (
           <button
@@ -878,8 +878,8 @@ function WelcomeScene({ firstName, businessName, onStart, onSignOut }: {
             Let&rsquo;s go <ArrowRight size={13} />
           </button>
           <p className="text-[11px] text-muted-text mt-3 max-w-md leading-relaxed">
-            Your site is already live at a starter address &mdash;
-            these next minutes make it actually yours.
+            Your site is already live at a starter address.
+            These next minutes make it actually yours.
           </p>
         </div>
       </main>

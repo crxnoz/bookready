@@ -8,7 +8,7 @@ export default function WaitlistPage() {
   return (
     <EditorShell
       title="Waitlist"
-      subtitle="A standby queue for fully-booked dates — coming soon."
+      subtitle="A standby queue for fully-booked dates, coming soon."
     >
       <div className="w-full p-3 sm:p-5 md:p-6">
         <ComingSoonPanel
@@ -32,7 +32,7 @@ export default function WaitlistPage() {
               title:       'Auto-notify on cancellations',
               description: 'When a slot frees up, the next match in the queue gets an email + a time-limited claim link.',
               bullets: [
-                'First come, first served — no manual outreach',
+                'First come, first served, no manual outreach',
                 'Skip past clients who do not respond in time',
                 'Owner override to hand-pick from the queue',
               ],

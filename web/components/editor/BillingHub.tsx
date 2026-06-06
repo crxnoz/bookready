@@ -168,8 +168,8 @@ export default function BillingHub() {
 
         {sub?.subscribed ? (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
-            <Stat label="Plan" value={sub.plan ? capitalize(sub.plan) : '—'} />
-            <Stat label="Billing" value={sub.billing_cycle ? capitalize(sub.billing_cycle) : '—'} />
+            <Stat label="Plan" value={sub.plan ? capitalize(sub.plan) : '-'} />
+            <Stat label="Billing" value={sub.billing_cycle ? capitalize(sub.billing_cycle) : '-'} />
             <Stat label="SMS / mo" value={sub.sms_included.toLocaleString()} hint={sub.sms_mult ? `${sub.sms_mult}× bundle` : null} />
             <Stat label="Status" value="Active" tone="ok" />
           </div>

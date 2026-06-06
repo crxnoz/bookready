@@ -88,7 +88,7 @@ export default function IntegrationsHub() {
           Connect BookReady to the tools you already use.
         </h1>
         <p className="text-[13px] text-muted-text mt-1.5">
-          Payments, calendars, marketing, automation. Most of this is on the roadmap —
+          Payments, calendars, marketing, automation. Most of this is on the roadmap;
           we&rsquo;re shipping in the order most-asked-for.
         </p>
       </header>
@@ -234,7 +234,7 @@ function stripeTile(settings: PaymentSettings | null): IntegrationTile {
     manageHref:  '/editor/payments',
     connectHref: '/editor/payments',
     hint:        status === 'action_required'
-      ? 'Stripe onboarding incomplete — finish to start accepting payments.'
+      ? 'Stripe onboarding incomplete. Finish it to start accepting payments.'
       : undefined,
   }
 }

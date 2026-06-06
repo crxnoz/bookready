@@ -136,7 +136,7 @@ export default function MarkPaidDialog({ appt, onClose, onSubmit }: MarkPaidDial
             </div>
             {isDeposit && (
               <p className="mt-1.5 text-[11px] text-muted-text">
-                Less than the service price — will be recorded as a deposit. Balance of{' '}
+                Less than the service price, so it will be recorded as a deposit. Balance of{' '}
                 <span className="font-semibold text-near-black">{sym}{(price - numericAmount).toFixed(2)}</span> due at appointment.
               </p>
             )}

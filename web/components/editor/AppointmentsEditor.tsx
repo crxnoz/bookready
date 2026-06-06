@@ -684,7 +684,7 @@ export default function AppointmentsEditor() {
                   <Icon size={10} className="text-muted-text flex-shrink-0" />
                   <p className="text-[8px] font-bold tracking-[0.10em] uppercase text-muted-text truncate">{label}</p>
                 </div>
-                <p className="text-2xl font-bold text-near-black tabular-nums">{loading ? '—' : value}</p>
+                <p className="text-2xl font-bold text-near-black tabular-nums">{loading ? 'None' : value}</p>
                 <p className="text-[9px] font-semibold text-muted-text group-hover:text-near-black mt-0.5 inline-flex items-center gap-0.5">
                   {isActive ? 'Viewing' : 'View'} <ChevronRight size={10} />
                 </p>
@@ -780,7 +780,7 @@ export default function AppointmentsEditor() {
                   <option value="">Select a service *</option>
                   {services.map(s => (
                     <option key={s.id} value={s.id}>
-                      {s.name} — {s.duration_minutes} min · ${s.price.toFixed(0)}
+                      {s.name} · {s.duration_minutes} min · ${s.price.toFixed(0)}
                     </option>
                   ))}
                 </select>
@@ -878,7 +878,7 @@ export default function AppointmentsEditor() {
                       <option value="">Any staff</option>
                       {options.map(s => (
                         <option key={s.id} value={s.id}>
-                          {s.name}{s.role ? ` — ${s.role}` : ''}
+                          {s.name}{s.role ? ` · ${s.role}` : ''}
                         </option>
                       ))}
                     </select>
@@ -1179,7 +1179,7 @@ function WeekGridView({
                     className="text-[8px] text-muted-text text-center py-4 w-full h-full hover:text-near-black transition-colors cursor-pointer"
                     aria-label={`Open ${date} in Today view`}
                   >
-                    —
+                    None
                   </button>
                 ) : dayAppts.map(a => (
                   <button
@@ -1631,11 +1631,11 @@ function AppointmentCard({
                       View image
                     </a>
                   ) : qa.type_snapshot === 'image' ? (
-                    <span className="text-muted-text">—</span>
+                    <span className="text-muted-text">None</span>
                   ) : qa.type_snapshot === 'checkbox' ? (
                     <span>{qa.value === true ? 'Yes' : 'No'}</span>
                   ) : (
-                    <span className="text-muted-text">{typeof qa.value === 'string' && qa.value.length > 0 ? qa.value : '—'}</span>
+                    <span className="text-muted-text">{typeof qa.value === 'string' && qa.value.length > 0 ? qa.value : 'None'}</span>
                   )
                 })()}
               </div>

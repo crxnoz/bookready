@@ -1032,7 +1032,7 @@ function AdvancedSection({
             </div>
             <p className="text-[10px] text-muted-text mt-1.5">
               {draft.available_days.length === 0
-                ? 'No restriction — uses the business hours.'
+                ? 'No restriction. Uses the business hours.'
                 : 'Service is only offered on the selected days.'}
             </p>
           </div>
@@ -1080,7 +1080,7 @@ function AdvancedSection({
             )}
             <p className="text-[10px] text-muted-text mt-1.5">
               {draft.assigned_staff_ids.length === 0
-                ? 'No staff assigned — any staff can perform this service.'
+                ? 'No staff assigned. Any staff can perform this service.'
                 : 'Only the selected staff will be offered for this service.'}
             </p>
           </div>

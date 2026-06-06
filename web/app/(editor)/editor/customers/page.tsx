@@ -35,7 +35,7 @@ function LoyaltyPanel() {
       <ComingSoonPanel
         eyebrow="Coming Soon"
         title="Loyalty Rewards"
-        intro="Turn one-time bookings into repeat visits. Reward clients for showing up, referring friends, and trying new services — all on autopilot."
+        intro="Turn one-time bookings into repeat visits. Reward clients for showing up, referring friends, and trying new services, all on autopilot."
         features={[
           {
             icon:        Award,
@@ -45,7 +45,7 @@ function LoyaltyPanel() {
             bullets: [
               'Set your own threshold: every 5 visits, every 10, etc.',
               'Clients see their progress on the booking page',
-              'Reward unlocks the moment it is earned — no manual tracking',
+              'Reward unlocks the moment it is earned, no manual tracking',
             ],
           },
           {
@@ -90,7 +90,7 @@ function AccountsPanel() {
       <ComingSoonPanel
         eyebrow="Coming Soon"
         title="Customer Accounts"
-        intro={'Give clients a logged-in space on your booking site. They keep their info, payment methods, and history in one place — and you get fewer "what was my appointment time?" emails.'}
+        intro={'Give clients a logged-in space on your booking site. They keep their info, payment methods, and history in one place, and you get fewer "what was my appointment time?" emails.'}
         features={[
           {
             icon:        UserCircle2,
@@ -98,7 +98,7 @@ function AccountsPanel() {
             title:       'Saved profiles',
             description: 'Clients sign in once and never re-enter their name, phone, or notes again.',
             bullets: [
-              'Magic-link sign-in — no passwords',
+              'Magic-link sign-in, no passwords',
               'Optional Google sign-in for one-tap booking',
               'Profile photo + preferred name shown to your team',
             ],
@@ -116,7 +116,7 @@ function AccountsPanel() {
           {
             icon:        Filter,
             title:       'Saved preferences',
-            description: 'Allergies, preferred staff, favorite add-ons — saved once, surfaced every booking.',
+            description: 'Allergies, preferred staff, favorite add-ons: saved once, surfaced every booking.',
             bullets: [
               'Auto-fills the new Booking Form questions',
               'Owner sees the preference card on every appointment',
@@ -128,7 +128,7 @@ function AccountsPanel() {
             title:       'Saved payment methods',
             description: 'Clients save a card on file for faster checkout, deposits, and late fees.',
             bullets: [
-              'Secured by Stripe — you never see the number',
+              'Secured by Stripe, you never see the number',
               'Owner can charge no-show / late fees with one click',
               'Clients can remove cards anytime from their profile',
             ],
@@ -145,7 +145,7 @@ function ReviewsPanel() {
       <ComingSoonPanel
         eyebrow="Coming Soon"
         title="Reviews"
-        intro="Collect honest reviews from real clients — automatically, after every appointment. Show the best ones on your public site. Catch the unhappy ones before they hit Google."
+        intro="Collect honest reviews from real clients, automatically, after every appointment. Show the best ones on your public site. Catch the unhappy ones before they hit Google."
         features={[
           {
             icon:        Star,
@@ -155,7 +155,7 @@ function ReviewsPanel() {
             bullets: [
               'Configurable delay (12 hours → 7 days)',
               'Skip clients who already left a review',
-              'One-tap rating — no account needed',
+              'One-tap rating, no account needed',
             ],
           },
           {
@@ -181,7 +181,7 @@ function ReviewsPanel() {
           {
             icon:        Sparkles,
             title:       'Reply + thank',
-            description: 'Reply to a review directly from BookReady — the response is shown alongside the original.',
+            description: 'Reply to a review directly from BookReady, and the response is shown alongside the original.',
             bullets: [
               'Templated thank-yous for fast replies',
               'Mark a review as resolved internally',

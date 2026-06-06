@@ -521,7 +521,7 @@ function PaymentSettingsPanel() {
 
         <Toggle
           label="Save cards for repeat customers"
-          hint="Returning clients see their saved card in Checkout. Also unlocks no-show / late-cancel fees below. Card-only — disables split-pay for that session."
+          hint="Returning clients see their saved card in Checkout. Also unlocks no-show / late-cancel fees below. Card-only, so it disables split-pay for that session."
           icon={Check}
           on={(draft.save_cards_for_reuse ?? false) && !paymentsOff}
           onToggle={() => patch({ save_cards_for_reuse: !(draft.save_cards_for_reuse ?? false) })}
@@ -884,7 +884,7 @@ function BookingSettingsPanel() {
           in Website → Policies. */}
       {policyDraft && (
         <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
-          <SectionTitle icon={ShieldCheck} label="Enforcement rules" hint="Real rules — BookReady enforces these automatically." />
+          <SectionTitle icon={ShieldCheck} label="Enforcement rules" hint="Real rules. BookReady enforces these automatically." />
 
           <Toggle
             label="Require clients to agree to your policies"
@@ -1059,7 +1059,7 @@ function NotificationSettingsPanel() {
       <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
         <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Booking emails</p>
         <Toggle
-          label="Owner — new booking request"
+          label="Owner: new booking request"
           hint="Notify you when a client submits a booking request or pays a deposit."
           icon={Bell}
           on={draft.owner_booking_email_enabled}
@@ -1067,7 +1067,7 @@ function NotificationSettingsPanel() {
         />
         <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
           <Toggle
-            label="Client — request received"
+            label="Client: request received"
             hint="Send a receipt to the client when their booking request comes in."
             on={draft.client_booking_email_enabled}
             onToggle={() => patch({ client_booking_email_enabled: !draft.client_booking_email_enabled })}
@@ -1075,7 +1075,7 @@ function NotificationSettingsPanel() {
         </div>
         <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
           <Toggle
-            label="Client — appointment confirmed"
+            label="Client: appointment confirmed"
             hint="Send when you confirm an appointment."
             on={draft.appointment_confirmed_email_enabled}
             onToggle={() => patch({ appointment_confirmed_email_enabled: !draft.appointment_confirmed_email_enabled })}
@@ -1083,7 +1083,7 @@ function NotificationSettingsPanel() {
         </div>
         <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
           <Toggle
-            label="Client — appointment cancelled"
+            label="Client: appointment cancelled"
             hint="Send when an appointment is cancelled."
             on={draft.appointment_cancelled_email_enabled}
             onToggle={() => patch({ appointment_cancelled_email_enabled: !draft.appointment_cancelled_email_enabled })}
@@ -1132,7 +1132,7 @@ function NotificationSettingsPanel() {
         <div className="bg-cream/60 border border-[rgba(18,18,18,0.08)] p-2.5">
           <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">From address</p>
           <p className="text-[12px] text-near-black mt-0.5 font-mono break-all">
-            {(draft.effective_from_name || 'BookReady')} &lt;{draft.effective_from_address || '—'}&gt;
+            {(draft.effective_from_name || 'BookReady')} &lt;{draft.effective_from_address || 'Not set'}&gt;
           </p>
           <p className="text-[10px] text-muted-text mt-1.5">
             This is the address clients see in their inbox. Reply-to and sender name below customize it.
@@ -1683,7 +1683,7 @@ function StripeConnectBlock({
           tone:  'warn' as const,
           icon:  AlertCircle,
           title: 'Pending review',
-          body:  'You finished onboarding — Stripe is still verifying your details. Payments will turn on once they finish.',
+          body:  'You finished onboarding. Stripe is still verifying your details, and payments will turn on once they finish.',
         }
       case 'onboarding_started':
         return {
@@ -1937,7 +1937,7 @@ function BusinessSettingsPanel() {
       <header className="px-1">
         <h1 className="text-base font-bold text-near-black">Business Profile</h1>
         <p className="text-xs text-muted-text mt-0.5">
-          Who you are — name, public contact, and where clients can find you.
+          Who you are: name, public contact, and where clients can find you.
         </p>
       </header>
 
@@ -2076,7 +2076,7 @@ const COMMON_TIMEZONES = [
   { value: 'America/New_York',    label: 'Eastern (New York)' },
   { value: 'America/Chicago',     label: 'Central (Chicago)' },
   { value: 'America/Denver',      label: 'Mountain (Denver)' },
-  { value: 'America/Phoenix',     label: 'Mountain — no DST (Phoenix)' },
+  { value: 'America/Phoenix',     label: 'Mountain, no DST (Phoenix)' },
   { value: 'America/Los_Angeles', label: 'Pacific (Los Angeles)' },
   { value: 'America/Anchorage',   label: 'Alaska (Anchorage)' },
   { value: 'Pacific/Honolulu',    label: 'Hawaii (Honolulu)' },
@@ -2189,7 +2189,7 @@ function PreferencesSettingsPanel() {
       <header className="px-1">
         <h1 className="text-base font-bold text-near-black">Preferences</h1>
         <p className="text-xs text-muted-text mt-0.5">
-          How BookReady behaves for your business — time zone, formats, defaults, and site visibility.
+          How BookReady behaves for your business: time zone, formats, defaults, and site visibility.
         </p>
       </header>
 
@@ -2271,7 +2271,7 @@ function PreferencesSettingsPanel() {
           label="Email signature"
           value={draft.email_signature ?? ''}
           onChange={v => patch({ email_signature: v })}
-          placeholder="— Anna at Lush Studio"
+          placeholder="Anna at Lush Studio"
           hint="Appended to client-facing emails (confirmations, reminders, etc)."
           rows={2}
         />
@@ -2298,7 +2298,7 @@ function PreferencesSettingsPanel() {
               type="text"
               value={pwInput}
               onChange={setPwInput}
-              placeholder={draft.site_password_set ? '(already set — leave blank to keep)' : 'Choose a password'}
+              placeholder={draft.site_password_set ? '(already set, leave blank to keep)' : 'Choose a password'}
               hint={draft.site_password_set ? 'Type a new value to change it. Leave blank to keep the existing one.' : 'Anyone with the link will need this to view your site.'}
             />
             {draft.site_password_set && (
@@ -2518,7 +2518,7 @@ function DangerSettingsPanel() {
       <header className="px-1">
         <h1 className="text-base font-bold text-near-black">Danger Zone</h1>
         <p className="text-xs text-muted-text mt-0.5">
-          Destructive and archival actions. Read carefully &mdash; these affect real client data and money.
+          Destructive and archival actions. Read carefully, since these affect real client data and money.
         </p>
       </header>
 
@@ -2593,7 +2593,7 @@ function DangerSettingsPanel() {
               <p className="text-[13px] font-semibold text-[#b42828]">Delete BookReady account</p>
               <p className="text-[11px] text-muted-text mt-0.5 leading-snug">
                 Permanently deletes your booking site, every appointment, your customer list, and your owner login. Stripe transaction history is preserved in Stripe.
-                This cannot be undone &mdash; export your data first.
+                This cannot be undone. Export your data first.
               </p>
             </div>
           </div>
@@ -2958,7 +2958,7 @@ function EmailTemplateCard({
               rows={2}
               value={value.signoff ?? ''}
               onChange={e => onChange({ ...value, signoff: e.target.value || null })}
-              placeholder="e.g. Thanks for choosing us — Anna"
+              placeholder="e.g. Thanks for choosing us, Anna"
               className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black resize-y leading-relaxed"
               maxLength={2000}
             />
