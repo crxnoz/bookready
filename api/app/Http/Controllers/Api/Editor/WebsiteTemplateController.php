@@ -75,11 +75,19 @@ class WebsiteTemplateController extends Controller
 
         $existing = $row->settings_json ? json_decode($row->settings_json, true) : [];
 
-        $merged = TemplateDefaults::mergeWithDefaults($slug, $existing);
-        $merged = TemplateDefaults::mergeWithDefaults($slug, array_replace_recursive(
-            $merged,
-            $validated['settings']
-        ));
+        // Hydrate the full current shape (existing + any new default keys),
+        // then overlay the incoming partial with LIST-AWARE semantics.
+        //
+        // applyPartial replaces list values wholesale instead of merging
+        // them by index. Using array_replace_recursive here (the previous
+        // behaviour) meant deleting an item from any list-typed setting —
+        // FAQ items, About highlights, advice/timeline steps, reviews,
+        // About images — left the trailing elements behind, so the deleted
+        // item reappeared the instant the editor re-rendered from the
+        // server response. applyPartial fixes that while still preserving
+        // untouched sibling keys on nested objects.
+        $existingFull = TemplateDefaults::mergeWithDefaults($slug, $existing);
+        $merged = TemplateDefaults::applyPartial($existingFull, $validated['settings']);
 
         DB::table('template_settings')
             ->where('id', $row->id)

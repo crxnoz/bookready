@@ -630,6 +630,25 @@ class TemplateDefaults
         return self::deepMerge($defaults, $stored);
     }
 
+    /**
+     * Apply a partial settings override onto a base settings array, with
+     * the SAME list-handling semantics as the defaults merge: nested
+     * objects deep-merge (preserving untouched sibling keys), but list
+     * values are REPLACED wholesale.
+     *
+     * This is the correct way to apply an incoming editor PATCH. PHP's
+     * native array_replace_recursive merges lists element-by-element by
+     * numeric index, so shortening a list (deleting a FAQ item, an About
+     * highlight, an advice step, a review) would leave the trailing
+     * elements behind — they'd silently survive the delete. The editor
+     * always sends the full intended list, so wholesale replacement is
+     * the right contract.
+     */
+    public static function applyPartial(array $base, array $override): array
+    {
+        return self::deepMerge($base, $override);
+    }
+
     private static function deepMerge(array $base, array $override): array
     {
         foreach ($override as $k => $v) {
