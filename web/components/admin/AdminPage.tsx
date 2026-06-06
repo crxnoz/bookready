@@ -7,10 +7,12 @@ import {
   Megaphone, Plus, Pencil, Eye, EyeOff, Check, X, Sparkles,
 } from 'lucide-react'
 import {
-  getCurrentUser, getAdminTenants, deleteAdminTenant,
+  getCurrentUser, getAdminTenants, deleteAdminTenant, getAdminDashboardTrends,
   getAdminAnnouncements, createAdminAnnouncement, updateAdminAnnouncement, deleteAdminAnnouncement,
+  type AdminDashboardTrends, type AdminTenantTrendRow,
 } from '@/lib/api'
 import DashboardSummary from './DashboardSummary'
+import DashboardTrends from './DashboardTrends'
 import { isLoggedIn, clearAuth } from '@/lib/auth'
 import type { AdminTenantRow, AuthUser, PlatformAnnouncement, PlatformAnnouncementPayload } from '@/lib/types'
 import { cn } from '@/lib/cn'
@@ -42,12 +44,37 @@ export default function AdminPage() {
 
   const [confirmTarget, setConfirmTarget] = useState<AdminTenantRow | null>(null)
 
+  // Phase 2 — cross-tenant trends. Owned here (not inside DashboardTrends)
+  // so the same payload also feeds the extended tenant table columns
+  // below. One fetch, two consumers.
+  const [trends,        setTrends]        = useState<AdminDashboardTrends | null>(null)
+  const [trendsLoading, setTrendsLoading] = useState(true)
+  const [trendsErr,     setTrendsErr]     = useState<string | null>(null)
+
+  // Per-tenant lookup for the table's analytics columns.
+  const trendByTenant = useMemo(() => {
+    const m = new Map<string, AdminTenantTrendRow>()
+    for (const r of trends?.tenants ?? []) m.set(r.id, r)
+    return m
+  }, [trends])
+
   async function loadTenants() {
     try {
       const res = await getAdminTenants()
       setTenants(res.tenants)
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : 'Could not load tenants')
+    }
+  }
+
+  async function loadTrends() {
+    setTrendsErr(null)
+    try {
+      setTrends(await getAdminDashboardTrends())
+    } catch (e) {
+      setTrendsErr(e instanceof Error ? e.message : 'Could not load trends')
+    } finally {
+      setTrendsLoading(false)
     }
   }
 
@@ -70,6 +97,8 @@ export default function AdminPage() {
         }
         await loadTenants()
         if (! cancelled) setLoadState('ready')
+        // Trends loads in the background — the page is usable before it lands.
+        if (! cancelled) void loadTrends()
       } catch (e) {
         if (cancelled) return
         // 401 → token invalid; otherwise generic error.
@@ -143,6 +172,8 @@ export default function AdminPage() {
     <Shell signedInAs={me?.email} onSignOut={signOut}>
       <DashboardSummary />
 
+      <DashboardTrends trends={trends} loading={trendsLoading} error={trendsErr} />
+
       <header className="flex items-center justify-between gap-3 mb-3 mt-8 flex-wrap">
         <div>
           <h1 className="text-xl font-bold text-near-black tracking-tight">Tenants</h1>
@@ -189,6 +220,7 @@ export default function AdminPage() {
       <TenantTable
         rows={filteredTenants}
         myTenantId={me?.tenant_id ?? null}
+        trendByTenant={trendByTenant}
         onDelete={(t) => setConfirmTarget(t)}
         emptyMessage={query.trim() !== '' ? `No tenants match "${query.trim()}".` : undefined}
       />
@@ -212,11 +244,12 @@ export default function AdminPage() {
 // ── Table ───────────────────────────────────────────────────────────────────
 
 function TenantTable({
-  rows, myTenantId, onDelete, emptyMessage,
+  rows, myTenantId, trendByTenant, onDelete, emptyMessage,
 }: {
-  rows:         AdminTenantRow[]
-  myTenantId:   string | null
-  onDelete:     (t: AdminTenantRow) => void
+  rows:          AdminTenantRow[]
+  myTenantId:    string | null
+  trendByTenant: Map<string, AdminTenantTrendRow>
+  onDelete:      (t: AdminTenantRow) => void
   emptyMessage?: string
 }) {
   if (rows.length === 0) {
@@ -228,21 +261,33 @@ function TenantTable({
       </Card>
     )
   }
+  const relTime = (iso: string | null | undefined) => {
+    if (! iso) return 'never'
+    const diff = Date.now() - new Date(iso).getTime()
+    const d = Math.floor(diff / 86400000)
+    if (d <= 0) return 'today'
+    if (d === 1) return 'yesterday'
+    if (d < 30) return `${d}d ago`
+    return new Date(iso).toLocaleDateString()
+  }
   return (
     <div className="bg-white border border-[rgba(18,18,18,0.10)] overflow-x-auto">
-      <table className="w-full text-[12px] min-w-[640px]">
+      <table className="w-full text-[12px] min-w-[820px]">
         <thead>
           <tr className="border-b border-[rgba(18,18,18,0.08)] bg-cream">
             <Th>Slug</Th>
             <Th>Owner</Th>
-            <Th>Created</Th>
             <Th>Plan</Th>
+            <Th className="text-right">MRR</Th>
+            <Th className="text-right">Bookings 30d</Th>
+            <Th>Last booking</Th>
             <Th className="text-right">Actions</Th>
           </tr>
         </thead>
         <tbody>
           {rows.map(t => {
             const isMine = myTenantId === t.id
+            const tr = trendByTenant.get(t.id)
             return (
               <tr key={t.id} className="border-b border-[rgba(18,18,18,0.06)] last:border-b-0">
                 <Td>
@@ -254,6 +299,9 @@ function TenantTable({
                   >
                     {t.id} <ExternalLink size={10} className="text-muted-text" />
                   </a>
+                  <p className="text-[10px] text-muted-text mt-0.5">
+                    {t.created_at ? new Date(t.created_at).toLocaleDateString() : '—'}
+                  </p>
                 </Td>
                 <Td>
                   <div className="min-w-0">
@@ -261,8 +309,21 @@ function TenantTable({
                     <p className="text-muted-text truncate">{t.owner_email ?? '—'}</p>
                   </div>
                 </Td>
-                <Td>{t.created_at ? new Date(t.created_at).toLocaleDateString() : '—'}</Td>
-                <Td>{t.plan ?? '—'}</Td>
+                <Td>
+                  <span className="capitalize">{t.plan ?? '—'}</span>
+                  {tr && tr.state && tr.state !== 'active' && (
+                    <span className="block text-[10px] text-muted-text capitalize">{tr.state}</span>
+                  )}
+                </Td>
+                <Td className="text-right tabular-nums">
+                  {tr ? (tr.mrr_cents > 0 ? '$' + Math.round(tr.mrr_cents / 100) : '—') : '—'}
+                </Td>
+                <Td className="text-right tabular-nums">
+                  {tr ? (tr.bookings_30d > 0 ? tr.bookings_30d.toLocaleString() : '—') : '…'}
+                </Td>
+                <Td className="text-muted-text">
+                  {tr ? relTime(tr.last_booking_at) : '…'}
+                </Td>
                 <Td className="text-right">
                   <button
                     type="button"

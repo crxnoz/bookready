@@ -835,6 +835,49 @@ export async function getAdminDashboardSummary(): Promise<AdminDashboardSummary>
   return request<AdminDashboardSummary>('/admin/dashboard/summary')
 }
 
+// ── Platform admin dashboard (Phase 2 — cross-tenant trends) ────────────────
+
+export type ActivityTier = 'alive' | 'slowing' | 'dormant'
+
+export interface AdminTenantTrendRow {
+  id:              string
+  plan:            string | null
+  state:           string | null
+  created_at:      string | null
+  owner_name:      string | null
+  owner_email:     string | null
+  mrr_cents:       number
+  bookings_total:  number
+  bookings_30d:    number
+  bookings_7d:     number
+  last_booking_at: string | null
+  tier:            ActivityTier
+}
+
+export interface AdminDashboardTrends {
+  /** ISO date of the snapshot the data came from; null if none yet. */
+  snapshot_date: string | null
+  /** True when the latest snapshot predates yesterday (job missed a run). */
+  stale: boolean
+  platform: {
+    bookings_total:      number
+    bookings_30d:        number
+    bookings_7d:         number
+    active_tenant_count: number
+    tenants_scanned:     number
+    tenants_failed:      number
+  } | null
+  daily_bookings: { date: string; count: number }[]
+  top_tenants:    { id: string; bookings_30d: number }[]
+  heatmap:        { id: string; tier: ActivityTier; bookings_30d: number; last_booking_at: string | null }[]
+  tenants:        AdminTenantTrendRow[]
+  computed_at:    string
+}
+
+export async function getAdminDashboardTrends(): Promise<AdminDashboardTrends> {
+  return request<AdminDashboardTrends>('/admin/dashboard/trends')
+}
+
 // ── Platform announcements ──────────────────────────────────────────────────
 
 /** Public-ish — any authed user can fetch active announcements for the
