@@ -383,6 +383,14 @@ class GoogleAuthController extends Controller
                 'email' => $email,
                 'error' => $e->getMessage(),
             ]);
+            // Burn the handoff token so a failed-state cache entry can't be
+            // replayed during its 15-minute TTL. Provision() already rolled
+            // back the orphan central rows it created (compensating cleanup
+            // in TenantProvisioningService), so the user can simply retry
+            // signup from the start; we don't want the stale token in the
+            // way. NOTE: only forget on this post-provision path — the
+            // earlier 410/409 returns handle their own cache state.
+            Cache::forget($cacheKey);
             return response()->json([
                 'message' => 'Could not finish creating your workspace. Try again.',
             ], 500);

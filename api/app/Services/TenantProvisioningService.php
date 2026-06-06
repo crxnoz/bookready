@@ -46,19 +46,73 @@ class TenantProvisioningService
             return $tenant;
         });
 
-        // Create the isolated MySQL database for this tenant
-        $tenant->database()->manager()->createDatabase($tenant);
+        // Post-transaction steps — these touch a separate MySQL DB (the
+        // tenant's own) via DDL that can't roll back inside a DB::transaction.
+        // If anything here throws, the central-DB Tenant + Domain + User
+        // rows from the transaction above are already committed, so we
+        // have to compensate manually: drop the tenant DB and delete the
+        // central rows. Without this, a half-failed provision leaves an
+        // orphan User row that permanently blocks retries with the same
+        // email (the next attempt 409s on the email-exists race check
+        // instead of surfacing the real underlying error).
+        try {
+            // Create the isolated MySQL database for this tenant
+            $tenant->database()->manager()->createDatabase($tenant);
 
-        // Run tenant migrations (this does NOT auto-initialize tenancy)
-        Artisan::call('tenants:migrate', [
-            '--tenants' => [$tenant->id],
-            '--force'   => true,
-        ]);
+            // Run tenant migrations (this does NOT auto-initialize tenancy)
+            Artisan::call('tenants:migrate', [
+                '--tenants' => [$tenant->id],
+                '--force'   => true,
+            ]);
 
-        // Initialize tenancy so seedDefaults() writes to the tenant DB
-        tenancy()->initialize($tenant);
-        $this->seedDefaults($data);
-        tenancy()->end();
+            // Initialize tenancy so seedDefaults() writes to the tenant DB
+            tenancy()->initialize($tenant);
+            $this->seedDefaults($data);
+            tenancy()->end();
+        } catch (\Throwable $e) {
+            // Compensating rollback. Each step in its own try so a partial-
+            // broken state still cleans up as much as it can — e.g. if the
+            // tenant DB exists but migrations failed, we still want the
+            // central rows gone so the email can retry.
+            $email = $data['email'] ?? null;
+            Log::error('TenantProvisioning failed after central-DB write, rolled back', [
+                'tenant_id' => $tenant->id,
+                'email'     => $email,
+                'error'     => $e->getMessage(),
+            ]);
+
+            // 1) End tenancy if it was initialized (the connection may still
+            //    be open from the seed step; leaving it open leaks state).
+            try { tenancy()->end(); } catch (\Throwable $ignored) {}
+
+            // 2) Drop the tenant DB. createDatabase may have succeeded
+            //    before migrations failed, so try the manager's delete
+            //    first (it knows the prefix + manager class) and fall
+            //    back to a raw DROP DATABASE IF EXISTS as the safety net.
+            try {
+                $tenant->database()->manager()->deleteDatabase($tenant);
+            } catch (\Throwable $ignored) {
+                try {
+                    $prefix  = config('tenancy.database.prefix', env('TENANCY_DB_PREFIX', 'tenant_'));
+                    $dbName  = $prefix . $tenant->id;
+                    DB::statement("DROP DATABASE IF EXISTS `{$dbName}`");
+                } catch (\Throwable $ignored2) {}
+            }
+
+            // 3) Delete the central-DB rows created in the transaction.
+            //    Order matters because of FK constraints: users + domains
+            //    reference tenants, so kill children first. Each in its
+            //    own try so one failure doesn't stop the next.
+            try { User::where('tenant_id', $tenant->id)->delete(); }     catch (\Throwable $ignored) {}
+            try { DB::table('domains')->where('tenant_id', $tenant->id)->delete(); } catch (\Throwable $ignored) {}
+            try { DB::table('tenants')->where('id', $tenant->id)->delete(); }        catch (\Throwable $ignored) {}
+
+            // Re-throw the ORIGINAL exception so the caller sees the real
+            // failure reason (instead of a misleading "email already exists"
+            // on a follow-up retry). The controller layer translates this
+            // into a user-facing 500 with a generic message.
+            throw $e;
+        }
 
         $owner = User::where('tenant_id', $tenant->id)->where('is_owner', true)->first();
 
