@@ -387,6 +387,7 @@ Route::prefix('v1')->group(function () {
     Route::middleware(['auth:sanctum', 'verified_email', 'admin'])->prefix('admin')->group(function () {
         Route::get   ('stats',            [AdminTenantsController::class, 'stats']);
         Route::get   ('dashboard/summary',[AdminDashboardController::class, 'summary']);
+        Route::get   ('dashboard/trends', [AdminDashboardController::class, 'trends']);
         Route::get   ('tenants',          [AdminTenantsController::class, 'index']);
         Route::delete('tenants/{id}',     [AdminTenantsController::class, 'destroy']);
         // Platform announcements (admin CRUD)

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -191,5 +192,131 @@ class AdminDashboardController extends Controller
         });
 
         return response()->json($payload);
+    }
+
+    /**
+     * GET /api/v1/admin/dashboard/trends
+     *
+     * Phase 2 — cross-tenant operational view. Reads the LATEST row from
+     * platform_dashboard_snapshots (written nightly by admin:snapshot) and
+     * merges its per-tenant booking aggregates with central tenant info
+     * (plan / state / created_at / owner) + per-tenant MRR. Returns
+     * everything the heatmap, top-tenants bar, booking-volume chart, and
+     * extended tenant table need — pre-merged so the frontend is dumb.
+     *
+     * Cheap: one central snapshot row + one tenants query + one owners
+     * query. No per-tenant DB walk at request time (that's the snapshot
+     * job's job). Cached 5 min.
+     */
+    public function trends(): JsonResponse
+    {
+        $payload = Cache::remember('admin:dashboard:trends:v1', 300, function () {
+            $now = now();
+
+            $snap = DB::table('platform_dashboard_snapshots')
+                ->orderByDesc('snapshot_date')
+                ->first();
+
+            // No snapshot yet (fresh deploy, job hasn't run). Return a
+            // clear empty shape so the UI can prompt to run admin:snapshot.
+            if (! $snap) {
+                return [
+                    'snapshot_date'  => null,
+                    'stale'          => false,
+                    'platform'       => null,
+                    'daily_bookings' => [],
+                    'top_tenants'    => [],
+                    'heatmap'        => [],
+                    'tenants'        => [],
+                    'computed_at'    => $now->toIso8601String(),
+                ];
+            }
+
+            $data = json_decode($snap->payload, true) ?: [];
+            $perTenant = collect($data['per_tenant'] ?? [])->keyBy('id');
+
+            // Stale if the latest snapshot predates yesterday (job missed).
+            $snapDate = Carbon::parse($snap->snapshot_date);
+            $stale = $snapDate->lt($now->copy()->subDay()->startOfDay());
+
+            // Central tenant rows + owners (bulk, no N+1).
+            $tenants = Tenant::query()->get(['id', 'plan', 'subscription_state', 'created_at']);
+            $owners = User::query()
+                ->where('is_owner', true)
+                ->get(['tenant_id', 'name', 'email'])
+                ->keyBy('tenant_id');
+
+            // Merge each tenant with its snapshot aggregates + MRR + tier.
+            $rows = $tenants->map(function ($t) use ($perTenant, $owners) {
+                $agg = $perTenant->get($t->id, []);
+                $bookings30d = (int) ($agg['bookings_30d'] ?? 0);
+                $bookings7d  = (int) ($agg['bookings_7d'] ?? 0);
+                $lastAt      = $agg['last_booking_at'] ?? null;
+                $owner       = $owners->get($t->id);
+                $isActive    = $t->subscription_state === 'active';
+
+                return [
+                    'id'              => (string) $t->id,
+                    'plan'            => $t->plan,
+                    'state'           => $t->subscription_state,
+                    'created_at'      => $t->created_at?->toIso8601String(),
+                    'owner_name'      => $owner?->name,
+                    'owner_email'     => $owner?->email,
+                    'mrr_cents'       => $isActive ? $this->planMonthlyCents($t->plan) : 0,
+                    'bookings_total'  => (int) ($agg['bookings_total'] ?? 0),
+                    'bookings_30d'    => $bookings30d,
+                    'bookings_7d'     => $bookings7d,
+                    'last_booking_at' => $lastAt,
+                    'tier'            => $this->activityTier($lastAt),
+                ];
+            })->values();
+
+            // Top tenants by 30-day booking volume (drop zeros).
+            $topTenants = $rows
+                ->filter(fn ($r) => $r['bookings_30d'] > 0)
+                ->sortByDesc('bookings_30d')
+                ->take(8)
+                ->map(fn ($r) => [
+                    'id'           => $r['id'],
+                    'bookings_30d' => $r['bookings_30d'],
+                ])
+                ->values();
+
+            // Heatmap tiles — every tenant, lightweight.
+            $heatmap = $rows->map(fn ($r) => [
+                'id'              => $r['id'],
+                'tier'            => $r['tier'],
+                'bookings_30d'    => $r['bookings_30d'],
+                'last_booking_at' => $r['last_booking_at'],
+            ])->values();
+
+            return [
+                'snapshot_date'  => $snapDate->toDateString(),
+                'stale'          => $stale,
+                'platform'       => $data['platform'] ?? null,
+                'daily_bookings' => $data['daily_bookings'] ?? [],
+                'top_tenants'    => $topTenants,
+                'heatmap'        => $heatmap,
+                'tenants'        => $rows,
+                'computed_at'    => $now->toIso8601String(),
+            ];
+        });
+
+        return response()->json($payload);
+    }
+
+    /**
+     * Activity tier from a tenant's last booking timestamp:
+     *   alive   — booked within 7 days
+     *   slowing — 8-30 days
+     *   dormant — >30 days, or never booked
+     */
+    private function activityTier(?string $lastBookingAt): string
+    {
+        if (! $lastBookingAt) return 'dormant';
+        $last = Carbon::parse($lastBookingAt);
+        if ($last->gte(now()->subDays(7)))  return 'alive';
+        if ($last->gte(now()->subDays(30))) return 'slowing';
+        return 'dormant';
     }
 }
