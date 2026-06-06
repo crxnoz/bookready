@@ -456,15 +456,12 @@ class TemplateDefaults
     {
         $base = self::theFadeRoomSettings();
         $base['header']['announcement_text'] = 'Now booking weddings — limited dates each season.';
-        // Pétale defaults ALL 11 contact-button toggles on (the standard
-        // TFR base only turns on 5). Owners can disable per-button in
-        // the editor; the URL inputs stay empty until the owner fills
-        // them, which keeps buttons without URLs hidden from the public
-        // site anyway. Surfacing every toggle by default avoids the
-        // "buttons missing from the editor" confusion.
-        foreach (['book','call','email','message','instagram','tiktok','youtube','facebook','pinterest','whatsapp','directions'] as $k) {
-            $base['header']["show_{$k}_button"] = true;
-        }
+        // Pétale keeps the standard 5 toggles on (book, call, email,
+        // instagram, directions) — the same shape every shipped template
+        // uses. The full 11 was attempted earlier and felt too dense on
+        // a hero strip; 5 is the cap that reads as deliberate, not
+        // overflowing. Owners enable additional buttons per need in
+        // the editor.
         $base['tabs'] = [
             'book_label'     => 'Reserve',
             'gallery_label'  => 'Gallery',
@@ -541,13 +538,9 @@ class TemplateDefaults
     {
         $base = self::theFadeRoomSettings();
         $base['header']['announcement_text'] = 'Booking by appointment — small studio, considered hands.';
-        // Bottega defaults ALL 11 contact-button toggles on (the standard
-        // TFR base only turns on 5). Owners can disable per-button in
-        // the editor; URL inputs stay empty until filled. See petale's
-        // matching block above for rationale.
-        foreach (['book','call','email','message','instagram','tiktok','youtube','facebook','pinterest','whatsapp','directions'] as $k) {
-            $base['header']["show_{$k}_button"] = true;
-        }
+        // Bottega keeps the standard 5 toggles on (book, call, email,
+        // instagram, directions). See petale's matching block above
+        // for the "why 5 not 11" rationale.
         $base['tabs'] = [
             'book_label'     => 'Reserve',
             'gallery_label'  => 'Portfolio',
