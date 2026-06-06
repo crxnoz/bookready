@@ -95,7 +95,7 @@ export default function AppointmentsDashboard() {
   }
 
   async function handleDecline(id: number) {
-    if (!confirm('Cancel this appointment?')) return
+    if (!confirm('Decline this request?')) return
     setActionLoading(id)
     try {
       await deleteEditorAppointment(id)
@@ -154,7 +154,7 @@ export default function AppointmentsDashboard() {
             <HubCard
               href="/editor/availability"
               title="Availability"
-              description="Set your hours, buffers, and booking windows."
+              description="Set your hours, gaps between appointments, and booking windows."
             />
             <HubCard
               href="/editor/staff"

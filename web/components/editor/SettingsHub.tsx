@@ -86,7 +86,7 @@ const GROUPS: GroupDef[] = [
   { tab: 'preferences',   label: 'Preferences',        hint: 'Time zone, week start, time format, site visibility', icon: Sparkles,     status: 'ready' },
   { tab: 'booking',       label: 'Booking Settings',   hint: 'Booking window, notice, auto-confirm, rules',    icon: Calendar,     status: 'ready' },
   { tab: 'payments',      label: 'Payment Settings',   hint: 'Customer payments, deposits, currency',          icon: CreditCard,   status: 'ready' },
-  { tab: 'notifications', label: 'Notifications',      hint: 'Toggle booking emails, reply-to, sender',        icon: Bell,         status: 'ready' },
+  { tab: 'notifications', label: 'Notifications',      hint: 'Toggle booking emails, reply address, sent-from name', icon: Bell,         status: 'ready' },
   { tab: 'account',       label: 'Account',            hint: 'Owner profile, password, sign-out everywhere',   icon: UserCircle,   status: 'ready' },
   { tab: 'danger',        label: 'Danger Zone',        hint: 'Pause bookings, export data, delete account',    icon: AlertTriangle, status: 'ready', tone: 'danger' },
 ]
@@ -211,7 +211,7 @@ function PlaceholderPanel({ tab }: { tab: SettingsTab }) {
           <h2 className="text-sm font-bold text-near-black">{group?.label ?? 'Settings'}</h2>
           <p className="text-xs text-muted-text mt-1">{group?.hint}</p>
           <p className="text-[11px] text-muted-text mt-3">
-            This section is on the roadmap and isn&apos;t live yet. Check back soon.
+            This section isn&apos;t live yet. Check back soon.
           </p>
         </div>
       </div>
@@ -375,7 +375,7 @@ function PaymentSettingsPanel() {
       <header className="px-1">
         <h1 className="text-base font-bold text-near-black">Payment Settings</h1>
         <p className="text-xs text-muted-text mt-0.5">
-          Set up Stripe to accept customer payments, decide whether clients
+          Set up Stripe to accept customer payments, decide whether customers
           pay a deposit when they book, and choose how much.
         </p>
       </header>
@@ -394,7 +394,7 @@ function PaymentSettingsPanel() {
       <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-2">
         <Toggle
           label="Enable customer payments"
-          hint="Master switch. Off means clients book without paying."
+          hint="Turn this off and customers book without paying."
           icon={CreditCard}
           on={draft.payments_enabled}
           onToggle={() => patch({ payments_enabled: !draft.payments_enabled })}
@@ -417,7 +417,7 @@ function PaymentSettingsPanel() {
       )}>
         <Toggle
           label="Require a deposit"
-          hint={paymentsOff ? 'Turn on customer payments first to use deposits.' : 'Ask for an upfront amount when a client books.'}
+          hint={paymentsOff ? 'Turn on customer payments first to use deposits.' : 'Ask for an upfront amount when a customer books.'}
           icon={DollarSign}
           on={draft.deposits_enabled && !depositsLocked}
           onToggle={() => patch({ deposits_enabled: !draft.deposits_enabled })}
@@ -494,7 +494,7 @@ function PaymentSettingsPanel() {
       )}>
         <Toggle
           label="Allow full payment up front"
-          hint="Let clients pay the entire service price at booking time."
+          hint="Let customers pay the entire service price at booking time."
           icon={Check}
           on={draft.allow_full_payment && !paymentsOff}
           onToggle={() => patch({ allow_full_payment: !draft.allow_full_payment })}
@@ -503,7 +503,7 @@ function PaymentSettingsPanel() {
 
         <Toggle
           label="Buy Now, Pay Later (Klarna, Afterpay, Affirm)"
-          hint="Show Buy Now, Pay Later options next to the card field at checkout. Stripe decides eligibility based on the client's region and amount."
+          hint="Show Buy Now, Pay Later options next to the card field at checkout. Stripe decides eligibility based on the customer's region and amount."
           icon={Check}
           on={(draft.allow_split_pay ?? false) && !paymentsOff}
           onToggle={() => patch({ allow_split_pay: !(draft.allow_split_pay ?? false) })}
@@ -521,7 +521,7 @@ function PaymentSettingsPanel() {
 
         <Toggle
           label="Save cards for repeat customers"
-          hint="Returning clients see their saved card at checkout. This also unlocks no-show and late-cancel fees below. Card-only, so Buy Now, Pay Later is turned off for that session."
+          hint="Returning customers see their saved card at checkout. This also unlocks no-show and late-cancel fees below. Card-only, so Buy Now, Pay Later is turned off for that session."
           icon={Check}
           on={(draft.save_cards_for_reuse ?? false) && !paymentsOff}
           onToggle={() => patch({ save_cards_for_reuse: !(draft.save_cards_for_reuse ?? false) })}
@@ -537,7 +537,7 @@ function PaymentSettingsPanel() {
             <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1">Late fees</p>
             <p className="text-[11px] text-muted-text">
               {draft.save_cards_for_reuse
-                ? 'Manually charge the saved card when a client no-shows or cancels too late.'
+                ? 'Manually charge the saved card when a customer no-shows or cancels too late.'
                 : 'Turn on “Save cards for repeat customers” to enable late fees.'}
             </p>
           </div>
@@ -764,7 +764,7 @@ function BookingSettingsPanel() {
       <header className="px-1">
         <h1 className="text-base font-bold text-near-black">Booking Settings</h1>
         <p className="text-xs text-muted-text mt-0.5">
-          Business-wide rules for how clients book with you.
+          Business-wide rules for how customers book with you.
         </p>
       </header>
 
@@ -772,7 +772,7 @@ function BookingSettingsPanel() {
       <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-2">
         <Toggle
           label="Booking enabled"
-          hint="Master switch. When off, your public site shows a friendly unavailable message and no new bookings can be made."
+          hint="When this is off, your public site shows a friendly unavailable message and no new bookings can come in."
           icon={Calendar}
           on={draft.booking_enabled}
           onToggle={() => patch({ booking_enabled: !draft.booking_enabled })}
@@ -789,8 +789,8 @@ function BookingSettingsPanel() {
         />
         <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
           <Toggle
-            label="Prevent duplicate client bookings"
-            hint="Reject a booking when the same client (by email or phone) already holds the same service at the same time."
+            label="Prevent duplicate customer bookings"
+            hint="Reject a booking when the same customer (by email or phone) already holds the same service at the same time."
             on={draft.prevent_duplicate_client_bookings}
             onToggle={() => patch({ prevent_duplicate_client_bookings: !draft.prevent_duplicate_client_bookings })}
           />
@@ -807,7 +807,7 @@ function BookingSettingsPanel() {
             max={10080}
             value={draft.minimum_notice_minutes}
             onChange={v => patch({ minimum_notice_minutes: v })}
-            hint="How far ahead a client must book (e.g. 120 = 2 hours)."
+            hint="How far ahead a customer must book (e.g. 120 = 2 hours)."
           />
           <NumberField
             label="Max days ahead"
@@ -821,14 +821,14 @@ function BookingSettingsPanel() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-[rgba(18,18,18,0.06)] pt-3">
           <SelectField
-            label="Slot interval"
+            label="Time between appointment start times"
             value={String(draft.slot_interval_minutes)}
             onChange={v => patch({ slot_interval_minutes: Number(v) })}
             options={SLOT_INTERVALS.map(n => ({ value: String(n), label: `${n} minutes` }))}
             hint="Spacing between available start times."
           />
           <SelectField
-            label="Slot release mode"
+            label="When new dates open for booking"
             value={draft.slot_release_mode}
             onChange={v => patch({ slot_release_mode: v as SlotReleaseMode })}
             options={[
@@ -849,7 +849,7 @@ function BookingSettingsPanel() {
               max={365}
               value={draft.slot_release_window_days ?? 14}
               onChange={v => patch({ slot_release_window_days: v })}
-              hint="How many days are visible at once in the release window."
+              hint="How many days customers can book ahead at one time."
             />
           </div>
         )}
@@ -865,7 +865,7 @@ function BookingSettingsPanel() {
             max={720}
             value={draft.cancellation_window_hours}
             onChange={v => patch({ cancellation_window_hours: v })}
-            hint="Minimum notice required for clients to cancel."
+            hint="Minimum notice required for customers to cancel."
           />
           <NumberField
             label="Reschedule window"
@@ -874,7 +874,7 @@ function BookingSettingsPanel() {
             max={720}
             value={draft.reschedule_window_hours}
             onChange={v => patch({ reschedule_window_hours: v })}
-            hint="Minimum notice required for clients to reschedule."
+            hint="Minimum notice required for customers to reschedule."
           />
         </div>
       </section>
@@ -887,7 +887,7 @@ function BookingSettingsPanel() {
           <SectionTitle icon={ShieldCheck} label="Enforcement rules" hint="Real rules. BookReady enforces these automatically." />
 
           <Toggle
-            label="Require clients to agree to your policies"
+            label="Require customers to agree to your policies"
             hint="Adds a checkbox to the booking form. Bookings are rejected without it."
             on={policyDraft.require_policy_agreement}
             onToggle={() => patchPolicy({ require_policy_agreement: !policyDraft.require_policy_agreement })}
@@ -896,7 +896,7 @@ function BookingSettingsPanel() {
           <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
             <Toggle
               label="Forfeit deposit on late cancellation"
-              hint="When a client cancels within the cancellation window, their deposit becomes non-refundable. You can still refund manually."
+              hint="When a customer cancels within the cancellation window, their deposit becomes non-refundable. You can still refund manually."
               on={policyDraft.forfeit_deposit_on_late_cancel}
               onToggle={() => patchPolicy({ forfeit_deposit_on_late_cancel: !policyDraft.forfeit_deposit_on_late_cancel })}
             />
@@ -910,7 +910,7 @@ function BookingSettingsPanel() {
               min={0}
               max={50}
               suffix="0 = unlimited"
-              hint="Cap how many times a client can reschedule a single appointment via the manage link."
+              hint="Cap how many times a customer can reschedule a single appointment via the manage link."
             />
             <NumberField
               label="Late grace period"
@@ -919,7 +919,7 @@ function BookingSettingsPanel() {
               min={0}
               max={240}
               suffix="minutes"
-              hint="How many minutes past the start time a client is still considered on time."
+              hint="How many minutes past the start time a customer is still considered on time."
             />
           </div>
         </section>
@@ -1051,7 +1051,7 @@ function NotificationSettingsPanel() {
       <header className="px-1">
         <h1 className="text-base font-bold text-near-black">Notifications</h1>
         <p className="text-xs text-muted-text mt-0.5">
-          Choose which emails your business and your clients receive when a booking happens.
+          Choose which emails your business and your customers receive when a booking happens.
         </p>
       </header>
 
@@ -1060,22 +1060,22 @@ function NotificationSettingsPanel() {
         <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Booking emails</p>
         <Toggle
           label="Owner: new booking request"
-          hint="Notify you when a client submits a booking request or pays a deposit."
+          hint="Notify you when a customer submits a booking request or pays a deposit."
           icon={Bell}
           on={draft.owner_booking_email_enabled}
           onToggle={() => patch({ owner_booking_email_enabled: !draft.owner_booking_email_enabled })}
         />
         <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
           <Toggle
-            label="Client: request received"
-            hint="Send a receipt to the client when their booking request comes in."
+            label="Customer: request received"
+            hint="Send a receipt to the customer when their booking request comes in."
             on={draft.client_booking_email_enabled}
             onToggle={() => patch({ client_booking_email_enabled: !draft.client_booking_email_enabled })}
           />
         </div>
         <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
           <Toggle
-            label="Client: appointment confirmed"
+            label="Customer: appointment confirmed"
             hint="Send when you confirm an appointment."
             on={draft.appointment_confirmed_email_enabled}
             onToggle={() => patch({ appointment_confirmed_email_enabled: !draft.appointment_confirmed_email_enabled })}
@@ -1083,7 +1083,7 @@ function NotificationSettingsPanel() {
         </div>
         <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
           <Toggle
-            label="Client: appointment cancelled"
+            label="Customer: appointment cancelled"
             hint="Send when an appointment is cancelled."
             on={draft.appointment_cancelled_email_enabled}
             onToggle={() => patch({ appointment_cancelled_email_enabled: !draft.appointment_cancelled_email_enabled })}
@@ -1096,7 +1096,7 @@ function NotificationSettingsPanel() {
         <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Reminders</p>
         <Toggle
           label="Send appointment reminders"
-          hint="Email each client a set number of hours before their appointment."
+          hint="Email each customer a set number of hours before their appointment."
           on={draft.reminder_email_enabled}
           onToggle={() => patch({ reminder_email_enabled: !draft.reminder_email_enabled })}
         />
@@ -1125,22 +1125,22 @@ function NotificationSettingsPanel() {
 
       {/* Reply-to + sender name */}
       <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
-        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Email identity</p>
+        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">How your emails appear</p>
 
         {/* Phase 17 — show what FROM address Resend will actually use, since
             owners often want to verify it matches their domain. */}
         <div className="bg-cream/60 border border-[rgba(18,18,18,0.08)] p-2.5">
-          <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">From address</p>
+          <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Sent-from address</p>
           <p className="text-[12px] text-near-black mt-0.5 font-mono break-all">
             {(draft.effective_from_name || 'BookReady')} &lt;{draft.effective_from_address || 'Not set'}&gt;
           </p>
           <p className="text-[10px] text-muted-text mt-1.5">
-            This is the address clients see in their inbox. Reply-to and sender name below customize it.
+            This is the address customers see in their inbox. The reply address and sent-from name below customize it.
           </p>
         </div>
 
         <label className="block">
-          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Reply-to email</span>
+          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Reply address</span>
           <input
             type="email"
             value={draft.reply_to_email ?? ''}
@@ -1150,11 +1150,11 @@ function NotificationSettingsPanel() {
             maxLength={255}
           />
           <p className="text-[10px] text-muted-text mt-1">
-            Replies from clients land here. Leave blank to use the owner email on file.
+            Replies from customers land here. Leave blank to use the owner email on file.
           </p>
         </label>
         <label className="block">
-          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Sender name</span>
+          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Sent-from name</span>
           <input
             type="text"
             value={draft.sender_name ?? ''}
@@ -1164,7 +1164,7 @@ function NotificationSettingsPanel() {
             maxLength={120}
           />
           <p className="text-[10px] text-muted-text mt-1">
-            Shown as the From name on emails. Defaults to BookReady when blank.
+            Shown as the sent-from name on emails. Defaults to BookReady when blank.
           </p>
         </label>
       </section>
@@ -1417,7 +1417,7 @@ function AccountSettingsPanel() {
             className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
           />
           <p className="text-[10px] text-muted-text mt-1">
-            Used for signing in and as the default reply-to for booking emails.
+            Used for signing in and as the default reply address for booking emails.
           </p>
         </label>
 
@@ -1937,7 +1937,7 @@ function BusinessSettingsPanel() {
       <header className="px-1">
         <h1 className="text-base font-bold text-near-black">Business Profile</h1>
         <p className="text-xs text-muted-text mt-0.5">
-          Who you are: name, public contact, and where clients can find you.
+          Who you are: name, public contact, and where customers can find you.
         </p>
       </header>
 
@@ -1970,7 +1970,7 @@ function BusinessSettingsPanel() {
           value={draft.business_name ?? ''}
           onChange={v => patch({ business_name: v })}
           placeholder="Lush Studio"
-          hint="Appears on your public site, in client emails, and on the welcome screen."
+          hint="Appears on your public site, in customer emails, and on the welcome screen."
         />
         <TextField
           label="Tagline"
@@ -1998,7 +1998,7 @@ function BusinessSettingsPanel() {
 
       {/* Public contact */}
       <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
-        <SectionTitle icon={Mail} label="Public contact" hint="Shown to clients on your booking site." />
+        <SectionTitle icon={Mail} label="Public contact" hint="Shown to customers on your booking site." />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <TextField
             label="Public email"
@@ -2029,7 +2029,7 @@ function BusinessSettingsPanel() {
 
       {/* Address */}
       <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
-        <SectionTitle icon={MapPin} label="Address" hint="Helps clients find you. Address shows on your public site." />
+        <SectionTitle icon={MapPin} label="Address" hint="Helps customers find you. Address shows on your public site." />
         <TextField
           label="Street address"
           value={draft.address_line ?? ''}
@@ -2264,7 +2264,7 @@ function PreferencesSettingsPanel() {
           value={draft.post_booking_message ?? ''}
           onChange={v => patch({ post_booking_message: v })}
           placeholder="Bring your reference photos, and arrive 5 minutes early!"
-          hint="Shown to clients on the booking success page and included in their confirmation email."
+          hint="Shown to customers on the booking success page and included in their confirmation email."
           rows={3}
         />
         <TextAreaField
@@ -2272,7 +2272,7 @@ function PreferencesSettingsPanel() {
           value={draft.email_signature ?? ''}
           onChange={v => patch({ email_signature: v })}
           placeholder="Anna at Lush Studio"
-          hint="Appended to client-facing emails (confirmations, reminders, etc)."
+          hint="Appended to customer-facing emails (confirmations, reminders, etc)."
           rows={2}
         />
       </section>
@@ -2518,7 +2518,7 @@ function DangerSettingsPanel() {
       <header className="px-1">
         <h1 className="text-base font-bold text-near-black">Danger Zone</h1>
         <p className="text-xs text-muted-text mt-0.5">
-          Destructive and archival actions. Read carefully, since these affect real client data and money.
+          Destructive and archival actions. Read carefully, since these affect real customer data and money.
         </p>
       </header>
 
@@ -2541,7 +2541,7 @@ function DangerSettingsPanel() {
                   ? 'Checking status…'
                   : bookingsPaused
                     ? 'Bookings are paused. Your site shows an unavailable message; existing appointments are untouched.'
-                    : 'Bookings are accepting new clients. Pause to temporarily stop accepting bookings without deleting anything.'}
+                    : 'Bookings are accepting new customers. Pause to temporarily stop accepting bookings without deleting anything.'}
               </p>
             </div>
           </div>
@@ -2559,7 +2559,7 @@ function DangerSettingsPanel() {
         <SectionTitle
           icon={Download}
           label="Export your data"
-          hint="Download a CSV copy of your bookings and clients. Useful for backups, accounting, or moving off BookReady."
+          hint="Download a CSV copy of your bookings and customers. Useful for backups, accounting, or moving off BookReady."
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <ExportCard
@@ -2570,7 +2570,7 @@ function DangerSettingsPanel() {
           />
           <ExportCard
             label="Customers"
-            description="Your client list with name, email, phone, and notes."
+            description="Your customer list with name, email, phone, and notes."
             busy={exportBusy === 'customers'}
             onClick={() => handleExport('customers')}
           />
@@ -2808,7 +2808,7 @@ const EMAIL_TEMPLATES: EmailTemplateMeta[] = [
   {
     key: 'booking_request_client',
     label: 'Booking request received',
-    description: 'Sent right after a client submits a booking request.',
+    description: 'Sent right after a customer submits a booking request.',
     defaultSubject: 'We received your booking request',
     defaultIntro:   'Thanks for booking with us. We received your request and will confirm it shortly.',
   },
@@ -2822,7 +2822,7 @@ const EMAIL_TEMPLATES: EmailTemplateMeta[] = [
   {
     key: 'appointment_cancelled',
     label: 'Appointment cancelled',
-    description: 'Sent when an appointment is cancelled (owner or client).',
+    description: 'Sent when an appointment is cancelled (owner or customer).',
     defaultSubject: 'Your appointment has been cancelled',
     defaultIntro:   'We are letting you know that the appointment below has been cancelled.',
   },
@@ -2855,7 +2855,7 @@ function EmailContentEditor({
         <div className="min-w-0">
           <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Email content</p>
           <p className="text-[11px] text-muted-text mt-0.5">
-            Override the subject line, opening, or sign-off on the 5 emails that go to your clients.
+            Override the subject line, opening, or sign-off on the 5 emails that go to your customers.
             Leave blank to use BookReady defaults. Sample data + your saved overrides are used for test sends.
           </p>
         </div>

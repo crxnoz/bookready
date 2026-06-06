@@ -39,7 +39,7 @@ const TYPE_META: Record<BookingQuestionType, { label: string; icon: React.Elemen
   textarea: { label: 'Long text',   icon: AlignLeft,   hint: 'A multi-line paragraph.' },
   checkbox: { label: 'Checkbox',    icon: CheckSquare, hint: 'Single agreement/opt-in toggle.' },
   dropdown: { label: 'Dropdown',    icon: ChevronDown, hint: 'Pick one from a list of options.' },
-  image:    { label: 'Image upload', icon: ImageIcon,  hint: 'Lets a client attach a reference photo.' },
+  image:    { label: 'Image upload', icon: ImageIcon,  hint: 'Lets a customer attach a reference photo.' },
 }
 
 const TYPE_ORDER: BookingQuestionType[] = ['text', 'textarea', 'checkbox', 'dropdown', 'image']
@@ -111,7 +111,7 @@ export default function BookingFormEditor() {
         <div className="min-w-0">
           <p className="text-[11px] text-muted-text max-w-xl">
             Build the form that shows on your public booking page. Questions appear right under
-            customer info, in the order below. You can scope a question to specific services so
+            customer info, in the order below. You can limit a question to specific services so
             it only shows when those are booked.
           </p>
         </div>
@@ -129,7 +129,7 @@ export default function BookingFormEditor() {
           <p className="text-sm font-semibold text-near-black">No booking questions yet.</p>
           <p className="text-[11px] text-muted-text mt-1.5 max-w-md mx-auto">
             Add a question to collect reference photos, allergy notes, parking preferences,
-            or anything else you ask clients before the appointment.
+            or anything else you ask customers before the appointment.
           </p>
           <button
             type="button"

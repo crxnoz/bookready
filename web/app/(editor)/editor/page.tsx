@@ -165,7 +165,7 @@ function DashboardBody() {
       <div className="w-full p-3 sm:p-5 md:p-6">
         <div className="flex items-center gap-2 text-xs text-muted-text px-1 py-8">
           <Loader2 size={14} className="animate-spin" />
-          {redirecting ? 'Setting up your workspace…' : 'Loading your dashboard…'}
+          {redirecting ? 'Setting up your dashboard…' : 'Loading your dashboard…'}
         </div>
       </div>
     )
@@ -304,7 +304,7 @@ function DashboardBody() {
         <SectionHeader
           icon={Activity}
           label="Recent activity"
-          subtitle={recentBookings.length === 0 ? 'No bookings yet.' : 'Latest bookings across your inbox.'}
+          subtitle={recentBookings.length === 0 ? 'No bookings yet.' : 'Your latest bookings.'}
           cta={{ label: 'Open bookings', href: '/editor/appointments' }}
         />
         {recentBookings.length === 0 ? (
@@ -1363,7 +1363,7 @@ function NewCustomersCard({ customers }: { customers: NewCustomer[] }) {
       <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
         {customers.length === 0 ? (
           <p className="text-[12px] text-muted-text">
-            Once new clients start booking, you&apos;ll see them here.
+            Once new customers start booking, you&apos;ll see them here.
           </p>
         ) : (
           <ul className="space-y-2">
@@ -1401,7 +1401,7 @@ function TopSpendersCard({ spenders, currency }: { spenders: TopSpender[]; curre
       <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
         {spenders.length === 0 ? (
           <p className="text-[12px] text-muted-text">
-            Once payments start landing, your top clients show up here.
+            Once payments start landing, your top customers show up here.
           </p>
         ) : (
           <ol className="space-y-2.5">
@@ -1434,7 +1434,7 @@ function RepeatRatioCard({ ratio }: { ratio: RepeatRatio }) {
         label="Repeat rate · last 20 bookings"
         subtitle={ratio.total === 0
           ? 'No booking history yet.'
-          : ratio.pct >= 60 ? 'Strong client retention.'
+          : ratio.pct >= 60 ? 'Strong customer retention.'
             : ratio.pct >= 30 ? 'Solid mix of new and returning.'
               : 'Mostly fresh faces lately.'}
       />
@@ -1725,23 +1725,23 @@ function computeRepeatRatio(appts: Appointment[]): RepeatRatio {
 // repeat once a month, low enough to stay novel for early operators.
 const DAILY_TIPS = [
   'A short tagline on your booking page makes a stronger first impression than a long bio.',
-  'Block off your own buffer between clients. Clients respect schedules that respect you.',
+  'Block off your own buffer between customers. Customers respect schedules that respect you.',
   'A clear cancellation policy actually reduces cancellations, not increases them.',
   'Photos in your gallery sell more than descriptions do. Two minutes of phone uploads goes a long way.',
   'Confirmation emails are quiet brand moments. Make them sound like you.',
   'A deposit of even 20% cuts no-shows by half. Sweet spot for most brands.',
-  'Returning clients are 7× more valuable than new ones. Treat them like it.',
+  'Returning customers are 7× more valuable than new ones. Treat them like it.',
   'Empty slots? Post one or two on Instagram Stories with your booking link. Fastest fill there is.',
   'Quick win: send a "thanks, see you again" note 24 hours after their appointment.',
   'Saturday afternoons fill up fastest. Don\'t leave them last on your calendar.',
   'A 5-photo gallery converts twice as well as a 15-photo one. Curate, don\'t cram.',
   'The fastest growth lever is making the booking page easy to share, so copy it now.',
-  'Add a tip prompt to your confirmation emails. Most clients want to; few remember unless asked.',
-  'Re-engage a "we haven\'t seen you in a while" client with a personal note, not a discount.',
-  'New clients book based on your photos. Returning clients book based on your reliability.',
+  'Add a tip prompt to your confirmation emails. Most customers want to; few remember unless asked.',
+  'Re-engage a "we haven\'t seen you in a while" customer with a personal note, not a discount.',
+  'New customers book based on your photos. Returning customers book based on your reliability.',
   'A short FAQ on your booking page cuts back-and-forth emails by ~80%.',
   'Your hours are a brand statement. Closing earlier than competitors can read as premium.',
-  'The clients who tip the best are the ones who feel remembered. Use your notes column.',
+  'The customers who tip the best are the ones who feel remembered. Use your notes column.',
   'A "what to expect" section reduces first-visit anxiety dramatically.',
   'Your booking confirmation page is your second chance at a first impression.',
   'Don\'t apologize for full days. Booked-out is your strongest marketing.',
@@ -1753,7 +1753,7 @@ const DAILY_TIPS = [
   'Photograph the chair you actually use. Authenticity reads in seconds.',
   'A "what to bring / what to wear" line on your booking page prevents reschedules.',
   'Sunday night is the busiest booking time of the week. Make sure your page is up.',
-  'Your bio doesn\'t need to be clever. It needs to make one client feel like you get them.',
+  'Your bio doesn\'t need to be clever. It needs to make one customer feel like you get them.',
 ]
 
 function pickDailyTip(): string {

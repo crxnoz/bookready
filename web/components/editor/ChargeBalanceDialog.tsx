@@ -157,7 +157,7 @@ export default function ChargeBalanceDialog({ appt, onSubmit, onClose }: ChargeB
                   </button>
                 </div>
                 <p className="mt-1.5 text-[11px] text-muted-text">
-                  The link expires in 24 hours. Resend any time to mint a fresh one.
+                  The link expires in 24 hours. Resend any time to create a new one.
                 </p>
               </div>
             </>

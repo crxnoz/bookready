@@ -88,8 +88,8 @@ export default function IntegrationsHub() {
           Connect BookReady to the tools you already use.
         </h1>
         <p className="text-[13px] text-muted-text mt-1.5">
-          Payments, calendars, marketing, automation. Most of this is on the roadmap;
-          we&rsquo;re shipping in the order most-asked-for.
+          Payments, calendars, marketing, automation. Most of this is coming soon.
+          We&rsquo;re building it in the order most people ask for.
         </p>
       </header>
 
@@ -133,14 +133,14 @@ function buildCatalog(settings: PaymentSettings | null): IntegrationCategory[] {
     {
       key:         'calendars',
       title:       'Calendars',
-      description: 'Push bookings into your day-view. Pull busy time back to block availability.',
+      description: 'Show bookings in your day view, and block out times you\'re already busy.',
       tiles: [
         comingSoon({
           key:         'google-calendar',
           name:        'Google Calendar',
           description: 'New bookings appear on your Google Calendar automatically.',
           icon:        Calendar,
-          hint:        'One-way sync first. Two-way later.',
+          hint:        'Keep your calendars in sync, one direction or both.',
         }),
         comingSoon({
           key:         'ics-feed',
@@ -164,7 +164,7 @@ function buildCatalog(settings: PaymentSettings | null): IntegrationCategory[] {
         comingSoon({
           key:         'bookready-marketing',
           name:        'BookReady Marketing',
-          description: 'Email campaigns built into BookReady. Segment by service, last visit, or first-time client.',
+          description: 'Email campaigns built into BookReady. Segment by service, last visit, or first-time customer.',
           icon:        Megaphone,
           hint:        'Built-in. No extra account needed.',
         }),
@@ -177,7 +177,7 @@ function buildCatalog(settings: PaymentSettings | null): IntegrationCategory[] {
         comingSoon({
           key:         'klaviyo',
           name:        'Klaviyo',
-          description: 'Sync booking customers to Klaviyo for ecommerce-style flows.',
+          description: 'Send your booking customers to Klaviyo for email marketing.',
           icon:        Mail,
         }),
       ],
@@ -190,7 +190,7 @@ function buildCatalog(settings: PaymentSettings | null): IntegrationCategory[] {
         comingSoon({
           key:         'webhooks',
           name:        'Outbound webhooks',
-          description: 'Send booking events to any URL when they happen. Power your own integrations.',
+          description: 'Send booking events to any web address when they happen. Power your own integrations.',
           icon:        Webhook,
         }),
         comingSoon({
@@ -209,7 +209,7 @@ function buildCatalog(settings: PaymentSettings | null): IntegrationCategory[] {
         comingSoon({
           key:         'google-business-profile',
           name:        'Google Business Profile',
-          description: 'Auto-sync hours, surface available time slots, and showcase upcoming services.',
+          description: 'Keep your hours in sync, show open times, and highlight upcoming services.',
           icon:        Building2,
         }),
       ],
@@ -346,9 +346,9 @@ function ActionButton({ tile }: { tile: IntegrationTile }) {
         type="button"
         disabled
         className={cn(baseCls, 'border-[rgba(18,18,18,0.10)] bg-white text-muted-text cursor-not-allowed')}
-        title="On the roadmap. Hit us up if you want this prioritized."
+        title="Coming soon. Tell us if you want this sooner."
       >
-        On the roadmap
+        Coming soon
       </button>
     )
   }

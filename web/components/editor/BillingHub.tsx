@@ -146,7 +146,7 @@ export default function BillingHub() {
               <CreditCard size={16} /> Billing
             </h1>
             <p className="text-xs text-muted-text mt-0.5">
-              Manage your BookReady plan, billing cycle, and SMS quota.
+              Manage your BookReady plan, billing cycle, and text allowance.
             </p>
           </div>
           <button
@@ -170,7 +170,7 @@ export default function BillingHub() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
             <Stat label="Plan" value={sub.plan ? capitalize(sub.plan) : '-'} />
             <Stat label="Billing" value={sub.billing_cycle ? capitalize(sub.billing_cycle) : '-'} />
-            <Stat label="SMS / mo" value={sub.sms_included.toLocaleString()} hint={sub.sms_mult ? `${sub.sms_mult}× bundle` : null} />
+            <Stat label="Texts / mo" value={sub.sms_included.toLocaleString()} hint={sub.sms_mult ? `${sub.sms_mult}× texts` : null} />
             <Stat label="Status" value="Active" tone="ok" />
           </div>
         ) : sub?.on_trial ? (
@@ -231,7 +231,7 @@ export default function BillingHub() {
             Salon +$15 for 2x). The per-card delta is shown on each plan
             card below; here we just show the bundle name. */}
         <div className="flex items-center gap-2 mb-4">
-          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">SMS bundle:</span>
+          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Text pack:</span>
           {([1, 2, 3] as SmsMult[]).map(m => (
             <button
               key={m}
@@ -244,7 +244,7 @@ export default function BillingHub() {
                   : 'border-[rgba(18,18,18,0.15)] bg-white text-near-black hover:border-near-black',
               )}
             >
-              {m}× {m === 1 ? '(base)' : `(more SMS)`}
+              {m}× {m === 1 ? '(standard)' : `(more texts)`}
             </button>
           ))}
         </div>
@@ -290,7 +290,7 @@ export default function BillingHub() {
                     : 'billed monthly'}
                 </p>
                 <p className="text-[12px] text-near-black mt-3 font-semibold">
-                  {smsIncluded.toLocaleString()} SMS / month
+                  {smsIncluded.toLocaleString()} texts / month
                 </p>
                 <p className="text-[11px] text-muted-text mt-2 leading-relaxed">
                   {plan.description}
@@ -308,7 +308,7 @@ export default function BillingHub() {
         <div className="mt-5 pt-4 border-t border-[rgba(18,18,18,0.08)] flex items-center justify-between flex-wrap gap-3">
           <div className="text-[11px] text-muted-text">
             <p>
-              SMS overage: ${((plans?.sms_overage_cents ?? 3) / 100).toFixed(3)}/SMS over the included quota (auto-billed monthly).
+              Extra texts: ${((plans?.sms_overage_cents ?? 3) / 100).toFixed(3)} each over your monthly allowance (billed automatically).
             </p>
           </div>
           <button

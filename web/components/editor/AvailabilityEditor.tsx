@@ -319,7 +319,7 @@ export default function AvailabilityEditor() {
     <div className="pb-8">
       {/* Page heading — section + title live in EditorShell */}
       <div className="px-5 pt-5 pb-4 border-b border-[rgba(18,18,18,0.08)]">
-        <p className="text-xs text-muted-text">Set your weekly hours, breaks, and per-day capacity.</p>
+        <p className="text-xs text-muted-text">Set your weekly hours, breaks, and a daily booking limit.</p>
       </div>
 
       {error && saveState === 'error' && (
@@ -363,7 +363,7 @@ export default function AvailabilityEditor() {
       <CollapsibleSection
         icon={Settings2}
         title="Schedule Limits"
-        subtitle="Per-appointment buffers and daily capacity."
+        subtitle="Gaps between appointments, and a daily booking limit."
         open={openSection === 'limits'}
         onToggle={() => setOpenSection(s => s === 'limits' ? null : 'limits')}
       >
@@ -371,20 +371,20 @@ export default function AvailabilityEditor() {
           {/* Buffer before / after */}
           <div>
             <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-3">
-              Appointment buffers
+              Gaps between appointments
             </p>
             <p className="text-xs text-muted-text mb-3">
               Extra time reserved before and after each appointment. Useful for prep, cleanup, or travel.
             </p>
             <div className="grid grid-cols-2 gap-3">
               <SelectInput
-                label="Buffer before"
+                label="Gap before"
                 value={settings.buffer_before_minutes}
                 onChange={v => setSetting('buffer_before_minutes', v)}
                 options={BUFFER_OPTIONS.map(n => ({ value: n, label: n === 0 ? 'None' : `${n} min` }))}
               />
               <SelectInput
-                label="Buffer after"
+                label="Gap after"
                 value={settings.buffer_after_minutes}
                 onChange={v => setSetting('buffer_after_minutes', v)}
                 options={BUFFER_OPTIONS.map(n => ({ value: n, label: n === 0 ? 'None' : `${n} min` }))}
@@ -447,9 +447,9 @@ export default function AvailabilityEditor() {
             icon={Users}
             tone="accent"
             title="Group appointments"
-            description="One slot, multiple clients. Perfect for classes or workshops."
+            description="One session, multiple customers. Perfect for classes or workshops."
             bullets={[
-              'Set a min + max headcount per slot',
+              'Set a minimum and maximum number of people per session',
               'Auto-confirm once the minimum is hit',
               'One shared calendar event for the studio',
             ]}
@@ -459,7 +459,7 @@ export default function AvailabilityEditor() {
             title="After hours"
             description="Open select dates outside your normal hours for VIPs or special events."
             bullets={[
-              'Charge a premium for after-hours slots',
+              'Charge a premium for after-hours times',
               'Pick which staff can take them',
               'Auto-revert to regular hours the next day',
             ]}
@@ -469,7 +469,7 @@ export default function AvailabilityEditor() {
             title="Recurring appointments"
             description="Let regulars book the same time every week or month, automatically."
             bullets={[
-              'Weekly, biweekly, or monthly cadences',
+              'Weekly, biweekly, or monthly schedules',
               'Pause or skip individual occurrences',
               'Owner-side bulk reschedule for studio holidays',
             ]}

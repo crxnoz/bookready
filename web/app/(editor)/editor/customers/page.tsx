@@ -35,7 +35,7 @@ function LoyaltyPanel() {
       <ComingSoonPanel
         eyebrow="Coming Soon"
         title="Loyalty Rewards"
-        intro="Turn one-time bookings into repeat visits. Reward clients for showing up, referring friends, and trying new services, all on autopilot."
+        intro="Turn one-time bookings into repeat visits. Reward customers for showing up, referring friends, and trying new services, all on autopilot."
         features={[
           {
             icon:        Award,
@@ -44,7 +44,7 @@ function LoyaltyPanel() {
             description: 'Auto-stamp each completed appointment. Reward the Nth visit with a free service, add-on, or discount.',
             bullets: [
               'Set your own threshold: every 5 visits, every 10, etc.',
-              'Clients see their progress on the booking page',
+              'Customers see their progress on the booking page',
               'Reward unlocks the moment it is earned, no manual tracking',
             ],
           },
@@ -61,21 +61,21 @@ function LoyaltyPanel() {
           {
             icon:        Sparkles,
             title:       'Referral program',
-            description: 'Each client gets a unique referral link. They get a credit when a friend books for the first time.',
+            description: 'Each customer gets a unique referral link. They get a credit when a friend books for the first time.',
             bullets: [
-              'Trackable per-client referral counts',
+              'Trackable per-customer referral counts',
               'Auto-credits on first paid appointment',
-              'Optional bonus when the referred client rebooks',
+              'Optional bonus when the referred customer rebooks',
             ],
           },
           {
             icon:        Gift,
             title:       'Birthday + anniversary gifts',
-            description: 'Automatic special offers on a client\'s birthday or one year after their first booking with you.',
+            description: 'Automatic special offers on a customer\'s birthday or one year after their first booking with you.',
             bullets: [
               'Auto-send a one-day promo code via email',
               'Configurable discount %, free add-on, or upgrade',
-              'Skips clients who already have an open booking',
+              'Skips customers who already have an open booking',
             ],
           },
         ]}
@@ -90,15 +90,15 @@ function AccountsPanel() {
       <ComingSoonPanel
         eyebrow="Coming Soon"
         title="Customer Accounts"
-        intro={'Give clients a logged-in space on your booking site. They keep their info, payment methods, and history in one place, and you get fewer "what was my appointment time?" emails.'}
+        intro={'Give customers a logged-in space on your booking site. They keep their info, payment methods, and history in one place, and you get fewer "what was my appointment time?" emails.'}
         features={[
           {
             icon:        UserCircle2,
             tone:        'accent',
             title:       'Saved profiles',
-            description: 'Clients sign in once and never re-enter their name, phone, or notes again.',
+            description: 'Customers sign in once and never re-enter their name, phone, or notes again.',
             bullets: [
-              'Magic-link sign-in, no passwords',
+              'Sign in with an email link, no password to remember',
               'Optional Google sign-in for one-tap booking',
               'Profile photo + preferred name shown to your team',
             ],
@@ -120,17 +120,17 @@ function AccountsPanel() {
             bullets: [
               'Auto-fills the new Booking Form questions',
               'Owner sees the preference card on every appointment',
-              'Client can update from their account at any time',
+              'Customer can update from their account at any time',
             ],
           },
           {
             icon:        Crown,
             title:       'Saved payment methods',
-            description: 'Clients save a card on file for faster checkout, deposits, and late fees.',
+            description: 'Customers save a card on file for faster checkout, deposits, and late fees.',
             bullets: [
               'Secured by Stripe, you never see the number',
               'Owner can charge no-show / late fees with one click',
-              'Clients can remove cards anytime from their profile',
+              'Customers can remove cards anytime from their profile',
             ],
           },
         ]}
@@ -145,7 +145,7 @@ function ReviewsPanel() {
       <ComingSoonPanel
         eyebrow="Coming Soon"
         title="Reviews"
-        intro="Collect honest reviews from real clients, automatically, after every appointment. Show the best ones on your public site. Catch the unhappy ones before they hit Google."
+        intro="Collect honest reviews from real customers, automatically, after every appointment. Show the best ones on your public site. Catch the unhappy ones before they hit Google."
         features={[
           {
             icon:        Star,
@@ -154,7 +154,7 @@ function ReviewsPanel() {
             description: 'A short, branded email goes out 24 hours after a completed appointment asking for a 1-5 star rating + a sentence.',
             bullets: [
               'Configurable delay (12 hours → 7 days)',
-              'Skip clients who already left a review',
+              'Skip customers who already left a review',
               'One-tap rating, no account needed',
             ],
           },

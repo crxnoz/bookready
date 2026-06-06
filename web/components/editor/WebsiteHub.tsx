@@ -961,7 +961,7 @@ function OverviewPanel({
       {/* Section visibility controller */}
       <Panel
         title="Section visibility"
-        subtitle="Show or hide sections on your public site. Locked sections always stay visible."
+        subtitle="Show or hide sections on your public site. Some sections are always on and can't be hidden."
       >
         <div className="space-y-1.5">
           {sorted.map(s => {
@@ -989,7 +989,7 @@ function OverviewPanel({
                   <span className="text-sm text-near-black truncate">{label}</span>
                   {s.is_locked && (
                     <span className="inline-flex items-center gap-1 text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.15)] bg-cream text-[rgba(18,18,18,0.7)] px-1.5 py-0.5 flex-shrink-0">
-                      <Lock size={9} /> Locked
+                      <Lock size={9} /> Always on
                     </span>
                   )}
                 </div>
@@ -1363,7 +1363,7 @@ function ContentTabsPanel({
                   {locked ? (
                     <span
                       className="inline-flex items-center text-[9px] text-muted-text/80 flex-shrink-0"
-                      title="Always visible"
+                      title="Always on"
                     >
                       <Lock size={9} />
                     </span>
@@ -1826,12 +1826,12 @@ function AboutEditorPanel({
 // ── Policies editor (the single source of truth for policy editing) ─────────
 
 const POLICY_FIELDS: { key: keyof BusinessPolicy; label: string; placeholder: string }[] = [
-  { key: 'cancellation_policy', label: 'Cancellation policy', placeholder: 'How much notice do clients need to give?' },
-  { key: 'late_policy',         label: 'Late arrival policy', placeholder: 'What happens if a client arrives late?' },
-  { key: 'no_show_policy',      label: 'No-show policy',      placeholder: 'What happens if a client doesn\'t show up?' },
+  { key: 'cancellation_policy', label: 'Cancellation policy', placeholder: 'How much notice do customers need to give?' },
+  { key: 'late_policy',         label: 'Late arrival policy', placeholder: 'What happens if a customer arrives late?' },
+  { key: 'no_show_policy',      label: 'No-show policy',      placeholder: 'What happens if a customer doesn\'t show up?' },
   { key: 'deposit_policy',      label: 'Deposit policy',      placeholder: 'Is a deposit required to book?' },
-  { key: 'reschedule_policy',   label: 'Reschedule policy',   placeholder: 'How can clients reschedule?' },
-  { key: 'extra_notes',         label: 'Additional notes',    placeholder: 'Anything else clients should know.' },
+  { key: 'reschedule_policy',   label: 'Reschedule policy',   placeholder: 'How can customers reschedule?' },
+  { key: 'extra_notes',         label: 'Additional notes',    placeholder: 'Anything else customers should know.' },
 ]
 
 function PoliciesHeadingInline({ settings, onSaveSettings }: {
@@ -2009,7 +2009,7 @@ function AdditionalsPanel({
     },
     reviews: {
       enabled: settings.additionals?.reviews?.enabled ?? false,
-      heading: settings.additionals?.reviews?.heading ?? 'What clients say',
+      heading: settings.additionals?.reviews?.heading ?? 'What customers say',
       items:   settings.additionals?.reviews?.items   ?? [],
     },
   }
@@ -2097,7 +2097,7 @@ function AdditionalsPanel({
       {/* FAQ — up to 4 Q&A items */}
       <Panel
         title="FAQ"
-        subtitle="Up to 4 short answers to questions clients ask before they book."
+        subtitle="Up to 4 short answers to questions customers ask before they book."
       >
         <ToggleRow
           label="Show FAQ section"
@@ -2168,7 +2168,7 @@ function AdditionalsPanel({
       {/* Reviews / Testimonials — static list (no Stripe/Google integration). */}
       <Panel
         title="Reviews & testimonials"
-        subtitle="Static quotes from happy clients. Add the words you want shown."
+        subtitle="Static quotes from happy customers. Add the words you want shown."
       >
         <ToggleRow
           label="Show Reviews section"
@@ -2180,7 +2180,7 @@ function AdditionalsPanel({
           label="Section heading"
           value={reviews.heading ?? ''}
           onChange={v => patchReviews({ heading: v })}
-          placeholder="What clients say"
+          placeholder="What customers say"
           maxLength={80}
         />
 
@@ -2350,7 +2350,7 @@ function FooterPanel({
           <ToggleRow label="Show Quick Book"    on={form.value.show_quick_book    ?? true} onToggle={() => form.patch({ show_quick_book:    !(form.value.show_quick_book    ?? true) })} />
         )}
         {showPoweredBy && (
-          <ToggleRow label="Show Powered by BookReady" on={form.value.show_powered_by}     onToggle={() => form.patch({ show_powered_by:    !form.value.show_powered_by })} />
+          <ToggleRow label="Show the BookReady badge" on={form.value.show_powered_by}     onToggle={() => form.patch({ show_powered_by:    !form.value.show_powered_by })} />
         )}
       </div>
 
@@ -2599,8 +2599,8 @@ function GalleryManagerPanel({ settings, onSaveSettings }: {
   async function removeGroup(g: GalleryGroup) {
     const inGroup = itemsForGroup(g.id).length
     const msg = inGroup === 0
-      ? `Delete the "${g.heading}" group?`
-      : `Delete the "${g.heading}" group? Its ${inGroup} image${inGroup === 1 ? '' : 's'} will be kept but moved to "Ungrouped".`
+      ? `Delete the "${g.heading}" collection?`
+      : `Delete the "${g.heading}" collection? Its ${inGroup} image${inGroup === 1 ? '' : 's'} will be kept but moved to "Ungrouped".`
     if (!confirm(msg)) return
     setError(null)
     try {
@@ -3727,7 +3727,7 @@ function WebsiteCustomPolicyGroupsEditor({
                   label="Title"
                   value={it.title}
                   onChange={v => patchItem(gi, ii, { title: v })}
-                  placeholder="What clients see as the bullet heading"
+                  placeholder="What customers see as the bullet heading"
                   maxLength={120}
                 />
                 <TextareaField
@@ -4049,7 +4049,7 @@ function AnnouncementsComingSoonPanel() {
     <ComingSoonHero
       eyebrow="Coming Soon"
       title="Announcements"
-      intro="Reach clients without leaving BookReady. Announcement bars, pop-ups, and one-off email blasts, all branded to your site and managed from one tab."
+      intro="Reach customers without leaving BookReady. Announcement bars, pop-ups, and one-off email blasts, all branded to your site and managed from one tab."
       features={[
         {
           icon:        MegaphoneIcon,
@@ -4075,7 +4075,7 @@ function AnnouncementsComingSoonPanel() {
         {
           icon:        MailIcon,
           title:       'Email notifications',
-          description: 'One-off email blasts to your whole client list, sent through your verified BookReady domain.',
+          description: 'One-off email blasts to your whole customer list, sent through your verified BookReady domain.',
           bullets: [
             'Schedule for the best time of day',
             'Pick segments: VIPs, recent visitors, no-shows',
@@ -4092,7 +4092,7 @@ function IntroductionComingSoonPanel() {
     <ComingSoonHero
       eyebrow="Coming Soon"
       title="Introduction sections"
-      intro="Personality blocks for the gap between your hero and the booking form. Tell clients what's special about your studio, and what's right around the corner."
+      intro="Personality blocks for the gap between your hero and the booking form. Tell customers what's special about your studio, and what's right around the corner."
       features={[
         {
           icon:        UserIcon,
@@ -4102,13 +4102,13 @@ function IntroductionComingSoonPanel() {
           bullets: [
             'Headshot, name, specialty, years of experience',
             'Pull from the Staff list automatically',
-            'Clients can pick a favorite before booking',
+            'Customers can pick a favorite before booking',
           ],
         },
         {
           icon:        Timer,
           title:       'Countdown',
-          description: 'Show clients when your next available appointment is, live.',
+          description: 'Show customers when your next available appointment is, live.',
           bullets: [
             '"Next opening: Thursday at 2pm" updates in real time',
             'Or count down to a launch / promo end date',
@@ -4128,10 +4128,10 @@ function IntroductionComingSoonPanel() {
         {
           icon:        Gift,
           title:       'Welcome offer',
-          description: 'A first-time client banner with a single-use promo code.',
+          description: 'A first-time customer banner with a single-use promo code.',
           bullets: [
-            'Tracks redemptions per client',
-            'Hides automatically once a client has booked once',
+            'Tracks redemptions per customer',
+            'Hides automatically once a customer has booked once',
             'Optional countdown to expiry',
           ],
         },

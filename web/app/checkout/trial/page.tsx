@@ -296,7 +296,7 @@ function Inner() {
                 ))}
               </select>
             </Picker>
-            <Picker label="SMS bundle">
+            <Picker label="Text pack">
               <select
                 value={String(intent.sms_mult ?? 1)}
                 onChange={e => updateIntent({ sms_mult: parseInt(e.target.value, 10) as SmsMult })}

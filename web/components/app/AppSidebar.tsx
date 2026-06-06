@@ -121,7 +121,7 @@ export default function AppSidebar({ slug, drawerOpen, onClose }: Props) {
             'flex flex-col overflow-y-auto transition-transform duration-200 ease-out',
             drawerOpen ? 'translate-x-0' : '-translate-x-full',
           )}
-          aria-label="Workspace navigation"
+          aria-label="Main navigation"
         >
           <div className="flex items-center justify-between border-b border-[rgba(18,18,18,0.08)] flex-shrink-0">
             <SidebarBrand slug={slug} dense />
@@ -174,7 +174,7 @@ function SidebarNav({
   return (
     <nav className="flex flex-col flex-1 py-3 gap-0.5 min-w-0">
       <p className="px-4 pt-1 pb-1.5 text-[9px] font-bold tracking-[0.2em] uppercase text-muted-text">
-        Workspace
+        Menu
       </p>
       {navItems.map(({ item, active, Icon }) => (
         <Link

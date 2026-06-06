@@ -966,7 +966,7 @@ function AdvancedSection({
           <span className="text-xs font-bold text-near-black">Advanced</span>
           {overridesActive && (
             <span className="text-[9px] font-bold tracking-[0.06em] uppercase bg-lavender text-near-black px-1.5 py-0.5">
-              Overrides set
+              Custom settings
             </span>
           )}
         </div>
@@ -981,27 +981,27 @@ function AdvancedSection({
           {/* Buffers */}
           <div>
             <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5">
-              Buffer overrides
+              Custom gaps
             </p>
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Before (min)"
                 type="number"
                 value={draft.buffer_before_override_minutes}
-                placeholder="Inherit"
+                placeholder="Use default"
                 onChange={e => onChange({ buffer_before_override_minutes: e.target.value })}
               />
               <Input
                 label="After (min)"
                 type="number"
                 value={draft.buffer_after_override_minutes}
-                placeholder="Inherit"
+                placeholder="Use default"
                 onChange={e => onChange({ buffer_after_override_minutes: e.target.value })}
               />
             </div>
             <p className="text-[10px] text-muted-text mt-1.5">
-              Leave blank to inherit from Booking Settings. Enter 0 to disable
-              the buffer for this service only.
+              Leave blank to use the default from Booking Settings. Enter 0 to
+              turn off the gap for this service only.
             </p>
           </div>
 
@@ -1151,7 +1151,7 @@ function AdvancedSection({
               </div>
             )}
             <p className="text-[10px] text-muted-text mt-1.5">
-              Required add-ons are pre-checked on the booking form and can't be removed by the client.
+              Required add-ons are pre-checked on the booking form and can't be removed by the customer.
             </p>
           </div>
         </div>
@@ -1254,7 +1254,7 @@ function AddonRow({
 }) {
   const [busy, setBusy] = useState(false)
   async function handleDelete() {
-    if (!confirm(`Delete "${addon.name}"? Services linked to this add-on will lose the link. Past appointments keep their snapshot.`)) return
+    if (!confirm(`Delete "${addon.name}"? Services linked to this add-on will lose the link. Past appointments keep their original details.`)) return
     setBusy(true)
     try {
       await deleteEditorServiceAddon(addon.id)
