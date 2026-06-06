@@ -4,10 +4,12 @@ import type { TemplateManifest } from '@bkrdy/platform'
  * Bottega — modern earthy nail / lash / brow studio template.
  *
  * The only template in the marketplace with a patterned background:
- * a tileable terrazzo PNG (warm cream base with rust + walnut + sand +
- * slate + navy speckles) lives behind every section at ~8% effective
- * opacity. Italian-artisanal voice — "bottega" is the Italian word for
- * a small workshop / atelier — fits high-end concept nail bars,
+ * a tileable motif tile lives behind every section at a per-pattern
+ * tuned opacity. Default is 'ceramic' (a Mediterranean blue mosaic
+ * of broken shards) but the editor surfaces a pattern picker that
+ * lets the owner swap in cherry blossoms / leaves / marble / coastal
+ * any time. Italian-artisanal voice — "bottega" is the Italian word
+ * for a small workshop / atelier — fits high-end concept nail bars,
  * refined lash + brow studios, and Italian-villa-coded salons.
  *
  * color_role: 'accent' — the palette swatches set the accent color
@@ -72,7 +74,7 @@ const manifest: TemplateManifest = {
   // settings.theme.pattern_motif; BottegaTemplate's PATTERNS map resolves
   // each key to a URL + tuned overlay opacity + tile size at render time.
   pattern_options: [
-    { key: 'terrazzo', label: 'Terrazzo',         url: '/templates/bottega/terrazzo.jpg' },
+    { key: 'ceramic',  label: 'Ceramic',          url: '/templates/bottega/ceramic.jpeg' },
     { key: 'flowers',  label: 'Cherry blossom',   url: '/templates/bottega/flowers.png' },
     { key: 'leaves',   label: 'Leaves',           url: '/templates/bottega/leaves.jpeg' },
     { key: 'marble',   label: 'Marble',           url: '/templates/bottega/marble.jpeg' },

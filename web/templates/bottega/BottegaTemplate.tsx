@@ -4,11 +4,13 @@
  * Bottega — modern earthy nail / lash / brow studio template.
  *
  * The ONLY template in the marketplace with a patterned background:
- * a tileable terrazzo PNG (warm cream base with rust + walnut + sand +
- * slate + navy speckles) lives behind every section at ~8% effective
- * opacity. Implementation: layer a 92% cream gradient ON TOP of the
- * tiled terrazzo via stacked CSS backgrounds — the pattern shows
- * through everywhere at a calm intensity that doesn't fight text.
+ * a tileable motif (default 'ceramic' — a Mediterranean blue mosaic
+ * of broken shards) lives behind every section at a per-asset tuned
+ * effective opacity (~8-50% depending on artwork density).
+ * Implementation: layer a cream overlay gradient ON TOP of the tiled
+ * pattern via stacked CSS backgrounds — the pattern shows through
+ * everywhere at a calm intensity that doesn't fight text. Owners can
+ * swap the motif via the website editor's pattern picker (5 options).
  *
  * Visual vocabulary:
  *   - Constant warm cream canvas (#F2EFE8); accent swatch (Rust default,
@@ -29,8 +31,10 @@
  *     equal column widths). Distinct from Pétale's asymmetric portrait+
  *     offset and Opaline's 1-feature + 2-pair grid.
  *
- * Pattern asset: web/public/templates/bottega/terrazzo.png — referenced
- * via /templates/bottega/terrazzo.png (Next.js public/ serves from URL root).
+ * Pattern assets live under web/public/templates/bottega/ — referenced
+ * via /templates/bottega/{motif}.{ext} (Next.js public/ serves from
+ * URL root). See PATTERNS map below for the full list + per-asset
+ * overlay tuning.
  *
  * All 12 required sections render. Empty data shows a soft empty state.
  * Booking embeds the platform flow via BottegaBooking, re-skinned to
@@ -202,28 +206,27 @@ export default function BottegaTemplate({ site, slug }: Props) {
   const onAccent  = pickOnAccent(accentHex)
   const accentRgb = hexToRgbTriplet(accentHex)
 
-  // Pattern motif (tenant-picked or terrazzo default). Each entry sets the
+  // Pattern motif (tenant-picked or ceramic default). Each entry sets the
   // tile URL, the cream-overlay opacity that gates how loud the pattern
-  // reads (terrazzo at .92 → ~8%; floral linework at .78 → ~22% since the
-  // source is white-with-pink-line and would otherwise vanish), and the
-  // tile dimensions (terrazzo is a square 800; flowers is wider than tall
-  // so tileH is `auto` for proportional repeat).
+  // reads (ceramic / marble at .88-.90 → ~10% so dense color reads as
+  // backdrop; floral linework at .50 → ~50% since the source is mostly
+  // white space and would otherwise vanish), and the tile dimensions.
   // Each pattern has its own per-asset overlay tuning. Dense-color sources
-  // (terrazzo, marble) take a high opacity (.85-.92, pattern shows at
-  // ~8-15%) so they read as backdrop; white-backed linework sources
+  // (ceramic, marble) take a high opacity (.88-.92, pattern shows at
+  // ~8-12%) so they read as backdrop; white-backed linework sources
   // (flowers, leaves) take a lower opacity (.50-.55, pattern shows at
   // ~45-50%) because they'd otherwise dissolve into the cream canvas;
   // the mid-density oceanic motif lands between. Tile sizes are picked
   // per artwork's natural aspect.
   const PATTERNS: Record<string, { url: string; overlay: number; tileW: string; tileH: string }> = {
-    terrazzo: { url: '/templates/bottega/terrazzo.jpg',        overlay: 0.92, tileW: '800px', tileH: '800px' },
+    ceramic:  { url: '/templates/bottega/ceramic.jpeg',        overlay: 0.90, tileW: '720px', tileH: 'auto' },
     flowers:  { url: '/templates/bottega/flowers.png',         overlay: 0.50, tileW: '720px', tileH: 'auto' },
     leaves:   { url: '/templates/bottega/leaves.jpeg',         overlay: 0.55, tileW: '600px', tileH: 'auto' },
     marble:   { url: '/templates/bottega/marble.jpeg',         overlay: 0.88, tileW: '900px', tileH: 'auto' },
     oceanic:  { url: '/templates/bottega/oceanic-pattern.jpg', overlay: 0.74, tileW: '700px', tileH: 'auto' },
   }
-  const patternKey = (settings?.theme?.pattern_motif as string) || 'terrazzo'
-  const pattern = PATTERNS[patternKey] ?? PATTERNS.terrazzo
+  const patternKey = (settings?.theme?.pattern_motif as string) || 'ceramic'
+  const pattern = PATTERNS[patternKey] ?? PATTERNS.ceramic
   const patternBg = `linear-gradient(rgba(242,239,232,${pattern.overlay}), rgba(242,239,232,${pattern.overlay})), url('${pattern.url}')`
   const patternSize = `auto, ${pattern.tileW} ${pattern.tileH}`
 
@@ -670,15 +673,16 @@ const BOTTEGA_CSS = `
   --brk-family-display: var(--bottega-display);
   --brk-family-body: var(--bottega-body);
 
-  /* THE pattern. 92% cream overlay on top of the tiled terrazzo PNG
-     equals ~8% effective opacity for the pattern. Pattern tiles at
-     800x800px (matches the source asset aspect — adjust if a different
-     tile size reads better on screen). */
+  /* SSR fallback for the pattern backdrop — the React render layers an
+     inline backgroundImage on the root that overrides this with the
+     tenant's selected motif (resolved from settings.theme.pattern_motif
+     via the PATTERNS map in the component). This CSS default just gives
+     the initial paint a sensible look before the inline style applies. */
   background-color: var(--bottega-bg);
   background-image:
-    linear-gradient(rgba(242,239,232,0.92), rgba(242,239,232,0.92)),
-    url('/templates/bottega/terrazzo.jpg');
-  background-size: auto, 800px 800px;
+    linear-gradient(rgba(242,239,232,0.90), rgba(242,239,232,0.90)),
+    url('/templates/bottega/ceramic.jpeg');
+  background-size: auto, 720px auto;
   background-repeat: no-repeat, repeat;
   background-attachment: scroll, scroll;
 
