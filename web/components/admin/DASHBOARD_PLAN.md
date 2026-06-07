@@ -5,7 +5,31 @@ The page lives at `/admin` and is what the BookReady operator
 tenants. This doc captures the agreed-on plan so we can pick it up
 cleanly when build starts.
 
-**Status**: ALL THREE PHASES SHIPPED (2026-06-06). Dashboard complete.
+**Status**: PHASES 1-3 SHIPPED (2026-06-06). REFACTOR SHIPPED (2026-06-07).
+
+Phase 4 refactor (2026-06-07): split the single /admin page into five
+routes behind a shared shell + global refresh.
+
+- `AdminProvider` owns all 5 endpoint fetches (summary / trends /
+  insights / health / tenants) + auth gate. Each slot has independent
+  loading/error so a slow probe doesn't block the rest of the page.
+- `AdminShell` provides the header + tabbed sub-nav (active highlight
+  from pathname) + Refresh button that ACTUALLY refreshes everything
+  in parallel + "last refreshed Xs ago" timestamp. Fixes the silent
+  refresh bug where the old per-widget button only refetched summary.
+- Routes: `/admin` (Overview, announcements at TOP), `/admin/tenants`
+  (sortable + paginated, 50/page), `/admin/activity` (cross-tenant
+  charts + heatmap), `/admin/insights` (rule cards, chips capped at
+  10), `/admin/system` (health probes). Detail page inherits the
+  layout's provider; uses AdminShell with tab=false.
+- Chart hover tooltips on booking volume, MRR stacked area, growth
+  bars+line, and tenant detail charts. Single shared ChartHover SVG
+  overlay (no chart deps added).
+- Scale for hundreds of tenants: sortable + paginated table, sticky
+  header, chip cap on insights, hover row highlight. Heatmap + snapshot
+  job left as-is (fine at 100s).
+- Shared primitives (Card, Th, Td, Field, relTime, money) extracted to
+  _parts.tsx so each route doesn't redefine the same markup.
 
 Phase 3 delivered: `insights` endpoint (6 rule-based observations,
 fire-only-when-relevant) + `health` endpoint (api-errors log scan,
