@@ -13,6 +13,31 @@ import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/auth/T
 const TEMPLATE_KEY = 'br_template'
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
 
+/**
+ * Parse the marketing URL params into the canonical `br_signup_intent`
+ * shape. Single source of truth for both the email-flow submit handler
+ * and the mount effect (which fires for the Google flow too).
+ *
+ * Defaults are intentional: a user who arrives without `?plan=` still
+ * lands on a sensible default plan when /checkout/trial reads this back.
+ */
+function buildIntent(
+  searchParams: ReturnType<typeof useSearchParams>,
+  templateSlug: string,
+): { template: string; plan: 'solo' | 'studio' | 'salon'; billing: 'monthly' | 'annual'; sms_mult: 1 | 2 | 3 } {
+  const planRaw = (searchParams?.get('plan') ?? '').toLowerCase()
+  const plan: 'solo' | 'studio' | 'salon' =
+    planRaw === 'solo' || planRaw === 'salon' ? planRaw : 'studio'
+  const billingRaw = (searchParams?.get('billing') ?? '').toLowerCase()
+  const billing: 'monthly' | 'annual' = billingRaw === 'annual' ? 'annual' : 'monthly'
+
+  const smsRaw = searchParams?.get('sms') ?? searchParams?.get('sms_mult') ?? '1'
+  const smsNum = parseInt(smsRaw.replace(/x$/i, ''), 10)
+  const sms_mult: 1 | 2 | 3 = (smsNum === 2 || smsNum === 3 ? smsNum : 1) as 1 | 2 | 3
+
+  return { template: templateSlug, plan, billing, sms_mult }
+}
+
 function RegisterForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -54,6 +79,26 @@ function RegisterForm() {
     const gerr = searchParams?.get('google_error')
     if (gerr) setError(gerr)
   }, [searchParams])
+
+  // #167 — persist the signup intent on mount so the Google flow gets
+  // plan/billing/sms too. Previously only the email submit handler
+  // wrote `br_signup_intent`, which meant clicking "Sign up with Google"
+  // BEFORE submitting the form lost the marketing-side context (the
+  // OAuth callback lands on /register/complete which hardcoded defaults).
+  // Writing on mount makes both flows symmetric.
+  useEffect(() => {
+    if (! searchParams) return
+    const hasIntent =
+      searchParams.get('plan') ||
+      searchParams.get('billing') ||
+      searchParams.get('sms') ||
+      searchParams.get('template')
+    if (! hasIntent) return
+    try {
+      localStorage.setItem(TEMPLATE_KEY, templateSlug)
+      localStorage.setItem('br_signup_intent', JSON.stringify(buildIntent(searchParams, templateSlug)))
+    } catch { /* localStorage disabled — fall back to in-handler write */ }
+  }, [searchParams, templateSlug])
 
   // Google signup is always allowed. If the user typed a business name we
   // bake it (and the optional owner_name) into the OAuth state so the
@@ -155,19 +200,11 @@ function RegisterForm() {
       // billing + sms_mult) from the marketing URL into localStorage
       // so /checkout/trial can read it without re-asking the user.
       // Falls back to sensible defaults when params are missing.
-      const intent = {
-        template: templateSlug,
-        plan:     (searchParams.get('plan')     as 'solo' | 'studio' | 'salon' | null) ?? 'studio',
-        billing:  (searchParams.get('billing')  as 'monthly' | 'annual' | null) ?? 'monthly',
-        sms_mult: ((): 1 | 2 | 3 => {
-          const raw = searchParams.get('sms')
-          if (raw === '2x') return 2
-          if (raw === '3x') return 3
-          const num = parseInt(searchParams.get('sms_mult') ?? '1', 10)
-          return (num === 2 || num === 3 ? num : 1) as 1 | 2 | 3
-        })(),
-      }
-      try { localStorage.setItem('br_signup_intent', JSON.stringify(intent)) } catch { /* localStorage disabled */ }
+      // Same intent shape the mount effect writes — kept here as the
+      // authoritative final write (form data may have changed since mount).
+      try {
+        localStorage.setItem('br_signup_intent', JSON.stringify(buildIntent(searchParams, templateSlug)))
+      } catch { /* localStorage disabled */ }
       // #160 — send to the verify-email waiting screen first. That
       // screen polls /auth/me and advances to /checkout/trial once
       // the user clicks the link in their email. Google signups skip

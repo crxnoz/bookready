@@ -135,14 +135,19 @@ function CompleteInner() {
       const tenantId = res.tenant_id ?? res.user.tenant_id
       setTenantId(tenantId)
       localStorage.setItem(TEMPLATE_KEY, template)
-      // #155 — persist intent + send to trial card-capture screen.
-      // Google flow doesn't carry plan/billing in the OAuth payload,
-      // so we land on sensible defaults; the user can change at the
-      // trial screen if needed (Phase 3 will surface intent more
-      // explicitly).
+      // #167 — read the marketing-side intent that /register persisted
+      // on mount (plan + billing + sms forwarded from the CTA URL).
+      // Previously this hardcoded defaults, which silently dropped any
+      // plan/billing choice the user made before clicking Sign up with
+      // Google. Fall back to defaults only when nothing was persisted.
       try {
+        const stored = localStorage.getItem('br_signup_intent')
+        const prior  = stored ? JSON.parse(stored) : null
         localStorage.setItem('br_signup_intent', JSON.stringify({
-          template, plan: 'studio', billing: 'monthly', sms_mult: 1,
+          template,
+          plan:     prior?.plan     ?? 'studio',
+          billing:  prior?.billing  ?? 'monthly',
+          sms_mult: prior?.sms_mult ?? 1,
         }))
       } catch { /* ignore */ }
       // Google completeSignup already marks email_verified_at on the
@@ -174,6 +179,12 @@ function CompleteInner() {
           )}
         </p>
       </div>
+
+      {/* Carried-over marketing intent — shown when the user came in
+          via a CTA that forwarded plan/billing/sms. The template chip
+          is omitted here because the picker below IS the template
+          confirmation; doubling up would feel redundant. */}
+      <CarriedIntentBanner />
 
       {/* Error */}
       {error && (
@@ -327,6 +338,44 @@ function CompleteInner() {
 
 function firstName(full: string): string {
   return full.trim().split(/\s+/)[0] ?? full
+}
+
+/**
+ * Reads br_signup_intent from localStorage (set by /register on mount
+ * for any marketing-CTA arrival) and renders a small "Continuing with:
+ * Studio · monthly · 2x SMS" confirmation banner. Renders nothing when
+ * intent is missing or all-default — keeps the cold-Google-signup
+ * journey clean.
+ *
+ * Template chip is intentionally NOT shown here — the picker below is
+ * the template confirmation surface.
+ */
+function CarriedIntentBanner() {
+  const [intent, setIntent] = useState<{
+    plan?: string; billing?: string; sms_mult?: number
+  } | null>(null)
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('br_signup_intent')
+      if (raw) setIntent(JSON.parse(raw))
+    } catch { /* localStorage disabled */ }
+  }, [])
+
+  if (! intent) return null
+
+  const parts: string[] = []
+  if (intent.plan)    parts.push(intent.plan.charAt(0).toUpperCase() + intent.plan.slice(1))
+  if (intent.billing) parts.push(intent.billing === 'annual' ? 'annual' : 'monthly')
+  if (intent.sms_mult && intent.sms_mult > 1) parts.push(`${intent.sms_mult}x SMS`)
+  if (parts.length === 0) return null
+
+  return (
+    <div className="mb-5 px-3 py-2.5 bg-cream border border-[rgba(18,18,18,0.10)] flex items-center gap-3">
+      <span className="text-near-black font-bold tracking-[0.08em] uppercase text-[9px]">Continuing with</span>
+      <span className="text-[12px] font-semibold text-near-black">{parts.join(' · ')}</span>
+    </div>
+  )
 }
 
 function Field({
