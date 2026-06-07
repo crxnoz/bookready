@@ -507,6 +507,65 @@ class AdminDashboardController extends Controller
     }
 
     /**
+     * GET /api/v1/admin/dashboard/health/sparklines
+     *
+     * Returns the last 24h of (status, numeric_value, snapshot_at) tuples
+     * per trendable probe, for the inline mini-charts on /admin/system.
+     * One indexed range scan per probe; cheap.
+     *
+     * Cached 30s — points only change every 15 min so longer caching is
+     * wasted, shorter wastes a query per global refresh.
+     */
+    public function sparklines(): JsonResponse
+    {
+        $payload = Cache::remember('admin:dashboard:sparklines:v1', 30, function () {
+            $since = now()->copy()->subHours(24);
+            $rows = DB::table('system_health_snapshots')
+                ->where('snapshot_at', '>=', $since)
+                ->orderBy('snapshot_at')
+                ->get(['probe_key', 'snapshot_at', 'status', 'numeric_value']);
+
+            $byProbe = [];
+            foreach ($rows as $r) {
+                $byProbe[$r->probe_key] ??= [];
+                $byProbe[$r->probe_key][] = [
+                    'at'     => Carbon::parse($r->snapshot_at)->toIso8601String(),
+                    'status' => $r->status,
+                    'value'  => $r->numeric_value === null ? null : (float) $r->numeric_value,
+                ];
+            }
+            return [
+                'probes'      => $byProbe,
+                'since'       => $since->toIso8601String(),
+                'computed_at' => now()->toIso8601String(),
+            ];
+        });
+
+        return response()->json($payload);
+    }
+
+    /**
+     * Extract a numeric trended value from a probe envelope. Returns null
+     * for probes that aren't usefully trendable (mailer, last_deploy).
+     * Shared by admin:health-tick and any future analytics.
+     */
+    public function numericValueFor(string $probeKey, array $probe): ?float
+    {
+        $meta = (array) ($probe['meta'] ?? []);
+        return match ($probeKey) {
+            'api_errors'         => (float) ($meta['count_24h'] ?? 0),
+            'database'           => isset($meta['response_ms']) ? (float) $meta['response_ms'] : null,
+            'disk'               => isset($meta['used_pct'])    ? (float) $meta['used_pct']    : null,
+            'ssl'                => isset($meta['days_left'])   ? (float) $meta['days_left']   : null,
+            'queue'              => isset($meta['depth'])       ? (float) $meta['depth']       : null,
+            'snapshot_freshness' => isset($meta['hours_old'])   ? (float) $meta['hours_old']   : null,
+            'scheduler'          => isset($meta['age_sec'])     ? (float) $meta['age_sec']     : null,
+            'public_site'        => isset($meta['response_ms']) ? (float) $meta['response_ms'] : null,
+            default              => null, // mailer + last_deploy → no trend
+        };
+    }
+
+    /**
      * Pure health snapshot — same shape as /dashboard/health, but bypasses
      * caching so console commands (admin:health-alert, admin:health-digest)
      * always see live probe state. Public so both the cached HTTP endpoint
@@ -918,6 +977,7 @@ class AdminDashboardController extends Controller
                 'value'   => $ms . 'ms',
                 'note'    => 'Central DB responding (' . config('database.default') . ').',
                 'runbook' => $ms < 50 ? '' : 'systemctl status mysql; check load average + slow query log.',
+                'meta'    => ['response_ms' => $ms],
             ];
         } catch (\Throwable $e) {
             return [
@@ -925,6 +985,7 @@ class AdminDashboardController extends Controller
                 'value'   => 'down',
                 'note'    => 'DB unreachable: ' . substr($e->getMessage(), 0, 80),
                 'runbook' => 'systemctl status mysql; check DB_HOST / credentials in .env.',
+                'meta'    => ['response_ms' => null],
             ];
         }
     }

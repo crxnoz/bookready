@@ -9,9 +9,11 @@ import {
 } from 'lucide-react'
 import type {
   AdminDashboardHealth, HealthStatus, HealthProbe, AdminQuickAction,
+  AdminHealthSparklines,
 } from '@/lib/api'
 import { runAdminAction } from '@/lib/api'
 import { useAdmin } from './AdminProvider'
+import { Sparkline } from './Sparkline'
 import { cn } from '@/lib/cn'
 
 /**
@@ -71,13 +73,17 @@ export default function DashboardSystemHealth({
   loading: boolean
   error:   string | null
 }) {
+  // Sparklines come from the same provider but load independently; render
+  // the cards as soon as probes land, sparklines fill in when they arrive.
+  const { sparklines } = useAdmin()
+
   return (
     <section className="mb-2">
       <header className="mb-4 flex items-end justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-xl font-bold text-near-black tracking-tight">System health</h2>
           <p className="text-xs text-muted-text">
-            Live operational probes · refreshed every 2 minutes
+            Live probes (cached 2 min) · sparklines from a 15-min snapshot history
             {data && <> · computed {new Date(data.computed_at).toLocaleTimeString()}</>}
           </p>
         </div>
@@ -97,7 +103,12 @@ export default function DashboardSystemHealth({
       )}
 
       {data && Object.entries(data.sections).map(([key, probes]) => (
-        <SectionBlock key={key} sectionKey={key} probes={probes} />
+        <SectionBlock
+          key={key}
+          sectionKey={key}
+          probes={probes}
+          sparklines={sparklines.data}
+        />
       ))}
 
       <QuickActions />
@@ -140,8 +151,12 @@ function Summary({ data }: { data: AdminDashboardHealth | null }) {
 // ── Section block ─────────────────────────────────────────────────────────────
 
 function SectionBlock({
-  sectionKey, probes,
-}: { sectionKey: string; probes: Record<string, HealthProbe> }) {
+  sectionKey, probes, sparklines,
+}: {
+  sectionKey: string
+  probes:     Record<string, HealthProbe>
+  sparklines: AdminHealthSparklines | null
+}) {
   const meta = SECTION_META[sectionKey] ?? { label: sectionKey, sub: '' }
   const entries = Object.entries(probes)
   return (
@@ -158,7 +173,13 @@ function SectionBlock({
           : 'grid-cols-2 lg:grid-cols-4',
       )}>
         {entries.map(([key, probe]) => (
-          <ProbeCard key={key} probeKey={key} probe={probe} wide={entries.length === 1} />
+          <ProbeCard
+            key={key}
+            probeKey={key}
+            probe={probe}
+            wide={entries.length === 1}
+            sparklinePoints={sparklines?.probes?.[key] ?? null}
+          />
         ))}
       </div>
     </div>
@@ -168,8 +189,13 @@ function SectionBlock({
 // ── Individual probe card ─────────────────────────────────────────────────────
 
 function ProbeCard({
-  probeKey, probe, wide,
-}: { probeKey: string; probe: HealthProbe; wide?: boolean }) {
+  probeKey, probe, wide, sparklinePoints,
+}: {
+  probeKey:        string
+  probe:           HealthProbe
+  wide?:           boolean
+  sparklinePoints: AdminHealthSparklines['probes'][string] | null
+}) {
   const meta = PROBE_META[probeKey] ?? { icon: Activity, label: probeKey }
   const Icon = meta.icon
   const showRunbook = probe.status !== 'ok' && probe.runbook && probe.runbook.trim() !== ''
@@ -177,6 +203,9 @@ function ProbeCard({
   const wrapperProps = meta.linkTo
     ? { href: meta.linkTo as string }
     : {}
+  // Sparkline-eligible: anything we have at least one point for. Probes
+  // like mailer / last_deploy aren't trended at all (skip silently).
+  const hasSparkline = sparklinePoints !== null && sparklinePoints.length > 0
   return (
     <Wrapper
       {...wrapperProps as any}
@@ -204,6 +233,12 @@ function ProbeCard({
         </p>
       </div>
       <p className="text-[11px] text-muted-text mt-2 leading-snug">{probe.note}</p>
+
+      {hasSparkline && (
+        <div className="mt-2" title="Last 24 hours · sampled every 15 minutes">
+          <Sparkline points={sparklinePoints!} statusOverride={probe.status} />
+        </div>
+      )}
 
       {showRunbook && (
         <div className="mt-2 pt-2 border-t border-[rgba(18,18,18,0.06)]">

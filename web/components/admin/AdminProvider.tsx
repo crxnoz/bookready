@@ -4,9 +4,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   getCurrentUser, getAdminTenants,
   getAdminDashboardSummary, getAdminDashboardTrends,
-  getAdminDashboardInsights, getAdminDashboardHealth,
+  getAdminDashboardInsights, getAdminDashboardHealth, getAdminHealthSparklines,
   type AdminDashboardSummary, type AdminDashboardTrends,
-  type AdminDashboardInsights, type AdminDashboardHealth,
+  type AdminDashboardInsights, type AdminDashboardHealth, type AdminHealthSparklines,
   type AdminTenantTrendRow,
 } from '@/lib/api'
 import { isLoggedIn } from '@/lib/auth'
@@ -43,11 +43,12 @@ interface AdminCtx {
   authError: string | null
 
   // Data slots
-  summary:  Slot<AdminDashboardSummary>
-  trends:   Slot<AdminDashboardTrends>
-  insights: Slot<AdminDashboardInsights>
-  health:   Slot<AdminDashboardHealth>
-  tenants:  Slot<AdminTenantRow[]>
+  summary:    Slot<AdminDashboardSummary>
+  trends:     Slot<AdminDashboardTrends>
+  insights:   Slot<AdminDashboardInsights>
+  health:     Slot<AdminDashboardHealth>
+  sparklines: Slot<AdminHealthSparklines>
+  tenants:    Slot<AdminTenantRow[]>
 
   // Per-tenant snapshot lookup (derived from trends.data.tenants).
   trendByTenant: Map<string, AdminTenantTrendRow>
@@ -68,11 +69,12 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [me,        setMe]        = useState<AuthUser | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
 
-  const [summary,  setSummary]  = useState<Slot<AdminDashboardSummary>>(emptySlot())
-  const [trends,   setTrends]   = useState<Slot<AdminDashboardTrends>>(emptySlot())
-  const [insights, setInsights] = useState<Slot<AdminDashboardInsights>>(emptySlot())
-  const [health,   setHealth]   = useState<Slot<AdminDashboardHealth>>(emptySlot())
-  const [tenants,  setTenants]  = useState<Slot<AdminTenantRow[]>>(emptySlot())
+  const [summary,    setSummary]    = useState<Slot<AdminDashboardSummary>>(emptySlot())
+  const [trends,     setTrends]     = useState<Slot<AdminDashboardTrends>>(emptySlot())
+  const [insights,   setInsights]   = useState<Slot<AdminDashboardInsights>>(emptySlot())
+  const [health,     setHealth]     = useState<Slot<AdminDashboardHealth>>(emptySlot())
+  const [sparklines, setSparklines] = useState<Slot<AdminHealthSparklines>>(emptySlot())
+  const [tenants,    setTenants]    = useState<Slot<AdminTenantRow[]>>(emptySlot())
 
   const [refreshing,    setRefreshing]    = useState(false)
   const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(null)
@@ -112,12 +114,13 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     inFlight.current = true
     setRefreshing(true)
     try {
-      // Fire all 5 endpoints in parallel — they're independent.
+      // Fire all 6 endpoints in parallel — they're independent.
       await Promise.all([
-        loadSlot(() => getAdminDashboardSummary(),  setSummary,  false),
-        loadSlot(() => getAdminDashboardTrends(),   setTrends,   false),
-        loadSlot(() => getAdminDashboardInsights(), setInsights, false),
-        loadSlot(() => getAdminDashboardHealth(),   setHealth,   false),
+        loadSlot(() => getAdminDashboardSummary(),  setSummary,    false),
+        loadSlot(() => getAdminDashboardTrends(),   setTrends,     false),
+        loadSlot(() => getAdminDashboardInsights(), setInsights,   false),
+        loadSlot(() => getAdminDashboardHealth(),   setHealth,     false),
+        loadSlot(() => getAdminHealthSparklines(),  setSparklines, false),
         loadSlot(async () => (await getAdminTenants()).tenants, setTenants, false),
       ])
       setLastRefreshAt(Date.now())
@@ -149,10 +152,11 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         await loadSlot(async () => (await getAdminTenants()).tenants, setTenants, true)
         if (cancelled) return
         await Promise.all([
-          loadSlot(() => getAdminDashboardSummary(),  setSummary,  true),
-          loadSlot(() => getAdminDashboardTrends(),   setTrends,   true),
-          loadSlot(() => getAdminDashboardInsights(), setInsights, true),
-          loadSlot(() => getAdminDashboardHealth(),   setHealth,   true),
+          loadSlot(() => getAdminDashboardSummary(),  setSummary,    true),
+          loadSlot(() => getAdminDashboardTrends(),   setTrends,     true),
+          loadSlot(() => getAdminDashboardInsights(), setInsights,   true),
+          loadSlot(() => getAdminDashboardHealth(),   setHealth,     true),
+          loadSlot(() => getAdminHealthSparklines(),  setSparklines, true),
         ])
         if (! cancelled) setLastRefreshAt(Date.now())
       } catch (e) {
@@ -167,7 +171,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
   const value: AdminCtx = {
     auth, me, authError,
-    summary, trends, insights, health, tenants,
+    summary, trends, insights, health, sparklines, tenants,
     trendByTenant,
     refreshing, lastRefreshAt,
     refreshAll, refreshTenants,

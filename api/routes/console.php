@@ -63,3 +63,11 @@ Schedule::command('admin:health-digest')
     ->dailyAt('09:00')
     ->withoutOverlapping(10)
     ->runInBackground();
+
+// Append one row per trendable probe to system_health_snapshots every
+// 15 min — powers the 24h sparklines on /admin/system. Prunes >90d so
+// the table stays a few MB max. Skips on overlap.
+Schedule::command('admin:health-tick')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping(5)
+    ->runInBackground();

@@ -997,6 +997,22 @@ export async function getAdminDashboardDeploys(): Promise<AdminDeployReport> {
   return request<AdminDeployReport>('/admin/dashboard/deploys')
 }
 
+export interface SparklinePoint {
+  at:     string
+  status: HealthStatus
+  value:  number | null
+}
+
+export interface AdminHealthSparklines {
+  probes:      Record<string, SparklinePoint[]>
+  since:       string
+  computed_at: string
+}
+
+export async function getAdminHealthSparklines(): Promise<AdminHealthSparklines> {
+  return request<AdminHealthSparklines>('/admin/dashboard/health/sparklines')
+}
+
 export interface AdminTenantDetail {
   id:              string
   plan:            string | null
