@@ -369,11 +369,13 @@ class SeedDemoAppointments extends Command
                 'created_at'               => $bookedAt->toDateTimeString(),
                 'updated_at'               => $bookedAt->toDateTimeString(),
             ];
+            // Keys must be identical across every row for the batch insert,
+            // so always set optional columns (null when not applicable).
             if ($hasReceipt) $row['receipt_number'] = $receiptNumber;
             if ($hasManage)  $row['manage_token'] = Str::random(40);
             if ($hasBalance) $row['balance_paid_amount'] = $balancePaid;
-            if ($hasMethod && $method) $row['payment_method'] = $method;
-            if ($hasRefund && $refunded !== null) {
+            if ($hasMethod)  $row['payment_method'] = $method;
+            if ($hasRefund) {
                 $row['refunded_amount'] = $refunded;
                 $row['refunded_at'] = $refundedAt?->toDateTimeString();
             }
