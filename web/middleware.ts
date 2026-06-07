@@ -52,6 +52,11 @@ export const config = {
     // Without it, tenant subdomains rewrite the asset URL into the
     // tenant render flow and 404. (First surfaced when Bottega's
     // terrazzo PNG 404'd on bottega.bkrdy.me but loaded on app.bkrdy.me.)
-    '/((?!_next/static|_next/image|favicon.ico|templates/).*)',
+    //
+    // `icon.png` + `apple-icon.png` are the App Router metadata icon
+    // routes (the BookReady favicon). Like favicon.ico they live at the
+    // app root, so they must skip the tenant rewrite or they 404 on
+    // {slug}.bkrdy.me and tenant tabs lose the icon.
+    '/((?!_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|templates/).*)',
   ],
 }
