@@ -719,21 +719,19 @@ export const LUSH_CSS = `
   border-radius:6px; padding:18px 18px 16px;
   display:flex; flex-direction:column; gap:8px;
   transition:border-color .2s ease;
-  /* Lets the top-banner image bleed flush to the card edges via the
-     negative margin trick on .brk-booking-service-image. Card-rounded
-     skins (Lush, Opaline, Pétale) still get clean corners. */
-  overflow:hidden;
 }
-/* Top-banner image used by service cards AND category tiles. Aspect-
-   ratio locked so a row of cards stays visually balanced regardless of
-   the underlying photo dimensions. The cancel margin matches the card's
-   18px horizontal padding so the image is edge-to-edge inside the card. */
+/* Top-banner image used by service cards AND category tiles. Lives
+   INSIDE the card padding (the earlier bleed-to-edge version felt
+   cramped against the card border). Aspect-ratio locked so a row of
+   cards stays visually balanced regardless of the underlying photo
+   dimensions. Subtle corner radius matches the card's. */
 .brk-booking-service-image {
   display:block;
-  width:calc(100% + 36px);
-  margin:-18px -18px 4px;
+  width:100%;
+  margin:0 0 4px;
   aspect-ratio:16 / 9;
   object-fit:cover;
+  border-radius:4px;
   background:rgba(var(--lush-pink-rgb),0.06);
 }
 .brk-booking-service-card:hover { border-color:var(--lush-pink); }
