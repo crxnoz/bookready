@@ -1,107 +1,86 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import {
-  Loader2, AlertCircle, ArrowLeft, ExternalLink, ShieldAlert, LogOut,
-} from 'lucide-react'
-import { getCurrentUser, getAdminTenantDetail, type AdminTenantDetail } from '@/lib/api'
-import { isLoggedIn, clearAuth } from '@/lib/auth'
-import type { AuthUser } from '@/lib/types'
+import { Loader2, AlertCircle, ArrowLeft, ExternalLink } from 'lucide-react'
+import { getAdminTenantDetail, type AdminTenantDetail } from '@/lib/api'
+import { AdminShell } from './AdminShell'
+import { useAdmin } from './AdminProvider'
+import { ChartHover } from './ChartHover'
+import { Card, money, relTime } from './_parts'
 import { cn } from '@/lib/cn'
 
-type LoadState = 'loading' | 'ready' | 'denied' | 'login_required' | 'not_found'
+/**
+ * /admin/tenants/[slug] — per-tenant drill-in.
+ *
+ * Auth + sign-out live in AdminShell via AdminProvider. The slug-specific
+ * detail fetch stays local: it's per-route and doesn't belong in the
+ * shared dashboard data context.
+ */
 
-function money(cents: number): string { return '$' + Math.round(cents / 100).toLocaleString() }
-function relTime(iso: string | null): string {
-  if (! iso) return 'never'
-  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
-  if (d <= 0) return 'today'
-  if (d === 1) return 'yesterday'
-  if (d < 30) return `${d}d ago`
-  return new Date(iso).toLocaleDateString()
-}
+type DetailState = 'loading' | 'ready' | 'not_found'
 
 export default function AdminTenantDetailPage({ slug }: { slug: string }) {
-  const router = useRouter()
-  const [loadState, setLoadState] = useState<LoadState>('loading')
-  const [me,        setMe]        = useState<AuthUser | null>(null)
-  const [detail,    setDetail]    = useState<AdminTenantDetail | null>(null)
-  const [err,       setErr]       = useState<string | null>(null)
+  const { auth } = useAdmin()
+  const [state,  setState]  = useState<DetailState>('loading')
+  const [detail, setDetail] = useState<AdminTenantDetail | null>(null)
+  const [err,    setErr]    = useState<string | null>(null)
 
   useEffect(() => {
+    // Wait for the provider to settle auth before fetching — saves a 401.
+    if (auth !== 'ready') return
     let cancelled = false
-    async function boot() {
-      if (! isLoggedIn()) { if (! cancelled) setLoadState('login_required'); return }
+    ;(async () => {
+      setState('loading')
+      setErr(null)
       try {
-        const user = await getCurrentUser()
+        const d = await getAdminTenantDetail(slug)
         if (cancelled) return
-        setMe(user)
-        if (! user.is_admin) { setLoadState('denied'); return }
-        try {
-          const d = await getAdminTenantDetail(slug)
-          if (cancelled) return
-          setDetail(d)
-          setLoadState('ready')
-        } catch (e) {
-          if (cancelled) return
-          const msg = e instanceof Error ? e.message : 'Failed to load tenant'
-          if (/not found/i.test(msg)) { setLoadState('not_found') }
-          else { setErr(msg); setLoadState('not_found') }
-        }
+        setDetail(d)
+        setState('ready')
       } catch (e) {
         if (cancelled) return
-        setErr(e instanceof Error ? e.message : 'Failed to load')
-        setLoadState('denied')
+        const msg = e instanceof Error ? e.message : 'Failed to load tenant'
+        setErr(msg)
+        setState('not_found')
       }
-    }
-    boot()
+    })()
     return () => { cancelled = true }
-  }, [slug])
-
-  function signOut() { clearAuth(); router.push('/login') }
-
-  if (loadState === 'loading') {
-    return <Shell><div className="flex items-center gap-2 text-xs text-muted-text px-1 py-10">
-      <Loader2 size={14} className="animate-spin" /> Loading tenant…
-    </div></Shell>
-  }
-  if (loadState === 'login_required') {
-    return <Shell><Card>
-      <h1 className="text-base font-bold text-near-black mb-2">Sign in required</h1>
-      <a href="/login?next=/admin" className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white border border-near-black px-3 py-2">Go to Sign In</a>
-    </Card></Shell>
-  }
-  if (loadState === 'denied') {
-    return <Shell signedInAs={me?.email}><Card tone="warn">
-      <div className="flex items-start gap-3">
-        <ShieldAlert size={18} className="text-[#8a5a00] flex-shrink-0 mt-0.5" />
-        <div>
-          <h1 className="text-base font-bold text-near-black mb-1">Admin access required</h1>
-          {err && <p className="text-[11px] text-[#b42828] mt-2 inline-flex items-center gap-1"><AlertCircle size={11} /> {err}</p>}
-        </div>
-      </div>
-    </Card></Shell>
-  }
-  if (loadState === 'not_found' || ! detail) {
-    return <Shell signedInAs={me?.email} onSignOut={signOut}>
-      <BackLink />
-      <Card>
-        <h1 className="text-base font-bold text-near-black mb-1">Tenant not found</h1>
-        <p className="text-[13px] text-muted-text">No tenant with slug <strong className="text-near-black font-mono">{slug}</strong>.</p>
-        {err && <p className="text-[11px] text-[#b42828] mt-2 inline-flex items-center gap-1"><AlertCircle size={11} /> {err}</p>}
-      </Card>
-    </Shell>
-  }
-
-  const d = detail
-  const isActive = d.state === 'active'
+  }, [slug, auth])
 
   return (
-    <Shell signedInAs={me?.email} onSignOut={signOut}>
+    <AdminShell tab={false}>
       <BackLink />
 
+      {state === 'loading' && (
+        <div className="flex items-center gap-2 text-xs text-muted-text px-1 py-10">
+          <Loader2 size={14} className="animate-spin" /> Loading tenant…
+        </div>
+      )}
+
+      {state === 'not_found' && (
+        <Card>
+          <h1 className="text-base font-bold text-near-black mb-1">Tenant not found</h1>
+          <p className="text-[13px] text-muted-text">
+            No tenant with slug <strong className="text-near-black font-mono">{slug}</strong>.
+          </p>
+          {err && (
+            <p className="text-[11px] text-[#b42828] mt-2 inline-flex items-center gap-1">
+              <AlertCircle size={11} /> {err}
+            </p>
+          )}
+        </Card>
+      )}
+
+      {state === 'ready' && detail && <DetailBody d={detail} />}
+    </AdminShell>
+  )
+}
+
+function DetailBody({ d }: { d: AdminTenantDetail }) {
+  const isActive = d.state === 'active'
+  return (
+    <>
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap mb-5">
         <div>
@@ -195,27 +174,44 @@ export default function AdminTenantDetailPage({ slug }: { slug: string }) {
           </dl>
         </div>
       </div>
-    </Shell>
+    </>
   )
 }
 
-// ── Booking area chart ────────────────────────────────────────────────────────
+// ── Booking area chart (with hover) ───────────────────────────────────────────
 
 function BookingChart({ series }: { series: AdminTenantDetail['daily_bookings'] }) {
-  const W = 800, H = 160, padT = 10, padB = 6, padL = 6, padR = 6
-  const innerW = W - padL - padR, innerH = H - padT - padB
+  const W = 800, H = 160
+  const padding = { top: 10, right: 6, bottom: 6, left: 6 }
+  const innerW = W - padding.left - padding.right
+  const innerH = H - padding.top - padding.bottom
   const n = series.length
   const max = Math.max(...series.map(p => p.count), 1)
   if (n === 0) return <div className="h-[120px] flex items-center justify-center text-[12px] text-muted-text">No data.</div>
-  const x = (i: number) => padL + (n <= 1 ? innerW / 2 : innerW * (i / (n - 1)))
-  const y = (v: number) => padT + innerH * (1 - v / max)
+  const x = (i: number) => padding.left + (n <= 1 ? innerW / 2 : innerW * (i / (n - 1)))
+  const y = (v: number) => padding.top + innerH * (1 - v / max)
   const top = series.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(p.count).toFixed(1)}`).join(' ')
-  const area = `${top} L${x(n - 1).toFixed(1)},${(padT + innerH).toFixed(1)} L${x(0).toFixed(1)},${(padT + innerH).toFixed(1)} Z`
+  const baseY = padding.top + innerH
+  const area = `${top} L${x(n - 1).toFixed(1)},${baseY.toFixed(1)} L${x(0).toFixed(1)},${baseY.toFixed(1)} Z`
+
+  const hoverPoints = series.map(p => ({
+    date: p.date,
+    y:    y(p.count),
+    rows: [{ label: 'Bookings', value: String(p.count) }],
+  }))
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" preserveAspectRatio="none">
-      <line x1={padL} x2={W - padR} y1={padT + innerH * 0.5} y2={padT + innerH * 0.5} stroke="rgba(18,18,18,0.06)" strokeWidth="1" />
+      <line x1={padding.left} x2={W - padding.right}
+        y1={padding.top + innerH * 0.5} y2={padding.top + innerH * 0.5}
+        stroke="rgba(18,18,18,0.06)" strokeWidth="1" />
       <path d={area} fill="rgba(18,18,18,0.06)" />
       <path d={top} fill="none" stroke="#121212" strokeWidth="1.5" strokeLinejoin="round" />
+      <ChartHover
+        width={W} height={H} padding={padding}
+        points={hoverPoints}
+        primaryColor="#121212"
+      />
     </svg>
   )
 }
@@ -224,7 +220,7 @@ function BookingChart({ series }: { series: AdminTenantDetail['daily_bookings'] 
 
 function BackLink() {
   return (
-    <Link href="/admin" className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.06em] uppercase text-muted-text hover:text-near-black mb-4">
+    <Link href="/admin/tenants" className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.06em] uppercase text-muted-text hover:text-near-black mb-4">
       <ArrowLeft size={12} /> All tenants
     </Link>
   )
@@ -234,7 +230,9 @@ function Stat({ label, value, small }: { label: string; value: string; small?: b
   return (
     <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
       <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">{label}</p>
-      <p className={cn('font-bold text-near-black tracking-tight mt-1.5 leading-none', small ? 'text-lg' : 'text-2xl')}>{value}</p>
+      <p className={cn('font-bold text-near-black tracking-tight mt-1.5 leading-none', small ? 'text-lg' : 'text-2xl')}>
+        {value}
+      </p>
     </div>
   )
 }
@@ -256,43 +254,5 @@ function Badge({ children, tone }: { children: React.ReactNode; tone: 'good' | '
         ? 'border-[rgba(15,111,61,0.25)] bg-[rgba(15,111,61,0.06)] text-[#0f6f3d]'
         : 'border-[rgba(18,18,18,0.12)] bg-cream text-[rgba(18,18,18,0.65)]',
     )}>{children}</span>
-  )
-}
-
-function Shell({ children, signedInAs, onSignOut }: {
-  children: React.ReactNode; signedInAs?: string; onSignOut?: () => void
-}) {
-  return (
-    <div className="min-h-screen bg-cream">
-      <header className="bg-white border-b border-[rgba(18,18,18,0.10)] px-5 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-7 h-7 bg-near-black flex items-center justify-center flex-shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.svg" alt="" className="w-4 h-4 invert" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-near-black">BookReady</p>
-            <p className="text-[11px] text-muted-text">Platform admin</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {signedInAs && <span className="text-[11px] text-muted-text hidden sm:inline">{signedInAs}</span>}
-          {onSignOut && (
-            <button type="button" onClick={onSignOut} className="text-[11px] font-semibold tracking-tight text-muted-text hover:text-near-black inline-flex items-center gap-1">
-              <LogOut size={11} /> Sign out
-            </button>
-          )}
-        </div>
-      </header>
-      <main className="max-w-5xl mx-auto p-4 sm:p-5 md:p-6">{children}</main>
-    </div>
-  )
-}
-
-function Card({ children, tone }: { children: React.ReactNode; tone?: 'warn' }) {
-  return (
-    <section className={cn('bg-white border p-5', tone === 'warn' ? 'border-[rgba(180,120,0,0.30)]' : 'border-[rgba(18,18,18,0.10)]')}>
-      {children}
-    </section>
   )
 }

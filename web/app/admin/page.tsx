@@ -1,7 +1,5 @@
-import AdminPage from '@/components/admin/AdminPage'
-
-export const dynamic = 'force-dynamic'
+import OverviewPage from '@/components/admin/pages/OverviewPage'
 
 export default function Page() {
-  return <AdminPage />
+  return <OverviewPage />
 }

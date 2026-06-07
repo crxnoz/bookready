@@ -1,18 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import {
-  Loader2, AlertCircle, AlertTriangle, Mail, Server, GitCommit, Layers,
+  Loader2, AlertCircle, AlertTriangle, Mail, GitCommit, Layers,
 } from 'lucide-react'
-import { getAdminDashboardHealth, type AdminDashboardHealth, type HealthStatus } from '@/lib/api'
+import type { AdminDashboardHealth, HealthStatus } from '@/lib/api'
 import { cn } from '@/lib/cn'
 
 /**
- * Platform admin dashboard — Phase 3 system-health card.
- *
- * Four independently-probed metrics (API errors, queue, last deploy,
- * mailer). Each carries its own status so one degraded probe doesn't
- * drag the whole card red. Self-contained fetch.
+ * System-health card — 4 independently-probed metrics (API errors, queue,
+ * last deploy, mailer). Props-driven; the global <AdminProvider> owns
+ * the fetch.
  */
 
 const DOT: Record<HealthStatus, string> = {
@@ -22,40 +19,27 @@ const DOT: Record<HealthStatus, string> = {
   unknown: 'bg-[rgba(18,18,18,0.25)]',
 }
 
-export default function DashboardSystemHealth() {
-  const [data,    setData]    = useState<AdminDashboardHealth | null>(null)
-  const [err,     setErr]     = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        const d = await getAdminDashboardHealth()
-        if (! cancelled) setData(d)
-      } catch (e) {
-        if (! cancelled) setErr(e instanceof Error ? e.message : 'Could not load health')
-      } finally {
-        if (! cancelled) setLoading(false)
-      }
-    })()
-    return () => { cancelled = true }
-  }, [])
-
+export default function DashboardSystemHealth({
+  data, loading, error,
+}: {
+  data:    AdminDashboardHealth | null
+  loading: boolean
+  error:   string | null
+}) {
   return (
-    <section className="mb-2 mt-8">
+    <section className="mb-2">
       <header className="mb-4">
         <h2 className="text-xl font-bold text-near-black tracking-tight">System health</h2>
         <p className="text-xs text-muted-text">Live operational probes · refreshed every 2 minutes</p>
       </header>
 
-      {err && (
+      {error && (
         <div className="bg-white border border-[rgba(180,40,40,0.20)] p-3 text-xs text-[#b42828] flex items-center gap-2">
-          <AlertCircle size={14} /> {err}
+          <AlertCircle size={14} /> {error}
         </div>
       )}
 
-      {loading && (
+      {loading && ! data && (
         <div className="bg-white border border-[rgba(18,18,18,0.10)] p-6 flex items-center gap-2 text-xs text-muted-text">
           <Loader2 size={14} className="animate-spin" /> Probing…
         </div>

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import type { AdminDashboardTrends, ActivityTier } from '@/lib/api'
+import { ChartHover } from './ChartHover'
 import { cn } from '@/lib/cn'
 
 /**
@@ -131,9 +132,10 @@ function Stat({ label, value }: { label: string; value: number | undefined }) {
 // ── Booking volume area chart ─────────────────────────────────────────────────
 
 function BookingVolumeChart({ series }: { series: AdminDashboardTrends['daily_bookings'] }) {
-  const W = 800, H = 160, padT = 10, padB = 6, padL = 6, padR = 6
-  const innerW = W - padL - padR
-  const innerH = H - padT - padB
+  const W = 800, H = 160
+  const padding = { top: 10, right: 6, bottom: 6, left: 6 }
+  const innerW = W - padding.left - padding.right
+  const innerH = H - padding.top - padding.bottom
   const n = series.length
   const max = Math.max(...series.map(p => p.count), 1)
 
@@ -141,20 +143,34 @@ function BookingVolumeChart({ series }: { series: AdminDashboardTrends['daily_bo
     return <div className="h-[120px] flex items-center justify-center text-[12px] text-muted-text">No data.</div>
   }
 
-  const x = (i: number) => padL + (n <= 1 ? innerW / 2 : innerW * (i / (n - 1)))
-  const y = (v: number) => padT + innerH * (1 - v / max)
+  const x = (i: number) => padding.left + (n <= 1 ? innerW / 2 : innerW * (i / (n - 1)))
+  const y = (v: number) => padding.top + innerH * (1 - v / max)
 
   const top = series.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(p.count).toFixed(1)}`).join(' ')
-  const area = `${top} L${x(n - 1).toFixed(1)},${(padT + innerH).toFixed(1)} L${x(0).toFixed(1)},${(padT + innerH).toFixed(1)} Z`
+  const baseY = padding.top + innerH
+  const area = `${top} L${x(n - 1).toFixed(1)},${baseY.toFixed(1)} L${x(0).toFixed(1)},${baseY.toFixed(1)} Z`
+
+  const hoverPoints = series.map(p => ({
+    date: p.date,
+    y:    y(p.count),
+    rows: [{ label: 'Bookings', value: String(p.count) }],
+  }))
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" preserveAspectRatio="none">
       {[0.5].map(f => (
-        <line key={f} x1={padL} x2={W - padR} y1={padT + innerH * f} y2={padT + innerH * f}
+        <line key={f}
+          x1={padding.left} x2={W - padding.right}
+          y1={padding.top + innerH * f} y2={padding.top + innerH * f}
           stroke="rgba(18,18,18,0.06)" strokeWidth="1" />
       ))}
       <path d={area} fill="rgba(18,18,18,0.06)" />
       <path d={top} fill="none" stroke="#121212" strokeWidth="1.5" strokeLinejoin="round" />
+      <ChartHover
+        width={W} height={H} padding={padding}
+        points={hoverPoints}
+        primaryColor="#121212"
+      />
     </svg>
   )
 }
