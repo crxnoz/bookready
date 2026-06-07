@@ -34,6 +34,8 @@ class SnapshotPlatformDashboard extends Command
         $since      = $now->copy()->subDays($windowDays)->startOfDay();
         $d30        = $now->copy()->subDays(30);
         $d7         = $now->copy()->subDays(7);
+        // Prior-7d window = [14d, 7d) ago. Used for WoW deltas.
+        $d14        = $now->copy()->subDays(14);
 
         // Dense, zero-filled date → count map for the cross-tenant daily
         // booking series. Pre-seed every day in the window so the chart
@@ -58,13 +60,44 @@ class SnapshotPlatformDashboard extends Command
                     continue;
                 }
 
-                $total = (int) DB::table('appointments')->count();
-                $t30   = (int) DB::table('appointments')->where('created_at', '>=', $d30)->count();
-                $t7    = (int) DB::table('appointments')->where('created_at', '>=', $d7)->count();
-                $lastAt = DB::table('appointments')->max('created_at');
+                // One batched aggregate query per tenant covering every
+                // metric the activity dashboard reads. Conditional sums let
+                // us compute the 7d + prior-7d windows in a single scan
+                // instead of N round-trips.
+                $agg = DB::table('appointments')->selectRaw('
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS d30,
+                    SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS d7,
+                    SUM(CASE WHEN created_at BETWEEN ? AND ? THEN 1 ELSE 0 END) AS d7_prior,
+                    SUM(CASE WHEN created_at >= ? AND status = ? THEN 1 ELSE 0 END) AS cancelled_7d,
+                    SUM(CASE WHEN created_at BETWEEN ? AND ? AND status = ? THEN 1 ELSE 0 END) AS cancelled_7d_prior,
+                    AVG(CASE WHEN created_at >= ? AND appointment_date IS NOT NULL THEN TIMESTAMPDIFF(HOUR, created_at, appointment_date) ELSE NULL END) AS lead_hours_7d,
+                    AVG(CASE WHEN created_at BETWEEN ? AND ? AND appointment_date IS NOT NULL THEN TIMESTAMPDIFF(HOUR, created_at, appointment_date) ELSE NULL END) AS lead_hours_7d_prior,
+                    COUNT(DISTINCT CASE WHEN created_at >= ? THEN customer_email END) AS customers_7d,
+                    COUNT(DISTINCT CASE WHEN created_at BETWEEN ? AND ? THEN customer_email END) AS customers_7d_prior,
+                    SUM(CASE WHEN created_at >= ? THEN ROUND(COALESCE(service_price,0) * 100) ELSE 0 END) AS revenue_7d_cents,
+                    SUM(CASE WHEN created_at BETWEEN ? AND ? THEN ROUND(COALESCE(service_price,0) * 100) ELSE 0 END) AS revenue_7d_prior_cents,
+                    MAX(created_at) AS last_at
+                ', [
+                    $d30, $d7,
+                    $d14, $d7, // d7_prior window
+                    $d7, 'cancelled',
+                    $d14, $d7, 'cancelled',
+                    $d7,
+                    $d14, $d7,
+                    $d7,
+                    $d14, $d7,
+                    $d7,
+                    $d14, $d7,
+                ])->first();
 
-                // Daily buckets for this tenant in the window, summed into
-                // the shared cross-tenant map.
+                $total = (int) ($agg->total ?? 0);
+                $t30   = (int) ($agg->d30 ?? 0);
+                $t7    = (int) ($agg->d7 ?? 0);
+                $t7p   = (int) ($agg->d7_prior ?? 0);
+                $lastAt = $agg->last_at;
+
+                // Daily buckets for the 90-day series.
                 $rows = DB::table('appointments')
                     ->where('created_at', '>=', $since)
                     ->selectRaw('DATE(created_at) as d, COUNT(*) as c')
@@ -82,11 +115,20 @@ class SnapshotPlatformDashboard extends Command
                 if ($t7 > 0) $activeTenants++;
 
                 $perTenant[] = [
-                    'id'              => (string) $tenant->id,
-                    'bookings_total'  => $total,
-                    'bookings_30d'    => $t30,
-                    'bookings_7d'     => $t7,
-                    'last_booking_at' => $lastAt
+                    'id'                     => (string) $tenant->id,
+                    'bookings_total'         => $total,
+                    'bookings_30d'           => $t30,
+                    'bookings_7d'            => $t7,
+                    'bookings_prior_7d'      => $t7p,
+                    'cancelled_7d'           => (int) ($agg->cancelled_7d ?? 0),
+                    'cancelled_prior_7d'     => (int) ($agg->cancelled_7d_prior ?? 0),
+                    'customers_7d'           => (int) ($agg->customers_7d ?? 0),
+                    'customers_prior_7d'     => (int) ($agg->customers_7d_prior ?? 0),
+                    'lead_hours_7d'          => $agg->lead_hours_7d !== null ? round((float) $agg->lead_hours_7d, 1) : null,
+                    'lead_hours_prior_7d'    => $agg->lead_hours_7d_prior !== null ? round((float) $agg->lead_hours_7d_prior, 1) : null,
+                    'revenue_7d_cents'       => (int) ($agg->revenue_7d_cents ?? 0),
+                    'revenue_prior_7d_cents' => (int) ($agg->revenue_7d_prior_cents ?? 0),
+                    'last_booking_at'        => $lastAt
                         ? \Illuminate\Support\Carbon::parse($lastAt)->toIso8601String()
                         : null,
                 ];

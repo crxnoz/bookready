@@ -259,29 +259,40 @@ class AdminDashboardController extends Controller
                 $isActive    = $t->subscription_state === 'active';
 
                 return [
-                    'id'              => (string) $t->id,
-                    'plan'            => $t->plan,
-                    'state'           => $t->subscription_state,
-                    'created_at'      => $t->created_at?->toIso8601String(),
-                    'owner_name'      => $owner?->name,
-                    'owner_email'     => $owner?->email,
-                    'mrr_cents'       => $isActive ? $this->planMonthlyCents($t->plan) : 0,
-                    'bookings_total'  => (int) ($agg['bookings_total'] ?? 0),
-                    'bookings_30d'    => $bookings30d,
-                    'bookings_7d'     => $bookings7d,
-                    'last_booking_at' => $lastAt,
-                    'tier'            => $this->activityTier($lastAt),
+                    'id'                  => (string) $t->id,
+                    'plan'                => $t->plan,
+                    'state'               => $t->subscription_state,
+                    'created_at'          => $t->created_at?->toIso8601String(),
+                    'owner_name'          => $owner?->name,
+                    'owner_email'         => $owner?->email,
+                    'mrr_cents'           => $isActive ? $this->planMonthlyCents($t->plan) : 0,
+                    'bookings_total'      => (int) ($agg['bookings_total'] ?? 0),
+                    'bookings_30d'        => $bookings30d,
+                    'bookings_7d'         => $bookings7d,
+                    'bookings_prior_7d'   => (int) ($agg['bookings_prior_7d'] ?? 0),
+                    'cancelled_7d'        => (int) ($agg['cancelled_7d'] ?? 0),
+                    'customers_7d'        => (int) ($agg['customers_7d'] ?? 0),
+                    'revenue_7d_cents'    => (int) ($agg['revenue_7d_cents'] ?? 0),
+                    'last_booking_at'     => $lastAt,
+                    'tier'                => $this->activityTier($lastAt),
                 ];
             })->values();
 
-            // Top tenants by 30-day booking volume (drop zeros).
+            // Platform KPIs — sum/average across all tenants for both
+            // the current 7d window and the prior 7d (for WoW deltas).
+            $kpis = $this->computePlatformKpis($perTenant);
+
+            // Top tenants by 30-day booking volume (drop zeros). WoW delta
+            // chip alongside the count.
             $topTenants = $rows
                 ->filter(fn ($r) => $r['bookings_30d'] > 0)
                 ->sortByDesc('bookings_30d')
                 ->take(8)
                 ->map(fn ($r) => [
-                    'id'           => $r['id'],
-                    'bookings_30d' => $r['bookings_30d'],
+                    'id'                => $r['id'],
+                    'bookings_30d'      => $r['bookings_30d'],
+                    'bookings_7d'       => $r['bookings_7d'],
+                    'bookings_prior_7d' => $r['bookings_prior_7d'],
                 ])
                 ->values();
 
@@ -297,6 +308,7 @@ class AdminDashboardController extends Controller
                 'snapshot_date'  => $snapDate->toDateString(),
                 'stale'          => $stale,
                 'platform'       => $data['platform'] ?? null,
+                'kpis'           => $kpis,
                 'daily_bookings' => $data['daily_bookings'] ?? [],
                 'top_tenants'    => $topTenants,
                 'heatmap'        => $heatmap,
@@ -321,6 +333,78 @@ class AdminDashboardController extends Controller
         if ($last->gte(now()->subDays(7)))  return 'alive';
         if ($last->gte(now()->subDays(30))) return 'slowing';
         return 'dormant';
+    }
+
+    /**
+     * Roll per-tenant snapshot aggregates up into platform-wide KPIs for
+     * the activity dashboard, with both current and prior-7d values for
+     * WoW delta arrows.
+     *
+     * Honest math note: distinct customers across tenants are SUMMED
+     * (not deduped) because customer_email is per-tenant — the same
+     * person booking at two tenants would count twice. In practice
+     * tenants don't share customers and this is fine for trending.
+     *
+     * Lead time is a WEIGHTED average across tenants (weighted by their
+     * 7d booking count) so a tiny tenant with one weird outlier booking
+     * can't dominate the platform number.
+     */
+    private function computePlatformKpis(\Illuminate\Support\Collection $perTenant): array
+    {
+        $sum = function (string $key) use ($perTenant): int {
+            return (int) $perTenant->sum(fn ($t) => (int) ($t[$key] ?? 0));
+        };
+
+        $bookings7d        = $sum('bookings_7d');
+        $bookingsPrior7d   = $sum('bookings_prior_7d');
+        $cancelled7d       = $sum('cancelled_7d');
+        $cancelledPrior7d  = $sum('cancelled_prior_7d');
+        $customers7d       = $sum('customers_7d');
+        $customersPrior7d  = $sum('customers_prior_7d');
+        $revenue7d         = $sum('revenue_7d_cents');
+        $revenuePrior7d    = $sum('revenue_prior_7d_cents');
+
+        $activeTenants7d      = $perTenant->filter(fn ($t) => (int) ($t['bookings_7d'] ?? 0) > 0)->count();
+        $activeTenantsPrior7d = $perTenant->filter(fn ($t) => (int) ($t['bookings_prior_7d'] ?? 0) > 0)->count();
+
+        // Weighted-average lead time across tenants.
+        $weightedLead = function (string $hourKey, string $weightKey) use ($perTenant): ?float {
+            $totalW = 0;
+            $weighted = 0.0;
+            foreach ($perTenant as $t) {
+                $h = $t[$hourKey] ?? null;
+                $w = (int) ($t[$weightKey] ?? 0);
+                if ($h === null || $w <= 0) continue;
+                $weighted += ((float) $h) * $w;
+                $totalW   += $w;
+            }
+            return $totalW > 0 ? round($weighted / $totalW, 1) : null;
+        };
+
+        $leadHours7d       = $weightedLead('lead_hours_7d',       'bookings_7d');
+        $leadHoursPrior7d  = $weightedLead('lead_hours_prior_7d', 'bookings_prior_7d');
+
+        $cancellationPct = $bookings7d > 0
+            ? round($cancelled7d / $bookings7d * 100, 1)
+            : null;
+        $cancellationPctPrior = $bookingsPrior7d > 0
+            ? round($cancelledPrior7d / $bookingsPrior7d * 100, 1)
+            : null;
+
+        return [
+            'bookings_7d'                 => $bookings7d,
+            'bookings_prior_7d'           => $bookingsPrior7d,
+            'active_tenants_7d'           => $activeTenants7d,
+            'active_tenants_prior_7d'     => $activeTenantsPrior7d,
+            'cancellation_pct_7d'         => $cancellationPct,
+            'cancellation_pct_prior_7d'   => $cancellationPctPrior,
+            'lead_hours_7d'               => $leadHours7d,
+            'lead_hours_prior_7d'         => $leadHoursPrior7d,
+            'customers_7d'                => $customers7d,
+            'customers_prior_7d'          => $customersPrior7d,
+            'revenue_7d_cents'            => $revenue7d,
+            'revenue_prior_7d_cents'      => $revenuePrior7d,
+        ];
     }
 
     /**

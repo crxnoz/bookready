@@ -1,8 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { AlertCircle, Loader2 } from 'lucide-react'
-import type { AdminDashboardTrends, ActivityTier } from '@/lib/api'
+import {
+  AlertCircle, Loader2, ArrowUpRight, ArrowDownRight, Minus,
+  Calendar, Users, XCircle, Clock,
+} from 'lucide-react'
+import type { AdminDashboardTrends, AdminActivityKpis, ActivityTier } from '@/lib/api'
 import { ChartHover } from './ChartHover'
 import { cn } from '@/lib/cn'
 
@@ -81,6 +84,10 @@ export default function DashboardTrends({
         </div>
       )}
 
+      {trends && trends.snapshot_date && trends.kpis && (
+        <KpiBar kpis={trends.kpis} />
+      )}
+
       {trends && trends.snapshot_date && (
         <>
           {/* Platform booking volume */}
@@ -127,6 +134,137 @@ function Stat({ label, value }: { label: string; value: number | undefined }) {
       <p className="text-[10px] tracking-[0.1em] uppercase text-muted-text mt-1">{label}</p>
     </div>
   )
+}
+
+// ── KPI bar (top of /admin/activity) ──────────────────────────────────────────
+
+function KpiBar({ kpis }: { kpis: AdminActivityKpis }) {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+      <KpiCard
+        icon={Calendar}
+        label="Bookings (7d)"
+        value={kpis.bookings_7d.toLocaleString()}
+        delta={pctDelta(kpis.bookings_7d, kpis.bookings_prior_7d)}
+        sub={`prior 7d: ${kpis.bookings_prior_7d.toLocaleString()}`}
+      />
+      <KpiCard
+        icon={Users}
+        label="Active tenants (7d)"
+        value={kpis.active_tenants_7d.toLocaleString()}
+        delta={pctDelta(kpis.active_tenants_7d, kpis.active_tenants_prior_7d)}
+        sub={`prior 7d: ${kpis.active_tenants_prior_7d.toLocaleString()}`}
+      />
+      <KpiCard
+        icon={XCircle}
+        label="Cancellation rate"
+        value={fmtPct(kpis.cancellation_pct_7d)}
+        // Lower is better — flip the tone.
+        delta={pctDelta(kpis.cancellation_pct_7d, kpis.cancellation_pct_prior_7d, true)}
+        sub={`prior: ${fmtPct(kpis.cancellation_pct_prior_7d)}`}
+      />
+      <KpiCard
+        icon={Clock}
+        label="Avg lead time"
+        value={fmtHours(kpis.lead_hours_7d)}
+        // Higher lead time = customers booking further out = neutral/positive.
+        // Treat as neutral so no green/red, just an arrow.
+        delta={pctDelta(kpis.lead_hours_7d, kpis.lead_hours_prior_7d)}
+        sub={`prior: ${fmtHours(kpis.lead_hours_prior_7d)}`}
+      />
+    </div>
+  )
+}
+
+interface DeltaInfo {
+  /** ↑ ↓ → ; null if not computable (e.g. divide by 0 with prior=0). */
+  direction: 'up' | 'down' | 'flat' | null
+  /** Tone applied to the chip: good (green), bad (red), neutral (gray). */
+  tone:      'good' | 'bad' | 'neutral'
+  /** Pre-formatted "+12%" / "−5%" / "—". */
+  label:     string
+}
+
+/**
+ * Compute a directional + tonal delta from two numbers. `lowerIsBetter`
+ * flips the tone so e.g. a rising cancellation rate is BAD not good.
+ * When the prior was zero (no baseline), there's no meaningful percent —
+ * we return "new" without a tone.
+ */
+function pctDelta(current: number | null, prior: number | null, lowerIsBetter = false): DeltaInfo {
+  if (current === null && prior === null) return { direction: null, tone: 'neutral', label: '—' }
+  if (prior === null || prior === 0) {
+    return current && current > 0
+      ? { direction: 'up', tone: lowerIsBetter ? 'bad' : 'good', label: 'new' }
+      : { direction: 'flat', tone: 'neutral', label: '—' }
+  }
+  if (current === null) return { direction: 'flat', tone: 'neutral', label: '—' }
+  const pct = ((current - prior) / prior) * 100
+  const direction: DeltaInfo['direction'] = pct > 1 ? 'up' : pct < -1 ? 'down' : 'flat'
+  const tone: DeltaInfo['tone'] = direction === 'flat'
+    ? 'neutral'
+    : (direction === 'up') === !lowerIsBetter ? 'good' : 'bad'
+  const sign = pct >= 0 ? '+' : '−'
+  const formatted = `${sign}${Math.abs(pct).toFixed(pct > 99 || pct < -99 ? 0 : 1)}%`
+  return { direction, tone, label: formatted }
+}
+
+const DELTA_TONE: Record<DeltaInfo['tone'], string> = {
+  good:    'text-[#0f6f3d]',
+  bad:     'text-[#b42828]',
+  neutral: 'text-muted-text',
+}
+
+function DeltaChip({ delta, compact }: { delta: DeltaInfo; compact?: boolean }) {
+  const Icon = delta.direction === 'up' ? ArrowUpRight
+    : delta.direction === 'down' ? ArrowDownRight
+    : Minus
+  return (
+    <span className={cn(
+      'inline-flex items-center gap-0.5 font-semibold tabular-nums',
+      compact ? 'text-[10px]' : 'text-[11px]',
+      DELTA_TONE[delta.tone],
+    )}>
+      <Icon size={compact ? 9 : 11} />
+      {delta.label}
+    </span>
+  )
+}
+
+function KpiCard({
+  icon: Icon, label, value, delta, sub,
+}: {
+  icon:  React.ElementType
+  label: string
+  value: string
+  delta: DeltaInfo
+  sub:   string
+}) {
+  return (
+    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">{label}</p>
+        <Icon size={14} className="text-muted-text" />
+      </div>
+      <p className="text-2xl font-bold text-near-black tracking-tight mt-2 leading-none">{value}</p>
+      <div className="flex items-baseline gap-2 mt-2">
+        <DeltaChip delta={delta} />
+        <span className="text-[10px] text-muted-text">{sub}</span>
+      </div>
+    </div>
+  )
+}
+
+function fmtPct(v: number | null): string {
+  if (v === null) return '—'
+  return v.toFixed(v >= 10 ? 0 : 1) + '%'
+}
+
+function fmtHours(v: number | null): string {
+  if (v === null) return '—'
+  if (v < 1)   return Math.round(v * 60) + 'm'
+  if (v < 48)  return v.toFixed(1) + 'h'
+  return Math.round(v / 24) + 'd'
 }
 
 // ── Booking volume area chart ─────────────────────────────────────────────────
@@ -184,26 +322,32 @@ function TopTenants({ rows }: { rows: AdminDashboardTrends['top_tenants'] }) {
   const max = Math.max(...rows.map(r => r.bookings_30d), 1)
   return (
     <div className="space-y-2">
-      {rows.map(r => (
-        <div key={r.id} className="flex items-center gap-2">
-          <Link
-            href={`/admin/tenants/${r.id}`}
-            className="text-[11px] font-semibold text-near-black w-28 truncate hover:underline flex-shrink-0"
-            title={r.id}
-          >
-            {r.id}
-          </Link>
-          <div className="flex-1 h-5 bg-cream relative overflow-hidden">
-            <div
-              className="absolute inset-y-0 left-0 bg-[#B98AA8]"
-              style={{ width: `${(r.bookings_30d / max) * 100}%` }}
-            />
+      {rows.map(r => {
+        const delta = pctDelta(r.bookings_7d, r.bookings_prior_7d)
+        return (
+          <div key={r.id} className="flex items-center gap-2">
+            <Link
+              href={`/admin/tenants/${r.id}`}
+              className="text-[11px] font-semibold text-near-black w-28 truncate hover:underline flex-shrink-0"
+              title={r.id}
+            >
+              {r.id}
+            </Link>
+            <div className="flex-1 h-5 bg-cream relative overflow-hidden">
+              <div
+                className="absolute inset-y-0 left-0 bg-[#B98AA8]"
+                style={{ width: `${(r.bookings_30d / max) * 100}%` }}
+              />
+            </div>
+            <span className="text-[11px] font-semibold text-near-black w-8 text-right flex-shrink-0">
+              {r.bookings_30d}
+            </span>
+            <span className="w-14 text-right flex-shrink-0" title="7d vs prior 7d">
+              <DeltaChip delta={delta} compact />
+            </span>
           </div>
-          <span className="text-[11px] font-semibold text-near-black w-8 text-right flex-shrink-0">
-            {r.bookings_30d}
-          </span>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

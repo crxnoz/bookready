@@ -840,18 +840,38 @@ export async function getAdminDashboardSummary(): Promise<AdminDashboardSummary>
 export type ActivityTier = 'alive' | 'slowing' | 'dormant'
 
 export interface AdminTenantTrendRow {
-  id:              string
-  plan:            string | null
-  state:           string | null
-  created_at:      string | null
-  owner_name:      string | null
-  owner_email:     string | null
-  mrr_cents:       number
-  bookings_total:  number
-  bookings_30d:    number
-  bookings_7d:     number
-  last_booking_at: string | null
-  tier:            ActivityTier
+  id:                  string
+  plan:                string | null
+  state:               string | null
+  created_at:          string | null
+  owner_name:          string | null
+  owner_email:         string | null
+  mrr_cents:           number
+  bookings_total:      number
+  bookings_30d:        number
+  bookings_7d:         number
+  bookings_prior_7d:   number
+  cancelled_7d:        number
+  customers_7d:        number
+  revenue_7d_cents:    number
+  last_booking_at:     string | null
+  tier:                ActivityTier
+}
+
+/** Platform-wide activity KPIs with prior-period values for WoW deltas. */
+export interface AdminActivityKpis {
+  bookings_7d:                 number
+  bookings_prior_7d:           number
+  active_tenants_7d:           number
+  active_tenants_prior_7d:     number
+  cancellation_pct_7d:         number | null
+  cancellation_pct_prior_7d:   number | null
+  lead_hours_7d:               number | null
+  lead_hours_prior_7d:         number | null
+  customers_7d:                number
+  customers_prior_7d:          number
+  revenue_7d_cents:            number
+  revenue_prior_7d_cents:      number
 }
 
 export interface AdminDashboardTrends {
@@ -867,8 +887,9 @@ export interface AdminDashboardTrends {
     tenants_scanned:     number
     tenants_failed:      number
   } | null
+  kpis:           AdminActivityKpis | null
   daily_bookings: { date: string; count: number }[]
-  top_tenants:    { id: string; bookings_30d: number }[]
+  top_tenants:    { id: string; bookings_30d: number; bookings_7d: number; bookings_prior_7d: number }[]
   heatmap:        { id: string; tier: ActivityTier; bookings_30d: number; last_booking_at: string | null }[]
   tenants:        AdminTenantTrendRow[]
   computed_at:    string
