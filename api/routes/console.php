@@ -71,3 +71,12 @@ Schedule::command('admin:health-tick')
     ->everyFifteenMinutes()
     ->withoutOverlapping(5)
     ->runInBackground();
+
+// Daily activity digest at 14:00 UTC (~10am ET). Headline KPIs + top
+// movers + anomalies. Silent on flat days so a genuinely quiet week
+// never adds noise — use --force to send anyway. Reuses the same
+// trends payload the dashboard reads.
+Schedule::command('admin:activity-digest')
+    ->dailyAt('14:00')
+    ->withoutOverlapping(10)
+    ->runInBackground();
