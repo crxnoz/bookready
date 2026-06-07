@@ -45,3 +45,21 @@ Schedule::call(function () {
         json_encode(['at' => now()->toIso8601String()]),
     );
 })->everyMinute()->name('scheduler-tick')->withoutOverlapping();
+
+// Immediate alert when any health probe goes BAD. Runs every 5 min; the
+// command itself enforces a 6h-per-probe cooldown so the same condition
+// can't flood the inbox. Warn-level probes are NOT alerted here — they
+// land in the daily digest below.
+Schedule::command('admin:health-alert')
+    ->everyFiveMinutes()
+    ->withoutOverlapping(5)
+    ->runInBackground();
+
+// Daily system-health digest at 09:00 UTC (~5am ET). Lists everything
+// currently warn OR bad, plus a "core signals" footer (scheduler tick,
+// last deploy, snapshot freshness). Silent on totally-clean days so a
+// quiet week never adds noise — use --force to send anyway.
+Schedule::command('admin:health-digest')
+    ->dailyAt('09:00')
+    ->withoutOverlapping(10)
+    ->runInBackground();

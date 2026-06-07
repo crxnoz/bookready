@@ -501,33 +501,42 @@ class AdminDashboardController extends Controller
         $fresh = request()->boolean('fresh');
         if ($fresh) Cache::forget('admin:dashboard:health:v2');
 
-        $payload = Cache::remember('admin:dashboard:health:v2', 120, function () {
-            return [
-                'sections' => [
-                    'reliability' => [
-                        'api_errors' => $this->probeApiErrors(),
-                        'database'   => $this->probeDatabase(),
-                        'disk'       => $this->probeDisk(),
-                        'ssl'        => $this->probeSsl(),
-                    ],
-                    'background' => [
-                        'queue'              => $this->probeQueue(),
-                        'snapshot_freshness' => $this->probeSnapshotFreshness(),
-                        'scheduler'          => $this->probeScheduler(),
-                    ],
-                    'reachability' => [
-                        'public_site' => $this->probePublicSite(),
-                        'mailer'      => $this->probeMailer(),
-                    ],
-                    'deploy' => [
-                        'last_deploy' => $this->probeDeploy(),
-                    ],
-                ],
-                'computed_at' => now()->toIso8601String(),
-            ];
-        });
+        $payload = Cache::remember('admin:dashboard:health:v2', 120, fn () => $this->getHealthSnapshot());
 
         return response()->json($payload);
+    }
+
+    /**
+     * Pure health snapshot — same shape as /dashboard/health, but bypasses
+     * caching so console commands (admin:health-alert, admin:health-digest)
+     * always see live probe state. Public so both the cached HTTP endpoint
+     * and the scheduled alerters can share probe code.
+     */
+    public function getHealthSnapshot(): array
+    {
+        return [
+            'sections' => [
+                'reliability' => [
+                    'api_errors' => $this->probeApiErrors(),
+                    'database'   => $this->probeDatabase(),
+                    'disk'       => $this->probeDisk(),
+                    'ssl'        => $this->probeSsl(),
+                ],
+                'background' => [
+                    'queue'              => $this->probeQueue(),
+                    'snapshot_freshness' => $this->probeSnapshotFreshness(),
+                    'scheduler'          => $this->probeScheduler(),
+                ],
+                'reachability' => [
+                    'public_site' => $this->probePublicSite(),
+                    'mailer'      => $this->probeMailer(),
+                ],
+                'deploy' => [
+                    'last_deploy' => $this->probeDeploy(),
+                ],
+            ],
+            'computed_at' => now()->toIso8601String(),
+        ];
     }
 
     /**
