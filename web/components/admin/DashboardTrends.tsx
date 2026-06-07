@@ -5,8 +5,11 @@ import {
   AlertCircle, Loader2, ArrowUpRight, ArrowDownRight, Minus, ChevronRight,
   Calendar, Users, XCircle, Clock, TrendingUp, DollarSign,
 } from 'lucide-react'
-import type { AdminDashboardTrends, AdminActivityKpis, ActivityTier } from '@/lib/api'
+import type {
+  AdminDashboardTrends, AdminActivityKpis, ActivityKpiHistoryPoint, ActivityTier,
+} from '@/lib/api'
 import { ChartHover } from './ChartHover'
+import { MiniSparkline } from './MiniSparkline'
 import { cn } from '@/lib/cn'
 
 /**
@@ -85,7 +88,7 @@ export default function DashboardTrends({
       )}
 
       {trends && trends.snapshot_date && trends.kpis && (
-        <KpiBar kpis={trends.kpis} />
+        <KpiBar kpis={trends.kpis} history={trends.kpi_history ?? []} />
       )}
 
       {trends && trends.snapshot_date && <DrillInNav />}
@@ -140,7 +143,17 @@ function Stat({ label, value }: { label: string; value: number | undefined }) {
 
 // ── KPI bar (top of /admin/activity) ──────────────────────────────────────────
 
-function KpiBar({ kpis }: { kpis: AdminActivityKpis }) {
+function KpiBar({
+  kpis, history,
+}: { kpis: AdminActivityKpis; history: ActivityKpiHistoryPoint[] }) {
+  // Extract per-KPI series from the history. Older snapshots may be
+  // missing newer fields — they come through as null and the sparkline
+  // gaps over them.
+  const bookingsSeries = history.map(h => h.bookings_7d ?? null)
+  const activeSeries   = history.map(h => h.active_tenants_7d ?? null)
+  const cancelSeries   = history.map(h => h.cancellation_pct  ?? null)
+  const leadSeries     = history.map(h => h.lead_hours        ?? null)
+
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
       <KpiCard
@@ -149,6 +162,8 @@ function KpiBar({ kpis }: { kpis: AdminActivityKpis }) {
         value={kpis.bookings_7d.toLocaleString()}
         delta={pctDelta(kpis.bookings_7d, kpis.bookings_prior_7d)}
         sub={`prior 7d: ${kpis.bookings_prior_7d.toLocaleString()}`}
+        sparkValues={bookingsSeries}
+        sparkColor="#7A5B86"
       />
       <KpiCard
         icon={Users}
@@ -156,6 +171,8 @@ function KpiBar({ kpis }: { kpis: AdminActivityKpis }) {
         value={kpis.active_tenants_7d.toLocaleString()}
         delta={pctDelta(kpis.active_tenants_7d, kpis.active_tenants_prior_7d)}
         sub={`prior 7d: ${kpis.active_tenants_prior_7d.toLocaleString()}`}
+        sparkValues={activeSeries}
+        sparkColor="#7A5B86"
       />
       <KpiCard
         icon={XCircle}
@@ -164,6 +181,8 @@ function KpiBar({ kpis }: { kpis: AdminActivityKpis }) {
         // Lower is better — flip the tone.
         delta={pctDelta(kpis.cancellation_pct_7d, kpis.cancellation_pct_prior_7d, true)}
         sub={`prior: ${fmtPct(kpis.cancellation_pct_prior_7d)}`}
+        sparkValues={cancelSeries}
+        sparkColor="#b42828"
       />
       <KpiCard
         icon={Clock}
@@ -173,6 +192,8 @@ function KpiBar({ kpis }: { kpis: AdminActivityKpis }) {
         // Treat as neutral so no green/red, just an arrow.
         delta={pctDelta(kpis.lead_hours_7d, kpis.lead_hours_prior_7d)}
         sub={`prior: ${fmtHours(kpis.lead_hours_prior_7d)}`}
+        sparkValues={leadSeries}
+        sparkColor="#7A5B86"
       />
     </div>
   )
@@ -234,13 +255,15 @@ function DeltaChip({ delta, compact }: { delta: DeltaInfo; compact?: boolean }) 
 }
 
 function KpiCard({
-  icon: Icon, label, value, delta, sub,
+  icon: Icon, label, value, delta, sub, sparkValues, sparkColor,
 }: {
-  icon:  React.ElementType
-  label: string
-  value: string
-  delta: DeltaInfo
-  sub:   string
+  icon:        React.ElementType
+  label:       string
+  value:       string
+  delta:       DeltaInfo
+  sub:         string
+  sparkValues: (number | null)[]
+  sparkColor:  string
 }) {
   return (
     <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
@@ -252,6 +275,13 @@ function KpiCard({
       <div className="flex items-baseline gap-2 mt-2">
         <DeltaChip delta={delta} />
         <span className="text-[10px] text-muted-text">{sub}</span>
+      </div>
+      <div className="mt-2" title="Last 30 daily snapshots">
+        <MiniSparkline
+          values={sparkValues}
+          color={sparkColor}
+          placeholder={`Building 30d history (${sparkValues.filter(v => v !== null).length} pts)`}
+        />
       </div>
     </div>
   )
@@ -329,41 +359,91 @@ function BookingVolumeChart({ series }: { series: AdminDashboardTrends['daily_bo
   const innerW = W - padding.left - padding.right
   const innerH = H - padding.top - padding.bottom
   const n = series.length
-  const max = Math.max(...series.map(p => p.count), 1)
 
   if (n === 0) {
     return <div className="h-[120px] flex items-center justify-center text-[12px] text-muted-text">No data.</div>
   }
 
-  const x = (i: number) => padding.left + (n <= 1 ? innerW / 2 : innerW * (i / (n - 1)))
+  // If we have ≥160 points (snapshot bumped to 180-day window), split
+  // into current 90d + prior 90d for the WoW overlay. Older snapshots
+  // with only ~90 points render single-series only.
+  const SPLIT_THRESHOLD = 160
+  const hasOverlay = n >= SPLIT_THRESHOLD
+  // currentLen = ceil(n/2). priorLen mirrors but won't overshoot.
+  const currentLen = Math.ceil(n / 2)
+  const current = hasOverlay ? series.slice(n - currentLen) : series
+  const prior   = hasOverlay ? series.slice(0, n - currentLen).slice(-currentLen) : []
+
+  const cN = current.length
+  const maxCurrent = Math.max(1, ...current.map(p => p.count))
+  const maxPrior   = prior.length ? Math.max(1, ...prior.map(p => p.count)) : 0
+  const max = Math.max(maxCurrent, maxPrior)
+
+  // Both series are plotted on the same 0..cN-1 x scale so prior week
+  // sits directly behind the current week visually.
+  const x = (i: number) => padding.left + (cN <= 1 ? innerW / 2 : innerW * (i / (cN - 1)))
   const y = (v: number) => padding.top + innerH * (1 - v / max)
-
-  const top = series.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(p.count).toFixed(1)}`).join(' ')
   const baseY = padding.top + innerH
-  const area = `${top} L${x(n - 1).toFixed(1)},${baseY.toFixed(1)} L${x(0).toFixed(1)},${baseY.toFixed(1)} Z`
 
-  const hoverPoints = series.map(p => ({
+  const curPath = current.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(p.count).toFixed(1)}`).join(' ')
+  const curArea = `${curPath} L${x(cN - 1).toFixed(1)},${baseY.toFixed(1)} L${x(0).toFixed(1)},${baseY.toFixed(1)} Z`
+
+  const priorPath = hasOverlay
+    ? prior.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(p.count).toFixed(1)}`).join(' ')
+    : ''
+
+  // Hover surface uses CURRENT-period dates but reports both values so
+  // the operator can compare "today vs same day last quarter" at a glance.
+  const hoverPoints = current.map((p, i) => ({
     date: p.date,
     y:    y(p.count),
-    rows: [{ label: 'Bookings', value: String(p.count) }],
+    rows: hasOverlay && prior[i] !== undefined
+      ? [
+          { label: 'Current', value: String(p.count) },
+          { label: 'Prior',   value: String(prior[i].count) },
+        ]
+      : [{ label: 'Bookings', value: String(p.count) }],
   }))
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" preserveAspectRatio="none">
-      {[0.5].map(f => (
-        <line key={f}
-          x1={padding.left} x2={W - padding.right}
-          y1={padding.top + innerH * f} y2={padding.top + innerH * f}
-          stroke="rgba(18,18,18,0.06)" strokeWidth="1" />
-      ))}
-      <path d={area} fill="rgba(18,18,18,0.06)" />
-      <path d={top} fill="none" stroke="#121212" strokeWidth="1.5" strokeLinejoin="round" />
-      <ChartHover
-        width={W} height={H} padding={padding}
-        points={hoverPoints}
-        primaryColor="#121212"
-      />
-    </svg>
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" preserveAspectRatio="none">
+        {[0.5].map(f => (
+          <line key={f}
+            x1={padding.left} x2={W - padding.right}
+            y1={padding.top + innerH * f} y2={padding.top + innerH * f}
+            stroke="rgba(18,18,18,0.06)" strokeWidth="1" />
+        ))}
+        {/* Prior period (faint dashed line behind). */}
+        {priorPath && (
+          <path
+            d={priorPath} fill="none"
+            stroke="rgba(18,18,18,0.30)" strokeWidth="1" strokeLinejoin="round"
+            strokeDasharray="3 3"
+          />
+        )}
+        {/* Current period. */}
+        <path d={curArea} fill="rgba(18,18,18,0.06)" />
+        <path d={curPath} fill="none" stroke="#121212" strokeWidth="1.5" strokeLinejoin="round" />
+        <ChartHover
+          width={W} height={H} padding={padding}
+          points={hoverPoints}
+          primaryColor="#121212"
+        />
+      </svg>
+      {hasOverlay && (
+        <div className="flex items-center gap-4 mt-2 text-[10px] text-muted-text">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="w-4 h-0.5 bg-near-black" />
+            Current 90 days
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block w-4 h-0 border-t border-dashed border-near-black/50" />
+            Prior 90 days
+          </span>
+        </div>
+      )}
+    </div>
   )
 }
 

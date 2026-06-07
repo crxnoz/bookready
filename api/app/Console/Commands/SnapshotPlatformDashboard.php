@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Schema;
  */
 class SnapshotPlatformDashboard extends Command
 {
-    protected $signature = 'admin:snapshot {--days=90 : Daily-series look-back window}';
+    protected $signature = 'admin:snapshot {--days=180 : Daily-series look-back window (≥180 enables the WoW overlay on the activity volume chart)}';
 
     protected $description = 'Aggregate cross-tenant booking metrics into a central dashboard snapshot.';
 

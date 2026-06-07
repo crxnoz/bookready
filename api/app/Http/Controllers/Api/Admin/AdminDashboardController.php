@@ -282,6 +282,12 @@ class AdminDashboardController extends Controller
             // the current 7d window and the prior 7d (for WoW deltas).
             $kpis = $this->computePlatformKpis($perTenant);
 
+            // 30-day history of the same KPIs for the inline sparklines on
+            // each card. Decoded from the last 30 snapshot rows + run
+            // through computePlatformKpis() per row. Bounded work — at our
+            // tenant count this is ~30ms inside the 5min cache window.
+            $kpiHistory = $this->computeKpiHistory();
+
             // Top tenants by 30-day booking volume (drop zeros). WoW delta
             // chip alongside the count.
             $topTenants = $rows
@@ -309,6 +315,7 @@ class AdminDashboardController extends Controller
                 'stale'          => $stale,
                 'platform'       => $data['platform'] ?? null,
                 'kpis'           => $kpis,
+                'kpi_history'    => $kpiHistory,
                 'daily_bookings' => $data['daily_bookings'] ?? [],
                 'top_tenants'    => $topTenants,
                 'heatmap'        => $heatmap,
@@ -405,6 +412,40 @@ class AdminDashboardController extends Controller
             'revenue_7d_cents'            => $revenue7d,
             'revenue_prior_7d_cents'      => $revenuePrior7d,
         ];
+    }
+
+    /**
+     * 30-day KPI history for the inline sparklines on /admin/activity.
+     *
+     * Reads the last 30 platform_dashboard_snapshots rows, runs each
+     * through computePlatformKpis() (so the math stays identical to
+     * the live KPI bar), returns one row per day. Old snapshots may
+     * lack newer per-tenant fields (cancelled / lead_hours / customers)
+     * — those points come back null and the sparkline interpolates a
+     * "Building history…" placeholder for that metric.
+     */
+    private function computeKpiHistory(): array
+    {
+        $rows = DB::table('platform_dashboard_snapshots')
+            ->orderByDesc('snapshot_date')
+            ->limit(30)
+            ->get(['snapshot_date', 'payload']);
+
+        $history = [];
+        foreach ($rows->reverse()->values() as $row) {
+            $data = json_decode($row->payload, true) ?: [];
+            $per = collect($data['per_tenant'] ?? []);
+            $k = $this->computePlatformKpis($per);
+            $history[] = [
+                'date'              => $row->snapshot_date,
+                'bookings_7d'       => $k['bookings_7d'],
+                'active_tenants_7d' => $k['active_tenants_7d'],
+                'cancellation_pct'  => $k['cancellation_pct_7d'],
+                'lead_hours'        => $k['lead_hours_7d'],
+                'revenue_cents'     => $k['revenue_7d_cents'],
+            ];
+        }
+        return $history;
     }
 
     /**

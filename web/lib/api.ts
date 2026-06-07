@@ -910,6 +910,16 @@ export interface AdminActivityKpis {
   revenue_prior_7d_cents:      number
 }
 
+/** One day of historical KPIs. Older snapshots may be missing newer fields. */
+export interface ActivityKpiHistoryPoint {
+  date:               string
+  bookings_7d:        number
+  active_tenants_7d:  number
+  cancellation_pct:   number | null
+  lead_hours:         number | null
+  revenue_cents:      number
+}
+
 export interface AdminDashboardTrends {
   /** ISO date of the snapshot the data came from; null if none yet. */
   snapshot_date: string | null
@@ -924,6 +934,7 @@ export interface AdminDashboardTrends {
     tenants_failed:      number
   } | null
   kpis:           AdminActivityKpis | null
+  kpi_history:    ActivityKpiHistoryPoint[]
   daily_bookings: { date: string; count: number }[]
   top_tenants:    { id: string; bookings_30d: number; bookings_7d: number; bookings_prior_7d: number }[]
   heatmap:        { id: string; tier: ActivityTier; bookings_30d: number; last_booking_at: string | null }[]
