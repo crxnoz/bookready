@@ -3,7 +3,7 @@
 import { Suspense, useMemo } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { ArrowRight, ArrowLeft } from 'lucide-react'
+import { ArrowRight, ArrowLeft, ExternalLink, Sparkles } from 'lucide-react'
 import { SITE_TEMPLATES } from '@/lib/templates'
 import AuthShell from '@/components/auth/AuthShell'
 
@@ -65,6 +65,33 @@ function TemplateGalleryInner() {
         </p>
       </div>
 
+      {/* Cross-link to the marketing showcase up top — moved out of the
+          footer because users were committing to a template here without
+          ever knowing the deeper preview pages existed. Styled as a
+          featured action so it reads as deliberate, not "fine print". */}
+      <a
+        href="https://mybookready.com/templates"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group flex items-center gap-3 bg-blush border border-[rgba(18,18,18,0.10)] hover:border-near-black p-3.5 mb-3 transition-colors"
+      >
+        <div className="w-9 h-9 flex items-center justify-center bg-white border border-[rgba(18,18,18,0.10)] flex-shrink-0">
+          <Sparkles size={15} className="text-near-black" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[12px] font-bold text-near-black leading-tight">
+            See the full template showcase
+          </p>
+          <p className="text-[11px] text-muted-text mt-0.5">
+            Full previews, screenshots, and demos for every look — on mybookready.com
+          </p>
+        </div>
+        <ExternalLink
+          size={14}
+          className="text-muted-text group-hover:text-near-black flex-shrink-0"
+        />
+      </a>
+
       <div className="space-y-2">
         {SITE_TEMPLATES.map(t => {
           const isCurrent = currentTemplate === t.slug
@@ -108,17 +135,6 @@ function TemplateGalleryInner() {
         })}
       </div>
 
-      <p className="text-[11px] text-muted-text mt-6 text-center">
-        Want more detail on each look?{' '}
-        <a
-          href="https://mybookready.com/templates"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-near-black font-semibold underline underline-offset-2 hover:opacity-75"
-        >
-          See template showcase
-        </a>
-      </p>
     </AuthShell>
   )
 }
