@@ -879,6 +879,19 @@ export default function LushStudioBooking({
                     onClick={() => setCategoryKey(tile.key)}
                     style={{ textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit' }}
                   >
+                    {/* Optional top-banner image — categories make excellent
+                        use of lifestyle photography ("hair color services"
+                        with a real model). Hidden cleanly when image_url
+                        isn't set. */}
+                    {tile.image_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={tile.image_url}
+                        alt=""
+                        className="brk-booking-service-image"
+                        loading="lazy"
+                      />
+                    )}
                     <div className="brk-booking-service-top">
                       <h3>{tile.name}</h3>
                       <span className="brk-booking-price" style={{ fontSize: 11, opacity: 0.75 }}>
@@ -927,6 +940,18 @@ export default function LushStudioBooking({
                       key={s.id}
                       className={`brk-booking-service-card${isSelected ? ' is-selected' : ''}`}
                     >
+                      {/* Top-banner image when an upload exists. Same class
+                          as category tiles so a single CSS rule controls
+                          ratio + bleed across both. */}
+                      {s.image_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={s.image_url}
+                          alt=""
+                          className="brk-booking-service-image"
+                          loading="lazy"
+                        />
+                      )}
                       <div className="brk-booking-service-top">
                         <h3>{s.name}</h3>
                         <span className="brk-booking-price">${Number(s.price).toFixed(2)}</span>
@@ -1012,6 +1037,18 @@ export default function LushStudioBooking({
                         <span className="lush-addon-indicator" aria-hidden="true">
                           {checked && <Check size={13} strokeWidth={3} />}
                         </span>
+                        {/* Optional addon thumbnail (~48px square). Slots
+                            between the checkbox and the text body. Hidden
+                            when image_url isn't set. */}
+                        {addon.image_url && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={addon.image_url}
+                            alt=""
+                            className="lush-addon-thumb"
+                            loading="lazy"
+                          />
+                        )}
                         <span className="lush-addon-body">
                           <span className="lush-addon-head">
                             <span className="lush-addon-name">{addon.name}</span>

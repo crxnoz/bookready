@@ -665,6 +665,16 @@ export const LUSH_CSS = `
   border-color:var(--lush-pink);
   background:var(--lush-pink);
 }
+/* Optional addon thumbnail — slots between the checkbox indicator and
+   the text body when an image_url is set. Square, modest size so a
+   row of addons stays compact and scannable. */
+.lush-addon-thumb {
+  flex-shrink:0;
+  width:48px; height:48px;
+  border-radius:4px;
+  object-fit:cover;
+  background:rgba(var(--lush-pink-rgb),0.06);
+}
 .lush-addon-body { flex:1; min-width:0; }
 .lush-addon-head {
   display:flex; align-items:center; gap:8px; flex-wrap:wrap;
@@ -709,6 +719,22 @@ export const LUSH_CSS = `
   border-radius:6px; padding:18px 18px 16px;
   display:flex; flex-direction:column; gap:8px;
   transition:border-color .2s ease;
+  /* Lets the top-banner image bleed flush to the card edges via the
+     negative margin trick on .brk-booking-service-image. Card-rounded
+     skins (Lush, Opaline, Pétale) still get clean corners. */
+  overflow:hidden;
+}
+/* Top-banner image used by service cards AND category tiles. Aspect-
+   ratio locked so a row of cards stays visually balanced regardless of
+   the underlying photo dimensions. The cancel margin matches the card's
+   18px horizontal padding so the image is edge-to-edge inside the card. */
+.brk-booking-service-image {
+  display:block;
+  width:calc(100% + 36px);
+  margin:-18px -18px 4px;
+  aspect-ratio:16 / 9;
+  object-fit:cover;
+  background:rgba(var(--lush-pink-rgb),0.06);
 }
 .brk-booking-service-card:hover { border-color:var(--lush-pink); }
 .brk-booking-service-card.is-selected {
