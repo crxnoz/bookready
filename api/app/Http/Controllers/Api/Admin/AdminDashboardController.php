@@ -9,6 +9,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Artisan;
 
 /**
  * BookReady operator admin — platform analytics dashboard.
@@ -483,24 +486,98 @@ class AdminDashboardController extends Controller
     /**
      * GET /api/v1/admin/dashboard/health
      *
-     * Phase 3 — operational health. Four independently-guarded probes so
-     * one failure (a missing log, a down mailer) degrades that one metric
-     * rather than blanking the card. Cached 120s.
+     * Operational health — every probe is independently guarded so one
+     * failure (a missing log, a slow tenant DB) degrades that one tile
+     * rather than blanking the card. Cached 120s; bypass with ?fresh=1
+     * from the dashboard's "Re-probe" quick action.
+     *
+     * Each probe returns the same envelope:
+     *   { status, value, note, runbook? }
+     * where status ∈ ok|warn|bad|unknown and `runbook` is a one-line
+     * "first thing to check" shown in the UI when status !== 'ok'.
      */
     public function health(): JsonResponse
     {
-        $payload = Cache::remember('admin:dashboard:health:v1', 120, function () {
+        $fresh = request()->boolean('fresh');
+        if ($fresh) Cache::forget('admin:dashboard:health:v2');
+
+        $payload = Cache::remember('admin:dashboard:health:v2', 120, function () {
             return [
-                'api_errors' => $this->probeApiErrors(),
-                'queue'      => $this->probeQueue(),
-                'deploy'     => $this->probeDeploy(),
-                'mailer'     => $this->probeMailer(),
-                'computed_at'=> now()->toIso8601String(),
+                'sections' => [
+                    'reliability' => [
+                        'api_errors' => $this->probeApiErrors(),
+                        'database'   => $this->probeDatabase(),
+                        'disk'       => $this->probeDisk(),
+                        'ssl'        => $this->probeSsl(),
+                    ],
+                    'background' => [
+                        'queue'              => $this->probeQueue(),
+                        'snapshot_freshness' => $this->probeSnapshotFreshness(),
+                        'scheduler'          => $this->probeScheduler(),
+                    ],
+                    'reachability' => [
+                        'public_site' => $this->probePublicSite(),
+                        'mailer'      => $this->probeMailer(),
+                    ],
+                    'deploy' => [
+                        'last_deploy' => $this->probeDeploy(),
+                    ],
+                ],
+                'computed_at' => now()->toIso8601String(),
             ];
         });
 
         return response()->json($payload);
     }
+
+    /**
+     * POST /api/v1/admin/dashboard/actions/{name}
+     *
+     * Safe maintenance actions exposed as one-click buttons on the System
+     * Health page. Anything destructive (drop tables, force-renew SSL,
+     * restart pm2) stays SSH-only — only operations that are idempotent
+     * AND can't hurt anything in flight are allowed here.
+     */
+    public function runAction(string $name): JsonResponse
+    {
+        switch ($name) {
+            case 'reprobe':
+                // Bust the health cache so the next GET re-runs every probe.
+                Cache::forget('admin:dashboard:health:v2');
+                return response()->json(['ok' => true, 'note' => 'Health cache cleared.']);
+
+            case 'snapshot':
+                // Synchronous snapshot — slow on hundreds of tenants but the
+                // user explicitly asked for it.
+                try {
+                    Artisan::call('admin:snapshot');
+                    Cache::forget('admin:dashboard:trends:v1');
+                    Cache::forget('admin:dashboard:insights:v1');
+                    return response()->json(['ok' => true, 'note' => trim(Artisan::output())]);
+                } catch (\Throwable $e) {
+                    return response()->json(['ok' => false, 'note' => $e->getMessage()], 500);
+                }
+
+            case 'clear-cache':
+                try {
+                    Artisan::call('optimize:clear');
+                    return response()->json(['ok' => true, 'note' => 'Config / route / view cache cleared.']);
+                } catch (\Throwable $e) {
+                    return response()->json(['ok' => false, 'note' => $e->getMessage()], 500);
+                }
+
+            default:
+                return response()->json(['ok' => false, 'note' => 'Unknown action.'], 404);
+        }
+    }
+
+    // ── PROBES ────────────────────────────────────────────────────────────
+    //
+    // Every probe returns:
+    //   ['status'=>ok|warn|bad|unknown, 'value'=>string,
+    //    'note'=>string, 'runbook'=>string, 'meta'=>array?]
+    // Frontend renders `value` as the headline, `note` as the subtext, and
+    // shows `runbook` under both when status !== 'ok'.
 
     /** Count ERROR/CRITICAL log lines in the last 24h from the Laravel log. */
     private function probeApiErrors(): array
@@ -508,11 +585,11 @@ class AdminDashboardController extends Controller
         try {
             $path = storage_path('logs/laravel.log');
             if (! is_file($path)) {
-                return ['status' => 'unknown', 'count_24h' => null, 'note' => 'No log file.'];
+                return ['status' => 'unknown', 'value' => '—', 'note' => 'No log file.',
+                        'runbook' => 'Verify storage/logs is writable by www-data.'];
             }
-            // Read the tail (logs rotate, but cap the read regardless).
             $size = filesize($path);
-            $read = 512 * 1024; // last 512KB is plenty for a 24h window
+            $read = 512 * 1024;
             $fh = fopen($path, 'rb');
             if ($size > $read) fseek($fh, -$read, SEEK_END);
             $contents = stream_get_contents($fh);
@@ -524,75 +601,248 @@ class AdminDashboardController extends Controller
                 if (! preg_match('/^\[(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\]\s+\S+\.(ERROR|CRITICAL|ALERT|EMERGENCY)/', $line, $m)) {
                     continue;
                 }
-                try {
-                    if (Carbon::parse($m[1])->gte($cutoff)) $count++;
-                } catch (\Throwable) { /* skip unparseable */ }
+                try { if (Carbon::parse($m[1])->gte($cutoff)) $count++; }
+                catch (\Throwable) {}
             }
-            // A stray error or two in 24h is normal noise — only flag warn
-            // at a small cluster, bad at a real spike.
             return [
-                'status'    => $count <= 2 ? 'ok' : ($count < 20 ? 'warn' : 'bad'),
-                'count_24h' => $count,
-                'note'      => $count === 0 ? 'No errors in 24h.' : "{$count} in the last 24h.",
+                'status'  => $count <= 2 ? 'ok' : ($count < 20 ? 'warn' : 'bad'),
+                'value'   => (string) $count,
+                'note'    => $count === 0 ? 'No errors in 24h.' : "{$count} in the last 24h.",
+                'runbook' => 'ssh root@198.211.116.44 \'tail -200 /var/www/bookready-api/api/storage/logs/laravel.log\'',
+                'meta'    => ['count_24h' => $count],
             ];
         } catch (\Throwable $e) {
-            return ['status' => 'unknown', 'count_24h' => null, 'note' => 'Log read failed.'];
+            return ['status' => 'unknown', 'value' => '—', 'note' => 'Log read failed.',
+                    'runbook' => $e->getMessage()];
         }
     }
 
-    /** Queue connection + best-effort depth (Redis llen on the default queue). */
+    /** SELECT 1 against the central DB (fast, ~1ms). */
+    private function probeDatabase(): array
+    {
+        try {
+            $start = microtime(true);
+            DB::connection()->select('SELECT 1 as ok');
+            $ms = (int) round((microtime(true) - $start) * 1000);
+            return [
+                'status'  => $ms < 50 ? 'ok' : ($ms < 200 ? 'warn' : 'bad'),
+                'value'   => $ms . 'ms',
+                'note'    => 'Central DB responding (' . config('database.default') . ').',
+                'runbook' => $ms < 50 ? '' : 'systemctl status mysql; check load average + slow query log.',
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'status'  => 'bad',
+                'value'   => 'down',
+                'note'    => 'DB unreachable: ' . substr($e->getMessage(), 0, 80),
+                'runbook' => 'systemctl status mysql; check DB_HOST / credentials in .env.',
+            ];
+        }
+    }
+
+    /** Disk free on the volume hosting Laravel storage. */
+    private function probeDisk(): array
+    {
+        try {
+            $path = storage_path();
+            $free  = @disk_free_space($path);
+            $total = @disk_total_space($path);
+            if (! $free || ! $total) {
+                return ['status' => 'unknown', 'value' => '—', 'note' => 'Could not read disk space.'];
+            }
+            $usedPct = 100 - round(($free / $total) * 100);
+            $freeGb  = round($free / 1024 / 1024 / 1024, 1);
+            $totalGb = round($total / 1024 / 1024 / 1024, 1);
+            return [
+                'status'  => $usedPct < 80 ? 'ok' : ($usedPct < 92 ? 'warn' : 'bad'),
+                'value'   => $usedPct . '%',
+                'note'    => "{$freeGb} GB free of {$totalGb} GB.",
+                'runbook' => $usedPct < 80 ? '' : 'du -sh /var/log /var/www/bookready-api/api/storage/logs /var/lib/mysql | sort -h',
+                'meta'    => ['used_pct' => $usedPct, 'free_gb' => $freeGb, 'total_gb' => $totalGb],
+            ];
+        } catch (\Throwable $e) {
+            return ['status' => 'unknown', 'value' => '—', 'note' => 'Disk probe failed.'];
+        }
+    }
+
+    /** SSL cert expiry — probes the LIVE served cert, no filesystem access needed. */
+    private function probeSsl(): array
+    {
+        $host = parse_url((string) config('app.url', 'https://api.bkrdy.me'), PHP_URL_HOST) ?: 'api.bkrdy.me';
+        try {
+            $ctx = stream_context_create(['ssl' => [
+                'capture_peer_cert' => true,
+                'verify_peer'       => true,
+                'verify_peer_name'  => true,
+            ]]);
+            $client = @stream_socket_client("ssl://{$host}:443", $errno, $err, 3, STREAM_CLIENT_CONNECT, $ctx);
+            if (! $client) {
+                return [
+                    'status' => 'bad', 'value' => 'unreachable',
+                    'note' => "Could not establish TLS to {$host}: {$err}",
+                    'runbook' => 'Check nginx + certbot status; dig +short ' . $host,
+                ];
+            }
+            $params = stream_context_get_params($client);
+            fclose($client);
+            $cert = @openssl_x509_parse($params['options']['ssl']['peer_certificate']);
+            $expiresAt = $cert['validTo_time_t'] ?? 0;
+            $daysLeft  = (int) floor(($expiresAt - time()) / 86400);
+            return [
+                'status'  => $daysLeft > 14 ? 'ok' : ($daysLeft > 3 ? 'warn' : 'bad'),
+                'value'   => $daysLeft . 'd',
+                'note'    => "{$host} cert valid through " . date('M j, Y', $expiresAt) . '.',
+                'runbook' => $daysLeft > 14 ? '' : 'certbot renew --force-renewal; nginx -t && systemctl reload nginx',
+                'meta'    => ['days_left' => $daysLeft, 'host' => $host],
+            ];
+        } catch (\Throwable $e) {
+            return ['status' => 'unknown', 'value' => '—', 'note' => 'SSL probe failed.'];
+        }
+    }
+
+    /** Queue connection + Redis llen on the default queue. */
     private function probeQueue(): array
     {
         $conn = (string) config('queue.default', 'sync');
         $depth = null;
         try {
             if ($conn === 'redis') {
-                // Laravel Horizon/queue stores jobs under "queues:{name}".
                 $depth = (int) \Illuminate\Support\Facades\Redis::connection()->llen('queues:default');
-            } elseif (\Illuminate\Support\Facades\Schema::hasTable('jobs')) {
+            } elseif (Schema::hasTable('jobs')) {
                 $depth = (int) DB::table('jobs')->count();
             }
         } catch (\Throwable) {
             $depth = null;
         }
         return [
-            'status'     => $depth === null ? 'ok' : ($depth < 50 ? 'ok' : ($depth < 500 ? 'warn' : 'bad')),
-            'connection' => $conn,
-            'depth'      => $depth,
-            'note'       => $depth === null
+            'status'  => $depth === null ? 'ok' : ($depth < 50 ? 'ok' : ($depth < 500 ? 'warn' : 'bad')),
+            'value'   => $depth === null ? $conn : (string) $depth,
+            'note'    => $depth === null
                 ? ucfirst($conn) . ' queue.'
                 : "{$depth} job" . ($depth === 1 ? '' : 's') . ' pending.',
+            'runbook' => ($depth ?? 0) < 50 ? '' : 'redis-cli LLEN queues:default; check worker process is up.',
+            'meta'    => ['connection' => $conn, 'depth' => $depth],
         ];
     }
 
-    /** Last deploy from storage/app/last-deploy.json (written by the deploy). */
+    /** How fresh is the nightly cross-tenant snapshot? */
+    private function probeSnapshotFreshness(): array
+    {
+        try {
+            $row = DB::table('platform_dashboard_snapshots')
+                ->orderByDesc('snapshot_date')->first();
+            if (! $row) {
+                return [
+                    'status' => 'bad', 'value' => 'never',
+                    'note' => 'No snapshot has ever been written.',
+                    'runbook' => 'php artisan admin:snapshot — or use the Quick Action.',
+                ];
+            }
+            $hours = (int) floor(now()->diffInMinutes(Carbon::parse($row->snapshot_date)->endOfDay(), false) / 60 * -1);
+            // Snapshot job runs daily 03:00; healthy = ≤30h old.
+            return [
+                'status'  => $hours < 30 ? 'ok' : ($hours < 50 ? 'warn' : 'bad'),
+                'value'   => Carbon::parse($row->snapshot_date)->diffForHumans(),
+                'note'    => "Last snapshot: {$row->snapshot_date}.",
+                'runbook' => $hours < 30 ? '' : 'Check schedule:run cron; run admin:snapshot manually if needed.',
+                'meta'    => ['hours_old' => $hours, 'snapshot_date' => $row->snapshot_date],
+            ];
+        } catch (\Throwable $e) {
+            return ['status' => 'unknown', 'value' => '—', 'note' => 'Snapshot table read failed.'];
+        }
+    }
+
+    /** Scheduler heartbeat — proves schedule:run cron is firing every minute. */
+    private function probeScheduler(): array
+    {
+        try {
+            $path = storage_path('app/scheduler-tick.json');
+            if (! is_file($path)) {
+                return [
+                    'status' => 'warn', 'value' => '—',
+                    'note' => 'No scheduler tick written yet (or routes/console.php not deployed).',
+                    'runbook' => 'Wait 1 min after deploy. If still missing: crontab -l | grep schedule:run',
+                ];
+            }
+            $tick = json_decode((string) @file_get_contents($path), true) ?: [];
+            $at = $tick['at'] ?? null;
+            if (! $at) {
+                return ['status' => 'warn', 'value' => '—', 'note' => 'Tick file unreadable.'];
+            }
+            $ageSec = now()->diffInSeconds(Carbon::parse($at));
+            return [
+                'status'  => $ageSec < 300 ? 'ok' : ($ageSec < 1800 ? 'warn' : 'bad'),
+                'value'   => $ageSec < 60 ? $ageSec . 's' : (int) round($ageSec / 60) . 'm',
+                'note'    => 'Last scheduler tick: ' . Carbon::parse($at)->diffForHumans() . '.',
+                'runbook' => $ageSec < 300 ? '' : 'crontab -l | grep schedule:run; systemctl status cron',
+                'meta'    => ['age_sec' => $ageSec, 'last_at' => $at],
+            ];
+        } catch (\Throwable $e) {
+            return ['status' => 'unknown', 'value' => '—', 'note' => 'Scheduler probe failed.'];
+        }
+    }
+
+    /** Sample fetch of one public tenant site — covers DNS + nginx + php-fpm + app boot. */
+    private function probePublicSite(): array
+    {
+        try {
+            // Pick an active tenant. Falls back gracefully if there's none.
+            $tenant = Tenant::query()
+                ->where('subscription_state', 'active')
+                ->orderBy('created_at')
+                ->first();
+            $slug = $tenant?->id ?? 'lushstudio';
+            $url  = "https://{$slug}.bkrdy.me";
+            $start = microtime(true);
+            $res = Http::timeout(5)->get($url);
+            $ms  = (int) round((microtime(true) - $start) * 1000);
+            $code = $res->status();
+            $ok   = $code >= 200 && $code < 400;
+            return [
+                'status'  => ! $ok ? 'bad' : ($ms < 1500 ? 'ok' : 'warn'),
+                'value'   => "{$code} · {$ms}ms",
+                'note'    => "Probe target: {$slug}.bkrdy.me",
+                'runbook' => $ok ? '' : 'curl -I ' . $url . '; check nginx + php-fpm + DNS for the wildcard.',
+                'meta'    => ['probe_slug' => $slug, 'response_ms' => $ms, 'http_code' => $code],
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'status'  => 'bad', 'value' => 'unreachable',
+                'note'    => 'Public site probe failed: ' . substr($e->getMessage(), 0, 80),
+                'runbook' => 'systemctl status nginx php8.2-fpm; check the wildcard DNS record.',
+            ];
+        }
+    }
+
+    /** Last deploy from storage/app/last-deploy.json (written by the deploy script). */
     private function probeDeploy(): array
     {
         try {
             $path = storage_path('app/last-deploy.json');
             if (! is_file($path)) {
-                return ['status' => 'unknown', 'commit' => null, 'deployed_at' => null, 'note' => 'No deploy stamp.'];
+                return ['status' => 'unknown', 'value' => '—',
+                        'note' => 'No deploy stamp.', 'runbook' => 'Re-run the deploy block in CLAUDE.md.'];
             }
             $data = json_decode((string) file_get_contents($path), true) ?: [];
-            $at = $data['deployed_at'] ?? null;
+            $at   = $data['deployed_at'] ?? null;
+            $msg  = $data['message'] ?? 'deploy';
+            $sha  = isset($data['commit']) ? substr((string) $data['commit'], 0, 7) : null;
             return [
-                'status'      => 'ok',
-                'commit'      => isset($data['commit']) ? substr((string) $data['commit'], 0, 7) : null,
-                'deployed_at' => $at,
-                'note'        => $at ? Carbon::parse($at)->diffForHumans() : 'Deployed.',
+                'status'  => 'ok',
+                'value'   => $sha ?? '—',
+                'note'    => ($at ? Carbon::parse($at)->diffForHumans() : 'Deployed') . ' · ' . $msg,
+                'runbook' => '',
+                'meta'    => ['commit' => $sha, 'deployed_at' => $at, 'message' => $msg],
             ];
         } catch (\Throwable $e) {
-            return ['status' => 'unknown', 'commit' => null, 'deployed_at' => null, 'note' => 'Stamp read failed.'];
+            return ['status' => 'unknown', 'value' => '—', 'note' => 'Stamp read failed.'];
         }
     }
 
     /**
-     * Mailer config check. We deliberately do NOT live-ping Resend: the
-     * production key is send-scoped, so privileged endpoints like /domains
-     * return 401 and would false-alarm "bad" on a perfectly healthy mailer.
-     * Instead we verify the driver + key are configured (key shape "re_…")
-     * — the real send liveness shows up in the api-errors probe if Resend
-     * ever starts rejecting sends.
+     * Mailer config check. Live ping is intentionally avoided: the prod
+     * Resend key is send-scoped, so /domains 401s and false-alarms.
+     * Real send liveness surfaces via api-errors when sends fail.
      */
     private function probeMailer(): array
     {
@@ -601,11 +851,13 @@ class AdminDashboardController extends Controller
         $key    = (string) (config('services.resend.key') ?: env('RESEND_API_KEY', ''));
         $configured = $key !== '' && str_starts_with($key, 're_');
         return [
-            'status' => $configured ? 'ok' : 'unknown',
-            'from'   => $from,
-            'note'   => $configured
-                ? 'Resend configured (' . ($mailer ?: 'resend') . ').'
+            'status'  => $configured ? 'ok' : 'unknown',
+            'value'   => $configured ? 'Resend' : '—',
+            'note'    => $configured
+                ? 'Configured (' . ($mailer ?: 'resend') . ', from ' . $from . ').'
                 : 'RESEND_API_KEY missing or malformed.',
+            'runbook' => $configured ? '' : 'Set RESEND_API_KEY in /var/www/bookready-api/api/.env; php artisan config:clear.',
+            'meta'    => ['from' => $from, 'mailer' => $mailer],
         ];
     }
 }

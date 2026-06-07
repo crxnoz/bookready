@@ -391,6 +391,7 @@ Route::prefix('v1')->group(function () {
         Route::get   ('dashboard/trends',  [AdminDashboardController::class, 'trends']);
         Route::get   ('dashboard/insights',[AdminDashboardController::class, 'insights']);
         Route::get   ('dashboard/health',  [AdminDashboardController::class, 'health']);
+        Route::post  ('dashboard/actions/{name}', [AdminDashboardController::class, 'runAction']);
         Route::get   ('tenants',          [AdminTenantsController::class, 'index']);
         Route::get   ('tenants/{slug}',   [AdminTenantDetailController::class, 'show']);
         Route::delete('tenants/{id}',     [AdminTenantsController::class, 'destroy']);

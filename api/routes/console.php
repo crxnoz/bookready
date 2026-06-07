@@ -33,3 +33,15 @@ Schedule::command('admin:snapshot')
     ->dailyAt('03:00')
     ->withoutOverlapping(20)
     ->runInBackground();
+
+// Scheduler-liveness heartbeat. The system cron fires `schedule:run` every
+// minute; if THAT stops firing, nothing scheduled (snapshots, reminders,
+// digests) runs and the platform silently degrades. This callback writes
+// a timestamp every minute; the System Health probe reads it and flags
+// warn/bad if it goes stale. Self-test for the scheduler itself.
+Schedule::call(function () {
+    @file_put_contents(
+        storage_path('app/scheduler-tick.json'),
+        json_encode(['at' => now()->toIso8601String()]),
+    );
+})->everyMinute()->name('scheduler-tick')->withoutOverlapping();
