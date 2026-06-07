@@ -775,6 +775,19 @@ export async function signOutEverywhere(): Promise<SignOutEverywhereResponse> {
   })
 }
 
+/** Whether the operator has dismissed the first-run /editor welcome tour. */
+export async function getWelcomeState(): Promise<{ welcomed: boolean }> {
+  return request<{ welcomed: boolean }>('/editor/account/welcome-state')
+}
+
+/** Stamp users.welcomed_at = now() so the tour never shows again. */
+export async function markWelcomed(): Promise<{ welcomed: boolean }> {
+  return request<{ welcomed: boolean }>('/editor/account/welcomed', {
+    method: 'POST',
+    body:   JSON.stringify({}),
+  })
+}
+
 // ── Platform admin ──────────────────────────────────────────────────────────
 
 export async function getAdminTenants(): Promise<AdminTenantsResponse> {

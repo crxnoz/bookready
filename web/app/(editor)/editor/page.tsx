@@ -22,6 +22,7 @@ import {
   X,
 } from 'lucide-react'
 import EditorShell from '@/components/editor/EditorShell'
+import WelcomeTour from '@/components/editor/WelcomeTour'
 import { cn } from '@/lib/cn'
 import { getTenantId } from '@/lib/auth'
 import {
@@ -51,6 +52,14 @@ export default function DashboardPage() {
     </EditorShell>
   )
 }
+
+/**
+ * Wrapper so the WelcomeTour can read `user` + `business` from the same
+ * fetch the dashboard already runs. Mounting it here means a fresh
+ * signup sees the tour on their very first dashboard load — and the
+ * GET /welcome-state on mount keeps it from re-firing for returning
+ * users. (See `WelcomeTour.tsx` for the gating logic.)
+ */
 
 function DashboardBody() {
   const router = useRouter()
@@ -183,6 +192,11 @@ function DashboardBody() {
 
   return (
     <div className="w-full p-3 sm:p-5 md:p-6 space-y-5">
+      {/* First-run welcome — self-gates via users.welcomed_at, only renders
+          for owners who haven't dismissed it. Cheap on the steady-state
+          dashboard load (one GET that returns 200 bytes). */}
+      <WelcomeTour firstName={ownerFirstName || null} subdomain={slug} />
+
       {/* ── A13: bigger personalized hero with daily tip ribbon ── */}
       <header className="px-1">
         <h1 className="text-[22px] sm:text-[28px] font-bold text-near-black tracking-tight leading-tight">

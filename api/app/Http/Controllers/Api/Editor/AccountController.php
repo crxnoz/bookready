@@ -213,4 +213,35 @@ class AccountController extends Controller
             'revoked_count'  => (int) $revoked,
         ]);
     }
+
+    /**
+     * GET /editor/account/welcome-state
+     *
+     * Whether the operator has dismissed the first-run /editor tour.
+     * Used by the dashboard mount to decide whether to show the
+     * WelcomeTour overlay. Tiny payload — no need to bundle it into
+     * /auth/me (which is owned by the auth track).
+     */
+    public function welcomeState(Request $request): JsonResponse
+    {
+        return response()->json([
+            'welcomed' => $request->user()->welcomed_at !== null,
+        ]);
+    }
+
+    /**
+     * POST /editor/account/welcomed
+     *
+     * Stamp users.welcomed_at = now() so the tour never shows again
+     * for this user. Idempotent — re-dismissing is harmless.
+     */
+    public function markWelcomed(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if ($user->welcomed_at === null) {
+            $user->welcomed_at = now();
+            $user->save();
+        }
+        return response()->json(['welcomed' => true]);
+    }
 }

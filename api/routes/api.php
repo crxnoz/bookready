@@ -360,6 +360,8 @@ Route::prefix('v1')->group(function () {
         Route::patch ('account',                              [AccountController::class, 'update']);
         Route::post  ('account/password',                     [AccountController::class, 'changePassword']);
         Route::post  ('account/sign-out-everywhere',          [AccountController::class, 'signOutEverywhere']);
+        Route::get   ('account/welcome-state',                 [AccountController::class, 'welcomeState']);
+        Route::post  ('account/welcomed',                      [AccountController::class, 'markWelcomed']);
 
         // ── Danger Zone (destructive owner actions) ────────────────────
         Route::get   ('danger/export/{type}',                 [DangerController::class, 'export'])
