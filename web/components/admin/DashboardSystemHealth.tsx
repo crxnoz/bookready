@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import {
   Loader2, AlertCircle, AlertTriangle, Mail, GitCommit, Layers, Database,
   HardDrive, Lock, Clock, Activity, Globe, RefreshCw, Camera, Trash2,
-  Wrench, CheckCircle2, Terminal,
+  Wrench, CheckCircle2, Terminal, ArrowRight,
 } from 'lucide-react'
 import type {
   AdminDashboardHealth, HealthStatus, HealthProbe, AdminQuickAction,
@@ -40,20 +41,20 @@ const RING: Record<HealthStatus, string> = {
   unknown: 'border-[rgba(18,18,18,0.10)]',
 }
 
-// Per-probe display config — icon + display label. Keyed by probe slug
-// the backend returns. New probes need entries here; missing ones fall
-// back to a generic icon + the slug as the label.
-const PROBE_META: Record<string, { icon: React.ElementType; label: string }> = {
-  api_errors:         { icon: AlertTriangle, label: 'API errors (24h)' },
+// Per-probe display config — icon + label + optional drill-down route.
+// Keyed by probe slug the backend returns. New probes need entries here;
+// missing ones fall back to a generic icon + the slug as the label.
+const PROBE_META: Record<string, { icon: React.ElementType; label: string; linkTo?: string }> = {
+  api_errors:         { icon: AlertTriangle, label: 'API errors (24h)',  linkTo: '/admin/system/errors' },
   database:           { icon: Database,      label: 'Database' },
   disk:               { icon: HardDrive,     label: 'Disk usage' },
   ssl:                { icon: Lock,          label: 'SSL cert' },
-  queue:              { icon: Layers,        label: 'Queue' },
+  queue:              { icon: Layers,        label: 'Queue',             linkTo: '/admin/system/queue' },
   snapshot_freshness: { icon: Camera,        label: 'Snapshot freshness' },
   scheduler:          { icon: Clock,         label: 'Scheduler' },
   public_site:        { icon: Globe,         label: 'Public site' },
   mailer:             { icon: Mail,          label: 'Mailer' },
-  last_deploy:        { icon: GitCommit,     label: 'Last deploy' },
+  last_deploy:        { icon: GitCommit,     label: 'Last deploy',       linkTo: '/admin/system/deploys' },
 }
 
 const SECTION_META: Record<string, { label: string; sub: string }> = {
@@ -172,11 +173,25 @@ function ProbeCard({
   const meta = PROBE_META[probeKey] ?? { icon: Activity, label: probeKey }
   const Icon = meta.icon
   const showRunbook = probe.status !== 'ok' && probe.runbook && probe.runbook.trim() !== ''
+  const Wrapper = meta.linkTo ? Link : 'div'
+  const wrapperProps = meta.linkTo
+    ? { href: meta.linkTo as string }
+    : {}
   return (
-    <div className={cn('bg-white border p-4', RING[probe.status])}>
+    <Wrapper
+      {...wrapperProps as any}
+      className={cn(
+        'block bg-white border p-4 transition-colors',
+        RING[probe.status],
+        meta.linkTo && 'hover:border-near-black cursor-pointer',
+      )}
+    >
       <div className="flex items-center justify-between">
         <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">{meta.label}</p>
-        <Icon size={14} className="text-muted-text" />
+        <span className="inline-flex items-center gap-1 text-muted-text">
+          {meta.linkTo && <ArrowRight size={11} />}
+          <Icon size={14} />
+        </span>
       </div>
       <div className="flex items-center gap-2 mt-2">
         <span className={cn('w-2 h-2 rounded-full flex-shrink-0', DOT[probe.status])} />
@@ -200,7 +215,7 @@ function ProbeCard({
           </code>
         </div>
       )}
-    </div>
+    </Wrapper>
   )
 }
 

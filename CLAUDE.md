@@ -69,14 +69,17 @@ php artisan tenants:migrate --force
 php artisan optimize:clear
 chown -R www-data:www-data bootstrap/cache storage
 
-# Deploy stamp the admin dashboard's System Health card reads
-# (storage/app/last-deploy.json → "Last deploy" tile). Cheap; keep it
-# in every deploy so the card never reads "unknown".
+# Deploy stamps the admin dashboard reads:
+#   - last-deploy.json → System Health "Last deploy" tile (single value)
+#   - deploys.jsonl    → /admin/system/deploys drill-in (append-only log)
+# Cheap; keep in every deploy so the history stays continuous.
 mkdir -p storage/app
-printf '{"commit":"%s","deployed_at":"%s","message":"deploy"}' \
-  "$(git -C /var/www/bookready-api rev-parse HEAD)" \
-  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > storage/app/last-deploy.json
-chown www-data:www-data storage/app/last-deploy.json
+COMMIT="$(git -C /var/www/bookready-api rev-parse HEAD)"
+AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+MSG="$(git -C /var/www/bookready-api log -1 --format=%s | sed 's/"/\\"/g' | head -c 200)"
+printf '{"commit":"%s","deployed_at":"%s","message":"%s"}' "$COMMIT" "$AT" "$MSG" > storage/app/last-deploy.json
+printf '{"commit":"%s","deployed_at":"%s","message":"%s"}\n' "$COMMIT" "$AT" "$MSG" >> storage/app/deploys.jsonl
+chown www-data:www-data storage/app/last-deploy.json storage/app/deploys.jsonl
 
 cd ../web
 npm install

@@ -930,6 +930,73 @@ export async function runAdminAction(name: AdminQuickAction): Promise<QuickActio
   return request<QuickActionResult>(`/admin/dashboard/actions/${name}`, { method: 'POST' })
 }
 
+// ── System Health drill-downs ─────────────────────────────────────────────────
+
+export interface ErrorGroup {
+  level:        string
+  class:        string
+  message:      string
+  count:        number
+  latest_at:    string
+  sample_trace: string
+}
+
+export interface AdminErrorReport {
+  groups:      ErrorGroup[]
+  histogram:   { hour: string; count: number }[]
+  total:       number
+  computed_at: string
+}
+
+export async function getAdminDashboardErrors(): Promise<AdminErrorReport> {
+  return request<AdminErrorReport>('/admin/dashboard/errors')
+}
+
+export interface PendingJob {
+  display_name: string
+  attempts:     number
+  pushed_at:    string | null
+}
+
+export interface FailedJob {
+  uuid:         string
+  connection:   string
+  queue:        string
+  display_name: string
+  failed_at:    string
+  exception:    string
+  trace_head:   string
+}
+
+export interface AdminQueueReport {
+  connection:          string
+  depth:               number
+  pending:             PendingJob[]
+  failed:              FailedJob[]
+  failed_table_exists: boolean
+  computed_at:         string
+}
+
+export async function getAdminDashboardQueue(): Promise<AdminQueueReport> {
+  return request<AdminQueueReport>('/admin/dashboard/queue')
+}
+
+export interface DeployEntry {
+  commit:      string | null
+  message:     string | null
+  deployed_at: string | null
+}
+
+export interface AdminDeployReport {
+  deploys:     DeployEntry[]
+  note?:       string
+  computed_at: string
+}
+
+export async function getAdminDashboardDeploys(): Promise<AdminDeployReport> {
+  return request<AdminDeployReport>('/admin/dashboard/deploys')
+}
+
 export interface AdminTenantDetail {
   id:              string
   plan:            string | null

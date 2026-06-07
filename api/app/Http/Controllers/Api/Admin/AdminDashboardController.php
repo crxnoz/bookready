@@ -571,6 +571,286 @@ class AdminDashboardController extends Controller
         }
     }
 
+    // ── DRILL-DOWNS ───────────────────────────────────────────────────────
+    //
+    // Three endpoints powering the "click a card → see what's actually
+    // wrong" flow on /admin/system/{errors|queue|deploys}. Each is its
+    // own endpoint so a slow log parse doesn't slow the cheap probes.
+
+    /**
+     * GET /api/v1/admin/dashboard/errors
+     *
+     * Reads the last ~2MB of laravel.log, parses entries, groups them by
+     * (level + exception class + first-line digest), and returns the
+     * groups + a 24-hour hourly histogram. Single pass, no DB hit.
+     * Cached 60s.
+     */
+    public function errors(): JsonResponse
+    {
+        $payload = Cache::remember('admin:dashboard:errors:v1', 60, function () {
+            $path = storage_path('logs/laravel.log');
+            if (! is_file($path)) {
+                return ['groups' => [], 'histogram' => $this->emptyHourlyHistogram(),
+                        'total' => 0, 'computed_at' => now()->toIso8601String()];
+            }
+
+            // Read tail (last 2MB — more than enough for 24h on a healthy
+            // system; rotates daily, so old data isn't in this file anyway).
+            $size = filesize($path);
+            $read = 2 * 1024 * 1024;
+            $fh = fopen($path, 'rb');
+            if ($size > $read) fseek($fh, -$read, SEEK_END);
+            $blob = stream_get_contents($fh);
+            fclose($fh);
+
+            $cutoff = now()->subDay();
+            $entries = $this->parseLogEntries($blob, $cutoff);
+
+            // Group by (level + class + normalized first line).
+            $groups = [];
+            $hourly = $this->emptyHourlyHistogram();
+            foreach ($entries as $e) {
+                $hourKey = $e['at']->copy()->startOfHour()->format('Y-m-d\TH:00:00\Z');
+                if (isset($hourly[$hourKey])) $hourly[$hourKey]++;
+
+                $key = $e['level'] . '|' . $e['class'] . '|' . $this->messageDigest($e['message']);
+                if (! isset($groups[$key])) {
+                    $groups[$key] = [
+                        'level'         => $e['level'],
+                        'class'         => $e['class'],
+                        'message'       => $e['message'],
+                        'count'         => 0,
+                        'latest_at'     => $e['at']->toIso8601String(),
+                        'sample_trace'  => $e['trace_head'],
+                    ];
+                }
+                $groups[$key]['count']++;
+                if ($e['at']->toIso8601String() > $groups[$key]['latest_at']) {
+                    $groups[$key]['latest_at']    = $e['at']->toIso8601String();
+                    $groups[$key]['sample_trace'] = $e['trace_head'];
+                }
+            }
+
+            // Convert hourly map to ordered array.
+            $hist = [];
+            foreach ($hourly as $hour => $count) $hist[] = ['hour' => $hour, 'count' => $count];
+
+            return [
+                'groups'      => array_values(collect($groups)
+                    ->sortByDesc('count')
+                    ->take(20)
+                    ->all()),
+                'histogram'   => $hist,
+                'total'       => count($entries),
+                'computed_at' => now()->toIso8601String(),
+            ];
+        });
+
+        return response()->json($payload);
+    }
+
+    /**
+     * GET /api/v1/admin/dashboard/queue
+     *
+     * Pending jobs (LRANGE the redis queue, decode each blob to get the
+     * displayName) + failed_jobs rows from the DB. Caller drilling in
+     * after the queue card went yellow needs both — pending tells you
+     * what's backed up, failed tells you what already broke.
+     */
+    public function queue(): JsonResponse
+    {
+        $payload = Cache::remember('admin:dashboard:queue:v1', 30, function () {
+            $conn = (string) config('queue.default', 'sync');
+            $pending = [];
+            $depth = 0;
+
+            try {
+                if ($conn === 'redis') {
+                    $r = \Illuminate\Support\Facades\Redis::connection();
+                    $depth = (int) $r->llen('queues:default');
+                    // First 25 are enough — operator drills in to see WHAT's
+                    // queued, not exhaustively.
+                    $raw = $r->lrange('queues:default', 0, 24);
+                    foreach ((array) $raw as $blob) {
+                        $job = json_decode((string) $blob, true) ?: [];
+                        $pending[] = [
+                            'display_name' => $job['displayName'] ?? ($job['job'] ?? 'unknown'),
+                            'attempts'     => $job['attempts'] ?? 0,
+                            'pushed_at'    => isset($job['pushedAt'])
+                                ? Carbon::createFromTimestamp($job['pushedAt'])->toIso8601String()
+                                : null,
+                        ];
+                    }
+                }
+            } catch (\Throwable) {}
+
+            $failed = [];
+            try {
+                if (Schema::hasTable('failed_jobs')) {
+                    $failed = DB::table('failed_jobs')
+                        ->orderByDesc('failed_at')
+                        ->limit(25)
+                        ->get(['uuid', 'connection', 'queue', 'payload', 'exception', 'failed_at'])
+                        ->map(function ($row) {
+                            $payload = json_decode($row->payload, true) ?: [];
+                            // First line of the exception is the most useful — the
+                            // full backtrace is huge but kept for "view full".
+                            $excerpt = strtok((string) $row->exception, "\n");
+                            return [
+                                'uuid'         => $row->uuid,
+                                'connection'   => $row->connection,
+                                'queue'        => $row->queue,
+                                'display_name' => $payload['displayName'] ?? 'unknown',
+                                'failed_at'    => Carbon::parse($row->failed_at)->toIso8601String(),
+                                'exception'    => $excerpt,
+                                'trace_head'   => $this->headOfTrace((string) $row->exception),
+                            ];
+                        })
+                        ->all();
+                }
+            } catch (\Throwable) {}
+
+            return [
+                'connection'  => $conn,
+                'depth'       => $depth,
+                'pending'     => $pending,
+                'failed'      => $failed,
+                'failed_table_exists' => Schema::hasTable('failed_jobs'),
+                'computed_at' => now()->toIso8601String(),
+            ];
+        });
+
+        return response()->json($payload);
+    }
+
+    /**
+     * GET /api/v1/admin/dashboard/deploys
+     *
+     * Append-only log: storage/app/deploys.jsonl (one JSON object per
+     * line, written by the deploy script). Reading 200 lines is cheap and
+     * the file stays small even after a year of deploys.
+     */
+    public function deploys(): JsonResponse
+    {
+        $payload = Cache::remember('admin:dashboard:deploys:v1', 60, function () {
+            $path = storage_path('app/deploys.jsonl');
+            if (! is_file($path)) {
+                return ['deploys' => [], 'note' => 'No deploy log yet (next deploy populates this).',
+                        'computed_at' => now()->toIso8601String()];
+            }
+            // Read up to 200 most recent lines.
+            $lines = [];
+            $fh = fopen($path, 'rb');
+            $size = filesize($path);
+            $read = min($size, 200 * 1024);
+            if ($size > $read) fseek($fh, -$read, SEEK_END);
+            $buf = stream_get_contents($fh);
+            fclose($fh);
+            foreach (array_reverse(array_filter(explode("\n", $buf))) as $line) {
+                $row = json_decode($line, true);
+                if (! is_array($row)) continue;
+                $lines[] = [
+                    'commit'      => isset($row['commit']) ? substr((string) $row['commit'], 0, 7) : null,
+                    'message'     => $row['message'] ?? null,
+                    'deployed_at' => $row['deployed_at'] ?? null,
+                ];
+                if (count($lines) >= 20) break;
+            }
+            return ['deploys' => $lines, 'computed_at' => now()->toIso8601String()];
+        });
+
+        return response()->json($payload);
+    }
+
+    // ── Helpers for drill-downs ───────────────────────────────────────────
+
+    /** Empty 24-bucket hourly histogram, oldest → newest, ISO hour keys. */
+    private function emptyHourlyHistogram(): array
+    {
+        $now = now()->copy()->startOfHour();
+        $out = [];
+        for ($i = 23; $i >= 0; $i--) {
+            $out[$now->copy()->subHours($i)->format('Y-m-d\TH:00:00\Z')] = 0;
+        }
+        return $out;
+    }
+
+    /**
+     * Parse Laravel log lines into structured entries. Multi-line stack
+     * traces are folded back to their leading [YYYY-MM-DD ...] entry.
+     * Returns only ERROR+ entries within the 24h window.
+     *
+     * Entry shape: ['at'=>Carbon, 'level', 'class', 'message', 'trace_head']
+     */
+    private function parseLogEntries(string $blob, Carbon $cutoff): array
+    {
+        $out = [];
+        $current = null;
+
+        foreach (explode("\n", $blob) as $line) {
+            if (preg_match('/^\[(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\]\s+\S+\.(ERROR|CRITICAL|ALERT|EMERGENCY):\s*(.*)$/', $line, $m)) {
+                if ($current) $out[] = $current;
+                try { $at = Carbon::parse($m[1]); } catch (\Throwable) { $current = null; continue; }
+                if ($at->lt($cutoff)) { $current = null; continue; }
+
+                $rest = $m[3];
+                // Try to pull an exception class. Two common shapes:
+                //   "SQLSTATE[42S02]: ..."
+                //   "App\\Exceptions\\Foo: blah"
+                //   "{...\"exception\":\"[object] (Illuminate\\Database\\QueryException(...))\"}"
+                $class = '';
+                if (preg_match('/\[object\] \(([A-Za-z_\\\\]+)\(/', $rest, $cm)) {
+                    $class = $cm[1];
+                } elseif (preg_match('/^([A-Za-z_\\\\]{6,}Exception):/', $rest, $cm)) {
+                    $class = $cm[1];
+                }
+
+                // First line of the human message (before any { JSON context).
+                $msg = preg_replace('/\s*\{.*$/', '', $rest);
+                $msg = trim(substr((string) $msg, 0, 240));
+
+                $current = [
+                    'at'         => $at,
+                    'level'      => $m[2],
+                    'class'      => $class ?: 'Error',
+                    'message'    => $msg,
+                    'trace_head' => '',
+                ];
+            } elseif ($current) {
+                // Continuation line — keep up to ~4 trace lines for the sample.
+                $traceLines = substr_count($current['trace_head'], "\n");
+                if ($traceLines < 4) {
+                    $trim = rtrim($line);
+                    if ($trim !== '') {
+                        $current['trace_head'] = $current['trace_head'] === ''
+                            ? $trim
+                            : $current['trace_head'] . "\n" . $trim;
+                    }
+                }
+            }
+        }
+        if ($current) $out[] = $current;
+        return $out;
+    }
+
+    /** Stable digest of a log message for grouping (strip dynamic bits). */
+    private function messageDigest(string $msg): string
+    {
+        // Replace numbers, quoted values, hex IDs — the bits that vary
+        // between otherwise-identical errors. Keep first 80 chars.
+        $d = preg_replace('/\d+/', '#', $msg) ?? $msg;
+        $d = preg_replace('/"[^"]*"/', '"…"', $d) ?? $d;
+        $d = preg_replace("/'[^']*'/", "'…'", $d) ?? $d;
+        return strtolower(trim(substr($d, 0, 80)));
+    }
+
+    /** First 6 lines of an exception trace, for the failed_jobs sample. */
+    private function headOfTrace(string $exception): string
+    {
+        $lines = explode("\n", $exception);
+        return implode("\n", array_slice($lines, 0, 6));
+    }
+
     // ── PROBES ────────────────────────────────────────────────────────────
     //
     // Every probe returns:
