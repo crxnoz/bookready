@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Check, X, Loader2 } from 'lucide-react'
 import { register, checkSubdomain, type SubdomainCheckResponse } from '@/lib/api'
 import { setToken, setTenantId } from '@/lib/auth'
+import { SITE_TEMPLATES } from '@/lib/templates'
 import AuthShell from '@/components/auth/AuthShell'
 import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/auth/TurnstileWidget'
 
@@ -540,8 +541,12 @@ function Field({
 /**
  * #156 — Show "Signing up for: {Plan} · {cycle} · {Template}" when the
  * marketing-site CTAs forwarded any of those params. Hidden when there's
- * nothing to confirm (visitor arrived directly with no intent). Designed
- * to look like a quiet system note, not a value prop.
+ * nothing to confirm (visitor arrived directly with no intent).
+ *
+ * When a template is forwarded, we render its color swatch + proper
+ * human label (not the raw slug) so the user has a visual confirmation
+ * that the right template carried over from marketing — and a link to
+ * pick a different one without losing the rest of the intent.
  */
 function IntentSummary({ searchParams }: { searchParams: ReturnType<typeof useSearchParams> }) {
   const plan     = searchParams?.get('plan')
@@ -550,16 +555,50 @@ function IntentSummary({ searchParams }: { searchParams: ReturnType<typeof useSe
   const sms      = searchParams?.get('sms')
   if (! plan && ! billing && ! template) return null
 
-  const parts: string[] = []
-  if (plan)     parts.push(plan.charAt(0).toUpperCase() + plan.slice(1))
-  if (billing)  parts.push(billing === 'annual' ? 'annual' : 'monthly')
-  if (sms && sms !== '1x') parts.push(`${sms} SMS`)
-  if (template) parts.push(`${template} template`)
+  // Resolve the slug to its catalog entry so we can render label + swatch.
+  // Falls back to a generic chip if marketing forwarded an unknown slug
+  // (e.g. typo) — better to show something honest than crash.
+  const tplEntry = template
+    ? SITE_TEMPLATES.find(t => t.slug === template)
+    : null
+
+  const sideParts: string[] = []
+  if (plan)     sideParts.push(plan.charAt(0).toUpperCase() + plan.slice(1))
+  if (billing)  sideParts.push(billing === 'annual' ? 'annual' : 'monthly')
+  if (sms && sms !== '1x') sideParts.push(`${sms} SMS`)
 
   return (
-    <div className="mb-5 px-3 py-2.5 bg-cream border border-[rgba(18,18,18,0.10)] text-[11px] text-muted-text flex items-start gap-2">
-      <span className="text-near-black font-bold tracking-[0.08em] uppercase text-[9px] mt-0.5">Signing up for</span>
-      <span className="text-near-black">{parts.join(' · ')}</span>
+    <div className="mb-5 px-3 py-2.5 bg-cream border border-[rgba(18,18,18,0.10)] flex items-center gap-3">
+      <span className="text-near-black font-bold tracking-[0.08em] uppercase text-[9px]">Starting with</span>
+
+      {tplEntry && (
+        <>
+          <span
+            className="w-5 h-5 flex-shrink-0 border border-[rgba(18,18,18,0.15)]"
+            style={{ background: tplEntry.color }}
+            aria-hidden
+          />
+          <span className="text-[12px] font-semibold text-near-black">{tplEntry.label}</span>
+        </>
+      )}
+      {/* Unknown slug forwarded — keep the message honest. */}
+      {! tplEntry && template && (
+        <span className="text-[12px] font-semibold text-near-black">{template} template</span>
+      )}
+
+      {sideParts.length > 0 && (
+        <span className="text-[11px] text-muted-text">
+          · {sideParts.join(' · ')}
+        </span>
+      )}
+
+      <Link
+        href="/templates"
+        className="ml-auto text-[10px] font-semibold tracking-[0.06em] uppercase text-muted-text hover:text-near-black"
+        title="Switch template before signing up"
+      >
+        change
+      </Link>
     </div>
   )
 }
