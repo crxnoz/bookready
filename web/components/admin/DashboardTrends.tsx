@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import {
-  AlertCircle, Loader2, ArrowUpRight, ArrowDownRight, Minus,
-  Calendar, Users, XCircle, Clock,
+  AlertCircle, Loader2, ArrowUpRight, ArrowDownRight, Minus, ChevronRight,
+  Calendar, Users, XCircle, Clock, TrendingUp, DollarSign,
 } from 'lucide-react'
 import type { AdminDashboardTrends, AdminActivityKpis, ActivityTier } from '@/lib/api'
 import { ChartHover } from './ChartHover'
@@ -87,6 +87,8 @@ export default function DashboardTrends({
       {trends && trends.snapshot_date && trends.kpis && (
         <KpiBar kpis={trends.kpis} />
       )}
+
+      {trends && trends.snapshot_date && <DrillInNav />}
 
       {trends && trends.snapshot_date && (
         <>
@@ -265,6 +267,58 @@ function fmtHours(v: number | null): string {
   if (v < 1)   return Math.round(v * 60) + 'm'
   if (v < 48)  return v.toFixed(1) + 'h'
   return Math.round(v / 24) + 'd'
+}
+
+// ── Drill-in nav (below KPIs) ────────────────────────────────────────────────
+
+function DrillInNav() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+      <DrillCard
+        href="/admin/activity/patterns"
+        icon={Clock}
+        label="Booking patterns"
+        teaser="Time-of-day × day-of-week heatmap + lead-time histogram"
+      />
+      <DrillCard
+        href="/admin/activity/movers"
+        icon={TrendingUp}
+        label="Tenant movers"
+        teaser="Who's surging, declining, and newcomers this week"
+      />
+      <DrillCard
+        href="/admin/activity/revenue"
+        icon={DollarSign}
+        label="Platform revenue"
+        teaser="GMV estimate · daily series · top-grossing tenants"
+      />
+    </div>
+  )
+}
+
+function DrillCard({
+  href, icon: Icon, label, teaser,
+}: {
+  href:   string
+  icon:   React.ElementType
+  label:  string
+  teaser: string
+}) {
+  return (
+    <Link
+      href={href}
+      className="group flex items-center gap-3 bg-white border border-[rgba(18,18,18,0.10)] hover:border-near-black p-3 transition-colors"
+    >
+      <div className="w-8 h-8 flex items-center justify-center bg-cream flex-shrink-0">
+        <Icon size={14} className="text-near-black" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[12px] font-bold text-near-black">{label}</p>
+        <p className="text-[10px] text-muted-text mt-0.5 truncate">{teaser}</p>
+      </div>
+      <ChevronRight size={14} className="text-muted-text group-hover:text-near-black flex-shrink-0" />
+    </Link>
+  )
 }
 
 // ── Booking volume area chart ─────────────────────────────────────────────────

@@ -408,6 +408,103 @@ class AdminDashboardController extends Controller
     }
 
     /**
+     * GET /api/v1/admin/dashboard/activity/patterns
+     *
+     * Time-of-day × day-of-week heatmap + lead-time histogram. Reads
+     * the latest snapshot — patterns are computed during the nightly
+     * walk so this endpoint is one central row + a JSON decode.
+     *
+     * Labels for the 8 lead-time buckets are server-side so the UI
+     * stays in lock-step with what the snapshot SQL actually buckets.
+     */
+    public function activityPatterns(): JsonResponse
+    {
+        $payload = Cache::remember('admin:dashboard:activity:patterns:v1', 300, function () {
+            $snap = DB::table('platform_dashboard_snapshots')->orderByDesc('snapshot_date')->first();
+            if (! $snap) {
+                return ['snapshot_date' => null, 'matrix' => null, 'lead_time' => [], 'computed_at' => now()->toIso8601String()];
+            }
+            $data = json_decode($snap->payload, true) ?: [];
+
+            $bucketLabels = [
+                '<2h', '2–12h', '12–24h', '1–3d', '3–7d', '1–2w', '2–4w', '30d+',
+            ];
+            $buckets = $data['lead_time_buckets'] ?? array_fill(0, 8, 0);
+            $leadTime = [];
+            for ($i = 0; $i < 8; $i++) {
+                $leadTime[] = ['label' => $bucketLabels[$i], 'count' => (int) ($buckets[$i] ?? 0)];
+            }
+
+            return [
+                'snapshot_date' => $snap->snapshot_date,
+                'matrix'        => $data['dow_hod_matrix'] ?? null, // [dow 0=Mon][hod 0-23]
+                'lead_time'     => $leadTime,
+                'computed_at'   => now()->toIso8601String(),
+            ];
+        });
+
+        return response()->json($payload);
+    }
+
+    /**
+     * GET /api/v1/admin/dashboard/activity/revenue
+     *
+     * 90-day daily revenue series + per-tenant 7d/30d/total revenue.
+     * Estimate, NOT Stripe-precise — sums `service_price` across
+     * appointments (so includes booked-but-unpaid). Useful for trend
+     * tracking; not a financial source of truth.
+     */
+    public function activityRevenue(): JsonResponse
+    {
+        $payload = Cache::remember('admin:dashboard:activity:revenue:v1', 300, function () {
+            $snap = DB::table('platform_dashboard_snapshots')->orderByDesc('snapshot_date')->first();
+            if (! $snap) {
+                return [
+                    'snapshot_date'  => null,
+                    'kpis'           => null,
+                    'daily_revenue'  => [],
+                    'top_tenants'    => [],
+                    'computed_at'    => now()->toIso8601String(),
+                ];
+            }
+            $data = json_decode($snap->payload, true) ?: [];
+            $perTenant = collect($data['per_tenant'] ?? []);
+
+            $totalRevenue = (int) $perTenant->sum(fn ($t) => (int) ($t['revenue_total_cents'] ?? 0));
+            $revenue30d   = (int) $perTenant->sum(fn ($t) => (int) ($t['revenue_30d_cents']   ?? 0));
+            $revenue7d    = (int) $perTenant->sum(fn ($t) => (int) ($t['revenue_7d_cents']    ?? 0));
+            $revenuePrior = (int) $perTenant->sum(fn ($t) => (int) ($t['revenue_prior_7d_cents'] ?? 0));
+
+            $topTenants = $perTenant
+                ->filter(fn ($t) => (int) ($t['revenue_30d_cents'] ?? 0) > 0)
+                ->sortByDesc(fn ($t) => (int) ($t['revenue_30d_cents'] ?? 0))
+                ->take(10)
+                ->map(fn ($t) => [
+                    'id'                     => (string) ($t['id'] ?? ''),
+                    'revenue_7d_cents'       => (int) ($t['revenue_7d_cents'] ?? 0),
+                    'revenue_30d_cents'      => (int) ($t['revenue_30d_cents'] ?? 0),
+                    'revenue_prior_7d_cents' => (int) ($t['revenue_prior_7d_cents'] ?? 0),
+                ])
+                ->values();
+
+            return [
+                'snapshot_date' => $snap->snapshot_date,
+                'kpis' => [
+                    'revenue_7d_cents'       => $revenue7d,
+                    'revenue_prior_7d_cents' => $revenuePrior,
+                    'revenue_30d_cents'      => $revenue30d,
+                    'revenue_total_cents'    => $totalRevenue,
+                ],
+                'daily_revenue' => $data['daily_revenue'] ?? [],
+                'top_tenants'   => $topTenants,
+                'computed_at'   => now()->toIso8601String(),
+            ];
+        });
+
+        return response()->json($payload);
+    }
+
+    /**
      * GET /api/v1/admin/dashboard/insights
      *
      * Phase 3 — rule-based observations. Each rule only appears when it

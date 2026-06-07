@@ -858,6 +858,42 @@ export interface AdminTenantTrendRow {
   tier:                ActivityTier
 }
 
+/** /admin/dashboard/activity/patterns response. */
+export interface AdminActivityPatterns {
+  snapshot_date: string | null
+  /** [dow 0=Mon ... 6=Sun][hod 0..23] = booking count (last 30d, platform-wide). */
+  matrix:        number[][] | null
+  lead_time:     { label: string; count: number }[]
+  computed_at:   string
+}
+
+export async function getAdminActivityPatterns(): Promise<AdminActivityPatterns> {
+  return request<AdminActivityPatterns>('/admin/dashboard/activity/patterns')
+}
+
+/** /admin/dashboard/activity/revenue response. */
+export interface AdminActivityRevenue {
+  snapshot_date: string | null
+  kpis: {
+    revenue_7d_cents:        number
+    revenue_prior_7d_cents:  number
+    revenue_30d_cents:       number
+    revenue_total_cents:     number
+  } | null
+  daily_revenue: { date: string; cents: number }[]
+  top_tenants:   {
+    id:                       string
+    revenue_7d_cents:         number
+    revenue_30d_cents:        number
+    revenue_prior_7d_cents:   number
+  }[]
+  computed_at: string
+}
+
+export async function getAdminActivityRevenue(): Promise<AdminActivityRevenue> {
+  return request<AdminActivityRevenue>('/admin/dashboard/activity/revenue')
+}
+
 /** Platform-wide activity KPIs with prior-period values for WoW deltas. */
 export interface AdminActivityKpis {
   bookings_7d:                 number

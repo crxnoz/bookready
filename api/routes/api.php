@@ -392,6 +392,8 @@ Route::prefix('v1')->group(function () {
         Route::get   ('dashboard/insights',[AdminDashboardController::class, 'insights']);
         Route::get   ('dashboard/health',  [AdminDashboardController::class, 'health']);
         Route::get   ('dashboard/health/sparklines', [AdminDashboardController::class, 'sparklines']);
+        Route::get   ('dashboard/activity/patterns', [AdminDashboardController::class, 'activityPatterns']);
+        Route::get   ('dashboard/activity/revenue',  [AdminDashboardController::class, 'activityRevenue']);
         Route::get   ('dashboard/errors',  [AdminDashboardController::class, 'errors']);
         Route::get   ('dashboard/queue',   [AdminDashboardController::class, 'queue']);
         Route::get   ('dashboard/deploys', [AdminDashboardController::class, 'deploys']);
