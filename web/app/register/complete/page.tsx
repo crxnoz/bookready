@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Check, X, Loader2 } from 'lucide-react'
+import { Check, X, Loader2, Sparkles, ExternalLink } from 'lucide-react'
 import { completeGoogleSignup, checkSubdomain, type SubdomainCheckResponse } from '@/lib/api'
 import { setToken, setTenantId } from '@/lib/auth'
 import { SITE_TEMPLATES, normalizeTemplateSlug } from '@/lib/templates'
@@ -248,9 +248,46 @@ function CompleteInner() {
         {/* Template picker — lets Google signups choose their site look
             here (the email flow picks it on /checkout). The selection is
             sent to complete-signup, which seeds template_settings, and is
-            re-applied on /checkout via selectActiveTemplate. */}
+            re-applied on /checkout via selectActiveTemplate.
+
+            #167b — mirror the /register IntentSummary "change" link and the
+            /templates page's featured showcase button. Both live HERE in
+            the Google flow too so users mid-signup never feel locked into
+            their choice and can always discover the deeper previews. */}
         <div>
-          <label className={labelCls}>Template</label>
+          <div className="flex items-baseline justify-between gap-3 mb-1.5">
+            <label className={labelCls + ' mb-0'}>Template</label>
+            <Link
+              href="/templates"
+              className="text-[10px] font-semibold tracking-[0.06em] uppercase text-muted-text hover:text-near-black"
+            >
+              change ↗
+            </Link>
+          </div>
+
+          {/* Featured cross-link to the marketing showcase. Same blush
+              treatment as the /templates page so the affordance reads
+              the same across surfaces. */}
+          <a
+            href="https://mybookready.com/templates"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group flex items-center gap-3 bg-blush border border-[rgba(18,18,18,0.10)] hover:border-near-black p-3 mb-2 transition-colors"
+          >
+            <div className="w-8 h-8 flex items-center justify-center bg-white border border-[rgba(18,18,18,0.10)] flex-shrink-0">
+              <Sparkles size={13} className="text-near-black" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] font-bold text-near-black leading-tight">
+                See the full template showcase
+              </p>
+              <p className="text-[10px] text-muted-text mt-0.5">
+                Full previews + demos on mybookready.com
+              </p>
+            </div>
+            <ExternalLink size={13} className="text-muted-text group-hover:text-near-black flex-shrink-0" />
+          </a>
+
           <div className="space-y-1.5">
             {SITE_TEMPLATES.map(t => (
               <button
