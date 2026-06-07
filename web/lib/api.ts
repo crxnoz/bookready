@@ -902,16 +902,32 @@ export async function getAdminDashboardInsights(): Promise<AdminDashboardInsight
 
 export type HealthStatus = 'ok' | 'warn' | 'bad' | 'unknown'
 
+/** Common envelope every probe returns from /admin/dashboard/health. */
+export interface HealthProbe {
+  status:   HealthStatus
+  value:    string
+  note:     string
+  runbook?: string
+  meta?:    Record<string, unknown>
+}
+
+export type HealthSectionKey = 'reliability' | 'background' | 'reachability' | 'deploy'
+
 export interface AdminDashboardHealth {
-  api_errors: { status: HealthStatus; count_24h: number | null; note: string }
-  queue:      { status: HealthStatus; connection: string; depth: number | null; note: string }
-  deploy:     { status: HealthStatus; commit: string | null; deployed_at: string | null; note: string }
-  mailer:     { status: HealthStatus; from: string; note: string }
+  sections: Record<HealthSectionKey, Record<string, HealthProbe>>
   computed_at: string
 }
 
-export async function getAdminDashboardHealth(): Promise<AdminDashboardHealth> {
-  return request<AdminDashboardHealth>('/admin/dashboard/health')
+export async function getAdminDashboardHealth(fresh = false): Promise<AdminDashboardHealth> {
+  return request<AdminDashboardHealth>(`/admin/dashboard/health${fresh ? '?fresh=1' : ''}`)
+}
+
+export type AdminQuickAction = 'reprobe' | 'snapshot' | 'clear-cache'
+
+export interface QuickActionResult { ok: boolean; note: string }
+
+export async function runAdminAction(name: AdminQuickAction): Promise<QuickActionResult> {
+  return request<QuickActionResult>(`/admin/dashboard/actions/${name}`, { method: 'POST' })
 }
 
 export interface AdminTenantDetail {

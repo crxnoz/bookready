@@ -738,7 +738,9 @@ class AdminDashboardController extends Controller
                     'runbook' => 'php artisan admin:snapshot — or use the Quick Action.',
                 ];
             }
-            $hours = (int) floor(now()->diffInMinutes(Carbon::parse($row->snapshot_date)->endOfDay(), false) / 60 * -1);
+            // Snapshot row is dated end-of-day for the day the job ran;
+            // we want elapsed hours since then.
+            $hours = abs((int) now()->diffInHours(Carbon::parse($row->snapshot_date)->endOfDay()));
             // Snapshot job runs daily 03:00; healthy = ≤30h old.
             return [
                 'status'  => $hours < 30 ? 'ok' : ($hours < 50 ? 'warn' : 'bad'),
@@ -769,7 +771,7 @@ class AdminDashboardController extends Controller
             if (! $at) {
                 return ['status' => 'warn', 'value' => '—', 'note' => 'Tick file unreadable.'];
             }
-            $ageSec = now()->diffInSeconds(Carbon::parse($at));
+            $ageSec = abs((int) now()->diffInSeconds(Carbon::parse($at)));
             return [
                 'status'  => $ageSec < 300 ? 'ok' : ($ageSec < 1800 ? 'warn' : 'bad'),
                 'value'   => $ageSec < 60 ? $ageSec . 's' : (int) round($ageSec / 60) . 'm',
