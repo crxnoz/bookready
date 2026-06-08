@@ -34,8 +34,12 @@ import {
   getStripeConnectStatus,
   getEditorAppointments,
   getEditorDashboardMetrics,
+  getEditorWaitlist,
+  getEditorAvailabilityRequests,
   getPlatformAnnouncements,
   type EditorDashboardMetrics,
+  type WaitlistEntry,
+  type AvailabilityRequest,
 } from '@/lib/api'
 import type {
   AuthUser, BusinessProfile, Service, HoursEntry, BusinessPolicy,
@@ -82,6 +86,11 @@ function DashboardBody() {
   // + capacity-resolved "% full"). Falls back to client-side approximations
   // until this resolves, then snaps to accurate numbers within a second.
   const [metrics,  setMetrics]  = useState<EditorDashboardMetrics | null>(null)
+  // Availability 2.0 surfaces: waitlist queue + customer-initiated
+  // availability requests. We pull both so the Needs Attention layer can
+  // flag work that doesn't live in the appointments table.
+  const [waitlistEntries, setWaitlistEntries] = useState<WaitlistEntry[]>([])
+  const [availRequests,   setAvailRequests]   = useState<AvailabilityRequest[]>([])
   const [loading,  setLoading]  = useState(true)
   const [loadErr,  setLoadErr]  = useState<string | null>(null)
 
@@ -102,8 +111,11 @@ function DashboardBody() {
       // 404s; we treat the absence as "use client-side fallbacks" and don't
       // surface an error.
       getEditorDashboardMetrics().catch(() => null),
+      // Availability 2.0 surfaces. Each can 404 on older builds, no big deal.
+      getEditorWaitlist().then(r => r.data).catch(() => [] as WaitlistEntry[]),
+      getEditorAvailabilityRequests('standard').then(r => r.data).catch(() => [] as AvailabilityRequest[]),
     ])
-      .then(([u, b, sv, hr, pol, st, ap, an, mx]) => {
+      .then(([u, b, sv, hr, pol, st, ap, an, mx, wl, rq]) => {
         if (cancelled) return
         // First-run gate: send brand-new tenants to the onboarding wizard
         // before showing the dashboard. Skipping/finishing the wizard stamps
@@ -123,6 +135,8 @@ function DashboardBody() {
         setAppts(Array.isArray(ap) ? (ap as Appointment[]) : [])
         setAnnouncements(Array.isArray(an) ? (an as PlatformAnnouncement[]) : [])
         setMetrics((mx as EditorDashboardMetrics | null) ?? null)
+        setWaitlistEntries(Array.isArray(wl) ? (wl as WaitlistEntry[]) : [])
+        setAvailRequests(Array.isArray(rq) ? (rq as AvailabilityRequest[]) : [])
       })
       .catch(e => { if (! cancelled) setLoadErr(e instanceof Error ? e.message : 'Failed to load') })
       .finally(() => { if (! cancelled) setLoading(false) })
@@ -181,6 +195,25 @@ function DashboardBody() {
   // ── Dashboard 2.0 — command-center derivations (recent-200 window) ──
   const todayScheduled = useMemo(() => computeTodayScheduled(todaysAppointments), [todaysAppointments])
   const attention      = useMemo(() => computeAttention(appts, todayStr),         [appts, todayStr])
+  // Waitlist counts customers actively in the queue: "pending" (waiting
+  // for a slot) and "notified" (a slot opened, customer was emailed and
+  // has a claim window). The owner sees both as "people who want to
+  // book." Claimed / expired / removed don't surface.
+  const waitlistAttention  = useMemo(
+    () => waitlistEntries.filter(e => e.status === 'pending' || e.status === 'notified').length,
+    [waitlistEntries],
+  )
+  // Availability requests count only "pending" (the owner hasn't acted).
+  // "suggested" is owner-waiting-on-customer and doesn't need an action.
+  const requestsAttention  = useMemo(
+    () => availRequests.filter(r => r.status === 'pending').length,
+    [availRequests],
+  )
+  // Total Needs-Attention count across appointment-derived items + the
+  // Availability 2.0 surfaces. Drives both the Layer 1 SummaryStatCard
+  // and the Layer 2 caught-up vs grid switch.
+  const totalAttention = attention.total + waitlistAttention + requestsAttention
+  const paymentIssuesCount = Math.max(0, attention.total - pendingCount)
   const bookingSnap    = useMemo(() => computeBookingSnap(appts),                 [appts])
   const health         = useMemo(() => computeHealth(appts),                      [appts])
   const weekendAppts   = useMemo(() => findWeekendAppts(appts),                   [appts])
@@ -248,7 +281,7 @@ function DashboardBody() {
         <SummaryStatCard label="Appointments today" value={String(todaysAppointments.length)} href="/editor/appointments" icon={Calendar} />
         <SummaryStatCard label="Scheduled today" value={money(todayScheduled, moneyBuckets.currency)} sub="expected revenue" href="/editor/payments" icon={DollarSign} />
         <SummaryStatCard label="New customers" value={String(newCustomers.length)} sub="last 7 days" href="/editor/customers" icon={UserPlus} />
-        <SummaryStatCard label="Needs attention" value={String(attention.total)} href="/editor/appointments?status=pending" icon={Inbox} tone={attention.total > 0 ? 'warn' : 'default'} />
+        <SummaryStatCard label="Needs attention" value={String(totalAttention)} href="/editor/appointments?status=pending" icon={Inbox} tone={totalAttention > 0 ? 'warn' : 'default'} />
       </div>
 
       <section>
@@ -279,20 +312,22 @@ function DashboardBody() {
         <SectionHeader
           icon={AlertTriangle}
           label="Needs attention"
-          subtitle={attention.total === 0 ? "You're all caught up." : `${attention.total} thing${attention.total === 1 ? '' : 's'} to handle.`}
+          subtitle={totalAttention === 0 ? "You're all caught up." : `${totalAttention} thing${totalAttention === 1 ? '' : 's'} to handle.`}
         />
-        {attention.total === 0 ? (
+        {totalAttention === 0 ? (
           <div className="bg-white border border-[rgba(20,140,80,0.30)] p-4 flex items-center gap-3">
             <CheckCircle2 size={18} className="text-[#0f6f3d] flex-shrink-0" />
             <div>
               <p className="text-[13px] font-bold text-near-black">You&rsquo;re all caught up</p>
-              <p className="text-[11px] text-muted-text mt-0.5">No requests, payment issues, or unpaid balances right now.</p>
+              <p className="text-[11px] text-muted-text mt-0.5">No requests, payment issues, waitlist signups, or unpaid balances right now.</p>
             </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {pendingCount > 0 && <PendingRequestsTile count={pendingCount} />}
-            {(attention.total - pendingCount) > 0 && <PaymentIssuesTile count={attention.total - pendingCount} />}
+            {pendingCount         > 0 && <PendingRequestsTile        count={pendingCount} />}
+            {paymentIssuesCount   > 0 && <PaymentIssuesTile          count={paymentIssuesCount} />}
+            {requestsAttention    > 0 && <AvailabilityRequestsTile   count={requestsAttention} />}
+            {waitlistAttention    > 0 && <WaitlistTile               count={waitlistAttention} />}
           </div>
         )}
       </section>
@@ -2031,6 +2066,64 @@ function PaymentIssuesTile({ count }: { count: number }) {
           <p className="text-[11px] text-[#b42828]/80 mt-0.5">Failed charges, disputes, or unpaid balances.</p>
         </div>
         <ArrowUpRight size={13} className="text-[#b42828] flex-shrink-0" />
+      </div>
+    </Link>
+  )
+}
+
+/**
+ * Availability requests tile. A customer asked for a time that wasn't on
+ * your bookable calendar (off-hours, blocked, or capacity-full). Owners
+ * approve / suggest / decline from /editor/availability.
+ */
+function AvailabilityRequestsTile({ count }: { count: number }) {
+  return (
+    <Link
+      href="/editor/availability?tab=requests"
+      className="block bg-[rgba(107,77,138,0.07)] border border-[rgba(107,77,138,0.30)] p-4 hover:bg-[rgba(107,77,138,0.12)] transition-colors"
+    >
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 bg-white border border-[rgba(107,77,138,0.30)] flex items-center justify-center flex-shrink-0">
+          <Calendar size={16} className="text-[#6b4d8a]" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-bold text-[#6b4d8a]">
+            {count} availability {count === 1 ? 'request' : 'requests'} to answer
+          </p>
+          <p className="text-[11px] text-[#6b4d8a]/80 mt-0.5">
+            Customers asking about times that aren&rsquo;t open yet.
+          </p>
+        </div>
+        <ArrowUpRight size={13} className="text-[#6b4d8a] flex-shrink-0" />
+      </div>
+    </Link>
+  )
+}
+
+/**
+ * Waitlist tile. Customers waiting for a specific date / service to free
+ * up. Not urgent the way a payment failure is; surfaced so owners know
+ * there's pent-up demand they could notify when a slot opens.
+ */
+function WaitlistTile({ count }: { count: number }) {
+  return (
+    <Link
+      href="/editor/waitlist"
+      className="block bg-[rgba(93,138,28,0.07)] border border-[rgba(93,138,28,0.30)] p-4 hover:bg-[rgba(93,138,28,0.12)] transition-colors"
+    >
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 bg-white border border-[rgba(93,138,28,0.30)] flex items-center justify-center flex-shrink-0">
+          <Clock size={16} className="text-[#4f7517]" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-bold text-[#4f7517]">
+            {count} {count === 1 ? 'customer' : 'customers'} on the waitlist
+          </p>
+          <p className="text-[11px] text-[#4f7517]/80 mt-0.5">
+            Ready to grab a slot the moment one opens.
+          </p>
+        </div>
+        <ArrowUpRight size={13} className="text-[#4f7517] flex-shrink-0" />
       </div>
     </Link>
   )
