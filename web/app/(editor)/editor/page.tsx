@@ -24,6 +24,7 @@ import {
 import EditorShell from '@/components/editor/EditorShell'
 import WelcomeTour from '@/components/editor/WelcomeTour'
 import { cn } from '@/lib/cn'
+import StatusBadge from '@/components/ui/StatusBadge'
 import { getTenantId } from '@/lib/auth'
 import {
   getCurrentUser,
@@ -35,11 +36,9 @@ import {
   getEditorAppointments,
   getEditorDashboardMetrics,
   getEditorWaitlist,
-  getEditorAvailabilityRequests,
   getPlatformAnnouncements,
   type EditorDashboardMetrics,
   type WaitlistEntry,
-  type AvailabilityRequest,
 } from '@/lib/api'
 import type {
   AuthUser, BusinessProfile, Service, HoursEntry, BusinessPolicy,
@@ -86,11 +85,9 @@ function DashboardBody() {
   // + capacity-resolved "% full"). Falls back to client-side approximations
   // until this resolves, then snaps to accurate numbers within a second.
   const [metrics,  setMetrics]  = useState<EditorDashboardMetrics | null>(null)
-  // Availability 2.0 surfaces: waitlist queue + customer-initiated
-  // availability requests. We pull both so the Needs Attention layer can
-  // flag work that doesn't live in the appointments table.
+  // Availability 2.0 surface: the waitlist queue (work that doesn't live in
+  // the appointments table) feeds the Needs Attention layer.
   const [waitlistEntries, setWaitlistEntries] = useState<WaitlistEntry[]>([])
-  const [availRequests,   setAvailRequests]   = useState<AvailabilityRequest[]>([])
   const [loading,  setLoading]  = useState(true)
   const [loadErr,  setLoadErr]  = useState<string | null>(null)
 
@@ -111,11 +108,10 @@ function DashboardBody() {
       // 404s; we treat the absence as "use client-side fallbacks" and don't
       // surface an error.
       getEditorDashboardMetrics().catch(() => null),
-      // Availability 2.0 surfaces. Each can 404 on older builds, no big deal.
+      // Availability 2.0 surface: waitlist queue. Can 404 on older builds.
       getEditorWaitlist().then(r => r.data).catch(() => [] as WaitlistEntry[]),
-      getEditorAvailabilityRequests('standard').then(r => r.data).catch(() => [] as AvailabilityRequest[]),
     ])
-      .then(([u, b, sv, hr, pol, st, ap, an, mx, wl, rq]) => {
+      .then(([u, b, sv, hr, pol, st, ap, an, mx, wl]) => {
         if (cancelled) return
         // First-run gate: send brand-new tenants to the onboarding wizard
         // before showing the dashboard. Skipping/finishing the wizard stamps
@@ -136,7 +132,6 @@ function DashboardBody() {
         setAnnouncements(Array.isArray(an) ? (an as PlatformAnnouncement[]) : [])
         setMetrics((mx as EditorDashboardMetrics | null) ?? null)
         setWaitlistEntries(Array.isArray(wl) ? (wl as WaitlistEntry[]) : [])
-        setAvailRequests(Array.isArray(rq) ? (rq as AvailabilityRequest[]) : [])
       })
       .catch(e => { if (! cancelled) setLoadErr(e instanceof Error ? e.message : 'Failed to load') })
       .finally(() => { if (! cancelled) setLoading(false) })
@@ -203,16 +198,10 @@ function DashboardBody() {
     () => waitlistEntries.filter(e => e.status === 'pending' || e.status === 'notified').length,
     [waitlistEntries],
   )
-  // Availability requests count only "pending" (the owner hasn't acted).
-  // "suggested" is owner-waiting-on-customer and doesn't need an action.
-  const requestsAttention  = useMemo(
-    () => availRequests.filter(r => r.status === 'pending').length,
-    [availRequests],
-  )
   // Total Needs-Attention count across appointment-derived items + the
-  // Availability 2.0 surfaces. Drives both the Layer 1 SummaryStatCard
-  // and the Layer 2 caught-up vs grid switch.
-  const totalAttention = attention.total + waitlistAttention + requestsAttention
+  // waitlist surface. Drives both the Layer 1 SummaryStatCard and the
+  // Layer 2 caught-up vs grid switch.
+  const totalAttention = attention.total + waitlistAttention
   const paymentIssuesCount = Math.max(0, attention.total - pendingCount)
   // Today's day-level capacity from the metrics endpoint. null = uncapped, the
   // header then shows a plain count instead of a booked / cap ratio.
@@ -238,7 +227,7 @@ function DashboardBody() {
   if (loadErr) {
     return (
       <div className="w-full p-3 sm:p-5 md:p-6">
-        <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-danger flex items-center gap-2">
+        <div className="bg-white border border-danger/20 p-4 text-xs text-danger flex items-center gap-2">
           <AlertCircle size={14} /> {loadErr}
         </div>
       </div>
@@ -326,7 +315,7 @@ function DashboardBody() {
           subtitle={totalAttention === 0 ? "You're all caught up." : `${totalAttention} thing${totalAttention === 1 ? '' : 's'} to handle.`}
         />
         {totalAttention === 0 ? (
-          <div className="bg-white border border-[rgba(20,140,80,0.30)] p-4 flex items-center gap-3">
+          <div className="bg-white border border-success/30 p-4 flex items-center gap-3">
             <CheckCircle2 size={18} className="text-success flex-shrink-0" />
             <div>
               <p className="text-sm font-bold text-near-black">You&rsquo;re all caught up</p>
@@ -337,7 +326,6 @@ function DashboardBody() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {pendingCount         > 0 && <PendingRequestsTile        count={pendingCount} />}
             {paymentIssuesCount   > 0 && <PaymentIssuesTile          count={paymentIssuesCount} />}
-            {requestsAttention    > 0 && <AvailabilityRequestsTile   count={requestsAttention} />}
             {waitlistAttention    > 0 && <WaitlistTile               count={waitlistAttention} />}
           </div>
         )}
@@ -492,7 +480,7 @@ function TodayApptRow({ a }: { a: Appointment }) {
         <p className="text-sm font-semibold text-near-black truncate">{a.customer_name}</p>
         <p className="text-2xs text-muted-text truncate">{a.service_name}</p>
       </div>
-      <StatusPill status={a.status} />
+      <StatusBadge domain="appointment" status={a.status} />
       <ChevronRight size={13} className="text-muted-text flex-shrink-0" />
     </Link>
   )
@@ -513,27 +501,9 @@ function ActivityRow({ a }: { a: Appointment }) {
         </p>
         <p className="text-2xs text-muted-text">{fmtDate(a.appointment_date)} at {fmt12(a.start_time)} · {when}</p>
       </div>
-      <StatusPill status={a.status} />
+      <StatusBadge domain="appointment" status={a.status} />
       <ChevronRight size={13} className="text-muted-text flex-shrink-0" />
     </Link>
-  )
-}
-
-function StatusPill({ status }: { status: string }) {
-  const cls = {
-    confirmed: 'bg-[rgba(20,140,80,0.08)] border-[rgba(20,140,80,0.35)] text-success',
-    pending:   'bg-cream border-[rgba(180,120,0,0.30)] text-warning',
-    completed: 'bg-near-black border-near-black text-white',
-    cancelled: 'bg-white border-[rgba(180,40,40,0.30)] text-danger',
-    no_show:   'bg-white border-[rgba(180,40,40,0.30)] text-danger',
-  }[status] ?? 'bg-cream border-hairline-strong text-muted-text'
-  return (
-    <span className={cn(
-      'text-eyebrow font-bold tracking-[0.06em] uppercase border px-1.5 py-0.5 whitespace-nowrap flex-shrink-0',
-      cls,
-    )}>
-      {status.replace('_', ' ')}
-    </span>
   )
 }
 
@@ -980,10 +950,10 @@ function PendingRequestsTile({ count }: { count: number }) {
   return (
     <Link
       href="/editor/appointments?status=pending"
-      className="block bg-[rgba(180,120,0,0.08)] border border-[rgba(180,120,0,0.30)] p-4 hover:bg-[rgba(180,120,0,0.12)] transition-colors"
+      className="block bg-warning-bg border border-warning/30 p-4 hover:border-warning transition-colors"
     >
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 bg-white border border-[rgba(180,120,0,0.30)] flex items-center justify-center flex-shrink-0">
+        <div className="w-9 h-9 bg-white border border-warning/30 flex items-center justify-center flex-shrink-0">
           <Inbox size={16} className="text-warning" />
         </div>
         <div className="flex-1 min-w-0">
@@ -2053,7 +2023,7 @@ function SummaryStatCard({ label, value, sub, href, icon: Icon, tone = 'default'
   return (
     <Link href={href}
           className={cn('block bg-white border p-3.5 hover:border-near-black transition-colors',
-            warn ? 'border-[rgba(180,120,0,0.40)]' : 'border-hairline-soft')}>
+            warn ? 'border-warning/40' : 'border-hairline-soft')}>
       <div className="flex items-center justify-between">
         <p className="text-eyebrow font-bold tracking-[0.12em] uppercase text-muted-text truncate">{label}</p>
         <Icon size={13} className={warn ? 'text-warning' : 'text-muted-text'} strokeWidth={1.8} />
@@ -2067,9 +2037,9 @@ function SummaryStatCard({ label, value, sub, href, icon: Icon, tone = 'default'
 function PaymentIssuesTile({ count }: { count: number }) {
   return (
     <Link href="/editor/payments?tab=transactions"
-          className="block bg-[rgba(180,40,40,0.05)] border border-[rgba(180,40,40,0.30)] p-4 hover:bg-[rgba(180,40,40,0.09)] transition-colors">
+          className="block bg-danger-bg border border-danger/30 p-4 hover:border-danger transition-colors">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 bg-white border border-[rgba(180,40,40,0.30)] flex items-center justify-center flex-shrink-0">
+        <div className="w-9 h-9 bg-white border border-danger/30 flex items-center justify-center flex-shrink-0">
           <AlertTriangle size={16} className="text-danger" />
         </div>
         <div className="flex-1 min-w-0">
@@ -2077,35 +2047,6 @@ function PaymentIssuesTile({ count }: { count: number }) {
           <p className="text-2xs text-danger/80 mt-0.5">Failed charges, disputes, or unpaid balances.</p>
         </div>
         <ArrowUpRight size={13} className="text-danger flex-shrink-0" />
-      </div>
-    </Link>
-  )
-}
-
-/**
- * Availability requests tile. A customer asked for a time that wasn't on
- * your bookable calendar (off-hours, blocked, or capacity-full). Owners
- * approve / suggest / decline from /editor/availability.
- */
-function AvailabilityRequestsTile({ count }: { count: number }) {
-  return (
-    <Link
-      href="/editor/availability?tab=requests"
-      className="block bg-[rgba(107,77,138,0.07)] border border-[rgba(107,77,138,0.30)] p-4 hover:bg-[rgba(107,77,138,0.12)] transition-colors"
-    >
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 bg-white border border-[rgba(107,77,138,0.30)] flex items-center justify-center flex-shrink-0">
-          <Calendar size={16} className="text-[#6b4d8a]" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-[#6b4d8a]">
-            {count} availability {count === 1 ? 'request' : 'requests'} to answer
-          </p>
-          <p className="text-2xs text-[#6b4d8a]/80 mt-0.5">
-            Customers asking about times that aren&rsquo;t open yet.
-          </p>
-        </div>
-        <ArrowUpRight size={13} className="text-[#6b4d8a] flex-shrink-0" />
       </div>
     </Link>
   )
@@ -2120,21 +2061,21 @@ function WaitlistTile({ count }: { count: number }) {
   return (
     <Link
       href="/editor/waitlist"
-      className="block bg-[rgba(93,138,28,0.07)] border border-[rgba(93,138,28,0.30)] p-4 hover:bg-[rgba(93,138,28,0.12)] transition-colors"
+      className="block bg-success-bg border border-success/30 p-4 hover:border-success transition-colors"
     >
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 bg-white border border-[rgba(93,138,28,0.30)] flex items-center justify-center flex-shrink-0">
-          <Clock size={16} className="text-[#4f7517]" />
+        <div className="w-9 h-9 bg-white border border-success/30 flex items-center justify-center flex-shrink-0">
+          <Clock size={16} className="text-success" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-[#4f7517]">
+          <p className="text-sm font-bold text-success">
             {count} {count === 1 ? 'customer' : 'customers'} on the waitlist
           </p>
-          <p className="text-2xs text-[#4f7517]/80 mt-0.5">
+          <p className="text-2xs text-success/80 mt-0.5">
             Ready to grab a slot the moment one opens.
           </p>
         </div>
-        <ArrowUpRight size={13} className="text-[#4f7517] flex-shrink-0" />
+        <ArrowUpRight size={13} className="text-success flex-shrink-0" />
       </div>
     </Link>
   )
