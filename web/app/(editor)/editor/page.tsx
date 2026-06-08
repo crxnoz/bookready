@@ -920,80 +920,149 @@ function PendingRequestsTile({ count }: { count: number }) {
   )
 }
 
-type ChartPeriod = 'daily' | 'weekly' | 'monthly'
+type ChartPeriod = 'today' | 'week' | 'month' | 'year'
 
-interface PeriodBucket {
-  key:       string       // unique id (start ISO)
-  label:     string       // short axis label
-  value:     number
+interface AreaPoint {
+  key:       string       // unique id (start ISO or hour key)
+  label:     string       // short axis label (e.g. "Mon", "Jun 4", "11a")
+  showLabel: boolean      // render this label on the x-axis (skipped for denser periods)
+  fullLabel: string       // tooltip headline (e.g. "Mon, Jun 4" or "11 AM")
+  value:     number       // revenue collected in this bucket
+  appts:     number       // count of appointments contributing
+  isCurrent: boolean      // is this "now"? (current hour / day / month)
+  isFuture:  boolean      // bucket starts after now (faded treatment)
   startISO:  string       // bucket start (YYYY-MM-DD)
-  endISO:    string       // bucket end (exclusive, YYYY-MM-DD)
-  isCurrent: boolean      // is the rightmost bucket the present one
+  endISO:    string       // bucket end (exclusive)
+}
+
+interface AreaData {
+  points:     AreaPoint[]
+  total:      number       // sum of values across visible points (period total)
+  priorTotal: number       // sum across equivalent prior period (for delta)
+  totalAppts: number       // sum of appts across visible points
 }
 
 /**
- * Revenue trend chart — period-toggleable (Daily / Weekly / Monthly),
- * fully interactive. Clicking a bar opens an inline detail panel below
- * the chart listing the appointments that contributed.
+ * Revenue Snapshot, the Dashboard 2.0 hero chart. Soft area chart with a
+ * smoothed top line, no Y-axis labels, period-toggleable
+ * (Today / Week / Month / Year). The headline number is the period total;
+ * the chart provides trend depth without becoming the focal point.
+ *
+ * Future buckets (hours after now in Today view, days after today in
+ * Week / Month, months after now in Year) render as a faded dashed
+ * baseline so it's obvious which side of "now" the data is on. The
+ * latest non-future point gets a halo + dot and an inline "now" tag.
+ *
+ * Empty states:
+ *   - no revenue ever → a friendly empty panel with a share-link nudge
+ *   - some history but zero this period → flat curve + delta vs prior
+ *
+ * Clicking a point opens the inline detail panel below the chart listing
+ * the appointments that contributed to that bucket.
  */
 function RevenueChart({ appts, currency }: { appts: Appointment[]; currency: string }) {
-  const [period, setPeriod]           = useState<ChartPeriod>('weekly')
+  const [period, setPeriod]           = useState<ChartPeriod>('month')
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
-  const buckets = useMemo(() => computeRevenueBuckets(appts, period), [appts, period])
-  const total = buckets.reduce((s, b) => s + b.value, 0)
-  const last  = buckets[buckets.length - 1]?.value ?? 0
-  const prev  = buckets[buckets.length - 2]?.value ?? 0
-  const delta = prev > 0 ? Math.round(((last - prev) / prev) * 100) : null
-  const periodWord = period === 'daily' ? 'day' : period === 'weekly' ? 'week' : 'month'
+  const data = useMemo(() => computeRevenueAreaData(appts, period), [appts, period])
 
-  const bars: ChartBar[] = buckets.map(b => ({
-    key:       b.key,
-    value:     b.value,
-    primary:   period === 'daily' ? fmtDateFull(b.startISO)
-              : period === 'weekly' ? `Week of ${fmtDate(b.startISO)}`
-              : monthLabel(b.startISO),
-    secondary: money(b.value, currency),
-    accent:    b.isCurrent,
-    selected:  selectedKey === b.key,
-  }))
+  const periodWord = period === 'today' ? 'today' : `this ${period}`
+  const priorWord  = period === 'today' ? 'yesterday' : `last ${period}`
+  const periodNoun = period === 'today' ? 'day' : period
 
-  const selectedBucket = buckets.find(b => b.key === selectedKey) ?? null
-  const contributing  = selectedBucket
-    ? appointmentsInRange(appts, selectedBucket.startISO, selectedBucket.endISO, 'created').filter(a =>
+  const hasEverHadRevenue = appts.some(
+    a => ((a.deposit_paid_amount ?? 0) + (a.balance_paid_amount ?? 0)) > 0,
+  )
+
+  const delta = data.priorTotal > 0
+    ? Math.round(((data.total - data.priorTotal) / data.priorTotal) * 100)
+    : null
+
+  let deltaCopy = ''
+  let deltaTone: 'up' | 'down' | 'flat' = 'flat'
+  if (delta != null) {
+    deltaCopy = `${delta >= 0 ? '+' : ''}${delta}% from ${priorWord}`
+    deltaTone = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat'
+  } else if (data.total > 0) {
+    deltaCopy = `First ${periodNoun} with revenue`
+    deltaTone = 'up'
+  }
+
+  const selectedPoint = selectedKey ? data.points.find(p => p.key === selectedKey) ?? null : null
+  const contributing  = selectedPoint
+    ? appointmentsInRange(appts, selectedPoint.startISO, selectedPoint.endISO, 'created').filter(a =>
         ((a.deposit_paid_amount ?? 0) + (a.balance_paid_amount ?? 0)) > 0,
       )
     : []
 
+  const headlineMoney = money(data.total, currency)
+  const avgTicket     = data.totalAppts > 0 ? money(data.total / data.totalAppts, currency) : null
+
   return (
     <section>
-      <SectionHeader
-        icon={TrendingUp}
-        label="Revenue"
-        subtitle={total === 0
-          ? `No revenue collected in this ${periodWord} window.`
-          : `${money(total, currency)} total · ${delta != null ? (delta >= 0 ? '+' : '') + delta + `% vs last ${periodWord}` : 'this ' + periodWord}`}
-      />
-      <div className="bg-white border border-[rgba(18,18,18,0.10)]">
-        <div className="px-4 pt-3 pb-1 flex justify-end">
+      <div className="bg-white border border-[rgba(18,18,18,0.10)] rounded-2xl overflow-hidden">
+        {/* Header: headline + period toggle */}
+        <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">
+              Revenue {periodWord}
+            </p>
+            <p className="mt-1.5 text-[28px] font-bold leading-none text-near-black tabular-nums">
+              {headlineMoney}
+            </p>
+            {deltaCopy && (
+              <p className={cn(
+                'mt-1.5 text-[12px] font-medium',
+                deltaTone === 'up'   && 'text-near-black',
+                deltaTone === 'down' && 'text-[#9b3535]',
+                deltaTone === 'flat' && 'text-muted-text font-normal',
+              )}>
+                {deltaCopy}
+              </p>
+            )}
+          </div>
           <PeriodToggle value={period} onChange={p => { setPeriod(p); setSelectedKey(null) }} />
         </div>
-        <div className="px-4 pb-4">
-          <InteractiveBarChart
-            bars={bars}
-            startLabel={buckets[0]?.label ?? ''}
-            endLabel={buckets[buckets.length - 1]?.label ?? ''}
-            emptyText={`No revenue in this ${periodWord} window.`}
-            onBarClick={key => setSelectedKey(prev => prev === key ? null : key)}
-          />
+
+        {/* Chart */}
+        <div className="px-3 sm:px-5 pb-2">
+          {hasEverHadRevenue || period === 'today' ? (
+            <AreaChart
+              points={data.points}
+              currency={currency}
+              selectedKey={selectedKey}
+              onSelect={key => setSelectedKey(prev => prev === key ? null : key)}
+              ariaLabel={`Revenue ${periodWord}: ${headlineMoney}${deltaCopy ? `, ${deltaCopy}` : ''}.`}
+            />
+          ) : (
+            <EmptyRevenue />
+          )}
         </div>
-        {selectedBucket && (
+
+        {/* Footer line: appointments · avg ticket */}
+        {hasEverHadRevenue && (
+          <div className="px-5 pb-4 text-[12px] text-muted-text">
+            {data.totalAppts === 0 ? (
+              `No appointments ${period === 'today' ? 'yet today' : periodWord}.`
+            ) : (
+              <>
+                <span className="text-near-black font-medium tabular-nums">{data.totalAppts}</span>{' '}
+                {data.totalAppts === 1 ? 'appointment' : 'appointments'}
+                {avgTicket && (
+                  <>
+                    <span className="px-1.5 text-muted-text/60">·</span>
+                    <span className="text-near-black font-medium tabular-nums">{avgTicket}</span>{' '}
+                    avg ticket
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {selectedPoint && (
           <ChartDetailPanel
-            label={
-              period === 'daily' ? fmtDateFull(selectedBucket.startISO)
-              : period === 'weekly' ? `Week of ${fmtDate(selectedBucket.startISO)}`
-              : monthLabel(selectedBucket.startISO)
-            }
-            valueLabel={money(selectedBucket.value, currency)}
+            label={selectedPoint.fullLabel}
+            valueLabel={money(selectedPoint.value, currency)}
             onClose={() => setSelectedKey(null)}
             empty={contributing.length === 0 ? 'No paid appointments in this period.' : undefined}
             rows={contributing.slice(0, 8).map(a => ({
@@ -1010,24 +1079,272 @@ function RevenueChart({ appts, currency }: { appts: Appointment[]; currency: str
   )
 }
 
+/** Quiet first-run state for the Revenue Snapshot. */
+function EmptyRevenue() {
+  return (
+    <div className="px-2 py-10 text-center">
+      <p className="text-[12px] text-muted-text max-w-[40ch] mx-auto leading-relaxed">
+        No revenue yet. Once customers book and pay, your trend will show up here.
+      </p>
+    </div>
+  )
+}
+
+/**
+ * Soft area chart primitive. Pure SVG, no chart library. Renders past
+ * data as a smoothed area + line; future buckets become a dashed
+ * baseline so it's obvious where "now" lands. Hover/tap any column to
+ * surface the date, revenue and appointment count via ChartTooltip.
+ *
+ * Smoothing is Catmull-Rom converted to cubic Bezier (default tension);
+ * we draw on a 320 × 100 viewBox stretched to fit, so circles read as
+ * slight ellipses on wide cards, which is acceptable at this scale.
+ */
+function AreaChart({
+  points, currency, selectedKey, onSelect, ariaLabel,
+}: {
+  points:      AreaPoint[]
+  currency:    string
+  selectedKey: string | null
+  onSelect?:   (key: string) => void
+  ariaLabel:   string
+}) {
+  const [hover, setHover] = useState<number | null>(null)
+
+  const VW = 320, VH = 100
+  const TOP = 8, BOT = 92
+
+  const n = points.length
+  if (n === 0) return null
+
+  const max = Math.max(1, ...points.map(p => p.value))
+  const coords = points.map((p, i) => ({
+    x: n === 1 ? VW / 2 : (i / (n - 1)) * VW,
+    y: BOT - (p.value / max) * (BOT - TOP),
+  }))
+
+  // Future cutoff: last index whose bucket is not in the future.
+  const lastPastIdx = (() => {
+    for (let i = n - 1; i >= 0; i--) if (! points[i].isFuture) return i
+    return -1
+  })()
+  const currentIdx  = points.findIndex(p => p.isCurrent)
+  const drawableIdx = currentIdx >= 0 ? currentIdx : lastPastIdx
+
+  // Path for [0..drawableIdx]
+  const linePath = drawableIdx >= 0 ? smoothSplinePath(coords.slice(0, drawableIdx + 1)) : ''
+  const areaPath = drawableIdx >= 0
+    ? `${linePath} L${coords[drawableIdx].x} ${BOT} L${coords[0].x} ${BOT} Z`
+    : ''
+
+  // Gridlines at 25 / 50 / 75 %.
+  const gridYs = [0.25, 0.5, 0.75].map(pct => TOP + (BOT - TOP) * pct)
+
+  const selectedIdx = selectedKey ? points.findIndex(p => p.key === selectedKey) : -1
+  const tooltipIdx  = hover != null ? hover : (selectedIdx >= 0 ? selectedIdx : null)
+
+  return (
+    <div className="select-none">
+      <div className="relative" onMouseLeave={() => setHover(null)}>
+        {tooltipIdx != null && tooltipIdx >= 0 && points[tooltipIdx] && (
+          <ChartTooltip
+            primary={points[tooltipIdx].fullLabel}
+            secondary={money(points[tooltipIdx].value, currency)}
+            tertiary={points[tooltipIdx].isFuture
+              ? 'Not yet'
+              : `${points[tooltipIdx].appts} ${points[tooltipIdx].appts === 1 ? 'appointment' : 'appointments'}`}
+            position={n === 1 ? 0.5 : tooltipIdx / (n - 1)}
+          />
+        )}
+
+        <svg
+          viewBox={`0 0 ${VW} ${VH}`}
+          preserveAspectRatio="none"
+          className="w-full block"
+          style={{ height: 180 }}
+          role="img"
+          aria-label={ariaLabel}
+        >
+          <defs>
+            <linearGradient id="onb-rev-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"  stopColor="#FFC8C1" stopOpacity="0.32" />
+              <stop offset="95%" stopColor="#FFC8C1" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+
+          {/* Gridlines */}
+          {gridYs.map((y, i) => (
+            <line key={`g${i}`} x1="0" y1={y} x2={VW} y2={y}
+              stroke="rgba(18,18,18,0.05)" strokeWidth="0.5" strokeDasharray="2 3"
+              pointerEvents="none" vectorEffect="non-scaling-stroke" />
+          ))}
+          {/* Baseline */}
+          <line x1="0" y1={BOT} x2={VW} y2={BOT}
+            stroke="rgba(18,18,18,0.15)" strokeWidth="0.5"
+            pointerEvents="none" vectorEffect="non-scaling-stroke" />
+
+          {/* Area fill */}
+          {areaPath && (
+            <path d={areaPath} fill="url(#onb-rev-fill)" className="onb-area-grow"
+              pointerEvents="none" />
+          )}
+          {/* Top stroke */}
+          {linePath && (
+            <path d={linePath} fill="none" stroke="#121212" strokeWidth="1.5"
+              strokeLinecap="round" strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+              className="onb-line-draw"
+              pointerEvents="none" />
+          )}
+
+          {/* Faded future baseline */}
+          {drawableIdx >= 0 && drawableIdx < n - 1 && (
+            <line
+              x1={coords[drawableIdx].x} y1={BOT}
+              x2={VW}                    y2={BOT}
+              stroke="rgba(18,18,18,0.22)" strokeWidth="0.5" strokeDasharray="2 3"
+              pointerEvents="none" vectorEffect="non-scaling-stroke"
+            />
+          )}
+
+          {/* NOW vertical marker (only when there's future to the right) */}
+          {currentIdx >= 0 && currentIdx < n - 1 && (
+            <line
+              x1={coords[currentIdx].x} y1={TOP}
+              x2={coords[currentIdx].x} y2={BOT}
+              stroke="rgba(18,18,18,0.28)" strokeWidth="0.5" strokeDasharray="2 2"
+              pointerEvents="none" vectorEffect="non-scaling-stroke"
+            />
+          )}
+
+          {/* Latest-point halo + dot */}
+          {drawableIdx >= 0 && (
+            <g pointerEvents="none">
+              <circle cx={coords[drawableIdx].x} cy={coords[drawableIdx].y}
+                r="8" fill="#FFC8C1" fillOpacity="0.4" />
+              <circle cx={coords[drawableIdx].x} cy={coords[drawableIdx].y}
+                r="4" fill="#121212" />
+            </g>
+          )}
+
+          {/* Invisible hit-areas */}
+          {points.map((p, i) => {
+            const half = n === 1 ? VW / 2 : VW / (n - 1) / 2
+            return (
+              <rect
+                key={p.key}
+                x={Math.max(0, coords[i].x - half)}
+                y={0}
+                width={Math.min(VW, coords[i].x + half) - Math.max(0, coords[i].x - half)}
+                height={VH}
+                fill="transparent"
+                onMouseEnter={() => setHover(i)}
+                onClick={onSelect ? () => onSelect(p.key) : undefined}
+                style={{ cursor: onSelect ? 'pointer' : 'default' }}
+                aria-label={`${p.fullLabel}: ${money(p.value, currency)}, ${p.appts} appointments`}
+              />
+            )
+          })}
+
+          {/* Hover guide line + dot */}
+          {hover != null && hover >= 0 && (
+            <g pointerEvents="none">
+              <line
+                x1={coords[hover].x} y1={TOP}
+                x2={coords[hover].x} y2={BOT}
+                stroke="rgba(18,18,18,0.20)" strokeWidth="0.5" strokeDasharray="2 2"
+                vectorEffect="non-scaling-stroke"
+              />
+              <circle cx={coords[hover].x} cy={coords[hover].y} r="5"
+                fill="#FFC8C1" stroke="#121212" strokeWidth="1"
+                vectorEffect="non-scaling-stroke" />
+            </g>
+          )}
+        </svg>
+
+        {/* NOW label outside SVG (positioned by % so it scales with the chart) */}
+        {currentIdx >= 0 && currentIdx < n - 1 && (
+          <div
+            className="absolute top-0.5 px-1.5 py-0.5 text-[8px] font-bold tracking-[0.18em] uppercase text-near-black bg-cream border border-[rgba(18,18,18,0.12)] -translate-x-1/2 pointer-events-none"
+            style={{ left: `${(coords[currentIdx].x / VW) * 100}%` }}
+          >
+            Now
+          </div>
+        )}
+
+        <style>{`
+          .onb-area-grow { animation: onbAreaIn 480ms cubic-bezier(.2,.7,.3,1) both; }
+          .onb-line-draw { animation: onbLineIn 520ms cubic-bezier(.2,.7,.3,1) both; }
+          @keyframes onbAreaIn { from { opacity: 0; } to { opacity: 1; } }
+          @keyframes onbLineIn { from { opacity: 0; } to { opacity: 1; } }
+          @media (prefers-reduced-motion: reduce) {
+            .onb-area-grow, .onb-line-draw { animation: none; }
+          }
+        `}</style>
+      </div>
+
+      {/* X-axis labels */}
+      <div className="relative mt-2 h-3.5 select-none">
+        {points.map((p, i) => p.showLabel ? (
+          <span
+            key={p.key}
+            className="absolute top-0 text-[10px] tracking-[0.04em] text-muted-text -translate-x-1/2 whitespace-nowrap"
+            style={{ left: `${(coords[i].x / VW) * 100}%` }}
+          >
+            {p.label}
+          </span>
+        ) : null)}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Convert a polyline through `pts` into a smoothed cubic-Bezier path
+ * using the Catmull-Rom → Bezier formula. Tension is fixed at the
+ * standard 1.0 (so the spline passes through every point with a soft
+ * curve at the joins). Boundary tangents are reflected.
+ */
+function smoothSplinePath(pts: { x: number; y: number }[]): string {
+  if (pts.length === 0) return ''
+  if (pts.length === 1) return `M${pts[0].x} ${pts[0].y}`
+  if (pts.length === 2) return `M${pts[0].x} ${pts[0].y} L${pts[1].x} ${pts[1].y}`
+
+  let d = `M${pts[0].x} ${pts[0].y}`
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i]
+    const p1 = pts[i]
+    const p2 = pts[i + 1]
+    const p3 = pts[i + 2] ?? pts[i + 1]
+    const cp1x = p1.x + (p2.x - p0.x) / 6
+    const cp1y = p1.y + (p2.y - p0.y) / 6
+    const cp2x = p2.x - (p3.x - p1.x) / 6
+    const cp2y = p2.y - (p3.y - p1.y) / 6
+    d += ` C${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`
+  }
+  return d
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // A15 — period toggle + detail panel
 // ────────────────────────────────────────────────────────────────────────────
 
 function PeriodToggle({ value, onChange }: { value: ChartPeriod; onChange: (v: ChartPeriod) => void }) {
-  const options: { id: ChartPeriod; label: string }[] = [
-    { id: 'daily',   label: 'D' },
-    { id: 'weekly',  label: 'W' },
-    { id: 'monthly', label: 'M' },
+  const options: { id: ChartPeriod; label: string; sr: string }[] = [
+    { id: 'today', label: 'T', sr: 'Today' },
+    { id: 'week',  label: 'W', sr: 'This week' },
+    { id: 'month', label: 'M', sr: 'This month' },
+    { id: 'year',  label: 'Y', sr: 'This year' },
   ]
   return (
-    <div className="inline-flex border border-[rgba(18,18,18,0.12)]" role="tablist">
+    <div className="inline-flex border border-[rgba(18,18,18,0.12)] rounded-md overflow-hidden flex-shrink-0" role="tablist">
       {options.map(o => (
         <button
           key={o.id}
           type="button"
           role="tab"
           aria-selected={value === o.id}
+          aria-label={o.sr}
           onClick={() => onChange(o.id)}
           className={cn(
             'px-2.5 py-1 text-[10px] font-bold tracking-[0.12em] uppercase transition-colors',
@@ -1167,7 +1484,8 @@ function InteractiveBarChart({
       <div className="relative" onMouseLeave={() => setHover(null)}>
         {tooltipIdx != null && bars[tooltipIdx] && (
           <ChartTooltip
-            bar={bars[tooltipIdx]}
+            primary={bars[tooltipIdx].primary}
+            secondary={bars[tooltipIdx].secondary}
             position={(tooltipIdx + 0.5) / bars.length}
           />
         )}
@@ -1245,27 +1563,37 @@ function InteractiveBarChart({
 }
 
 /**
- * Tooltip positioned over the hovered bar. Clamps to the chart edges so
- * the leftmost / rightmost hover doesn't overflow the card.
+ * Tooltip positioned above the hovered point/bar. Clamps to the chart
+ * edges so the leftmost / rightmost hover doesn't overflow the card.
+ * Decoupled from ChartBar so both the bar chart and area chart can feed
+ * it: pass primary (date/label), secondary (revenue), optional tertiary
+ * (e.g. appointment count or a "not yet" note for future buckets).
  */
-function ChartTooltip({ bar, position }: { bar: ChartBar; position: number }) {
-  // position is 0..1 — bar centre across the chart.
-  // Convert to a CSS left% but clamp [12%, 88%] so the tooltip stays
-  // visually inside the card even at the edges.
+function ChartTooltip({
+  primary, secondary, tertiary, position,
+}: {
+  primary:   string
+  secondary: string
+  tertiary?: string
+  position:  number
+}) {
+  // position is 0..1 across the chart. Clamp [12%, 88%] so the tooltip
+  // stays visually inside the card even at the edges.
   const left = Math.max(12, Math.min(88, position * 100))
   return (
     <div
       className="absolute -top-2 -translate-x-1/2 -translate-y-full pointer-events-none z-10"
       style={{ left: `${left}%` }}
     >
-      <div className="bg-near-black text-white px-2.5 py-1.5 text-[10px] tracking-tight whitespace-nowrap shadow-md">
-        <p className="font-semibold leading-tight">{bar.primary}</p>
-        <p className="text-white/80 leading-tight mt-0.5">{bar.secondary}</p>
+      <div className="bg-near-black text-white px-2.5 py-1.5 text-[10px] tracking-tight whitespace-nowrap shadow-md rounded">
+        <p className="font-semibold leading-tight">{primary}</p>
+        <p className="text-white/80 leading-tight mt-0.5">{secondary}</p>
+        {tertiary && (
+          <p className="text-white/60 leading-tight mt-0.5">{tertiary}</p>
+        )}
       </div>
       {/* Pointer */}
-      <div
-        className="w-2 h-2 bg-near-black mx-auto rotate-45 -mt-1"
-      />
+      <div className="w-2 h-2 bg-near-black mx-auto rotate-45 -mt-1" />
     </div>
   )
 }
@@ -1408,95 +1736,222 @@ function computeWeekStrip(appts: Appointment[]): WeekStripDay[] {
   return days
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Dashboard 2.0 — Revenue Snapshot area-chart bucketing
+// ────────────────────────────────────────────────────────────────────────────
+
 /**
- * A15 — period-aware bucketing for the interactive charts.
+ * Build area-chart points + period totals for the Revenue Snapshot.
  *
- * Each bucket carries explicit [startISO, endISO) bounds so the detail
- * panel can re-filter appointments without re-running the bucketing
- * logic. Bucket counts:
- *   daily   → 14 days (2 weeks)
- *   weekly  →  8 weeks (~2 months)
- *   monthly →  6 months (half a year)
+ * Per period:
+ *   today  → 14 hourly buckets, 7am..8pm; prior = full revenue yesterday
+ *   week   → 7 day buckets, Mon..Sun of this week; prior = last week
+ *   month  → calendar-day buckets for this month; prior = last month
+ *   year   → 12 month buckets for this calendar year; prior = last year
  *
- * "Current" flag marks the rightmost bucket so the chart can style it
- * differently (today / this week / this month).
+ * Revenue is bucketed by `created_at` (when the appointment was booked
+ * and the payment was collected), matching the existing convention so
+ * this chart aligns with TopSpenders and the rest of the dashboard.
  */
-function bucketRanges(period: ChartPeriod): { count: number; mkStart: (i: number) => Date; advance: (d: Date) => Date } {
+function computeRevenueAreaData(appts: Appointment[], period: ChartPeriod): AreaData {
+  const rev = (a: Appointment) => (a.deposit_paid_amount ?? 0) + (a.balance_paid_amount ?? 0)
   const now = new Date()
-  now.setHours(0, 0, 0, 0)
-  if (period === 'daily') {
-    return {
-      count: 14,
-      mkStart: (i: number) => {
-        const d = new Date(now)
-        d.setDate(d.getDate() - i)
-        return d
-      },
-      advance: (d: Date) => new Date(d.getTime() + 86_400_000),
-    }
-  }
-  if (period === 'weekly') {
-    const startOfThisWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay())
-    return {
-      count: 8,
-      mkStart: (i: number) => {
-        const d = new Date(startOfThisWeek)
-        d.setDate(d.getDate() - 7 * i)
-        return d
-      },
-      advance: (d: Date) => {
-        const end = new Date(d)
-        end.setDate(end.getDate() + 7)
-        return end
-      },
-    }
-  }
-  // monthly
-  return {
-    count: 6,
-    mkStart: (i: number) => new Date(now.getFullYear(), now.getMonth() - i, 1),
-    advance: (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 1),
-  }
+  if (period === 'today') return computeRevenueToday(appts, now, rev)
+  if (period === 'week')  return computeRevenueWeek(appts, now, rev)
+  if (period === 'month') return computeRevenueMonth(appts, now, rev)
+  return computeRevenueYear(appts, now, rev)
 }
 
-function buildBuckets(period: ChartPeriod, valueFor: (start: Date, end: Date) => number): PeriodBucket[] {
-  const { count, mkStart, advance } = bucketRanges(period)
-  const out: PeriodBucket[] = []
-  for (let i = count - 1; i >= 0; i--) {
-    const start = mkStart(i)
-    const end   = advance(start)
-    const isCurrent = i === 0
-    const startISO = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`
-    const endISO   = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`
-    const label = period === 'daily'
-      ? start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-      : period === 'weekly'
-        ? start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-        : start.toLocaleDateString(undefined, { month: 'short' })
-    out.push({
-      key:       startISO,
-      label,
-      value:     round2(valueFor(start, end)),
-      startISO,
-      endISO,
-      isCurrent,
-    })
-  }
-  return out
-}
-
-function computeRevenueBuckets(appts: Appointment[], period: ChartPeriod): PeriodBucket[] {
-  return buildBuckets(period, (start, end) => {
-    let total = 0
+function computeRevenueToday(appts: Appointment[], now: Date, rev: (a: Appointment) => number): AreaData {
+  // 14 hourly buckets covering [7am, 9pm). Most salon revenue lands in
+  // this window; payments timestamped outside are silently excluded.
+  const todayStart     = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+  const HSTART = 7, HEND = 21
+  const points: AreaPoint[] = []
+  for (let h = HSTART; h < HEND; h++) {
+    const bs = new Date(todayStart); bs.setHours(h, 0, 0, 0)
+    const be = new Date(bs.getTime() + 3_600_000)
+    let value = 0, count = 0
     for (const a of appts) {
       if (! a.created_at) continue
       const ts = new Date(a.created_at)
-      if (ts >= start && ts < end) {
-        total += (a.deposit_paid_amount ?? 0) + (a.balance_paid_amount ?? 0)
-      }
+      if (ts >= bs && ts < be) { value += rev(a); count++ }
     }
-    return total
-  })
+    const hour12   = ((h + 11) % 12) + 1
+    const ampm     = h < 12 ? 'a'  : 'p'
+    const ampmLong = h < 12 ? 'AM' : 'PM'
+    // Show every 3rd hour label so the axis stays readable: 7a, 10a, 1p, 4p, 7p.
+    const showLabel = (h - HSTART) % 3 === 0
+    points.push({
+      key:       `h${h}`,
+      label:     `${hour12}${ampm}`,
+      showLabel,
+      fullLabel: `${hour12}:00 ${ampmLong}`,
+      value:     round2(value),
+      appts:     count,
+      isCurrent: now >= bs && now < be,
+      isFuture:  bs > now,
+      startISO:  isoDate(bs),
+      endISO:    isoDate(be),
+    })
+  }
+  let priorTotal = 0
+  for (const a of appts) {
+    if (! a.created_at) continue
+    const ts = new Date(a.created_at)
+    if (ts >= yesterdayStart && ts < todayStart) priorTotal += rev(a)
+  }
+  return {
+    points,
+    total:      round2(points.reduce((s, p) => s + p.value, 0)),
+    priorTotal: round2(priorTotal),
+    totalAppts: points.reduce((s, p) => s + p.appts, 0),
+  }
+}
+
+function computeRevenueWeek(appts: Appointment[], now: Date, rev: (a: Appointment) => number): AreaData {
+  // 7 day buckets, Mon..Sun of this week. Prior = last week.
+  const today  = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const dow    = today.getDay()                  // 0..6, Sun..Sat
+  const back   = (dow + 6) % 7                   // days back to Monday
+  const monday = new Date(today); monday.setDate(today.getDate() - back)
+
+  const DOW_LABEL = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const points: AreaPoint[] = []
+  for (let i = 0; i < 7; i++) {
+    const bs = new Date(monday); bs.setDate(monday.getDate() + i)
+    const be = new Date(bs);     be.setDate(bs.getDate() + 1)
+    let value = 0, count = 0
+    for (const a of appts) {
+      if (! a.created_at) continue
+      const ts = new Date(a.created_at)
+      if (ts >= bs && ts < be) { value += rev(a); count++ }
+    }
+    points.push({
+      key:       isoDate(bs),
+      label:     DOW_LABEL[i],
+      showLabel: true,
+      fullLabel: bs.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }),
+      value:     round2(value),
+      appts:     count,
+      isCurrent: bs.getTime() === today.getTime(),
+      isFuture:  bs > today,
+      startISO:  isoDate(bs),
+      endISO:    isoDate(be),
+    })
+  }
+  const priorStart = new Date(monday); priorStart.setDate(monday.getDate() - 7)
+  let priorTotal = 0
+  for (const a of appts) {
+    if (! a.created_at) continue
+    const ts = new Date(a.created_at)
+    if (ts >= priorStart && ts < monday) priorTotal += rev(a)
+  }
+  return {
+    points,
+    total:      round2(points.reduce((s, p) => s + p.value, 0)),
+    priorTotal: round2(priorTotal),
+    totalAppts: points.reduce((s, p) => s + p.appts, 0),
+  }
+}
+
+function computeRevenueMonth(appts: Appointment[], now: Date, rev: (a: Appointment) => number): AreaData {
+  // One bucket per calendar day this month. Prior = last full calendar month.
+  const today      = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  // last day of this month
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+
+  const points: AreaPoint[] = []
+  for (let d = 1; d <= daysInMonth; d++) {
+    const bs = new Date(now.getFullYear(), now.getMonth(), d)
+    const be = new Date(now.getFullYear(), now.getMonth(), d + 1)
+    let value = 0, count = 0
+    for (const a of appts) {
+      if (! a.created_at) continue
+      const ts = new Date(a.created_at)
+      if (ts >= bs && ts < be) { value += rev(a); count++ }
+    }
+    // Show every ~5th day plus the endpoints; skip labels near edges to
+    // avoid the start/end labels colliding with mid-month labels.
+    const showLabel =
+      d === 1 ||
+      d === daysInMonth ||
+      (d % 5 === 0 && d >= 4 && daysInMonth - d >= 4)
+    points.push({
+      key:       isoDate(bs),
+      label:     bs.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+      showLabel,
+      fullLabel: bs.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }),
+      value:     round2(value),
+      appts:     count,
+      isCurrent: bs.getTime() === today.getTime(),
+      isFuture:  bs > today,
+      startISO:  isoDate(bs),
+      endISO:    isoDate(be),
+    })
+  }
+  const priorStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  let priorTotal = 0
+  for (const a of appts) {
+    if (! a.created_at) continue
+    const ts = new Date(a.created_at)
+    if (ts >= priorStart && ts < monthStart) priorTotal += rev(a)
+  }
+  return {
+    points,
+    total:      round2(points.reduce((s, p) => s + p.value, 0)),
+    priorTotal: round2(priorTotal),
+    totalAppts: points.reduce((s, p) => s + p.appts, 0),
+  }
+}
+
+function computeRevenueYear(appts: Appointment[], now: Date, rev: (a: Appointment) => number): AreaData {
+  // 12 month buckets, Jan..Dec of this calendar year. Prior = last year.
+  const MONTH_LABEL = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const today       = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yearStart   = new Date(now.getFullYear(), 0, 1)
+  const points: AreaPoint[] = []
+  for (let m = 0; m < 12; m++) {
+    const bs = new Date(now.getFullYear(), m, 1)
+    const be = new Date(now.getFullYear(), m + 1, 1)
+    let value = 0, count = 0
+    for (const a of appts) {
+      if (! a.created_at) continue
+      const ts = new Date(a.created_at)
+      if (ts >= bs && ts < be) { value += rev(a); count++ }
+    }
+    points.push({
+      key:       isoDate(bs),
+      label:     MONTH_LABEL[m],
+      showLabel: true,
+      fullLabel: `${MONTH_LABEL[m]} ${now.getFullYear()}`,
+      value:     round2(value),
+      appts:     count,
+      isCurrent: m === now.getMonth(),
+      isFuture:  bs > today,
+      startISO:  isoDate(bs),
+      endISO:    isoDate(be),
+    })
+  }
+  const priorStart = new Date(now.getFullYear() - 1, 0, 1)
+  let priorTotal = 0
+  for (const a of appts) {
+    if (! a.created_at) continue
+    const ts = new Date(a.created_at)
+    if (ts >= priorStart && ts < yearStart) priorTotal += rev(a)
+  }
+  return {
+    points,
+    total:      round2(points.reduce((s, p) => s + p.value, 0)),
+    priorTotal: round2(priorTotal),
+    totalAppts: points.reduce((s, p) => s + p.appts, 0),
+  }
+}
+
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 /**
