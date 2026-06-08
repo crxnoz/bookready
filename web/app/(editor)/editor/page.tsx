@@ -214,6 +214,9 @@ function DashboardBody() {
   // and the Layer 2 caught-up vs grid switch.
   const totalAttention = attention.total + waitlistAttention + requestsAttention
   const paymentIssuesCount = Math.max(0, attention.total - pendingCount)
+  // Today's day-level capacity from the metrics endpoint. null = uncapped, the
+  // header then shows a plain count instead of a booked / cap ratio.
+  const todayCapacity = metrics?.capacity_today?.capacity ?? null
   const bookingSnap    = useMemo(() => computeBookingSnap(appts),                 [appts])
   const health         = useMemo(() => computeHealth(appts),                      [appts])
   const weekendAppts   = useMemo(() => findWeekendAppts(appts),                   [appts])
@@ -254,7 +257,15 @@ function DashboardBody() {
               {greeting}{ownerFirstName ? <>, <span className="italic">{ownerFirstName}.</span></> : '.'}
             </h1>
             <p className="text-[13px] text-muted-text mt-1.5">
-              {fmtWeekday(todayStr)} · <span className="font-semibold text-near-black">{todaysAppointments.length}</span> appointment{todaysAppointments.length === 1 ? '' : 's'} today
+              {fmtWeekday(todayStr)} · {todayCapacity != null ? (
+                // Capacity is configured for today: show booked / cap so the
+                // owner reads how full the day is at a glance. Numerator is the
+                // client count (matches the stat card below); denominator is
+                // the cap from the metrics endpoint.
+                <><span className={cn('font-semibold', todaysAppointments.length >= todayCapacity ? 'text-[#8a5a00]' : 'text-near-black')}>{todaysAppointments.length} / {todayCapacity}</span> appointments today</>
+              ) : (
+                <><span className="font-semibold text-near-black">{todaysAppointments.length}</span> appointment{todaysAppointments.length === 1 ? '' : 's'} today</>
+              )}
               {todayScheduled > 0 && <> · <span className="font-semibold text-near-black">{money(todayScheduled, moneyBuckets.currency)}</span> scheduled</>}
             </p>
           </div>

@@ -1746,6 +1746,9 @@ export interface EditorDashboardMetrics {
   return_rate_pct:  number | null
   no_show_rate_pct: number | null
   occupancy:        EditorDashboardOccupancy
+  // Today's day-level capacity (Availability 2.0 P3). capacity is null when
+  // the day is uncapped; the dashboard header shows a plain count then.
+  capacity_today:   { capacity: number | null; booked: number; full: boolean }
   generated_at:     string
 }
 

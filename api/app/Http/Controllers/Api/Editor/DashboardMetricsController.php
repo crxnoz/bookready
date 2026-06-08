@@ -136,6 +136,11 @@ class DashboardMetricsController extends Controller
         // Occupancy / "% full" for the current month.
         $occupancy = $this->computeOccupancy($today, $settings);
 
+        // Today's capacity verdict, for the header "X / Y appointments today"
+        // ratio. capacity is null when the day is uncapped (no global default,
+        // no per-date override) — the header then falls back to a plain count.
+        $todayVerdict = CapacityResolver::resolve($today->toDateString(), $settings, null);
+
         return [
             'currency'         => $currency,
             'revenue'          => [
@@ -156,6 +161,11 @@ class DashboardMetricsController extends Controller
             'return_rate_pct'  => $returnRatePct,
             'no_show_rate_pct' => $noShowRatePct,
             'occupancy'        => $occupancy,
+            'capacity_today'   => [
+                'capacity' => $todayVerdict['capacity'],   // int|null (null = uncapped)
+                'booked'   => $todayVerdict['count'],
+                'full'     => $todayVerdict['full'],
+            ],
             'generated_at'     => $now->toIso8601String(),
         ];
     }
