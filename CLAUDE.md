@@ -195,6 +195,21 @@ Single page, 8 query-tabs: `overview`, `business`, `preferences`, `booking`, `pa
 
 Single page, query-tabs: `overview` / `deposits` / `transactions` / `payouts`. Hub: `web/components/editor/PaymentsHub.tsx`. Built from appointment records + `payment_settings`. This is the owner's view of *customer* payments — completely independent of subscription billing (which lives at `/editor/billing`).
 
+### Availability hub — `/editor/availability` (Availability 2.0, all 8 phases shipped)
+
+Single page, query-tabs: `calendar` (default) / `drops` / `capacity` / `after-hours` / `squeeze-ins` / `waitlist` / `requests` / `advanced`. Hub: `web/app/(editor)/editor/availability/page.tsx`. The full spec + build history is `docs/availability-2.0.md` (status: SHIPPED).
+
+- **Smart Calendar** (`calendar`) — per-date overrides (`calendar_overrides`), capacity badges, un-released tint. `CalendarOverridesEditor`.
+- **Date Drops** (`drops`) — release strategy (Always Open / Weekly / Bi-Weekly / Monthly / Custom). `ReleaseStrategyPanel` + `slot_release_drops`.
+- **Capacity** (`capacity`) — tenant default (`booking_settings.max_appointments_per_day`) + per-staff caps (`staff.default_daily_capacity`). `CapacityPanel`.
+- **After Hours** (`after-hours`) — premium slots past close. `after_hours_config` + `AfterHoursResolver`. `AfterHoursPanel`.
+- **Squeeze-Ins** (`squeeze-ins`) — premium "fit me in" on full days. `squeeze_in_config` + `availability_requests.kind='squeeze_in'`. `SqueezeInsPanel`.
+- **Waitlist** (`waitlist`) — cancellation queue. `WaitlistEditor` (also at standalone `/editor/waitlist`).
+- **Requests** (`requests`) — demand capture when a day isn't open. `availability_requests.kind='standard'`. `AvailabilityRequestsEditor`.
+- **Advanced** (`advanced`) — legacy weekly schedule (the fallback for any un-overridden date) + links to staff/service availability.
+
+**Critical: SlotGenerator stays pure.** Every gate (override, release window, capacity, after-hours) is a separate resolver (`AvailabilityOverrideResolver`, `ReleaseWindowResolver`, `CapacityResolver`, `AfterHoursResolver`) whose result the 3 booking callers (`PublicAvailabilityController`, `PublicBookingController`, `PublicManageBookingController`) pass *into* SlotGenerator or apply around it. After-hours = extend the hours-row close, re-run SlotGenerator, tag slots ≥ regular close. Fees (after-hours, squeeze-in) fold into the appointment total exactly like add-ons so deposit/full + Stripe treat them uniformly. **VIP gating = `clients.is_vip`.** Requests/squeeze-ins are pay-after-v1: no charge until owner approves.
+
 ### Onboarding wizard — `/editor/onboard`
 
 Full-screen 5-step flow (NOT wrapped in `EditorShell`): Business → Services → Hours → Policies → Stripe Connect (skippable). Component: `OnboardingWizard.tsx`. Dashboard redirects new tenants here until `tenants.onboarding_completed_at` is set; already-onboarded tenants bounce back to `/editor`. Uses the existing editor APIs — no special backend.
