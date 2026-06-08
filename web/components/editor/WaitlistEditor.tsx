@@ -10,9 +10,9 @@ import { Clock, Mail, Phone, Trash2 } from 'lucide-react'
 import StatusBadge from '@/components/ui/StatusBadge'
 import AsyncBoundary from '@/components/ui/AsyncBoundary'
 import EmptyState from '@/components/ui/EmptyState'
-import Card from '@/components/ui/Card'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
+import { TabShell, TabIntro, Section } from '@/components/editor/AvailabilitySections'
 
 function formatDate(d: string | null): string {
   if (! d) return '—'
@@ -76,93 +76,98 @@ export default function WaitlistEditor() {
   }
 
   return (
-    <div>
-      <p className="text-sm text-muted-text mb-4">
-        People waiting for a slot to open. When an appointment cancels, the next match
-        automatically gets a 2-hour claim link by email — first come, first served.
-      </p>
+    <TabShell>
+      <TabIntro>
+        People waiting for a slot to open — when an appointment cancels, the next match gets a 2-hour claim link automatically.
+      </TabIntro>
 
-      <AsyncBoundary
-        loading={loading}
-        error={error}
-        isEmpty={entries.length === 0}
-        onRetry={load}
-        loadingLabel="Loading the queue…"
-        empty={
-          <EmptyState
-            icon={Clock}
-            title="No one's waiting"
-            description="When your calendar fills up, clients can join the waitlist from your booking page. They'll appear here in the order they joined."
-          />
-        }
+      <Section
+        icon={Clock}
+        title="Waitlist"
+        subtitle="First come, first served. Matches are notified by email when a slot opens."
       >
-        <Card padding="none" className="overflow-hidden">
-          <table className="w-full">
-            <thead className="border-b border-hairline-soft bg-cream/60">
-              <tr className="text-left text-eyebrow uppercase tracking-eyebrow text-muted-text">
-                <th className="px-4 py-3 font-bold">Client</th>
-                <th className="px-4 py-3 font-bold">Service</th>
-                <th className="px-4 py-3 font-bold">Window</th>
-                <th className="px-4 py-3 font-bold">Status</th>
-                <th className="px-4 py-3 font-bold w-12 text-right">·</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map(e => (
-                <tr key={e.id} className="border-b border-hairline-soft last:border-b-0 align-top">
-                  <td className="px-4 py-3.5 text-sm">
-                    <div className="font-medium text-near-black">{e.customer_name}</div>
-                    <div className="mt-0.5 flex flex-col gap-0.5 text-xs text-muted-text">
-                      <a href={`mailto:${e.customer_email}`} className="flex items-center gap-1.5 hover:text-near-black">
-                        <Mail className="size-3" /> {e.customer_email}
-                      </a>
-                      {e.customer_phone && (
-                        <a href={`tel:${e.customer_phone}`} className="flex items-center gap-1.5 hover:text-near-black">
-                          <Phone className="size-3" /> {e.customer_phone}
-                        </a>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5 text-sm">
-                    <div className="text-near-black">{e.service_name || `Service #${e.service_id}`}</div>
-                    {e.staff_name && (
-                      <div className="mt-0.5 text-xs text-muted-text">with {e.staff_name}</div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3.5 text-sm">
-                    <div className="text-near-black">{formatDate(e.earliest_date)} — {formatDate(e.latest_date)}</div>
-                    {e.preferred_date && (
-                      <div className="mt-0.5 text-xs text-muted-text">prefers {formatDate(e.preferred_date)}</div>
-                    )}
-                    {e.notes && (
-                      <div className="mt-1 text-xs text-muted-text italic line-clamp-2">&ldquo;{e.notes}&rdquo;</div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3.5 text-sm">
-                    <StatusBadge domain="waitlist" status={e.status} />
-                    {e.status === 'notified' && e.notification_expires_at && (
-                      <div className="mt-1 text-2xs text-muted-text">
-                        link expires {new Date(e.notification_expires_at).toLocaleString(undefined, { hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric' })}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3.5 text-right">
-                    <button
-                      onClick={() => remove(e.id)}
-                      disabled={busyId === e.id}
-                      className="inline-flex items-center justify-center p-1.5 text-muted-text hover:bg-near-black/5 hover:text-danger disabled:opacity-40"
-                      title="Remove from waitlist"
-                      aria-label="Remove from waitlist"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </td>
+        <AsyncBoundary
+          loading={loading}
+          error={error}
+          isEmpty={entries.length === 0}
+          onRetry={load}
+          loadingLabel="Loading the queue…"
+          empty={
+            <EmptyState
+              icon={Clock}
+              title="No one's waiting"
+              description="When your calendar fills up, clients can join the waitlist from your booking page. They'll appear here in the order they joined."
+            />
+          }
+        >
+          <div className="bg-white border border-hairline-soft overflow-hidden">
+            <table className="w-full">
+              <thead className="border-b border-hairline-soft bg-cream/60">
+                <tr className="text-left">
+                  <th className="px-4 py-3 text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Client</th>
+                  <th className="px-4 py-3 text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Service</th>
+                  <th className="px-4 py-3 text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Window</th>
+                  <th className="px-4 py-3 text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Status</th>
+                  <th className="px-4 py-3 text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text w-12 text-right">·</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-      </AsyncBoundary>
-    </div>
+              </thead>
+              <tbody>
+                {entries.map(e => (
+                  <tr key={e.id} className="border-b border-hairline-soft last:border-b-0 align-top">
+                    <td className="px-4 py-3.5 text-sm">
+                      <div className="font-medium text-near-black">{e.customer_name}</div>
+                      <div className="mt-0.5 flex flex-col gap-0.5 text-xs text-muted-text">
+                        <a href={`mailto:${e.customer_email}`} className="flex items-center gap-1.5 hover:text-near-black">
+                          <Mail className="size-3" /> {e.customer_email}
+                        </a>
+                        {e.customer_phone && (
+                          <a href={`tel:${e.customer_phone}`} className="flex items-center gap-1.5 hover:text-near-black">
+                            <Phone className="size-3" /> {e.customer_phone}
+                          </a>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5 text-sm">
+                      <div className="text-near-black">{e.service_name || `Service #${e.service_id}`}</div>
+                      {e.staff_name && (
+                        <div className="mt-0.5 text-xs text-muted-text">with {e.staff_name}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5 text-sm">
+                      <div className="text-near-black">{formatDate(e.earliest_date)} — {formatDate(e.latest_date)}</div>
+                      {e.preferred_date && (
+                        <div className="mt-0.5 text-xs text-muted-text">prefers {formatDate(e.preferred_date)}</div>
+                      )}
+                      {e.notes && (
+                        <div className="mt-1 text-xs text-muted-text italic line-clamp-2">&ldquo;{e.notes}&rdquo;</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5 text-sm">
+                      <StatusBadge domain="waitlist" status={e.status} />
+                      {e.status === 'notified' && e.notification_expires_at && (
+                        <div className="mt-1 text-2xs text-muted-text">
+                          link expires {new Date(e.notification_expires_at).toLocaleString(undefined, { hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric' })}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5 text-right">
+                      <button
+                        onClick={() => remove(e.id)}
+                        disabled={busyId === e.id}
+                        className="inline-flex items-center justify-center p-1.5 text-muted-text hover:bg-near-black/5 hover:text-danger disabled:opacity-40"
+                        title="Remove from waitlist"
+                        aria-label="Remove from waitlist"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </AsyncBoundary>
+      </Section>
+    </TabShell>
   )
 }

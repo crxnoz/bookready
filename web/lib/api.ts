@@ -521,6 +521,12 @@ export interface BillingSubscription {
   sms_mult:       1 | 2 | 3 | null
   sms_included:   number
   billing_cycle:  'monthly' | 'annual' | null
+  // Renewal window + lifecycle flags + card-on-file (derived from Stripe).
+  current_period_end?:   string | null
+  current_period_start?: string | null
+  cancel_at_period_end?: boolean
+  paused?:               boolean
+  card?: { brand: string; last4: string; exp_month: number; exp_year: number } | null
 }
 
 export async function getBillingSubscription(): Promise<BillingSubscription> {
@@ -529,6 +535,24 @@ export async function getBillingSubscription(): Promise<BillingSubscription> {
 
 export async function getBillingPortalUrl(): Promise<{ url: string }> {
   return request<{ url: string }>('/billing/portal')
+}
+
+// Subscription lifecycle. Each endpoint re-reads + returns the full
+// subscription so callers can replace their state in one round-trip.
+export async function cancelSubscription(): Promise<BillingSubscription> {
+  return request<BillingSubscription>('/billing/cancel', { method: 'POST' })
+}
+
+export async function resumeSubscription(): Promise<BillingSubscription> {
+  return request<BillingSubscription>('/billing/resume', { method: 'POST' })
+}
+
+export async function pauseSubscription(): Promise<BillingSubscription> {
+  return request<BillingSubscription>('/billing/pause', { method: 'POST' })
+}
+
+export async function unpauseSubscription(): Promise<BillingSubscription> {
+  return request<BillingSubscription>('/billing/unpause', { method: 'POST' })
 }
 
 // ── Editor ────────────────────────────────────────────────────────────────────
@@ -872,8 +896,10 @@ export interface StaffCapacity {
 }
 
 export interface CapacitySettings {
-  default_capacity: number | null
-  staff:            StaffCapacity[]
+  default_capacity:      number | null
+  buffer_before_minutes: number
+  buffer_after_minutes:  number
+  staff:                 StaffCapacity[]
 }
 
 export async function getEditorCapacity(): Promise<CapacitySettings> {
@@ -881,8 +907,10 @@ export async function getEditorCapacity(): Promise<CapacitySettings> {
 }
 
 export async function updateEditorCapacity(payload: {
-  default_capacity?: number | null
-  staff_caps?:       Record<number, number | null>
+  default_capacity?:      number | null
+  buffer_before_minutes?: number | null
+  buffer_after_minutes?:  number | null
+  staff_caps?:            Record<number, number | null>
 }): Promise<CapacitySettings> {
   return request<CapacitySettings>('/editor/capacity', {
     method: 'PATCH',

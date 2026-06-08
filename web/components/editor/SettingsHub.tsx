@@ -20,15 +20,12 @@ import {
   Building2, Calendar, CalendarClock, CreditCard, Bell, UserCircle,
   Plug, AlertTriangle, ChevronRight, ChevronDown, Loader2, Check, AlertCircle,
   DollarSign, Download, Instagram, Mail, MapPin, MessageSquare, Phone,
-  Percent, Lock, ExternalLink, RefreshCw, ShieldCheck, Send, Trash2, Webhook, Sparkles,
+  Percent, Lock, ExternalLink, RefreshCw, ShieldCheck, Send, Trash2, Webhook,
   X,
 } from 'lucide-react'
 import {
   getEditorPaymentSettings,
   updateEditorPaymentSettings,
-  getStripeConnectStatus,
-  startStripeConnect,
-  refreshStripeConnectOnboarding,
   getEditorBookingSettings,
   updateEditorBookingSettings,
   getEditorNotificationSettings,
@@ -59,18 +56,17 @@ import type {
   PaymentSettings,
   PaymentSettingsPayload,
   SlotReleaseMode,
-  StripeConnectStatus,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
 
 // ── Sub-tab plumbing ─────────────────────────────────────────────────────────
 
 type SettingsTab =
-  | 'overview' | 'business' | 'preferences' | 'booking' | 'payments'
+  | 'overview' | 'business' | 'booking' | 'payments'
   | 'notifications' | 'account' | 'danger'
 
 const VALID_TABS: SettingsTab[] = [
-  'overview', 'business', 'preferences', 'booking', 'payments',
+  'overview', 'business', 'booking', 'payments',
   'notifications', 'account', 'danger',
 ]
 
@@ -84,8 +80,7 @@ interface GroupDef {
 }
 
 const GROUPS: GroupDef[] = [
-  { tab: 'business',      label: 'Business Profile',   hint: 'Name, contact, address, socials',                icon: Building2,    status: 'ready' },
-  { tab: 'preferences',   label: 'Preferences',        hint: 'Time zone, week start, time format, site visibility', icon: Sparkles,     status: 'ready' },
+  { tab: 'business',      label: 'Business Profile',   hint: 'Name, contact, address, socials, time & format', icon: Building2,    status: 'ready' },
   { tab: 'booking',       label: 'Booking Settings',   hint: 'Booking window, notice, auto-confirm, rules',    icon: Calendar,     status: 'ready' },
   { tab: 'payments',      label: 'Payment Settings',   hint: 'Customer payments, deposits, currency',          icon: CreditCard,   status: 'ready' },
   { tab: 'notifications', label: 'Notifications',      hint: 'Toggle booking emails, reply address, sent-from name', icon: Bell,         status: 'ready' },
@@ -122,7 +117,6 @@ export default function SettingsHub() {
     <div className="w-full p-3 sm:p-5 md:p-6 space-y-4">
       {tab === 'overview'      && <OverviewPanel />}
       {tab === 'business'      && <BusinessSettingsPanel />}
-      {tab === 'preferences'   && <PreferencesSettingsPanel />}
       {tab === 'payments'      && <PaymentSettingsPanel />}
       {tab === 'booking'       && <BookingSettingsPanel />}
       {tab === 'notifications' && <NotificationSettingsPanel />}
@@ -226,15 +220,12 @@ function PlaceholderPanel({ tab }: { tab: SettingsTab }) {
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
 function PaymentSettingsPanel() {
-  const sp = useSearchParams()
   const [data,    setData]    = useState<PaymentSettings | null>(null)
   const [draft,   setDraft]   = useState<PaymentSettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadErr, setLoadErr] = useState<string | null>(null)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [saveErr,   setSaveErr]   = useState<string | null>(null)
-  const [connectBusy, setConnectBusy] = useState<'idle' | 'starting' | 'refreshing' | 'syncing'>('idle')
-  const [connectErr,  setConnectErr]  = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -244,54 +235,6 @@ function PaymentSettingsPanel() {
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
-
-  // Auto-sync Stripe Connect status when the owner returns from onboarding.
-  // Stripe's redirect lands at ?tab=payments&stripe_connect=return.
-  useEffect(() => {
-    const flag = sp?.get('stripe_connect')
-    if (flag === 'return' || flag === 'refresh') syncConnectStatus()
-
-  }, [sp])
-
-  async function syncConnectStatus() {
-    setConnectBusy('syncing')
-    setConnectErr(null)
-    try {
-      const next = await getStripeConnectStatus()
-      const apply = (d: PaymentSettings | null) =>
-        d ? { ...d, ...next } as PaymentSettings : d
-      setData(apply)
-      setDraft(apply)
-    } catch (e) {
-      setConnectErr(e instanceof Error ? e.message : 'Could not refresh Stripe status')
-    } finally {
-      setConnectBusy('idle')
-    }
-  }
-
-  async function handleConnectStart() {
-    setConnectBusy('starting')
-    setConnectErr(null)
-    try {
-      const { onboarding_url } = await startStripeConnect()
-      window.location.href = onboarding_url
-    } catch (e) {
-      setConnectErr(e instanceof Error ? e.message : 'Could not start Stripe Connect')
-      setConnectBusy('idle')
-    }
-  }
-
-  async function handleConnectContinue() {
-    setConnectBusy('refreshing')
-    setConnectErr(null)
-    try {
-      const { onboarding_url } = await refreshStripeConnectOnboarding()
-      window.location.href = onboarding_url
-    } catch (e) {
-      setConnectErr(e instanceof Error ? e.message : 'Could not refresh onboarding link')
-      setConnectBusy('idle')
-    }
-  }
 
   const dirty = useMemo(() => {
     if (!data || !draft) return false
@@ -377,20 +320,22 @@ function PaymentSettingsPanel() {
       <header className="px-1">
         <h1 className="text-base font-bold text-near-black">Payment Settings</h1>
         <p className="text-xs text-muted-text mt-0.5">
-          Set up Stripe to accept customer payments, decide whether customers
-          pay a deposit when they book, and choose how much.
+          Decide whether customers pay a deposit when they book, and choose how much.
         </p>
       </header>
 
-      {/* Stripe Connect status card */}
-      <StripeConnectBlock
-        settings={draft}
-        busy={connectBusy}
-        error={connectErr}
-        onStart={handleConnectStart}
-        onContinue={handleConnectContinue}
-        onRefresh={syncConnectStatus}
-      />
+      {/* Stripe setup lives in Integrations now — nudge them there if not live. */}
+      {! draft.stripe_charges_enabled && (
+        <div className="bg-cream border border-hairline-soft p-3 flex items-start gap-2 text-2xs text-muted-text">
+          <CreditCard size={13} className="text-near-black mt-0.5 flex-shrink-0" />
+          <span>
+            Connect Stripe to start accepting payments —{' '}
+            <Link href="/editor/integrations" className="font-semibold text-near-black hover:underline">
+              set it up in Integrations
+            </Link>.
+          </span>
+        </div>
+      )}
 
       {/* Master toggle */}
       <section className="bg-white border border-hairline-soft p-3.5 space-y-2">
@@ -770,6 +715,9 @@ function BookingSettingsPanel() {
         </p>
       </header>
 
+      {/* Default appointment duration (moved from the old Preferences tab). */}
+      <PrefsCard section="duration" />
+
       {/* Booking enabled */}
       <section className="bg-white border border-hairline-soft p-3.5 space-y-2">
         <Toggle
@@ -1056,6 +1004,9 @@ function NotificationSettingsPanel() {
           Choose which emails your business and your customers receive when a booking happens.
         </p>
       </header>
+
+      {/* Communication copy (moved from the old Preferences tab). */}
+      <PrefsCard section="communication" />
 
       {/* Booking emails */}
       <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
@@ -1641,187 +1592,6 @@ function Toggle({
   )
 }
 
-// ── Stripe Connect status card ──────────────────────────────────────────────
-
-interface ConnectBlockProps {
-  settings:   PaymentSettings
-  busy:       'idle' | 'starting' | 'refreshing' | 'syncing'
-  error:      string | null
-  onStart:    () => void
-  onContinue: () => void
-  onRefresh:  () => void
-}
-
-function StripeConnectBlock({
-  settings, busy, error, onStart, onContinue, onRefresh,
-}: ConnectBlockProps) {
-  const status: StripeConnectStatus = (settings.stripe_connect_status ?? 'not_connected')
-
-  const meta = (() => {
-    switch (status) {
-      case 'active':
-        return {
-          tone:  'positive' as const,
-          icon:  ShieldCheck,
-          title: 'Stripe is connected',
-          body:  'Customer payments are ready. Deposits route to your Stripe account and then to your bank.',
-        }
-      case 'pending':
-        return {
-          tone:  'warn' as const,
-          icon:  AlertCircle,
-          title: 'Pending review',
-          body:  'You finished setup. Stripe is verifying your details. Payments will turn on once they finish.',
-        }
-      case 'onboarding_started':
-        return {
-          tone:  'warn' as const,
-          icon:  AlertCircle,
-          title: 'Setup in progress',
-          body:  'You started your Stripe setup but haven’t finished yet. Continue where you left off.',
-        }
-      case 'restricted':
-        return {
-          tone:  'danger' as const,
-          icon:  AlertTriangle,
-          title: 'Action required',
-          body:  'Stripe needs more information before your account can accept payments. Continue setup to resolve.',
-        }
-      case 'not_connected':
-      default:
-        return {
-          tone:  'neutral' as const,
-          icon:  CreditCard,
-          title: 'Set up Stripe',
-          body:  'Set up a Stripe account so customer deposits and payments land in your bank.',
-        }
-    }
-  })()
-
-  const Icon = meta.icon
-
-  const borderCls = {
-    positive: 'border-[rgba(20,140,80,0.40)]',
-    warn:     'border-[rgba(180,120,0,0.35)]',
-    danger:   'border-[rgba(180,40,40,0.40)]',
-    neutral:  'border-hairline-soft',
-  }[meta.tone]
-
-  const iconCls = {
-    positive: 'text-success',
-    warn:     'text-warning',
-    danger:   'text-danger',
-    neutral:  'text-near-black',
-  }[meta.tone]
-
-  return (
-    <section className={cn('bg-white border p-3.5 space-y-3', borderCls)}>
-      <div className="flex items-start gap-3">
-        <span className={cn('w-8 h-8 flex items-center justify-center bg-cream border border-hairline-soft flex-shrink-0', iconCls)}>
-          <Icon size={14} strokeWidth={1.8} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-bold text-near-black">{meta.title}</p>
-            <span className={cn(
-              'text-eyebrow font-bold tracking-[0.06em] uppercase border px-1.5 py-0.5 whitespace-nowrap',
-              meta.tone === 'positive' ? 'bg-white border-[rgba(20,140,80,0.40)] text-success'
-                : meta.tone === 'warn' ? 'bg-white border-[rgba(180,120,0,0.35)] text-warning'
-                : meta.tone === 'danger' ? 'bg-white border-[rgba(180,40,40,0.40)] text-danger'
-                : 'bg-cream border-hairline-strong text-muted-text',
-            )}>{statusLabel(status)}</span>
-          </div>
-          <p className="text-2xs text-muted-text mt-1">{meta.body}</p>
-
-          {(settings.stripe_connect_account_id || settings.stripe_connect_last_checked_at) && (
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-0.5 mt-2 text-2xs">
-              {settings.stripe_connect_account_id && (
-                <div className="flex justify-between sm:block">
-                  <dt className="text-muted-text">Stripe reference</dt>
-                  <dd className="font-mono text-near-black truncate">{settings.stripe_connect_account_id}</dd>
-                </div>
-              )}
-              {settings.stripe_details_submitted !== undefined && (
-                <div className="flex justify-between sm:block">
-                  <dt className="text-muted-text">Setup</dt>
-                  <dd className="text-near-black">{settings.stripe_details_submitted ? 'Done' : 'Not done'}</dd>
-                </div>
-              )}
-              {settings.stripe_charges_enabled !== undefined && (
-                <div className="flex justify-between sm:block">
-                  <dt className="text-muted-text">Accepting payments</dt>
-                  <dd className="text-near-black">{settings.stripe_charges_enabled ? 'Yes' : 'No'}</dd>
-                </div>
-              )}
-              {settings.stripe_payouts_enabled !== undefined && (
-                <div className="flex justify-between sm:block">
-                  <dt className="text-muted-text">Bank deposits</dt>
-                  <dd className="text-near-black">{settings.stripe_payouts_enabled ? 'Yes' : 'No'}</dd>
-                </div>
-              )}
-            </dl>
-          )}
-        </div>
-      </div>
-
-      {error && (
-        <div className="text-2xs text-danger flex items-center gap-1.5">
-          <AlertCircle size={11} /> {error}
-        </div>
-      )}
-
-      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-hairline-soft">
-        {status === 'not_connected' && (
-          <button
-            type="button"
-            onClick={onStart}
-            disabled={busy !== 'idle'}
-            className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 hover:bg-white hover:text-near-black border border-near-black disabled:opacity-60"
-          >
-            {busy === 'starting'
-              ? <><Loader2 size={11} className="animate-spin" /> Starting</>
-              : <><CreditCard size={12} /> Set up Stripe</>}
-          </button>
-        )}
-        {(status === 'onboarding_started' || status === 'pending' || status === 'restricted') && (
-          <button
-            type="button"
-            onClick={onContinue}
-            disabled={busy !== 'idle'}
-            className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 hover:bg-white hover:text-near-black border border-near-black disabled:opacity-60"
-          >
-            {busy === 'refreshing'
-              ? <><Loader2 size={11} className="animate-spin" /> Opening</>
-              : <><ExternalLink size={12} /> Continue setup</>}
-          </button>
-        )}
-        {settings.stripe_connect_account_id && (
-          <button
-            type="button"
-            onClick={onRefresh}
-            disabled={busy !== 'idle'}
-            className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-60"
-          >
-            {busy === 'syncing'
-              ? <><Loader2 size={11} className="animate-spin" /> Refreshing</>
-              : <><RefreshCw size={12} /> Refresh status</>}
-          </button>
-        )}
-      </div>
-    </section>
-  )
-}
-
-function statusLabel(status: StripeConnectStatus): string {
-  switch (status) {
-    case 'active':             return 'Active'
-    case 'pending':            return 'Pending'
-    case 'onboarding_started': return 'In progress'
-    case 'restricted':         return 'Restricted'
-    default:                   return 'Not connected'
-  }
-}
-
 // ── Business Settings panel ─────────────────────────────────────────────────
 
 // Common beauty business types. Free-text fallback via the "Other" option.
@@ -2046,6 +1816,9 @@ function BusinessSettingsPanel() {
         </div>
       </section>
 
+      {/* Time & format (moved from the old Preferences tab). */}
+      <PrefsCard section="time_format" />
+
       <SaveBar
         dirty={dirty}
         saveState={saveState}
@@ -2056,7 +1829,7 @@ function BusinessSettingsPanel() {
   )
 }
 
-// ── Preferences Settings panel ──────────────────────────────────────────────
+// ── Preferences (dissolved) → PrefsCard slices live in their home tabs ───────
 
 // US-first list. Full IANA list is ~400 entries; expand later when we serve
 // outside the US. The select also accepts a typed value via "Other".
@@ -2071,19 +1844,47 @@ const COMMON_TIMEZONES = [
   { value: 'America/Puerto_Rico', label: 'Atlantic (San Juan)' },
 ] as const
 
-function PreferencesSettingsPanel() {
-  // Preferences live on the BusinessProfile model — same endpoint as Business
-  // Profile. We just expose a different subset of fields here.
+/**
+ * Self-contained editor for one slice of BusinessProfile-backed preferences.
+ * The old Preferences tab was dissolved (#settings-ia) and its four blocks
+ * moved to the tabs they belong to:
+ *   time_format   → Business      duration   → Booking
+ *   communication → Notifications  visibility → Danger Zone
+ * Each PrefsCard owns its own load + partial save (updateEditorBusiness only
+ * sends the fields for that slice, so it never clobbers a sibling tab).
+ */
+type PrefsSection = 'time_format' | 'duration' | 'communication' | 'visibility'
+
+const PREFS_META: Record<PrefsSection, { icon: React.ElementType; label: string; hint: string }> = {
+  time_format:   { icon: CalendarClock, label: 'Time & format',  hint: 'Used across the app, emails, and your public site.' },
+  duration:      { icon: Calendar,      label: 'Defaults',       hint: 'Speed up common owner workflows.' },
+  communication: { icon: Mail,          label: 'Communication',  hint: 'Show up consistently across emails and the booking site.' },
+  visibility:    { icon: Lock,          label: 'Site visibility',hint: 'Who can see your booking site.' },
+}
+
+function prefsSlice(section: PrefsSection, b: BusinessProfile): Partial<BusinessProfile> {
+  switch (section) {
+    case 'time_format':
+      return { time_zone: b.time_zone ?? null, week_start_day: b.week_start_day ?? 0, time_format: b.time_format ?? '12h' }
+    case 'duration':
+      return { default_appointment_duration_minutes: b.default_appointment_duration_minutes ?? 60 }
+    case 'communication':
+      return { post_booking_message: b.post_booking_message ?? null, email_signature: b.email_signature ?? null }
+    case 'visibility':
+      return { site_visibility: b.site_visibility ?? 'public', site_password_set: !! b.site_password_set }
+  }
+}
+
+function PrefsCard({ section }: { section: PrefsSection }) {
   const [data,    setData]    = useState<BusinessProfile | null>(null)
   const [draft,   setDraft]   = useState<BusinessProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadErr, setLoadErr] = useState<string | null>(null)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [saveErr,   setSaveErr]   = useState<string | null>(null)
-  // Plain password field — empty unless user types into it. We only send
-  // it on save when the visibility is 'private' AND a password was typed.
   const [pwInput, setPwInput] = useState('')
   const confirm = useConfirm()
+  const meta = PREFS_META[section]
 
   useEffect(() => {
     let cancelled = false
@@ -2096,9 +1897,9 @@ function PreferencesSettingsPanel() {
 
   const dirty = useMemo(() => {
     if (!data || !draft) return false
-    if (pwInput !== '') return true
-    return JSON.stringify(stripPrefs(data)) !== JSON.stringify(stripPrefs(draft))
-  }, [data, draft, pwInput])
+    if (section === 'visibility' && pwInput !== '') return true
+    return JSON.stringify(prefsSlice(section, data)) !== JSON.stringify(prefsSlice(section, draft))
+  }, [data, draft, pwInput, section])
 
   function patch(p: Partial<BusinessProfile>) {
     setDraft(d => d ? { ...d, ...p } : d)
@@ -2109,21 +1910,16 @@ function PreferencesSettingsPanel() {
     if (!draft) return
     setSaveState('saving'); setSaveErr(null)
     try {
-      const payload: Partial<BusinessProfile> = {
-        time_zone:        draft.time_zone || null,
-        week_start_day:   draft.week_start_day ?? 0,
-        time_format:      draft.time_format ?? '12h',
-        default_appointment_duration_minutes: draft.default_appointment_duration_minutes ?? 60,
-        post_booking_message: draft.post_booking_message?.trim() || null,
-        email_signature:      draft.email_signature?.trim() || null,
-        site_visibility:      draft.site_visibility ?? 'public',
+      const payload = prefsSlice(section, draft)
+      delete (payload as { site_password_set?: boolean }).site_password_set
+      if (section === 'communication') {
+        payload.post_booking_message = draft.post_booking_message?.trim() || null
+        payload.email_signature      = draft.email_signature?.trim() || null
       }
-      // Only send a password if user actually typed one. Empty doesn't clear
-      // an existing one — there's a separate "Clear password" affordance.
-      if (pwInput !== '') payload.site_password = pwInput
+      if (section === 'time_format') payload.time_zone = draft.time_zone || null
+      if (section === 'visibility' && pwInput !== '') payload.site_password = pwInput
       const next = await updateEditorBusiness(payload)
-      setData(next); setDraft(next)
-      setPwInput('')
+      setData(next); setDraft(next); setPwInput('')
       setSaveState('saved')
     } catch (e) {
       setSaveState('error')
@@ -2132,14 +1928,13 @@ function PreferencesSettingsPanel() {
   }
 
   async function clearPassword() {
-    if (! draft) return
+    if (!draft) return
     const ok = await confirm({ title: 'Clear the site password?', message: 'Anyone with the link will be able to view your site again once visibility is public.', confirmLabel: 'Clear password', tone: 'danger' })
-    if (! ok) return
+    if (!ok) return
     setSaveState('saving'); setSaveErr(null)
     try {
       const next = await updateEditorBusiness({ site_password: '' })
-      setData(next); setDraft(next)
-      setPwInput('')
+      setData(next); setDraft(next); setPwInput('')
       setSaveState('saved')
     } catch (e) {
       setSaveState('error')
@@ -2149,15 +1944,15 @@ function PreferencesSettingsPanel() {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-xs text-muted-text px-1 py-8">
-        <Loader2 size={14} className="animate-spin" /> Loading preferences…
+      <div className="bg-white border border-hairline-soft p-3.5 flex items-center gap-2 text-xs text-muted-text">
+        <Loader2 size={14} className="animate-spin" /> Loading…
       </div>
     )
   }
   if (loadErr || !draft) {
     return (
       <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-danger flex items-center gap-2">
-        <AlertCircle size={14} /> {loadErr ?? 'Could not load preferences'}
+        <AlertCircle size={14} /> {loadErr ?? 'Could not load'}
       </div>
     )
   }
@@ -2168,72 +1963,55 @@ function PreferencesSettingsPanel() {
     ? '' : (tzKnown ? draft.time_zone! : 'Other')
 
   return (
-    <div className="space-y-3">
-      <Link
-        href={hrefFor('overview')}
-        className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-tight text-near-black hover:underline"
-      >
-        ← Back to Settings
-      </Link>
+    <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
+      <SectionTitle icon={meta.icon} label={meta.label} hint={meta.hint} />
 
-      <header className="px-1">
-        <h1 className="text-base font-bold text-near-black">Preferences</h1>
-        <p className="text-xs text-muted-text mt-0.5">
-          How BookReady behaves for your business: time zone, formats, defaults, and site visibility.
-        </p>
-      </header>
-
-      {/* Time + format */}
-      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
-        <SectionTitle icon={CalendarClock} label="Time & format" hint="Used across the app, emails, and your public site." />
-
-        <SelectField
-          label="Time zone"
-          value={tzSelect}
-          onChange={v => patch({ time_zone: v === 'Other' ? (draft.time_zone || '') : (v || null) })}
-          options={[
-            { value: '', label: 'Use BookReady default (US Eastern)' },
-            ...COMMON_TIMEZONES.map(t => ({ value: t.value, label: t.label })),
-            { value: 'Other', label: 'Other (enter time zone manually)' },
-          ]}
-          hint="Affects how all dates and times display. Reminder schedules will start respecting this in the next release."
-        />
-        {tzSelect === 'Other' && (
-          <TextField
-            label="Time zone name"
-            value={draft.time_zone ?? ''}
-            onChange={v => patch({ time_zone: v || null })}
-            placeholder="e.g. Europe/London"
-          />
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-hairline-soft pt-3">
+      {section === 'time_format' && (
+        <>
           <SelectField
-            label="Week starts on"
-            value={String(draft.week_start_day ?? 0)}
-            onChange={v => patch({ week_start_day: Number(v) })}
+            label="Time zone"
+            value={tzSelect}
+            onChange={v => patch({ time_zone: v === 'Other' ? (draft.time_zone || '') : (v || null) })}
             options={[
-              { value: '0', label: 'Sunday' },
-              { value: '1', label: 'Monday' },
+              { value: '', label: 'Use BookReady default (US Eastern)' },
+              ...COMMON_TIMEZONES.map(t => ({ value: t.value, label: t.label })),
+              { value: 'Other', label: 'Other (enter time zone manually)' },
             ]}
-            hint="Calendar grid + week-view starting day."
+            hint="Affects how all dates and times display. Reminder schedules will start respecting this in the next release."
           />
-          <SelectField
-            label="Time format"
-            value={draft.time_format ?? '12h'}
-            onChange={v => patch({ time_format: v as '12h' | '24h' })}
-            options={[
-              { value: '12h', label: '12-hour (1:30 PM)' },
-              { value: '24h', label: '24-hour (13:30)' },
-            ]}
-          />
-        </div>
-      </section>
+          {tzSelect === 'Other' && (
+            <TextField
+              label="Time zone name"
+              value={draft.time_zone ?? ''}
+              onChange={v => patch({ time_zone: v || null })}
+              placeholder="e.g. Europe/London"
+            />
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-hairline-soft pt-3">
+            <SelectField
+              label="Week starts on"
+              value={String(draft.week_start_day ?? 0)}
+              onChange={v => patch({ week_start_day: Number(v) })}
+              options={[
+                { value: '0', label: 'Sunday' },
+                { value: '1', label: 'Monday' },
+              ]}
+              hint="Calendar grid + week-view starting day."
+            />
+            <SelectField
+              label="Time format"
+              value={draft.time_format ?? '12h'}
+              onChange={v => patch({ time_format: v as '12h' | '24h' })}
+              options={[
+                { value: '12h', label: '12-hour (1:30 PM)' },
+                { value: '24h', label: '24-hour (13:30)' },
+              ]}
+            />
+          </div>
+        </>
+      )}
 
-      {/* Defaults */}
-      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
-        <SectionTitle icon={Calendar} label="Defaults" hint="Speed up common owner workflows." />
-
+      {section === 'duration' && (
         <NumberField
           label="Default appointment duration"
           value={draft.default_appointment_duration_minutes ?? 60}
@@ -2243,89 +2021,82 @@ function PreferencesSettingsPanel() {
           suffix="minutes"
           hint="Used when you create an appointment manually without picking a service."
         />
-      </section>
+      )}
 
-      {/* Communication */}
-      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
-        <SectionTitle icon={Mail} label="Communication" hint="Show up consistently across emails and the booking site." />
+      {section === 'communication' && (
+        <>
+          <TextAreaField
+            label="Post-booking message"
+            value={draft.post_booking_message ?? ''}
+            onChange={v => patch({ post_booking_message: v })}
+            placeholder="Bring your reference photos, and arrive 5 minutes early!"
+            hint="Shown to customers on the booking success page and included in their confirmation email."
+            rows={3}
+          />
+          <TextAreaField
+            label="Email signature"
+            value={draft.email_signature ?? ''}
+            onChange={v => patch({ email_signature: v })}
+            placeholder="Anna at Lush Studio"
+            hint="Appended to customer-facing emails (confirmations, reminders, etc)."
+            rows={2}
+          />
+        </>
+      )}
 
-        <TextAreaField
-          label="Post-booking message"
-          value={draft.post_booking_message ?? ''}
-          onChange={v => patch({ post_booking_message: v })}
-          placeholder="Bring your reference photos, and arrive 5 minutes early!"
-          hint="Shown to customers on the booking success page and included in their confirmation email."
-          rows={3}
-        />
-        <TextAreaField
-          label="Email signature"
-          value={draft.email_signature ?? ''}
-          onChange={v => patch({ email_signature: v })}
-          placeholder="Anna at Lush Studio"
-          hint="Appended to customer-facing emails (confirmations, reminders, etc)."
-          rows={2}
-        />
-      </section>
+      {section === 'visibility' && (
+        <>
+          <SelectField
+            label="Visibility"
+            value={draft.site_visibility ?? 'public'}
+            onChange={v => patch({ site_visibility: v as 'public' | 'private' | 'coming_soon' })}
+            options={[
+              { value: 'public',      label: 'Public (anyone with the link)' },
+              { value: 'private',     label: 'Private (password required)' },
+              { value: 'coming_soon', label: 'Coming soon (placeholder page)' },
+            ]}
+          />
+          {isPrivate && (
+            <div className="space-y-2">
+              <TextField
+                label="Site password"
+                type="text"
+                value={pwInput}
+                onChange={setPwInput}
+                placeholder={draft.site_password_set ? '(already set, leave blank to keep)' : 'Choose a password'}
+                hint={draft.site_password_set ? 'Type a new value to change it. Leave blank to keep the existing one.' : 'Anyone with the link will need this to view your site.'}
+              />
+              {draft.site_password_set && (
+                <button
+                  type="button"
+                  onClick={clearPassword}
+                  className="text-eyebrow font-bold tracking-[0.14em] uppercase text-danger hover:underline"
+                >
+                  Clear password
+                </button>
+              )}
+            </div>
+          )}
+        </>
+      )}
 
-      {/* Site visibility */}
-      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
-        <SectionTitle icon={Lock} label="Site visibility" hint="Who can see your booking site." />
-
-        <SelectField
-          label="Visibility"
-          value={draft.site_visibility ?? 'public'}
-          onChange={v => patch({ site_visibility: v as 'public' | 'private' | 'coming_soon' })}
-          options={[
-            { value: 'public',      label: 'Public (anyone with the link)' },
-            { value: 'private',     label: 'Private (password required)' },
-            { value: 'coming_soon', label: 'Coming soon (placeholder page)' },
-          ]}
-        />
-        {isPrivate && (
-          <div className="space-y-2">
-            <TextField
-              label="Site password"
-              type="text"
-              value={pwInput}
-              onChange={setPwInput}
-              placeholder={draft.site_password_set ? '(already set, leave blank to keep)' : 'Choose a password'}
-              hint={draft.site_password_set ? 'Type a new value to change it. Leave blank to keep the existing one.' : 'Anyone with the link will need this to view your site.'}
-            />
-            {draft.site_password_set && (
-              <button
-                type="button"
-                onClick={clearPassword}
-                className="text-eyebrow font-bold tracking-[0.14em] uppercase text-danger hover:underline"
-              >
-                Clear password
-              </button>
-            )}
-          </div>
+      {/* Inline save (non-sticky — the parent tab may own a sticky SaveBar). */}
+      <div className="flex items-center gap-3 pt-1 border-t border-hairline-soft">
+        <button
+          type="button"
+          onClick={save}
+          disabled={!dirty || saveState === 'saving'}
+          className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 border border-near-black hover:bg-white hover:text-near-black disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {saveState === 'saving' ? <><Loader2 size={11} className="animate-spin" /> Saving</> : 'Save'}
+        </button>
+        {saveState === 'saved' && (
+          <span className="inline-flex items-center gap-1 text-xs text-success font-semibold"><Check size={12} /> Saved</span>
         )}
-      </section>
-
-      <SaveBar
-        dirty={dirty}
-        saveState={saveState}
-        saveErr={saveErr}
-        onSave={save}
-      />
-    </div>
+        {saveState === 'error' && saveErr && <span className="text-xs text-danger">{saveErr}</span>}
+      </div>
+    </section>
   )
-}
-
-/** Pull off just the preference fields for dirty-checking. */
-function stripPrefs(b: BusinessProfile): Partial<BusinessProfile> {
-  return {
-    time_zone:        b.time_zone ?? null,
-    week_start_day:   b.week_start_day ?? 0,
-    time_format:      b.time_format ?? '12h',
-    default_appointment_duration_minutes: b.default_appointment_duration_minutes ?? 60,
-    post_booking_message: b.post_booking_message ?? null,
-    email_signature:      b.email_signature ?? null,
-    site_visibility:      b.site_visibility ?? 'public',
-    site_password_set:    !! b.site_password_set,
-  }
 }
 
 
@@ -2339,9 +2110,12 @@ function SectionTitle({
   hint?: string
 }) {
   return (
-    <div className="flex items-start gap-2 border-b border-hairline-soft pb-2.5 mb-1">
-      <Icon size={14} className="text-near-black mt-0.5 flex-shrink-0" strokeWidth={1.8} />
-      <div className="min-w-0">
+    <div className="flex items-start gap-3 border-b border-hairline-soft pb-2.5 mb-1">
+      {/* BookReady icon-box: cream square, muted glyph. */}
+      <span className="w-8 h-8 bg-cream border border-hairline-soft flex items-center justify-center flex-shrink-0">
+        <Icon size={15} className="text-muted-text" strokeWidth={1.8} />
+      </span>
+      <div className="min-w-0 pt-0.5">
         <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-near-black">{label}</p>
         {hint && <p className="text-2xs text-muted-text mt-0.5">{hint}</p>}
       </div>
@@ -2511,6 +2285,9 @@ function DangerSettingsPanel() {
           Destructive and archival actions. Read carefully, since these affect real customer data and money.
         </p>
       </header>
+
+      {/* Site visibility (moved from the old Preferences tab). */}
+      <PrefsCard section="visibility" />
 
       {/* Pause bookings (read-only status with deep-link to source) */}
       <section className="bg-white border border-hairline-soft p-3.5">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import {
-  Loader2, AlertCircle, Save, Plus, Trash2, Info, CalendarRange,
+  Loader2, AlertCircle, Save, Plus, Trash2, Info, CalendarCheck, Rocket,
 } from 'lucide-react'
 import {
   getEditorBookingSettings, updateEditorBookingSettings,
@@ -10,6 +10,9 @@ import {
   type ReleaseMode, type SlotReleaseDrop,
 } from '@/lib/api'
 import { cn } from '@/lib/cn'
+import {
+  TabShell, TabIntro, CollapsibleSection,
+} from '@/components/editor/AvailabilitySections'
 
 /**
  * Availability 2.0 · Phase 2 · Release Strategy panel.
@@ -44,6 +47,9 @@ export default function ReleaseStrategyPanel({ onChange }: { onChange?: () => vo
   const [saving,   setSaving]   = useState(false)
   const [error,    setError]    = useState<string | null>(null)
   const [savedAt,  setSavedAt]  = useState<number | null>(null)
+
+  // Accordion: strategy open by default; drops section open when custom is active
+  const [openSection, setOpenSection] = useState<'strategy' | 'drops' | null>('strategy')
 
   useEffect(() => {
     let cancelled = false
@@ -129,158 +135,202 @@ export default function ReleaseStrategyPanel({ onChange }: { onChange?: () => vo
 
   if (loading) {
     return (
-      <div className="bg-white border border-hairline-soft p-4 flex items-center gap-2 text-xs text-muted-text mb-4">
-        <Loader2 size={14} className="animate-spin" /> Loading release strategy…
-      </div>
+      <TabShell>
+        <div className="px-5 pt-5 pb-4 flex items-center gap-2 text-xs text-muted-text">
+          <Loader2 size={14} className="animate-spin" /> Loading release strategy…
+        </div>
+      </TabShell>
     )
   }
   if (! settings) return null
 
+  const isCustom = settings.slot_release_mode === 'custom'
+
+  // Save action slotted into the CollapsibleSection header
+  const saveAction = (
+    <div className="flex items-center gap-2 flex-shrink-0">
+      {savedAt && Date.now() - savedAt < 4000 && (
+        <span className="text-eyebrow text-success font-semibold">Saved.</span>
+      )}
+      <button
+        type="button"
+        onClick={e => { e.stopPropagation(); save() }}
+        disabled={saving}
+        className={cn(
+          'inline-flex items-center gap-1.5 text-2xs font-bold tracking-[0.08em] uppercase border px-3 py-1.5',
+          saving
+            ? 'bg-cream border-hairline-soft text-muted-text cursor-wait'
+            : 'bg-near-black border-near-black text-white hover:opacity-90',
+        )}
+      >
+        {saving ? <Loader2 size={11} className="animate-spin" /> : <Save size={11} />} Save
+      </button>
+    </div>
+  )
+
   return (
-    <div className="bg-white border border-hairline-soft p-4 mb-4">
-      <header className="mb-3 flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h3 className="text-sm font-bold text-near-black inline-flex items-center gap-1.5">
-            <CalendarRange size={14} /> Release strategy
-          </h3>
-          <p className="text-2xs text-muted-text mt-0.5">
-            When customers can book future dates. Always Open allows booking up to your max-days-ahead immediately; recurring strategies release dates in batches.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {savedAt && Date.now() - savedAt < 4000 && (
-            <span className="text-eyebrow text-success font-semibold">Saved.</span>
-          )}
-          <button
-            type="button"
-            onClick={save}
-            disabled={saving}
-            className={cn(
-              'inline-flex items-center gap-1.5 text-2xs font-bold tracking-[0.08em] uppercase border px-3 py-1.5',
-              saving
-                ? 'bg-cream border-hairline-soft text-muted-text cursor-wait'
-                : 'bg-near-black border-near-black text-white hover:opacity-90',
-            )}
-          >
-            {saving ? <Loader2 size={11} className="animate-spin" /> : <Save size={11} />} Save
-          </button>
-        </div>
-      </header>
+    <TabShell>
+      <TabIntro>
+        Choose when future dates become bookable — open immediately or released in recurring batches.
+      </TabIntro>
 
       {error && (
-        <div className="bg-danger-bg border border-danger p-2.5 text-2xs text-danger flex items-center gap-2 mb-3">
+        <div className="mx-5 mt-4 bg-danger-bg border border-danger p-2.5 text-2xs text-danger flex items-center gap-2">
           <AlertCircle size={12} /> {error}
         </div>
       )}
 
-      {/* Mode picker */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 mb-3">
-        {(['always_open', 'weekly', 'biweekly', 'monthly', 'custom'] as ReleaseMode[]).map(m => (
-          <ModePill
-            key={m}
-            active={settings.slot_release_mode === m}
-            onClick={() => patch('slot_release_mode', m)}
-            label={MODE_LABELS[m]}
-          />
-        ))}
+      {/* Release strategy — mode picker + cadence sub-fields */}
+      <div className="border-b border-hairline-soft">
+        {/* Custom header with action button using the section chrome manually
+            so the save button doesn't trigger the accordion toggle */}
+        <div className="flex items-center gap-3 px-5 py-4">
+          {/* icon box */}
+          <div className="bg-cream border border-hairline-soft flex items-center justify-center flex-shrink-0 w-7 h-7">
+            <Rocket size={13} className="text-muted-text" />
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpenSection(o => o === 'strategy' ? null : 'strategy')}
+            className="flex-1 min-w-0 text-left"
+          >
+            <p className="text-sm font-bold text-near-black">Release strategy</p>
+            {openSection !== 'strategy' && (
+              <p className="text-xs text-muted-text mt-0.5 truncate">
+                {MODE_LABELS[settings.slot_release_mode]}
+              </p>
+            )}
+          </button>
+          {saveAction}
+        </div>
+        {openSection === 'strategy' && (
+          <div className="px-5 pb-5 pt-1 space-y-4">
+            {/* Mode picker */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+              {(['always_open', 'weekly', 'biweekly', 'monthly', 'custom'] as ReleaseMode[]).map(m => (
+                <ModePill
+                  key={m}
+                  active={settings.slot_release_mode === m}
+                  onClick={() => patch('slot_release_mode', m)}
+                  label={MODE_LABELS[m]}
+                />
+              ))}
+            </div>
+
+            {/* Cadence-specific controls */}
+            {settings.slot_release_mode === 'always_open' && (
+              <p className="text-2xs text-muted-text inline-flex items-center gap-1.5">
+                <Info size={11} /> Dates open immediately, capped by your max-days-ahead setting on the Weekly tab.
+              </p>
+            )}
+
+            {settings.slot_release_mode === 'weekly' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Field label="Release every">
+                  <select
+                    value={settings.slot_release_day_of_week ?? 1}
+                    onChange={e => patch('slot_release_day_of_week', parseInt(e.target.value, 10))}
+                    className={inputCls}
+                  >
+                    {DOW_LABELS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+                  </select>
+                </Field>
+                <Field label="At">
+                  <input
+                    type="time"
+                    value={settings.slot_release_time ?? DEFAULT_TIME}
+                    onChange={e => patch('slot_release_time', e.target.value)}
+                    className={inputCls}
+                  />
+                </Field>
+                <Field label="Releases the next">
+                  <DaysField
+                    value={settings.slot_release_window_days ?? 7}
+                    onChange={n => patch('slot_release_window_days', n)}
+                  />
+                </Field>
+              </div>
+            )}
+
+            {settings.slot_release_mode === 'biweekly' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Field label="Anchor date" hint="Any past or upcoming occurrence; cadence repeats every 14 days.">
+                  <input
+                    type="date"
+                    value={settings.slot_release_anchor_date ?? ''}
+                    onChange={e => patch('slot_release_anchor_date', e.target.value || null)}
+                    className={inputCls}
+                  />
+                </Field>
+                <Field label="At">
+                  <input
+                    type="time"
+                    value={settings.slot_release_time ?? DEFAULT_TIME}
+                    onChange={e => patch('slot_release_time', e.target.value)}
+                    className={inputCls}
+                  />
+                </Field>
+                <Field label="Releases the next">
+                  <DaysField
+                    value={settings.slot_release_window_days ?? 14}
+                    onChange={n => patch('slot_release_window_days', n)}
+                  />
+                </Field>
+              </div>
+            )}
+
+            {settings.slot_release_mode === 'monthly' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Field label="Release on day">
+                  <select
+                    value={settings.slot_release_day_of_month ?? 1}
+                    onChange={e => patch('slot_release_day_of_month', parseInt(e.target.value, 10))}
+                    className={inputCls}
+                  >
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map(n =>
+                      <option key={n} value={n}>{ordinal(n)} of the month</option>
+                    )}
+                  </select>
+                </Field>
+                <Field label="At">
+                  <input
+                    type="time"
+                    value={settings.slot_release_time ?? DEFAULT_TIME}
+                    onChange={e => patch('slot_release_time', e.target.value)}
+                    className={inputCls}
+                  />
+                </Field>
+                <Field label="Releases the next">
+                  <DaysField
+                    value={settings.slot_release_window_days ?? 30}
+                    onChange={n => patch('slot_release_window_days', n)}
+                  />
+                </Field>
+              </div>
+            )}
+
+            {settings.slot_release_mode === 'custom' && (
+              <p className="text-2xs text-muted-text inline-flex items-center gap-1.5">
+                <Info size={11} /> Manage individual date drops in the section below.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Cadence-specific controls */}
-      {settings.slot_release_mode === 'always_open' && (
-        <p className="text-2xs text-muted-text inline-flex items-center gap-1.5">
-          <Info size={11} /> Dates open immediately, capped by your max-days-ahead setting on the Weekly tab.
-        </p>
+      {/* Custom drops — only rendered when mode is 'custom' */}
+      {isCustom && (
+        <CollapsibleSection
+          icon={CalendarCheck}
+          title="Custom drops"
+          subtitle="Stack explicit release dates to open specific date ranges for booking."
+          open={openSection === 'drops'}
+          onToggle={() => setOpenSection(o => o === 'drops' ? null : 'drops')}
+        >
+          <CustomDropsEditor drops={drops} onAdd={addDrop} onRemove={removeDrop} />
+        </CollapsibleSection>
       )}
-
-      {settings.slot_release_mode === 'weekly' && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Field label="Release every">
-            <select
-              value={settings.slot_release_day_of_week ?? 1}
-              onChange={e => patch('slot_release_day_of_week', parseInt(e.target.value, 10))}
-              className={inputCls}
-            >
-              {DOW_LABELS.map((d, i) => <option key={i} value={i}>{d}</option>)}
-            </select>
-          </Field>
-          <Field label="At">
-            <input
-              type="time"
-              value={settings.slot_release_time ?? DEFAULT_TIME}
-              onChange={e => patch('slot_release_time', e.target.value)}
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Releases the next">
-            <DaysField
-              value={settings.slot_release_window_days ?? 7}
-              onChange={n => patch('slot_release_window_days', n)}
-            />
-          </Field>
-        </div>
-      )}
-
-      {settings.slot_release_mode === 'biweekly' && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Field label="Anchor date" hint="Any past or upcoming occurrence; cadence repeats every 14 days.">
-            <input
-              type="date"
-              value={settings.slot_release_anchor_date ?? ''}
-              onChange={e => patch('slot_release_anchor_date', e.target.value || null)}
-              className={inputCls}
-            />
-          </Field>
-          <Field label="At">
-            <input
-              type="time"
-              value={settings.slot_release_time ?? DEFAULT_TIME}
-              onChange={e => patch('slot_release_time', e.target.value)}
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Releases the next">
-            <DaysField
-              value={settings.slot_release_window_days ?? 14}
-              onChange={n => patch('slot_release_window_days', n)}
-            />
-          </Field>
-        </div>
-      )}
-
-      {settings.slot_release_mode === 'monthly' && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Field label="Release on day">
-            <select
-              value={settings.slot_release_day_of_month ?? 1}
-              onChange={e => patch('slot_release_day_of_month', parseInt(e.target.value, 10))}
-              className={inputCls}
-            >
-              {Array.from({ length: 31 }, (_, i) => i + 1).map(n =>
-                <option key={n} value={n}>{ordinal(n)} of the month</option>
-              )}
-            </select>
-          </Field>
-          <Field label="At">
-            <input
-              type="time"
-              value={settings.slot_release_time ?? DEFAULT_TIME}
-              onChange={e => patch('slot_release_time', e.target.value)}
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Releases the next">
-            <DaysField
-              value={settings.slot_release_window_days ?? 30}
-              onChange={n => patch('slot_release_window_days', n)}
-            />
-          </Field>
-        </div>
-      )}
-
-      {settings.slot_release_mode === 'custom' && (
-        <CustomDropsEditor drops={drops} onAdd={addDrop} onRemove={removeDrop} />
-      )}
-    </div>
+    </TabShell>
   )
 }
 

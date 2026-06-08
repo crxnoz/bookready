@@ -6,8 +6,8 @@
 ])
 
 @section('cta')
-<a href="https://app.bkrdy.me/editor/settings?tab=payments" style="display:inline-block;background:#121212;color:#FFFFFF;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:14px 22px;border:1px solid #121212;">
-  Open Payment Settings &rarr;
+<a href="https://app.bkrdy.me/editor/integrations" style="display:inline-block;background:#121212;color:#FFFFFF;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:14px 22px;border:1px solid #121212;">
+  Open Integrations &rarr;
 </a>
 @endsection
 

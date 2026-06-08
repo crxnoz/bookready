@@ -266,6 +266,13 @@ Route::prefix('v1')->group(function () {
         Route::get('checkout-session/{sessionId}',       [BillingController::class, 'checkoutSession']);
         Route::get('portal',                             [BillingController::class, 'portal']);
         Route::get('subscription',                       [BillingController::class, 'subscription']);
+        // Subscription lifecycle — cancel at period end (resume-able in
+        // grace) + pause/unpause billing. Each re-reads subscription() so
+        // the response is the single source of truth.
+        Route::post('cancel',                            [BillingController::class, 'cancel']);
+        Route::post('resume',                            [BillingController::class, 'resume']);
+        Route::post('pause',                             [BillingController::class, 'pause']);
+        Route::post('unpause',                           [BillingController::class, 'unpause']);
     });
 
     // ── Editor (central routes, manual tenancy init) ──────────────────────

@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import {
   ChevronLeft, ChevronRight, Loader2, AlertCircle, X, Plus, Minus,
-  Trash2, Save, Sparkles, Info,
+  Trash2, Save, Sparkles, Info, CalendarDays, Clock, CalendarOff,
 } from 'lucide-react'
 import {
   getEditorCalendarOverrides, getEditorCalendarOverride,
@@ -15,6 +16,7 @@ import {
 import type { HoursEntry, Service, ApiStaffMember } from '@/lib/types'
 import { cn } from '@/lib/cn'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { TabShell, TabIntro, Section } from '@/components/editor/AvailabilitySections'
 
 /**
  * Availability 2.0 · Phase 1 · Smart Calendar
@@ -148,7 +150,7 @@ export default function CalendarOverridesEditor() {
   }
 
   return (
-    <section className="w-full">
+    <TabShell>
       {/* Av2.0 P2 — diagonal-stripe overlay for un-released dates. Tailwind
           doesn't express repeating-linear-gradient ergonomically, so a tiny
           scoped style block sits here instead of polluting global CSS. */}
@@ -163,45 +165,42 @@ export default function CalendarOverridesEditor() {
           );
         }
       `}</style>
-      {/* Header */}
-      <header className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-        <div>
-          <h2 className="text-xl font-bold text-near-black tracking-tight inline-flex items-center gap-2">
-            <Sparkles size={16} /> Smart Calendar
-          </h2>
-          <p className="text-xs text-muted-text mt-0.5">
-            Click any date to set hours, breaks, available staff, or close the day. Falls back to your weekly schedule for any date you haven&rsquo;t touched.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="w-9 h-9 inline-flex items-center justify-center bg-white border border-hairline-strong text-near-black hover:border-near-black"
-            aria-label="Previous month"
-          >
-            <ChevronLeft size={14} />
-          </button>
-          <div className="text-sm font-bold text-near-black tracking-tight w-36 text-center">
-            {monthLabel}
+      <TabIntro>Click any date to set hours, breaks, available staff, or close the day — falls back to your weekly schedule for any date you haven&rsquo;t touched.</TabIntro>
+      <Section
+        icon={CalendarDays}
+        title="Smart Calendar"
+        subtitle="Per-date hours, capacity, and release windows."
+        action={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="w-9 h-9 inline-flex items-center justify-center bg-white border border-hairline-strong text-near-black hover:border-near-black"
+              aria-label="Previous month"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <div className="text-sm font-bold text-near-black tracking-tight w-36 text-center">
+              {monthLabel}
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(1)}
+              className="w-9 h-9 inline-flex items-center justify-center bg-white border border-hairline-strong text-near-black hover:border-near-black"
+              aria-label="Next month"
+            >
+              <ChevronRight size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setCursor(firstOfMonth(new Date()))}
+              className="text-2xs font-semibold tracking-[0.06em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:border-near-black"
+            >
+              Today
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => navigate(1)}
-            className="w-9 h-9 inline-flex items-center justify-center bg-white border border-hairline-strong text-near-black hover:border-near-black"
-            aria-label="Next month"
-          >
-            <ChevronRight size={14} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setCursor(firstOfMonth(new Date()))}
-            className="text-2xs font-semibold tracking-[0.06em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:border-near-black"
-          >
-            Today
-          </button>
-        </div>
-      </header>
+        }
+      >
 
       {error && (
         <div className="bg-white border border-danger p-3 text-xs text-danger flex items-center gap-2 mb-3">
@@ -283,6 +282,20 @@ export default function CalendarOverridesEditor() {
         </p>
       )}
 
+      {/* Where the fallbacks live — any date you don't customize uses your
+          weekly Regular Hours, and Blocked Dates close days entirely. Both
+          are managed on the Advanced tab. */}
+      <div className="mt-4 pt-3 border-t border-hairline-soft flex flex-wrap items-center gap-x-3 gap-y-1.5 text-2xs text-muted-text">
+        <span>Untouched dates fall back to your weekly schedule — manage it in Advanced:</span>
+        <Link href="/editor/availability?tab=advanced" className="inline-flex items-center gap-1 font-semibold text-near-black hover:underline">
+          <Clock size={11} /> Regular Hours
+        </Link>
+        <Link href="/editor/availability?tab=advanced" className="inline-flex items-center gap-1 font-semibold text-near-black hover:underline">
+          <CalendarOff size={11} /> Blocked Dates
+        </Link>
+      </div>
+      </Section>
+
       {editingDate && (
         <OverrideEditorDialog
           date={editingDate}
@@ -294,7 +307,7 @@ export default function CalendarOverridesEditor() {
           onSaved={handleSaved}
         />
       )}
-    </section>
+    </TabShell>
   )
 }
 

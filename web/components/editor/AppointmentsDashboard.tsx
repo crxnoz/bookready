@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Calendar, ChevronRight, Clock, Plus } from 'lucide-react'
+import { Calendar, ChevronRight, Clock, Plus, Users, Repeat } from 'lucide-react'
 import {
   deleteEditorAppointment,
   getEditorAppointments,
@@ -13,6 +13,7 @@ import { cn } from '@/lib/cn'
 import StatusBadge from '@/components/ui/StatusBadge'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
 import { PaymentPill, PaymentSummary } from '@/components/editor/AppointmentPaymentStatus'
+import { ComingSoonCard } from '@/components/editor/ComingSoonPanel'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -203,6 +204,37 @@ export default function AppointmentsDashboard() {
               </Link>
             </div>
           )}
+        </div>
+
+        {/* Coming next — availability features still on the roadmap. Moved
+            here from the Advanced tab so the overview previews what's next. */}
+        <div>
+          <p className="text-eyebrow font-bold tracking-[0.16em] uppercase text-muted-text mb-3">
+            Coming next
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <ComingSoonCard
+              icon={Users}
+              tone="accent"
+              title="Group appointments"
+              description="One session, multiple customers. Perfect for classes or workshops."
+              bullets={[
+                'Set a minimum and maximum number of people per session',
+                'Auto-confirm once the minimum is hit',
+                'One shared calendar event for the studio',
+              ]}
+            />
+            <ComingSoonCard
+              icon={Repeat}
+              title="Recurring appointments"
+              description="Let regulars book the same time every week or month, automatically."
+              bullets={[
+                'Weekly, biweekly, or monthly schedules',
+                'Pause or skip individual occurrences',
+                'Owner-side bulk reschedule for studio holidays',
+              ]}
+            />
+          </div>
         </div>
 
       </div>

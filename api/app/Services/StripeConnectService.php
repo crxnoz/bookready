@@ -65,8 +65,8 @@ class StripeConnectService
         return AccountLink::create([
             'account'     => $accountId,
             'type'        => 'account_onboarding',
-            'return_url'  => self::APP_BASE . '/editor/settings?tab=payments&stripe_connect=return',
-            'refresh_url' => self::APP_BASE . '/editor/settings?tab=payments&stripe_connect=refresh',
+            'return_url'  => self::APP_BASE . '/editor/integrations?stripe_connect=return',
+            'refresh_url' => self::APP_BASE . '/editor/integrations?stripe_connect=refresh',
         ]);
     }
 

@@ -1,15 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
-  AlertCircle, ArrowRight, Calendar, CalendarMinus, CalendarOff,
-  CreditCard, ExternalLink, Loader2, Mail, Megaphone, Plug, Rss,
+  ArrowRight, Calendar, CalendarMinus, CalendarOff,
+  ExternalLink, Mail, Megaphone, Plug, Rss,
   ShieldCheck, Square as SquareIcon, Building2, Webhook, Zap,
 } from 'lucide-react'
-import { getEditorPaymentSettings } from '@/lib/api'
-import type { PaymentSettings } from '@/lib/types'
 import { cn } from '@/lib/cn'
+import StripeConnectCard from '@/components/editor/StripeConnectCard'
 
 /**
  * The Integrations hub — central catalog of third-party connections.
@@ -62,20 +60,7 @@ interface IntegrationCategory {
 }
 
 export default function IntegrationsHub() {
-  const [settings, setSettings] = useState<PaymentSettings | null>(null)
-  const [loading,  setLoading]  = useState(true)
-  const [err,      setErr]      = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    getEditorPaymentSettings()
-      .then(s => { if (! cancelled) setSettings(s) })
-      .catch(e => { if (! cancelled) setErr(e instanceof Error ? e.message : 'Failed to load') })
-      .finally(() => { if (! cancelled) setLoading(false) })
-    return () => { cancelled = true }
-  }, [])
-
-  const categories = buildCatalog(settings)
+  const categories = buildCatalog()
 
   return (
     <div className="w-full p-3 sm:p-5 md:p-6 space-y-6 max-w-[1024px]">
@@ -93,19 +78,26 @@ export default function IntegrationsHub() {
         </p>
       </header>
 
-      {loading && (
-        <p className="text-xs text-muted-text inline-flex items-center gap-2">
-          <Loader2 size={12} className="animate-spin" /> Loading integration status…
-        </p>
-      )}
-
-      {err && (
-        <div className="bg-white border border-[rgba(180,40,40,0.20)] p-3 text-xs text-danger flex items-center gap-2">
-          <AlertCircle size={14} /> {err}
+      {/* Payments — Stripe is the one live integration; set it up + manage it here. */}
+      <section>
+        <div className="mb-2.5">
+          <h2 className="text-xs font-bold tracking-[0.18em] uppercase text-near-black">Payments</h2>
+          <p className="text-xs text-muted-text mt-0.5">Accept appointment payments + deposits.</p>
         </div>
-      )}
+        <div className="space-y-3">
+          <StripeConnectCard />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Tile t={comingSoon({
+              key:         'square',
+              name:        'Square',
+              description: 'Accept payments through your Square account, and keep your Square POS in sync.',
+              icon:        SquareIcon,
+            })} />
+          </div>
+        </div>
+      </section>
 
-      {! loading && categories.map(cat => (
+      {categories.map(cat => (
         <CategorySection key={cat.key} category={cat} />
       ))}
     </div>
@@ -114,22 +106,8 @@ export default function IntegrationsHub() {
 
 // ── Catalog builder ────────────────────────────────────────────────────────
 
-function buildCatalog(settings: PaymentSettings | null): IntegrationCategory[] {
+function buildCatalog(): IntegrationCategory[] {
   return [
-    {
-      key:         'payments',
-      title:       'Payments',
-      description: 'Accept appointment payments + deposits.',
-      tiles: [
-        stripeTile(settings),
-        comingSoon({
-          key:         'square',
-          name:        'Square',
-          description: 'Accept payments through your Square account, and keep your Square POS in sync.',
-          icon:        SquareIcon,
-        }),
-      ],
-    },
     {
       key:         'calendars',
       title:       'Calendars',
@@ -215,28 +193,6 @@ function buildCatalog(settings: PaymentSettings | null): IntegrationCategory[] {
       ],
     },
   ]
-}
-
-function stripeTile(settings: PaymentSettings | null): IntegrationTile {
-  const status: IntegrationStatus = (() => {
-    if (! settings) return 'not_connected'
-    if (settings.stripe_charges_enabled) return 'connected'
-    if (settings.stripe_connect_account_id) return 'action_required'
-    return 'not_connected'
-  })()
-
-  return {
-    key:         'stripe',
-    name:        'Stripe',
-    description: 'Charge deposits and full payments through Stripe. PayPal is supported as a Stripe payment method.',
-    icon:        CreditCard,
-    status,
-    manageHref:  '/editor/payments',
-    connectHref: '/editor/payments',
-    hint:        status === 'action_required'
-      ? 'Stripe setup not finished. Finish it to start accepting payments.'
-      : undefined,
-  }
 }
 
 function comingSoon(t: Omit<IntegrationTile, 'status'>): IntegrationTile {

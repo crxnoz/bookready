@@ -3,15 +3,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   CreditCard, ExternalLink, Loader2, RefreshCw, AlertCircle, Check, Sparkles,
+  PauseCircle, PlayCircle, XCircle,
 } from 'lucide-react'
 import {
   getBillingPlans,
   getBillingSubscription,
   getBillingPortalUrl,
   createCheckoutSession,
+  cancelSubscription,
+  resumeSubscription,
+  pauseSubscription,
+  unpauseSubscription,
   type BillingPlansResponse,
   type BillingSubscription,
 } from '@/lib/api'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 import { cn } from '@/lib/cn'
 
 /**
@@ -48,6 +54,11 @@ export default function BillingHub() {
 
   const [portalLoading, setPortalLoading] = useState(false)
   const [checkoutLoading, setCheckoutLoading] = useState(false)
+  // Drives spinners + disables on the lifecycle buttons (pause / resume
+  // billing, cancel / resume subscription).
+  const [lifecycleLoading, setLifecycleLoading] = useState(false)
+
+  const confirm = useConfirm()
 
   async function refresh() {
     setErr(null)
@@ -80,6 +91,75 @@ export default function BillingHub() {
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not open billing portal')
       setPortalLoading(false)
+    }
+  }
+
+  // ── Subscription lifecycle ────────────────────────────────────────────
+  // Pause/unpause billing + cancel/resume the subscription. Each endpoint
+  // re-reads and returns the full subscription, so we just refresh() after.
+  async function pauseBilling() {
+    const ok = await confirm({
+      title: 'Pause billing?',
+      message: 'Your subscription stays active but you won’t be charged on the next renewal. Resume any time to start billing again.',
+      confirmLabel: 'Pause billing',
+      tone: 'danger',
+    })
+    if (! ok) return
+    setLifecycleLoading(true)
+    setErr(null)
+    try {
+      await pauseSubscription()
+      await refresh()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not pause billing')
+    } finally {
+      setLifecycleLoading(false)
+    }
+  }
+
+  async function resumeBilling() {
+    setLifecycleLoading(true)
+    setErr(null)
+    try {
+      await unpauseSubscription()
+      await refresh()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not resume billing')
+    } finally {
+      setLifecycleLoading(false)
+    }
+  }
+
+  async function cancelSub() {
+    const ok = await confirm({
+      title: 'Cancel subscription?',
+      message: 'Your plan stays active until the end of the current billing period, then it won’t renew. You can resume any time before it ends.',
+      confirmLabel: 'Cancel subscription',
+      tone: 'danger',
+    })
+    if (! ok) return
+    setLifecycleLoading(true)
+    setErr(null)
+    try {
+      await cancelSubscription()
+      await refresh()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not cancel subscription')
+    } finally {
+      setLifecycleLoading(false)
+    }
+  }
+
+  async function resumeSub() {
+    setLifecycleLoading(true)
+    setErr(null)
+    try {
+      await resumeSubscription()
+      await refresh()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not resume subscription')
+    } finally {
+      setLifecycleLoading(false)
     }
   }
 
@@ -167,12 +247,46 @@ export default function BillingHub() {
         )}
 
         {sub?.subscribed ? (
+          <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
             <Stat label="Plan" value={sub.plan ? capitalize(sub.plan) : '-'} />
             <Stat label="Billing" value={sub.billing_cycle ? capitalize(sub.billing_cycle) : '-'} />
             <Stat label="Texts / mo" value={sub.sms_included.toLocaleString()} hint={sub.sms_mult ? `${sub.sms_mult}× texts` : null} />
-            <Stat label="Status" value="Active" tone="ok" />
+            <Stat
+              label="Status"
+              value={sub.cancel_at_period_end ? 'Cancelling' : sub.paused ? 'Paused' : 'Active'}
+              tone={sub.cancel_at_period_end || sub.paused ? 'warn' : 'ok'}
+            />
           </div>
+
+          {/* Renewal status + card on file */}
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="bg-cream border border-hairline-soft p-3">
+              <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text">
+                {sub.cancel_at_period_end ? 'Subscription' : 'Renewal'}
+              </p>
+              <p className={cn(
+                'text-sm font-semibold leading-snug mt-1.5',
+                sub.cancel_at_period_end ? 'text-danger' : 'text-near-black',
+              )}>
+                {sub.cancel_at_period_end
+                  ? <>Cancels on {fmtDate(sub.current_period_end)}</>
+                  : sub.paused
+                    ? <>Paused — billing won’t renew</>
+                    : <>Renews on {fmtDate(sub.current_period_end)}</>}
+              </p>
+            </div>
+            <div className="bg-cream border border-hairline-soft p-3">
+              <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text">Card on file</p>
+              <p className="text-sm font-semibold text-near-black leading-snug mt-1.5 inline-flex items-center gap-1.5">
+                <CreditCard size={13} className="text-muted-text shrink-0" />
+                {sub.card
+                  ? <>{capitalize(sub.card.brand)} •••• {sub.card.last4} · exp {sub.card.exp_month}/{sub.card.exp_year}</>
+                  : 'No card on file'}
+              </p>
+            </div>
+          </div>
+          </>
         ) : sub?.on_trial ? (
           <div className="mt-2 p-4 bg-cream border border-hairline-soft">
             <p className="text-sm text-near-black font-semibold">On trial</p>
@@ -190,19 +304,79 @@ export default function BillingHub() {
         )}
 
         {sub?.subscribed && (
-          <div className="mt-4 pt-4 border-t border-hairline-soft flex items-center justify-between flex-wrap gap-2">
+          <div className="mt-4 pt-4 border-t border-hairline-soft space-y-3">
             <p className="text-2xs text-muted-text">
-              Manage your card, invoices, and cancellation in the billing portal.
+              Manage your card, billing, and cancellation below — or open the portal for invoices and receipts.
             </p>
-            <button
-              type="button"
-              onClick={() => void openPortal()}
-              disabled={portalLoading}
-              className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:border-near-black"
-            >
-              {portalLoading ? <Loader2 size={11} className="animate-spin" /> : <ExternalLink size={11} />}
-              Open billing portal
-            </button>
+            <div className="flex items-center flex-wrap gap-2">
+              {/* Change card — reuses the Stripe portal. */}
+              <button
+                type="button"
+                onClick={() => void openPortal()}
+                disabled={portalLoading}
+                className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-50"
+              >
+                {portalLoading ? <Loader2 size={11} className="animate-spin" /> : <CreditCard size={11} />}
+                Change card
+              </button>
+
+              {/* Pause / resume billing. */}
+              {sub.paused ? (
+                <button
+                  type="button"
+                  onClick={() => void resumeBilling()}
+                  disabled={lifecycleLoading}
+                  className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-50"
+                >
+                  {lifecycleLoading ? <Loader2 size={11} className="animate-spin" /> : <PlayCircle size={11} />}
+                  Resume billing
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void pauseBilling()}
+                  disabled={lifecycleLoading}
+                  className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-50"
+                >
+                  {lifecycleLoading ? <Loader2 size={11} className="animate-spin" /> : <PauseCircle size={11} />}
+                  Pause billing
+                </button>
+              )}
+
+              {/* Cancel / resume subscription. */}
+              {sub.cancel_at_period_end ? (
+                <button
+                  type="button"
+                  onClick={() => void resumeSub()}
+                  disabled={lifecycleLoading}
+                  className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-50"
+                >
+                  {lifecycleLoading ? <Loader2 size={11} className="animate-spin" /> : <PlayCircle size={11} />}
+                  Resume subscription
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void cancelSub()}
+                  disabled={lifecycleLoading}
+                  className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-danger bg-danger-bg text-danger px-3 py-2 hover:opacity-80 disabled:opacity-50"
+                >
+                  {lifecycleLoading ? <Loader2 size={11} className="animate-spin" /> : <XCircle size={11} />}
+                  Cancel subscription
+                </button>
+              )}
+
+              {/* Keep the portal entry point for invoices / receipts. */}
+              <button
+                type="button"
+                onClick={() => void openPortal()}
+                disabled={portalLoading}
+                className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-50"
+              >
+                {portalLoading ? <Loader2 size={11} className="animate-spin" /> : <ExternalLink size={11} />}
+                Open billing portal
+              </button>
+            </div>
           </div>
         )}
       </section>
@@ -370,4 +544,10 @@ function CycleBtn({ active, onClick, children }: {
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+function fmtDate(iso?: string | null): string {
+  if (! iso) return '—'
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString()
 }

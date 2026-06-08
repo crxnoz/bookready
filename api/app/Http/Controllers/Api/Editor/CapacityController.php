@@ -37,6 +37,16 @@ class CapacityController extends Controller
             ? (int) $settings->max_appointments_per_day
             : null;
 
+        // Gaps between appointments (buffers) also live on booking_settings.
+        // Moved here from the Advanced schedule so all booking limits sit in
+        // one place. Default to 0 (no gap) when unset.
+        $bufferBefore = ($settings && isset($settings->buffer_before_minutes) && $settings->buffer_before_minutes !== null)
+            ? (int) $settings->buffer_before_minutes
+            : 0;
+        $bufferAfter  = ($settings && isset($settings->buffer_after_minutes) && $settings->buffer_after_minutes !== null)
+            ? (int) $settings->buffer_after_minutes
+            : 0;
+
         $staff = [];
         if (Schema::hasTable('staff')) {
             $hasCol = Schema::hasColumn('staff', 'default_daily_capacity');
@@ -59,8 +69,10 @@ class CapacityController extends Controller
         tenancy()->end();
 
         return response()->json([
-            'default_capacity' => $default,
-            'staff'            => $staff,
+            'default_capacity'      => $default,
+            'buffer_before_minutes' => $bufferBefore,
+            'buffer_after_minutes'  => $bufferAfter,
+            'staff'                 => $staff,
         ]);
     }
 
@@ -70,6 +82,9 @@ class CapacityController extends Controller
         $validated = $request->validate([
             // null clears the cap (= unlimited). 0 is not a valid cap.
             'default_capacity'        => 'sometimes|nullable|integer|min:1|max:1000',
+            // Gaps before/after each appointment, in minutes. null/0 = no gap.
+            'buffer_before_minutes'   => 'sometimes|nullable|integer|min:0|max:240',
+            'buffer_after_minutes'    => 'sometimes|nullable|integer|min:0|max:240',
             'staff_caps'              => 'sometimes|array',
             'staff_caps.*'            => 'nullable|integer|min:1|max:1000',
         ]);
@@ -77,8 +92,22 @@ class CapacityController extends Controller
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
-        // Global default lives on booking_settings.
-        if (array_key_exists('default_capacity', $validated)) {
+        // Global default + buffers live on booking_settings. Collect every
+        // booking_settings-backed field into one update.
+        $bookingUpdate = [];
+        if (array_key_exists('default_capacity', $validated)
+            && Schema::hasColumn('booking_settings', 'max_appointments_per_day')) {
+            $bookingUpdate['max_appointments_per_day'] = $validated['default_capacity'];
+        }
+        if (array_key_exists('buffer_before_minutes', $validated)
+            && Schema::hasColumn('booking_settings', 'buffer_before_minutes')) {
+            $bookingUpdate['buffer_before_minutes'] = (int) ($validated['buffer_before_minutes'] ?? 0);
+        }
+        if (array_key_exists('buffer_after_minutes', $validated)
+            && Schema::hasColumn('booking_settings', 'buffer_after_minutes')) {
+            $bookingUpdate['buffer_after_minutes'] = (int) ($validated['buffer_after_minutes'] ?? 0);
+        }
+        if ($bookingUpdate) {
             $exists = DB::table('booking_settings')->first();
             if (! $exists) {
                 DB::table('booking_settings')->insert([
@@ -90,12 +119,8 @@ class CapacityController extends Controller
                     'updated_at'               => now(),
                 ]);
             }
-            if (Schema::hasColumn('booking_settings', 'max_appointments_per_day')) {
-                DB::table('booking_settings')->update([
-                    'max_appointments_per_day' => $validated['default_capacity'],
-                    'updated_at'               => now(),
-                ]);
-            }
+            $bookingUpdate['updated_at'] = now();
+            DB::table('booking_settings')->update($bookingUpdate);
         }
 
         // Per-staff caps. Keys are staff ids; value null clears.

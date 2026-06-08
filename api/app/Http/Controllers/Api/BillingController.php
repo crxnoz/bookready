@@ -394,11 +394,19 @@ class BillingController extends Controller
         $mult         = 1;
         $smsIncluded  = 0;
 
+        // Renewal / lifecycle + card-on-file. Safe defaults so the not-
+        // subscribed path (and any Stripe error) returns a stable shape.
+        $currentPeriodEnd   = null;
+        $currentPeriodStart = null;
+        $cancelAtPeriodEnd  = false;
+        $paused             = false;
+        $card               = null;
+
         if ($subscribed && $sub) {
             try {
                 $stripeSub = Cashier::stripe()->subscriptions->retrieve(
                     $sub->stripe_id,
-                    ['expand' => ['items.data.price']],
+                    ['expand' => ['items.data.price', 'default_payment_method']],
                 );
                 $price = $stripeSub->items->data[0]->price ?? null;
                 $lookup = $price->lookup_key ?? null;
@@ -411,6 +419,25 @@ class BillingController extends Controller
                     $cycle = $m[2];
                     $mult  = (int) $m[3];
                     $smsIncluded = (int) (config("plans.plans.{$plan}.sms_base", 0) * $mult);
+                }
+
+                // Renewal window + cancel/pause flags straight off Stripe
+                // (source of truth — survives portal-side changes).
+                $currentPeriodEnd   = isset($stripeSub->current_period_end) ? date('c', $stripeSub->current_period_end) : null;
+                $currentPeriodStart = isset($stripeSub->current_period_start) ? date('c', $stripeSub->current_period_start) : null;
+                $cancelAtPeriodEnd  = (bool) ($stripeSub->cancel_at_period_end ?? false);
+                $paused             = ($stripeSub->pause_collection ?? null) !== null;
+
+                // Card on file — only populated when the default payment
+                // method is an expanded object carrying a card.
+                $pm = $stripeSub->default_payment_method ?? null;
+                if ($pm && is_object($pm) && isset($pm->card)) {
+                    $card = [
+                        'brand'     => $pm->card->brand,
+                        'last4'     => $pm->card->last4,
+                        'exp_month' => (int) $pm->card->exp_month,
+                        'exp_year'  => (int) $pm->card->exp_year,
+                    ];
                 }
             } catch (\Throwable $e) {
                 Log::warning('Billing: subscription lookup failed', [
@@ -440,6 +467,137 @@ class BillingController extends Controller
             'is_trialing'        => $state === Tenant::STATE_TRIALING,
             'is_alive'           => in_array($state, Tenant::STATES_ALIVE, true),
             'trial_days_remaining' => $trialDaysRemaining,
+            // Renewal / lifecycle + card-on-file (derived from Stripe above).
+            'current_period_end'   => $currentPeriodEnd,
+            'current_period_start' => $currentPeriodStart,
+            'cancel_at_period_end' => $cancelAtPeriodEnd,
+            'paused'               => $paused,
+            'card'                 => $card,
         ]);
+    }
+
+    /**
+     * Resolve the central tenant for the authed owner, or null.
+     * Mirrors subscription()/portal() so the lifecycle endpoints share
+     * one path. Callers 400 when this returns null.
+     */
+    private function resolveTenant(Request $request): ?Tenant
+    {
+        $userTenantId = $request->user()->tenant_id;
+
+        return $userTenantId ? Tenant::find($userTenantId) : null;
+    }
+
+    /**
+     * Cancel the subscription at period end (grace period). Resume-able
+     * during grace via resume(). Deliberately NOT cancelNow() — the owner
+     * keeps access until the current period ends.
+     *
+     * POST /api/v1/billing/cancel
+     */
+    public function cancel(Request $request): JsonResponse
+    {
+        $tenant = $this->resolveTenant($request);
+        if (! $tenant) {
+            return response()->json(['message' => 'No active workspace for this account.'], 400);
+        }
+
+        $sub = $tenant->subscription('default');
+        if (! $sub) {
+            return response()->json(['message' => 'No active subscription.'], 422);
+        }
+
+        try {
+            $sub->cancel();
+        } catch (\Throwable $e) {
+            Log::error('Billing: cancel failed', ['tenant_id' => $tenant->id, 'error' => $e->getMessage()]);
+            return response()->json(['message' => 'Could not cancel your subscription. Try again or contact support.'], 500);
+        }
+
+        return $this->subscription($request);
+    }
+
+    /**
+     * Un-cancel a subscription during its grace period.
+     *
+     * POST /api/v1/billing/resume
+     */
+    public function resume(Request $request): JsonResponse
+    {
+        $tenant = $this->resolveTenant($request);
+        if (! $tenant) {
+            return response()->json(['message' => 'No active workspace for this account.'], 400);
+        }
+
+        $sub = $tenant->subscription('default');
+        if (! $sub) {
+            return response()->json(['message' => 'No active subscription.'], 422);
+        }
+
+        try {
+            $sub->resume();
+        } catch (\Throwable $e) {
+            Log::error('Billing: resume failed', ['tenant_id' => $tenant->id, 'error' => $e->getMessage()]);
+            return response()->json(['message' => 'Could not resume your subscription. Try again or contact support.'], 500);
+        }
+
+        return $this->subscription($request);
+    }
+
+    /**
+     * Pause billing — Stripe voids invoices while paused, so the owner
+     * isn't charged until they unpause. Resume-able via unpause().
+     *
+     * POST /api/v1/billing/pause
+     */
+    public function pause(Request $request): JsonResponse
+    {
+        $tenant = $this->resolveTenant($request);
+        if (! $tenant) {
+            return response()->json(['message' => 'No active workspace for this account.'], 400);
+        }
+
+        $sub = $tenant->subscription('default');
+        if (! $sub) {
+            return response()->json(['message' => 'No active subscription.'], 422);
+        }
+
+        try {
+            $sub->updateStripeSubscription(['pause_collection' => ['behavior' => 'void']]);
+        } catch (\Throwable $e) {
+            Log::error('Billing: pause failed', ['tenant_id' => $tenant->id, 'error' => $e->getMessage()]);
+            return response()->json(['message' => 'Could not pause your subscription. Try again or contact support.'], 500);
+        }
+
+        return $this->subscription($request);
+    }
+
+    /**
+     * Unpause billing — clears Stripe's pause_collection so invoices
+     * resume on the normal schedule.
+     *
+     * POST /api/v1/billing/unpause
+     */
+    public function unpause(Request $request): JsonResponse
+    {
+        $tenant = $this->resolveTenant($request);
+        if (! $tenant) {
+            return response()->json(['message' => 'No active workspace for this account.'], 400);
+        }
+
+        $sub = $tenant->subscription('default');
+        if (! $sub) {
+            return response()->json(['message' => 'No active subscription.'], 422);
+        }
+
+        try {
+            // Empty string unsets pause_collection in Stripe.
+            $sub->updateStripeSubscription(['pause_collection' => '']);
+        } catch (\Throwable $e) {
+            Log::error('Billing: unpause failed', ['tenant_id' => $tenant->id, 'error' => $e->getMessage()]);
+            return response()->json(['message' => 'Could not resume billing. Try again or contact support.'], 500);
+        }
+
+        return $this->subscription($request);
     }
 }

@@ -71,8 +71,8 @@ function Hub() {
   const tab: TabId = (TABS.some(t => t.id === raw) ? raw : 'calendar') as TabId
 
   return (
-    <div className="p-4 sm:p-5 md:p-6">
-      <nav className="flex items-center gap-1 mb-5 border-b border-hairline-soft overflow-x-auto overflow-y-hidden">
+    <div>
+      <nav className="flex items-center gap-1 px-5 border-b border-hairline-soft overflow-x-auto overflow-y-hidden">
         {TABS.map(t => (
           <TabLink
             key={t.id}
@@ -104,13 +104,13 @@ function Hub() {
 function AdvancedTab() {
   return (
     <div>
-      <div className=" border border-hairline-soft bg-cream/50 p-4 mb-5 text-sm text-muted-text">
+      <div className="mx-5 mt-5 border border-hairline-soft bg-cream/50 p-4 mb-5 text-sm text-muted-text">
         The <strong className="text-near-black">Smart Calendar</strong> is your primary scheduling
         tool. The weekly schedule below is the fallback for any date you haven&apos;t customized —
         edit it if you keep regular hours, or ignore it and drive everything from the calendar.
       </div>
       <AvailabilityEditor />
-      <div className="mt-6 grid gap-2 sm:grid-cols-2">
+      <div className="mx-5 mt-6 mb-2 grid gap-2 sm:grid-cols-2">
         <Link href="/editor/staff" className=" border border-hairline-soft bg-white p-4 hover:border-near-black/30 transition-colors">
           <div className="flex items-center gap-2 text-near-black font-medium text-sm"><Users size={15} /> Staff availability</div>
           <p className="text-xs text-muted-text mt-1">Per-staff hours, days off, and blocked dates.</p>

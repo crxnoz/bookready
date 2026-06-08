@@ -15,19 +15,13 @@ import { useConfirm } from '@/components/ui/ConfirmDialog'
 import {
   Clock,
   Calendar,
-  Settings2,
-  ChevronDown,
-  ChevronUp,
   CheckCircle2,
   Plus,
   Trash2,
   AlertCircle,
   Loader2,
-  Users,
-  Moon,
-  Repeat,
 } from 'lucide-react'
-import { ComingSoonCard } from '@/components/editor/ComingSoonPanel'
+import { CollapsibleSection } from '@/components/editor/AvailabilitySections'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -48,8 +42,6 @@ const DEFAULT_SETTINGS: AvailabilitySettings = {
   slot_release_time: null,
   slot_release_window_days: null,
 }
-
-const BUFFER_OPTIONS = [0, 5, 10, 15, 20, 30, 45, 60]
 
 // ── Primitives ────────────────────────────────────────────────────────────────
 
@@ -75,65 +67,6 @@ function TimeInput({
         onChange={e => onChange(e.target.value || null)}
         className="w-full bg-white border border-hairline-strong px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black/30 transition-colors"
       />
-    </div>
-  )
-}
-
-function SelectInput<T extends string | number>({
-  value,
-  onChange,
-  options,
-  label,
-}: {
-  value: T
-  onChange: (v: T) => void
-  options: { value: T; label: string }[]
-  label?: string
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      {label && (
-        <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
-          {label}
-        </span>
-      )}
-      <select
-        value={String(value)}
-        onChange={e => {
-          const raw = e.target.value
-          const opt = options.find(o => String(o.value) === raw)
-          if (opt !== undefined) onChange(opt.value)
-        }}
-        className="w-full bg-white border border-hairline-strong px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black/30 transition-colors appearance-none"
-      >
-        {options.map(o => (
-          <option key={String(o.value)} value={String(o.value)}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  )
-}
-
-function SectionHeader({
-  icon: Icon,
-  title,
-  subtitle,
-}: {
-  icon: React.ElementType
-  title: string
-  subtitle?: string
-}) {
-  return (
-    <div className="flex items-start gap-3 mb-5">
-      <div className="w-8 h-8 bg-cream border border-hairline-soft flex items-center justify-center flex-shrink-0 mt-0.5">
-        <Icon size={15} className="text-muted-text" />
-      </div>
-      <div>
-        <h3 className="text-sm font-bold text-near-black tracking-tight">{title}</h3>
-        {subtitle && <p className="text-xs text-muted-text mt-0.5">{subtitle}</p>}
-      </div>
     </div>
   )
 }
@@ -218,7 +151,7 @@ export default function AvailabilityEditor() {
   const [error, setError]         = useState<string | null>(null)
 
   // Section collapse state
-  const [openSection, setOpenSection] = useState<'hours' | 'limits' | 'blocked' | null>('hours')
+  const [openSection, setOpenSection] = useState<'hours' | 'blocked' | null>('hours')
 
   useEffect(() => {
     getEditorAvailability()
@@ -235,11 +168,6 @@ export default function AvailabilityEditor() {
 
   function updateDay(updated: HoursEntry) {
     setHours(prev => prev.map(h => h.day_of_week === updated.day_of_week ? updated : h))
-    if (saveState === 'saved') setSaveState('idle')
-  }
-
-  function setSetting<K extends keyof AvailabilitySettings>(key: K, value: AvailabilitySettings[K]) {
-    setSettings(prev => ({ ...prev, [key]: value }))
     if (saveState === 'saved') setSaveState('idle')
   }
 
@@ -298,7 +226,7 @@ export default function AvailabilityEditor() {
     <div className="pb-8">
       {/* Page heading — section + title live in EditorShell */}
       <div className="px-5 pt-5 pb-4 border-b border-hairline-soft">
-        <p className="text-xs text-muted-text">Set your weekly hours, breaks, and a daily booking limit.</p>
+        <p className="text-xs text-muted-text">Set your weekly hours and breaks, and block off holidays or closures. Daily limits and gaps live on the Capacity tab.</p>
       </div>
 
       {error && saveState === 'error' && (
@@ -338,72 +266,7 @@ export default function AvailabilityEditor() {
         </div>
       </CollapsibleSection>
 
-      {/* ─── Section 2: Booking Rules ─── */}
-      <CollapsibleSection
-        icon={Settings2}
-        title="Schedule Limits"
-        subtitle="Gaps between appointments, and a daily booking limit."
-        open={openSection === 'limits'}
-        onToggle={() => setOpenSection(s => s === 'limits' ? null : 'limits')}
-      >
-        <div className="space-y-5">
-          {/* Buffer before / after */}
-          <div>
-            <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-3">
-              Gaps between appointments
-            </p>
-            <p className="text-xs text-muted-text mb-3">
-              Extra time reserved before and after each appointment. Useful for prep, cleanup, or travel.
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <SelectInput
-                label="Gap before"
-                value={settings.buffer_before_minutes}
-                onChange={v => setSetting('buffer_before_minutes', v)}
-                options={BUFFER_OPTIONS.map(n => ({ value: n, label: n === 0 ? 'None' : `${n} min` }))}
-              />
-              <SelectInput
-                label="Gap after"
-                value={settings.buffer_after_minutes}
-                onChange={v => setSetting('buffer_after_minutes', v)}
-                options={BUFFER_OPTIONS.map(n => ({ value: n, label: n === 0 ? 'None' : `${n} min` }))}
-              />
-            </div>
-            {(settings.buffer_before_minutes > 0 || settings.buffer_after_minutes > 0) && (
-              <p className="text-2xs text-muted-text mt-2">
-                A 45-min service blocks{' '}
-                <span className="font-semibold text-near-black">
-                  {settings.buffer_before_minutes + 45 + settings.buffer_after_minutes} min
-                </span>{' '}
-                total on your calendar.
-              </p>
-            )}
-          </div>
-
-          <hr className="border-hairline-soft" />
-
-          {/* Max per day */}
-          <div>
-            <label className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5 block">
-              Max appointments per day
-            </label>
-            <input
-              type="number"
-              min={1}
-              placeholder="Unlimited"
-              value={settings.max_appointments_per_day ?? ''}
-              onChange={e => setSetting(
-                'max_appointments_per_day',
-                e.target.value ? parseInt(e.target.value, 10) : null,
-              )}
-              className="w-full bg-white border border-hairline-strong px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black/30 transition-colors"
-            />
-            <p className="text-xs text-muted-text mt-1">Leave blank for no limit.</p>
-          </div>
-        </div>
-      </CollapsibleSection>
-
-      {/* ─── Section 4: Blocked Dates ─── */}
+      {/* ─── Section 2: Blocked Dates ─── */}
       <CollapsibleSection
         icon={Calendar}
         title="Blocked Dates"
@@ -413,48 +276,6 @@ export default function AvailabilityEditor() {
       >
         <BlockedDatesPanel />
       </CollapsibleSection>
-
-      {/* Phase 18 — Coming-soon teasers. Three side-by-side cards under
-          the existing sections so owners can see what is next without
-          competing with live settings. */}
-      <div className="px-5 pt-5">
-        <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-2">
-          Coming next for availability
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <ComingSoonCard
-            icon={Users}
-            tone="accent"
-            title="Group appointments"
-            description="One session, multiple customers. Perfect for classes or workshops."
-            bullets={[
-              'Set a minimum and maximum number of people per session',
-              'Auto-confirm once the minimum is hit',
-              'One shared calendar event for the studio',
-            ]}
-          />
-          <ComingSoonCard
-            icon={Moon}
-            title="After hours"
-            description="Open select dates outside your normal hours for VIPs or special events."
-            bullets={[
-              'Charge a premium for after-hours times',
-              'Pick which staff can take them',
-              'Auto-revert to regular hours the next day',
-            ]}
-          />
-          <ComingSoonCard
-            icon={Repeat}
-            title="Recurring appointments"
-            description="Let regulars book the same time every week or month, automatically."
-            bullets={[
-              'Weekly, biweekly, or monthly schedules',
-              'Pause or skip individual occurrences',
-              'Owner-side bulk reschedule for studio holidays',
-            ]}
-          />
-        </div>
-      </div>
 
       {/* ─── Save bar ─── */}
       <div className="px-5">
@@ -473,51 +294,6 @@ export default function AvailabilityEditor() {
           )}
         </div>
       </div>
-    </div>
-  )
-}
-
-// ── CollapsibleSection ────────────────────────────────────────────────────────
-
-function CollapsibleSection({
-  icon: Icon,
-  title,
-  subtitle,
-  open,
-  onToggle,
-  children,
-}: {
-  icon: React.ElementType
-  title: string
-  subtitle?: string
-  open: boolean
-  onToggle: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <div className="border-b border-hairline-soft">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-[rgba(18,18,18,0.02)] transition-colors"
-      >
-        <div className="w-7 h-7 bg-cream border border-hairline-soft flex items-center justify-center flex-shrink-0">
-          <Icon size={13} className="text-muted-text" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-near-black">{title}</p>
-          {subtitle && !open && (
-            <p className="text-xs text-muted-text mt-0.5 truncate">{subtitle}</p>
-          )}
-        </div>
-        {open ? <ChevronUp size={15} className="text-muted-text flex-shrink-0" /> : <ChevronDown size={15} className="text-muted-text flex-shrink-0" />}
-      </button>
-
-      {open && (
-        <div className="px-5 pb-5 pt-1">
-          {children}
-        </div>
-      )}
     </div>
   )
 }
