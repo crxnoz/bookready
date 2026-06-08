@@ -27,6 +27,8 @@ import {
   Settings as SettingsIcon, ChevronRight, Users, Sparkles, Package,
 } from 'lucide-react'
 import { ComingSoonCard } from '@/components/editor/ComingSoonPanel'
+import { SectionHeader } from '@/components/editor/AvailabilitySections'
+import IconBox from '@/components/ui/IconBox'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -574,13 +576,31 @@ export default function ServicesEditor() {
   }
 
   return (
-    <div className="p-5 space-y-5">
-      {/* Heading — section + page titles live in EditorShell */}
-      <div>
-        <p className="text-xs text-muted-text">
-          {services.length} service{services.length !== 1 ? 's' : ''} · {categories.length} categor{categories.length === 1 ? 'y' : 'ies'} · Drag or use arrows to reorder.
-        </p>
-      </div>
+    <div className="p-3 sm:p-5 md:p-6 space-y-5">
+      {/* Section anchor — icon box + live count + primary action */}
+      <SectionHeader
+        icon={Sparkles}
+        title="Your services"
+        subtitle={`${services.length} service${services.length !== 1 ? 's' : ''} · ${categories.length} categor${categories.length === 1 ? 'y' : 'ies'} · drag or use arrows to reorder.`}
+        action={
+          <Button size="sm" onClick={() => setAdding(true)}>
+            <Plus size={14} className="mr-1.5" />
+            Add Service
+          </Button>
+        }
+      />
+
+      {/* Inline add form composes at the top (matches Staff) */}
+      {adding && (
+        <AddServiceForm
+          onCreated={handleCreated}
+          onCancel={() => setAdding(false)}
+          nextSortOrder={services.length}
+          categories={categories}
+          staff={staff}
+          addons={addons}
+        />
+      )}
 
       {status === 'error' && errorMsg && (
         <div className="bg-danger-bg border border-danger px-4 py-3 text-xs text-danger">
@@ -646,21 +666,12 @@ export default function ServicesEditor() {
         ))}
       </div>
 
-      {/* Add form or button */}
-      {adding ? (
-        <AddServiceForm
-          onCreated={handleCreated}
-          onCancel={() => setAdding(false)}
-          nextSortOrder={services.length}
-          categories={categories}
-          staff={staff}
-          addons={addons}
-        />
-      ) : (
-        <Button variant="secondary" size="sm" onClick={() => setAdding(true)}>
-          <Plus size={14} className="mr-1.5" />
-          Add Service
-        </Button>
+      {services.length === 0 && !adding && (
+        <div className="bg-white border border-hairline-soft px-4 py-10 text-center">
+          <Sparkles size={22} className="text-muted-text mx-auto mb-2" strokeWidth={1.5} />
+          <p className="text-sm font-semibold text-near-black">No services yet</p>
+          <p className="text-xs text-muted-text mt-0.5">Add your first service so clients can book it.</p>
+        </div>
       )}
     </div>
   )
@@ -688,16 +699,16 @@ function CategoriesPanel({
       <button
         type="button"
         onClick={onToggle}
-        className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-cream transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-cream transition-colors"
       >
-        <div className="flex items-center gap-2 min-w-0">
-          <Tag size={14} className="text-near-black flex-shrink-0" />
+        <IconBox icon={Tag} size="md" />
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <p className="text-sm font-bold text-near-black">Categories</p>
           <span className="text-eyebrow font-bold tracking-[0.06em] uppercase text-muted-text">
             {categories.length}/{CATEGORIES_MAX}
           </span>
         </div>
-        <span className="text-muted-text text-lg leading-none">{open ? '−' : '+'}</span>
+        <ChevronDown size={16} className={`text-muted-text flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
@@ -1185,16 +1196,16 @@ function AddonsPanel({
       <button
         type="button"
         onClick={onToggle}
-        className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-cream transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-cream transition-colors"
       >
-        <div className="flex items-center gap-2 min-w-0">
-          <Sparkles size={14} className="text-near-black flex-shrink-0" />
+        <IconBox icon={Sparkles} size="md" />
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <p className="text-sm font-bold text-near-black">Add-ons</p>
           <span className="text-eyebrow font-bold tracking-[0.06em] uppercase text-muted-text">
             {addons.length}/{ADDONS_MAX}
           </span>
         </div>
-        <span className="text-muted-text text-lg leading-none">{open ? '−' : '+'}</span>
+        <ChevronDown size={16} className={`text-muted-text flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (

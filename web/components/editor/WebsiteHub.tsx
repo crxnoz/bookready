@@ -1835,28 +1835,6 @@ const POLICY_FIELDS: { key: keyof BusinessPolicy; label: string; placeholder: st
   { key: 'extra_notes',         label: 'Additional notes',    placeholder: 'Anything else customers should know.' },
 ]
 
-function PoliciesHeadingInline({ settings, onSaveSettings }: {
-  settings: TemplateSettings
-  onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
-}) {
-  const form = useSettingsForm<{ heading: string }>(
-    { heading: settings.policy?.heading ?? '' },
-    async (next) => { await onSaveSettings({ policy: { heading: next.heading || null } }) },
-  )
-  return (
-    <div className="space-y-2 pb-3 border-b border-hairline-soft">
-      <TextField
-        label="Section heading (the big title above your policies)"
-        value={form.value.heading}
-        onChange={v => form.patch({ heading: v })}
-        placeholder="House Rules"
-        maxLength={80}
-      />
-      <SaveBar dirty={form.dirty} saving={form.saving} saved={form.saved} error={form.error} onSave={form.doSave} />
-    </div>
-  )
-}
-
 function PoliciesEditorPanel({ settings, onSaveSettings }: {
   settings: TemplateSettings
   onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
@@ -1867,6 +1845,10 @@ function PoliciesEditorPanel({ settings, onSaveSettings }: {
   const [saved, setSaved]       = useState(false)
   const [error, setError]       = useState<string | null>(null)
   const [baseline, setBaseline] = useState<BusinessPolicy | null>(null)
+  // Section heading lives on template_settings, but it's edited + saved here
+  // through the single section Save (no separate heading button).
+  const [heading, setHeading]                 = useState<string>(settings.policy?.heading ?? '')
+  const [headingBaseline, setHeadingBaseline] = useState<string>(settings.policy?.heading ?? '')
 
   useEffect(() => {
     let cancelled = false
@@ -1883,8 +1865,8 @@ function PoliciesEditorPanel({ settings, onSaveSettings }: {
   }, [])
 
   const dirty = useMemo(
-    () => JSON.stringify(policies) !== JSON.stringify(baseline),
-    [policies, baseline],
+    () => JSON.stringify(policies) !== JSON.stringify(baseline) || heading !== headingBaseline,
+    [policies, baseline, heading, headingBaseline],
   )
 
   const setCount = useMemo(() => {
@@ -1904,6 +1886,12 @@ function PoliciesEditorPanel({ settings, onSaveSettings }: {
     if (!policies) return
     setSaving(true); setError(null); setSaved(false)
     try {
+      // Heading (template_settings) saves together with the policies, so the
+      // section has a single Save button at the bottom.
+      if (heading !== headingBaseline) {
+        await onSaveSettings({ policy: { heading: heading.trim() || null } })
+        setHeadingBaseline(heading)
+      }
       const payload: Partial<BusinessPolicy> & Record<string, unknown> = {}
       for (const { key } of POLICY_FIELDS) {
         const v = policies[key] as string
@@ -1944,7 +1932,15 @@ function PoliciesEditorPanel({ settings, onSaveSettings }: {
         </Chip>
       )}
     >
-      <PoliciesHeadingInline settings={settings} onSaveSettings={onSaveSettings} />
+      <div className="space-y-2 pb-3 border-b border-hairline-soft">
+        <TextField
+          label="Section heading (the big title above your policies)"
+          value={heading}
+          onChange={setHeading}
+          placeholder="House Rules"
+          maxLength={80}
+        />
+      </div>
       {loading && <p className="text-xs text-muted-text">Loading…</p>}
       {!loading && !policies && error && <p className="text-xs text-danger">{error}</p>}
       {policies && (
@@ -2479,32 +2475,6 @@ function PreviewPanel({ url, refreshKey }: { url: string; refreshKey: number }) 
 const GALLERY_MAX_GROUPS         = 3
 const GALLERY_MAX_ITEMS_PER_GROUP = 6
 
-// Inline heading editor — rendered INSIDE the Gallery manager's
-// CollapsibleSection content so the heading lives with the rest of the
-// gallery settings instead of in a separate panel above it. Self-saves
-// via its own form (independent from the items API).
-function GalleryHeadingInline({ settings, onSaveSettings }: {
-  settings: TemplateSettings
-  onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
-}) {
-  const form = useSettingsForm<{ heading: string }>(
-    { heading: settings.gallery?.heading ?? '' },
-    async (next) => { await onSaveSettings({ gallery: { heading: next.heading || null } }) },
-  )
-  return (
-    <div className="space-y-2 pb-3 border-b border-hairline-soft">
-      <TextField
-        label="Section heading (the big title above your gallery)"
-        value={form.value.heading}
-        onChange={v => form.patch({ heading: v })}
-        placeholder="Recent work"
-        maxLength={80}
-      />
-      <SaveBar dirty={form.dirty} saving={form.saving} saved={form.saved} error={form.error} onSave={form.doSave} />
-    </div>
-  )
-}
-
 function GalleryManagerPanel({ settings, onSaveSettings }: {
   settings: TemplateSettings
   onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
@@ -2520,6 +2490,10 @@ function GalleryManagerPanel({ settings, onSaveSettings }: {
   // it was so the new item is created with the right group_id pre-filled.
   const [addingForGroup, setAddingForGroup] = useState<number | null | 'none'>(null)
   const [addingGroup, setAddingGroup]       = useState(false)
+  const headingForm = useSettingsForm<{ heading: string }>(
+    { heading: settings.gallery?.heading ?? '' },
+    async (next) => { await onSaveSettings({ gallery: { heading: next.heading || null } }) },
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -2635,7 +2609,13 @@ function GalleryManagerPanel({ settings, onSaveSettings }: {
         <Chip>{totalImages} image{totalImages === 1 ? '' : 's'}</Chip>
       )}
     >
-      <GalleryHeadingInline settings={settings} onSaveSettings={onSaveSettings} />
+      <TextField
+        label="Section heading (the big title above your gallery)"
+        value={headingForm.value.heading}
+        onChange={v => headingForm.patch({ heading: v })}
+        placeholder="Recent work"
+        maxLength={80}
+      />
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-xs text-muted-text">
           {loading
@@ -2714,6 +2694,8 @@ function GalleryManagerPanel({ settings, onSaveSettings }: {
           onSave={handleSave}
         />
       )}
+
+      <SaveBar dirty={headingForm.dirty} saving={headingForm.saving} saved={headingForm.saved} error={headingForm.error} onSave={headingForm.doSave} />
     </CollapsibleSection>
   )
 }
@@ -3077,28 +3059,6 @@ function GalleryItemDialog({
 const BA_MAX_GROUPS         = 3
 const BA_MAX_ITEMS_PER_GROUP = 6
 
-function ResultsHeadingInline({ settings, onSaveSettings }: {
-  settings: TemplateSettings
-  onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
-}) {
-  const form = useSettingsForm<{ heading: string }>(
-    { heading: settings.results?.heading ?? '' },
-    async (next) => { await onSaveSettings({ results: { heading: next.heading || null } }) },
-  )
-  return (
-    <div className="space-y-2 pb-3 border-b border-hairline-soft">
-      <TextField
-        label="Section heading (the big title above your before & after photos)"
-        value={form.value.heading}
-        onChange={v => form.patch({ heading: v })}
-        placeholder="Before & After"
-        maxLength={80}
-      />
-      <SaveBar dirty={form.dirty} saving={form.saving} saved={form.saved} error={form.error} onSave={form.doSave} />
-    </div>
-  )
-}
-
 function ResultsManagerPanel({ settings, onSaveSettings }: {
   settings: TemplateSettings
   onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
@@ -3112,6 +3072,10 @@ function ResultsManagerPanel({ settings, onSaveSettings }: {
   const confirm = useConfirm()
   const [addingForGroup, setAddingForGroup] = useState<number | null | 'none'>(null)
   const [addingGroup, setAddingGroup]       = useState(false)
+  const headingForm = useSettingsForm<{ heading: string }>(
+    { heading: settings.results?.heading ?? '' },
+    async (next) => { await onSaveSettings({ results: { heading: next.heading || null } }) },
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -3226,7 +3190,13 @@ function ResultsManagerPanel({ settings, onSaveSettings }: {
         <Chip>{totalPairs} pair{totalPairs === 1 ? '' : 's'}</Chip>
       )}
     >
-      <ResultsHeadingInline settings={settings} onSaveSettings={onSaveSettings} />
+      <TextField
+        label="Section heading (the big title above your before & after photos)"
+        value={headingForm.value.heading}
+        onChange={v => headingForm.patch({ heading: v })}
+        placeholder="Before & After"
+        maxLength={80}
+      />
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-xs text-muted-text">
           {loading
@@ -3303,6 +3273,8 @@ function ResultsManagerPanel({ settings, onSaveSettings }: {
           onSave={handleSave}
         />
       )}
+
+      <SaveBar dirty={headingForm.dirty} saving={headingForm.saving} saved={headingForm.saved} error={headingForm.error} onSave={headingForm.doSave} />
     </CollapsibleSection>
   )
 }

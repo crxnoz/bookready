@@ -67,17 +67,17 @@ export default function AfterHoursPanel() {
         {cfg && (
           <>
             {/* ── Enable toggle ─────────────────────────────────────── */}
-            <Section icon={Moon} title="After-hours booking" subtitle="Open bookable slots past your regular close time.">
+            <Section icon={Moon} title="After-hours booking" subtitle="Open bookable slots past your regular close time." tone="dark">
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={cfg.enabled}
                   onChange={e => patch('enabled', e.target.checked)}
-                  className="mt-1 size-4 accent-near-black"
+                  className="mt-1 size-4 accent-white"
                 />
                 <div className="flex-1">
-                  <div className="text-sm font-medium text-near-black">Enable after-hours booking</div>
-                  <p className="text-xs text-muted-text mt-0.5">
+                  <div className="text-sm font-medium text-white">Enable after-hours booking</div>
+                  <p className="text-xs text-white/60 mt-0.5">
                     Adds bookable slots past your regular close, each with the fee below.
                   </p>
                 </div>

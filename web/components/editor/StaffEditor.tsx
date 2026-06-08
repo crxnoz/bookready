@@ -24,6 +24,7 @@ import type {
 import { cn } from '@/lib/cn'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
 import ImageUploadField from '@/components/editor/ImageUploadField'
+import { SectionHeader } from '@/components/editor/AvailabilitySections'
 
 // ── Form state ────────────────────────────────────────────────────────────────
 
@@ -171,18 +172,28 @@ export default function StaffEditor() {
   const placeholderCount = staff.filter(s => isPlaceholderEmail(s.email)).length
 
   return (
-    <div className="flex flex-col min-h-full bg-cream">
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
+    <div className="p-3 sm:p-5 md:p-6 space-y-5">
 
-        {/* Inline action bar — page title now lives in EditorShell */}
-        <div className="flex items-center justify-end">
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-1.5 bg-near-black text-white px-3 py-1.5 text-2xs font-bold tracking-[0.06em] uppercase hover:opacity-90 transition-colors"
-          >
-            <UserPlus size={12} /> Add Staff Member
-          </button>
-        </div>
+        {/* Section anchor — icon box + live count + primary action */}
+        <SectionHeader
+          icon={Users}
+          title="Team members"
+          subtitle={
+            loading
+              ? 'Loading your team…'
+              : staff.length === 0
+              ? 'No one added yet — add your first team member.'
+              : `${active.length} active${inactive.length ? ` · ${inactive.length} inactive` : ''} · set schedules and block dates from each card.`
+          }
+          action={
+            <button
+              onClick={openCreate}
+              className="flex items-center gap-1.5 bg-near-black text-white px-3 py-1.5 text-2xs font-bold tracking-[0.06em] uppercase hover:opacity-90 transition-colors"
+            >
+              <UserPlus size={12} /> Add Staff Member
+            </button>
+          }
+        />
 
         {/* Placeholder-email banner — only shown when older staff rows
             still have the backfill `staff-{id}@placeholder.local` value. */}
@@ -427,7 +438,6 @@ export default function StaffEditor() {
           </section>
         )}
 
-      </div>
     </div>
   )
 }
