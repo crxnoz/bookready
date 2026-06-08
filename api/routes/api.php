@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\Editor\CustomerTagsController;
 use App\Http\Controllers\Api\Editor\CustomersController;
 use App\Http\Controllers\Api\Editor\PaymentsPayoutsController;
 use App\Http\Controllers\Api\Editor\PaymentsTransactionsController;
+use App\Http\Controllers\Api\Editor\CalendarOverridesController;
 use App\Http\Controllers\Api\Editor\HoursController;
 use App\Http\Controllers\Api\Editor\BookingSettingsController;
 use App\Http\Controllers\Api\Editor\NotificationSettingsController;
@@ -274,6 +275,16 @@ Route::prefix('v1')->group(function () {
 
         Route::get('hours',  [HoursController::class, 'index']);
         Route::patch('hours', [HoursController::class, 'update']);
+
+        // Availability 2.0 · Phase 1 — Smart Calendar per-date overrides.
+        // Date is the natural primary key from the UI's perspective.
+        Route::get   ('calendar-overrides',         [CalendarOverridesController::class, 'index']);
+        Route::get   ('calendar-overrides/{date}',  [CalendarOverridesController::class, 'show'])
+            ->where('date', '\d{4}-\d{2}-\d{2}');
+        Route::put   ('calendar-overrides/{date}',  [CalendarOverridesController::class, 'upsert'])
+            ->where('date', '\d{4}-\d{2}-\d{2}');
+        Route::delete('calendar-overrides/{date}',  [CalendarOverridesController::class, 'destroy'])
+            ->where('date', '\d{4}-\d{2}-\d{2}');
 
         Route::get('availability',  [AvailabilityController::class, 'show']);
         Route::patch('availability', [AvailabilityController::class, 'update']);

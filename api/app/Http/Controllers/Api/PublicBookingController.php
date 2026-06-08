@@ -280,6 +280,20 @@ class PublicBookingController extends Controller
         $hoursRow     = DB::table('hours')->where('day_of_week', $dayOfWeek)->first();
         $settings     = DB::table('booking_settings')->first();
 
+        // Av2.0 P1 — apply per-date override before slot re-validation so
+        // the booking submit honors the same override the customer saw on
+        // the slot list endpoint. Staff isn't resolved yet ($staffId is
+        // computed later from the service pivot) — pass null and re-check
+        // staff via the regular service pivot logic downstream.
+        $override = \App\Services\AvailabilityOverrideResolver::resolve(
+            $date, $hoursRow, (int) $service->id, $requestedStaffId,
+        );
+        if ($override['closed']) {
+            tenancy()->end();
+            return response()->json(['message' => $override['closed_reason']], 422);
+        }
+        $hoursRow = $override['hoursRow'];
+
         // ── Global booking gate ──────────────────────────────────────────
         if ($settings && property_exists($settings, 'booking_enabled') && ! $settings->booking_enabled) {
             tenancy()->end();

@@ -278,6 +278,18 @@ class PublicManageBookingController extends Controller
         // Slot availability check — same flow as PublicBookingController.
         $dayOfWeek = (int) Carbon::parse($newDate)->dayOfWeek;
         $hoursRow  = DB::table('hours')->where('day_of_week', $dayOfWeek)->first();
+
+        // Av2.0 P1 — honor per-date overrides on reschedule too so a
+        // client can't sidestep a same-day closure by rescheduling into it.
+        $staffIdForOverride = property_exists($row, 'staff_id') ? ($row->staff_id ?? null) : null;
+        $override = \App\Services\AvailabilityOverrideResolver::resolve(
+            $newDate, $hoursRow, (int) $service->id, $staffIdForOverride ? (int) $staffIdForOverride : null,
+        );
+        if ($override['closed']) {
+            tenancy()->end();
+            return response()->json(['message' => $override['closed_reason']], 422);
+        }
+        $hoursRow = $override['hoursRow'];
         $others    = DB::table('appointments')
             ->where('appointment_date', $newDate)
             ->where('id', '!=', $row->id)

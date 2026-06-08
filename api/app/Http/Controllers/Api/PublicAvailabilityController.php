@@ -74,6 +74,28 @@ class PublicAvailabilityController extends Controller
         // Load hours for this day
         $hoursRow = DB::table('hours')->where('day_of_week', $dayOfWeek)->first();
 
+        // Av2.0 P1 — layer per-date overrides on top of the weekly row.
+        // No-op for tenants without overrides; identical to today's behavior.
+        $override = \App\Services\AvailabilityOverrideResolver::resolve(
+            $date, $hoursRow, $serviceId, $staffId,
+        );
+        if ($override['closed']) {
+            $serviceData = [
+                'id'               => (int)   $service->id,
+                'name'             =>          $service->name,
+                'duration_minutes' => (int)   $service->duration,
+                'price'            => (float) $service->price,
+            ];
+            tenancy()->end();
+            return response()->json([
+                'date'    => $date,
+                'service' => $serviceData,
+                'slots'   => [],
+                'message' => $override['closed_reason'],
+            ]);
+        }
+        $hoursRow = $override['hoursRow'];
+
         // Load booking settings
         $settings = DB::table('booking_settings')->first();
 
