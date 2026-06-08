@@ -27,16 +27,20 @@ class CalendarOverridesController extends Controller
     private function format(object $row): array
     {
         return [
-            'id'           => (int)  $row->id,
-            'date'         =>         (string) substr((string) $row->date, 0, 10),
-            'is_available' => (bool) $row->is_available,
-            'open_time'    =>         $row->open_time   ? substr((string) $row->open_time, 0, 5)   : null,
-            'close_time'   =>         $row->close_time  ? substr((string) $row->close_time, 0, 5)  : null,
-            'break_start'  =>         $row->break_start ? substr((string) $row->break_start, 0, 5) : null,
-            'break_end'    =>         $row->break_end   ? substr((string) $row->break_end, 0, 5)   : null,
-            'staff_ids'    =>         $row->staff_ids   ? json_decode((string) $row->staff_ids,   true) : null,
-            'service_ids'  =>         $row->service_ids ? json_decode((string) $row->service_ids, true) : null,
-            'notes'        =>         $row->notes,
+            'id'               => (int)  $row->id,
+            'date'             =>         (string) substr((string) $row->date, 0, 10),
+            'is_available'     => (bool) $row->is_available,
+            'open_time'        =>         $row->open_time   ? substr((string) $row->open_time, 0, 5)   : null,
+            'close_time'       =>         $row->close_time  ? substr((string) $row->close_time, 0, 5)  : null,
+            'break_start'      =>         $row->break_start ? substr((string) $row->break_start, 0, 5) : null,
+            'break_end'        =>         $row->break_end   ? substr((string) $row->break_end, 0, 5)   : null,
+            // Av2.0 P3 capacity field (nullable; null = inherit default)
+            'max_appointments' =>         (property_exists($row, 'max_appointments') && $row->max_appointments !== null)
+                                            ? (int) $row->max_appointments
+                                            : null,
+            'staff_ids'        =>         $row->staff_ids   ? json_decode((string) $row->staff_ids,   true) : null,
+            'service_ids'      =>         $row->service_ids ? json_decode((string) $row->service_ids, true) : null,
+            'notes'            =>         $row->notes,
         ];
     }
 
@@ -117,16 +121,17 @@ class CalendarOverridesController extends Controller
         }
 
         $validated = $request->validate([
-            'is_available' => 'sometimes|boolean',
-            'open_time'    => 'nullable|date_format:H:i',
-            'close_time'   => 'nullable|date_format:H:i',
-            'break_start'  => 'nullable|date_format:H:i',
-            'break_end'    => 'nullable|date_format:H:i',
-            'staff_ids'    => 'nullable|array',
-            'staff_ids.*'  => 'integer|min:1',
-            'service_ids'  => 'nullable|array',
-            'service_ids.*' => 'integer|min:1',
-            'notes'        => 'nullable|string|max:200',
+            'is_available'     => 'sometimes|boolean',
+            'open_time'        => 'nullable|date_format:H:i',
+            'close_time'       => 'nullable|date_format:H:i',
+            'break_start'      => 'nullable|date_format:H:i',
+            'break_end'        => 'nullable|date_format:H:i',
+            'max_appointments' => 'nullable|integer|min:1|max:500',
+            'staff_ids'        => 'nullable|array',
+            'staff_ids.*'      => 'integer|min:1',
+            'service_ids'      => 'nullable|array',
+            'service_ids.*'    => 'integer|min:1',
+            'notes'            => 'nullable|string|max:200',
         ]);
 
         // Coherence checks: close must come after open; break inside hours.
@@ -143,16 +148,17 @@ class CalendarOverridesController extends Controller
         tenancy()->initialize($tenant);
 
         $payload = [
-            'date'         => $date,
-            'is_available' => array_key_exists('is_available', $validated) ? (bool) $validated['is_available'] : true,
-            'open_time'    => $validated['open_time']    ?? null,
-            'close_time'   => $validated['close_time']   ?? null,
-            'break_start'  => $validated['break_start']  ?? null,
-            'break_end'    => $validated['break_end']    ?? null,
-            'staff_ids'    => isset($validated['staff_ids'])   ? json_encode(array_values(array_unique($validated['staff_ids'])))   : null,
-            'service_ids'  => isset($validated['service_ids']) ? json_encode(array_values(array_unique($validated['service_ids']))) : null,
-            'notes'        => $validated['notes'] ?? null,
-            'updated_at'   => now(),
+            'date'             => $date,
+            'is_available'     => array_key_exists('is_available', $validated) ? (bool) $validated['is_available'] : true,
+            'open_time'        => $validated['open_time']    ?? null,
+            'close_time'       => $validated['close_time']   ?? null,
+            'break_start'      => $validated['break_start']  ?? null,
+            'break_end'        => $validated['break_end']    ?? null,
+            'max_appointments' => $validated['max_appointments'] ?? null,
+            'staff_ids'        => isset($validated['staff_ids'])   ? json_encode(array_values(array_unique($validated['staff_ids'])))   : null,
+            'service_ids'      => isset($validated['service_ids']) ? json_encode(array_values(array_unique($validated['service_ids']))) : null,
+            'notes'            => $validated['notes'] ?? null,
+            'updated_at'       => now(),
         ];
 
         $existing = DB::table('calendar_overrides')->where('date', $date)->first();
@@ -203,5 +209,77 @@ class CalendarOverridesController extends Controller
                 (int) substr($date, 8, 2),
                 (int) substr($date, 0, 4),
             );
+    }
+
+    /**
+     * GET /editor/calendar-counts?from=YYYY-MM-DD&to=YYYY-MM-DD
+     *
+     * Av2.0 P3 — powers the calendar's count/capacity badge per cell.
+     * Returns one row per date in the range with appointment count +
+     * effective capacity (override > global default > unlimited).
+     *
+     * One range-scoped query for both counts and overrides — no per-cell
+     * round-trip from the frontend, even though we render 42 cells.
+     */
+    public function counts(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'from' => 'sometimes|date_format:Y-m-d',
+            'to'   => 'sometimes|date_format:Y-m-d',
+        ]);
+        $from = $validated['from'] ?? \Carbon\Carbon::today()->toDateString();
+        $to   = $validated['to']   ?? \Carbon\Carbon::parse($from)->addDays(90)->toDateString();
+
+        $tenant = Tenant::findOrFail($request->user()->tenant_id);
+        tenancy()->initialize($tenant);
+
+        // Range counts in one query.
+        $countsByDate = DB::table('appointments')
+            ->selectRaw('appointment_date as d, COUNT(*) as c')
+            ->whereBetween('appointment_date', [$from, $to])
+            ->whereNotIn('status', ['cancelled'])
+            ->groupBy('d')
+            ->pluck('c', 'd')
+            ->toArray();
+
+        // Per-date overrides (only those with a max_appointments value).
+        $overrideCaps = [];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('calendar_overrides', 'max_appointments')) {
+            $overrideCaps = DB::table('calendar_overrides')
+                ->whereBetween('date', [$from, $to])
+                ->whereNotNull('max_appointments')
+                ->pluck('max_appointments', 'date')
+                ->toArray();
+        }
+
+        $settings   = DB::table('booking_settings')->first();
+        $defaultCap = $settings && isset($settings->max_appointments_per_day) && $settings->max_appointments_per_day !== null
+            ? (int) $settings->max_appointments_per_day
+            : null;
+
+        // Build dense daily list — only emits rows that have either an
+        // appointment count or an explicit override (saves payload size
+        // on quiet months).
+        $rows = [];
+        $dates = array_unique(array_merge(array_keys($countsByDate), array_keys($overrideCaps)));
+        sort($dates);
+        foreach ($dates as $date) {
+            $dateStr = substr((string) $date, 0, 10);
+            $cap = $overrideCaps[$date] ?? $defaultCap;
+            $rows[] = [
+                'date'               => $dateStr,
+                'appointment_count'  => (int) ($countsByDate[$date] ?? 0),
+                'capacity'           => $cap !== null ? (int) $cap : null,
+            ];
+        }
+
+        tenancy()->end();
+
+        return response()->json([
+            'from'    => $from,
+            'to'      => $to,
+            'default_capacity' => $defaultCap,
+            'counts'  => $rows,
+        ]);
     }
 }

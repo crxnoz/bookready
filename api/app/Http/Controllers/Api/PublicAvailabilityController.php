@@ -193,6 +193,28 @@ class PublicAvailabilityController extends Controller
             $settings, $drops, \Carbon\Carbon::now(config('app.timezone')),
         );
 
+        // Av2.0 P3 — day-level capacity gate. When full, return empty
+        // slots with a friendly reason instead of rendering bookable
+        // times the customer can't actually take.
+        $capacity = \App\Services\CapacityResolver::resolve($date, $settings, $staffId);
+        if ($capacity['full']) {
+            $serviceData = [
+                'id'               => (int)   $service->id,
+                'name'             =>          $service->name,
+                'duration_minutes' => (int)   $service->duration,
+                'price'            => (float) $service->price,
+            ];
+            tenancy()->end();
+            return response()->json([
+                'date'    => $date,
+                'service' => $serviceData,
+                'slots'   => [],
+                'message' => $capacity['source'] === 'staff'
+                    ? 'This stylist is fully booked for the day. Try another date or stylist.'
+                    : 'This day is fully booked. Please choose another date.',
+            ]);
+        }
+
         // Snapshot service data before ending tenancy
         $serviceData = [
             'id'               => (int)   $service->id,

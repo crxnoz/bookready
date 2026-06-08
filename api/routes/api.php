@@ -280,6 +280,7 @@ Route::prefix('v1')->group(function () {
         // Availability 2.0 · Phase 1 — Smart Calendar per-date overrides.
         // Date is the natural primary key from the UI's perspective.
         Route::get   ('calendar-overrides',         [CalendarOverridesController::class, 'index']);
+        Route::get   ('calendar-counts',            [CalendarOverridesController::class, 'counts']);
         Route::get   ('calendar-overrides/{date}',  [CalendarOverridesController::class, 'show'])
             ->where('date', '\d{4}-\d{2}-\d{2}');
         Route::put   ('calendar-overrides/{date}',  [CalendarOverridesController::class, 'upsert'])

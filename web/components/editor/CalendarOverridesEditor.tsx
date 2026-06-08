@@ -9,8 +9,8 @@ import {
   getEditorCalendarOverrides, getEditorCalendarOverride,
   upsertEditorCalendarOverride, deleteEditorCalendarOverride,
   getEditorHours, getEditorStaff, getEditorServices,
-  getEditorReleaseState,
-  type CalendarOverride, type ReleaseState,
+  getEditorReleaseState, getEditorCalendarCounts,
+  type CalendarOverride, type ReleaseState, type CalendarCount, type CalendarCountsResponse,
 } from '@/lib/api'
 import type { HoursEntry, Service, ApiStaffMember } from '@/lib/types'
 import ReleaseStrategyPanel from './ReleaseStrategyPanel'
@@ -48,6 +48,7 @@ export default function CalendarOverridesEditor() {
   const [staff,       setStaff]       = useState<ApiStaffMember[]>([])
   const [services,    setServices]    = useState<Service[]>([])
   const [releaseState, setReleaseState] = useState<ReleaseState | null>(null)
+  const [counts,      setCounts]      = useState<CalendarCountsResponse | null>(null)
   const [loading,     setLoading]     = useState(true)
   const [error,       setError]       = useState<string | null>(null)
   const [editingDate, setEditingDate] = useState<string | null>(null)
@@ -82,8 +83,17 @@ export default function CalendarOverridesEditor() {
     const from = formatDate(firstOfMonth(cursor))
     const to   = formatDate(lastOfMonth(cursor))
     setLoading(true)
-    getEditorCalendarOverrides(from, to)
-      .then(r => { if (! cancelled) setOverrides(r.overrides) })
+    Promise.all([
+      getEditorCalendarOverrides(from, to),
+      // Counts powers the per-cell capacity badge + tint. Failures
+      // are silently absorbed — calendar still renders without badges.
+      getEditorCalendarCounts(from, to).catch(() => null),
+    ])
+      .then(([o, c]) => {
+        if (cancelled) return
+        setOverrides(o.overrides)
+        setCounts(c)
+      })
       .catch(e => { if (! cancelled) setError(e instanceof Error ? e.message : 'Failed to load overrides') })
       .finally(() => { if (! cancelled) setLoading(false) })
     return () => { cancelled = true }
@@ -101,6 +111,16 @@ export default function CalendarOverridesEditor() {
     return m
   }, [weekly])
 
+  // Av2.0 P3 — counts per date for the badge. We only get rows for
+  // dates that have either bookings or an explicit cap; for everything
+  // else the default applies.
+  const countByDate = useMemo(() => {
+    const m = new Map<string, CalendarCount>()
+    for (const c of counts?.counts ?? []) m.set(c.date, c)
+    return m
+  }, [counts])
+  const defaultCapacity = counts?.default_capacity ?? null
+
   // Build the 6-row grid of dates for the cursor month, padding with
   // outside-month days so every row has 7 cells.
   const cells = useMemo(() => buildMonthCells(cursor), [cursor])
@@ -115,13 +135,17 @@ export default function CalendarOverridesEditor() {
   }
 
   async function handleSaved() {
-    // Refresh overrides for the visible month, close modal.
+    // Refresh overrides + counts for the visible month, close modal.
     setEditingDate(null)
     const from = formatDate(firstOfMonth(cursor))
     const to   = formatDate(lastOfMonth(cursor))
     try {
-      const r = await getEditorCalendarOverrides(from, to)
-      setOverrides(r.overrides)
+      const [o, c] = await Promise.all([
+        getEditorCalendarOverrides(from, to),
+        getEditorCalendarCounts(from, to).catch(() => null),
+      ])
+      setOverrides(o.overrides)
+      if (c) setCounts(c)
     } catch { /* swallow — next mount refetches */ }
   }
 
@@ -206,15 +230,31 @@ export default function CalendarOverridesEditor() {
           const unreleased =
             releaseState?.released_until != null
             && cell.dateStr > releaseState.released_until
+
+          // Av2.0 P3 — count + effective capacity for this date.
+          // Effective cap: override row's max_appointments > the per-date
+          // count payload's `capacity` (which already merges override +
+          // global default backend-side). Falls back to the global default
+          // when the date has no count row at all.
+          const override = overridesByDate.get(cell.dateStr)
+          const countRow = countByDate.get(cell.dateStr)
+          const count    = countRow?.appointment_count ?? 0
+          const capacity =
+            (override?.max_appointments ?? null)
+            ?? countRow?.capacity
+            ?? defaultCapacity
+
           return (
             <CalendarCell
               key={i}
               cell={cell}
               today={today}
               cursorMonth={cursor.getMonth()}
-              override={overridesByDate.get(cell.dateStr)}
+              override={override}
               weekly={weeklyByDow.get(cell.dow)}
               unreleased={unreleased}
+              count={count}
+              capacity={capacity}
               onClick={() => setEditingDate(cell.dateStr)}
             />
           )
@@ -234,6 +274,9 @@ export default function CalendarOverridesEditor() {
         <Legend swatchClass="bg-[rgba(180,40,40,0.10)] border border-[rgba(180,40,40,0.40)]" label="Closed by override" />
         <Legend swatchClass="bg-[rgba(18,18,18,0.06)] border border-[rgba(18,18,18,0.15)]" label="Weekly default: closed" />
         <Legend swatchClass="cal-unreleased border border-[rgba(18,18,18,0.15)]" label="Not released for booking yet" />
+        <Legend swatchClass="bg-[rgba(15,111,61,0.06)] border border-[rgba(18,18,18,0.15)]" label="Has space (under 70% booked)" />
+        <Legend swatchClass="bg-[rgba(201,168,118,0.14)] border border-[rgba(18,18,18,0.15)]" label="Nearly full (70-99%)" />
+        <Legend swatchClass="bg-[rgba(180,40,40,0.08)] border border-[rgba(18,18,18,0.15)]" label="Full (capacity reached)" />
       </div>
 
       {releaseState?.released_until && (
@@ -252,6 +295,7 @@ export default function CalendarOverridesEditor() {
           weekly={weeklyByDow.get(dowOf(editingDate))}
           staff={staff}
           services={services}
+          defaultCapacity={defaultCapacity}
           onClose={() => setEditingDate(null)}
           onSaved={handleSaved}
         />
@@ -265,7 +309,7 @@ export default function CalendarOverridesEditor() {
 interface CellModel { date: Date; dateStr: string; dow: number; outsideMonth: boolean }
 
 function CalendarCell({
-  cell, today, cursorMonth, override, weekly, unreleased, onClick,
+  cell, today, cursorMonth, override, weekly, unreleased, count, capacity, onClick,
 }: {
   cell:         CellModel
   today:        string
@@ -273,11 +317,20 @@ function CalendarCell({
   override?:    CalendarOverride
   weekly?:      HoursEntry
   unreleased?:  boolean
+  /** Av2.0 P3: appointments booked so far on this date. */
+  count?:       number
+  /** Av2.0 P3: effective daily cap (null = unlimited). */
+  capacity?:    number | null
   onClick:      () => void
 }) {
   const isToday   = cell.dateStr === today
   const isPast    = cell.dateStr <  today
   const isOutside = cell.date.getMonth() !== cursorMonth
+
+  // Closed state (weekly is_closed or override force-closed) is independent
+  // of capacity — even fully-booked-on-paper closed days stay gray.
+  const isClosed = (! override && (! weekly || ! weekly.is_open))
+    || (override && ! override.is_available)
 
   // Effective state
   let bg = 'bg-white'
@@ -308,9 +361,25 @@ function CalendarCell({
     labelTone = 'text-near-black font-semibold'
   }
 
+  // Av2.0 P3 — capacity tint. Only meaningful when the day is open AND a
+  // capacity is set. Layers OVER the base bg via a translucent stripe so
+  // override colors still read underneath.
+  let capacityTint = ''
+  const hasBookings = (count ?? 0) > 0
+  if (! isClosed && (capacity ?? null) !== null && hasBookings) {
+    const pct = (count ?? 0) / (capacity as number)
+    if (pct >= 1)        capacityTint = 'bg-[rgba(180,40,40,0.08)]'
+    else if (pct >= 0.7) capacityTint = 'bg-[rgba(201,168,118,0.14)]'
+    else                 capacityTint = 'bg-[rgba(15,111,61,0.06)]'
+  }
+
   // Av2.0 P2 — un-released cells get a diagonal-stripe overlay regardless
   // of the override state below them. Owners can still click to set an
   // override; the date just isn't bookable yet for customers.
+  const capLabel = (capacity ?? null) !== null
+    ? `${count ?? 0}/${capacity}`
+    : ((count ?? 0) > 0 ? `${count}` : null)
+
   return (
     <button
       type="button"
@@ -318,6 +387,7 @@ function CalendarCell({
       className={cn(
         'relative text-left p-2 min-h-[72px] transition-colors',
         bg,
+        capacityTint,
         border !== 'border-transparent' && 'border-2',
         border,
         isToday && 'ring-2 ring-near-black ring-inset',
@@ -326,19 +396,26 @@ function CalendarCell({
         unreleased && 'cal-unreleased',
         'hover:bg-blush focus:outline-none focus:bg-blush',
       )}
-      aria-label={`Edit ${cell.dateStr}${unreleased ? ' (not released)' : ''}`}
+      aria-label={`Edit ${cell.dateStr}${unreleased ? ' (not released)' : ''}${capLabel ? ` — ${capLabel} booked` : ''}`}
     >
-      <span className={cn(
-        'block text-[11px] font-bold tabular-nums',
-        isToday ? 'text-near-black' : 'text-near-black/80',
-      )}>
-        {cell.date.getDate()}
-      </span>
+      <div className="flex items-start justify-between gap-1">
+        <span className={cn(
+          'block text-[11px] font-bold tabular-nums',
+          isToday ? 'text-near-black' : 'text-near-black/80',
+        )}>
+          {cell.date.getDate()}
+        </span>
+        {capLabel && ! isClosed && (
+          <span className="text-[9px] font-bold tabular-nums text-near-black/70 leading-none mt-0.5">
+            {capLabel}
+          </span>
+        )}
+      </div>
       <span className={cn('block text-[9px] mt-1 leading-tight truncate', labelTone)}>
         {unreleased ? 'Not released' : label}
       </span>
       {override?.notes && (
-        <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#B98AA8]" title={override.notes} />
+        <span className="absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full bg-[#B98AA8]" title={override.notes} />
       )}
     </button>
   )
@@ -358,14 +435,15 @@ function Legend({ swatchClass, label }: { swatchClass: string; label: string }) 
 // ── Override Editor Dialog ────────────────────────────────────────────────────
 
 function OverrideEditorDialog({
-  date, weekly, staff, services, onClose, onSaved,
+  date, weekly, staff, services, defaultCapacity, onClose, onSaved,
 }: {
-  date:     string
-  weekly?:  HoursEntry
-  staff:    ApiStaffMember[]
-  services: Service[]
-  onClose:  () => void
-  onSaved:  () => Promise<void> | void
+  date:             string
+  weekly?:          HoursEntry
+  staff:            ApiStaffMember[]
+  services:         Service[]
+  defaultCapacity?: number | null
+  onClose:          () => void
+  onSaved:          () => Promise<void> | void
 }) {
   const [loading,    setLoading]    = useState(true)
   const [saving,     setSaving]     = useState(false)
@@ -378,6 +456,7 @@ function OverrideEditorDialog({
   const [closeTime,   setCloseTime]   = useState('')
   const [breakStart,  setBreakStart]  = useState('')
   const [breakEnd,    setBreakEnd]    = useState('')
+  const [maxAppts,    setMaxAppts]    = useState<string>('') // string for blank/empty-input UX
   const [staffIds,    setStaffIds]    = useState<number[] | null>(null)
   const [serviceIds,  setServiceIds]  = useState<number[] | null>(null)
   const [notes,       setNotes]       = useState('')
@@ -395,6 +474,7 @@ function OverrideEditorDialog({
           setCloseTime (o.close_time  ?? '')
           setBreakStart(o.break_start ?? '')
           setBreakEnd  (o.break_end   ?? '')
+          setMaxAppts  (o.max_appointments !== null ? String(o.max_appointments) : '')
           setStaffIds  (o.staff_ids)
           setServiceIds(o.service_ids)
           setNotes     (o.notes ?? '')
@@ -419,15 +499,17 @@ function OverrideEditorDialog({
   async function save() {
     setSaving(true); setError(null)
     try {
+      const maxApptsParsed = maxAppts.trim() === '' ? null : Math.max(1, Math.min(500, parseInt(maxAppts, 10) || 0))
       await upsertEditorCalendarOverride(date, {
-        is_available: isAvailable,
-        open_time:    emptyToNull(openTime),
-        close_time:   emptyToNull(closeTime),
-        break_start:  emptyToNull(breakStart),
-        break_end:    emptyToNull(breakEnd),
-        staff_ids:    staffIds,
-        service_ids:  serviceIds,
-        notes:        notes.trim() === '' ? null : notes.trim(),
+        is_available:     isAvailable,
+        open_time:        emptyToNull(openTime),
+        close_time:       emptyToNull(closeTime),
+        break_start:      emptyToNull(breakStart),
+        break_end:        emptyToNull(breakEnd),
+        max_appointments: maxApptsParsed,
+        staff_ids:        staffIds,
+        service_ids:      serviceIds,
+        notes:            notes.trim() === '' ? null : notes.trim(),
       })
       await onSaved()
     } catch (e) {
@@ -503,6 +585,24 @@ function OverrideEditorDialog({
                 <div className="grid grid-cols-2 gap-3">
                   <TimeField label="Break starts" value={breakStart} onChange={setBreakStart} placeholder={weekly?.break_start ?? '—'} />
                   <TimeField label="Break ends"   value={breakEnd}   onChange={setBreakEnd}   placeholder={weekly?.break_end ?? '—'} />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5">
+                    Max appointments for this day
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={500}
+                    value={maxAppts}
+                    onChange={e => setMaxAppts(e.target.value)}
+                    placeholder={defaultCapacity !== null && defaultCapacity !== undefined ? `Default: ${defaultCapacity}` : 'Default: no limit'}
+                    className="w-32 bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black tabular-nums"
+                  />
+                  <p className="text-[10px] text-muted-text mt-1">
+                    Leave blank to use the default cap from booking settings. Set a number to cap THIS date specifically.
+                  </p>
                 </div>
 
                 <MultiSelect

@@ -314,15 +314,23 @@ class PublicManageBookingController extends Controller
             ])
             ->all();
 
-        if ($bs && isset($bs->max_appointments_per_day) && $bs->max_appointments_per_day !== null) {
-            $cap = (int) $bs->max_appointments_per_day;
-            if ($cap > 0 && count($others) >= $cap) {
-                tenancy()->end();
-                return response()->json([
-                    'message' => 'This day is fully booked. Please choose another date.',
-                ], 422);
-            }
+        // Av2.0 P3 — capacity resolver replaces the old inline cap check.
+        // Honors per-date override + per-staff cap on top of the global
+        // default. Resolver does its own count query, so we just gate on
+        // its verdict.
+        $capacityStaffId = property_exists($row, 'staff_id') ? ($row->staff_id ?? null) : null;
+        $capacity = \App\Services\CapacityResolver::resolve(
+            $newDate, $bs, $capacityStaffId ? (int) $capacityStaffId : null,
+        );
+        if ($capacity['full']) {
+            tenancy()->end();
+            return response()->json([
+                'message' => $capacity['source'] === 'staff'
+                    ? 'This stylist is fully booked for the day. Please choose another date.'
+                    : 'This day is fully booked. Please choose another date.',
+            ], 422);
         }
+
 
         $result = SlotGenerator::generate(
             date:          $newDate,

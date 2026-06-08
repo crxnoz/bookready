@@ -307,6 +307,19 @@ class PublicBookingController extends Controller
             return response()->json(['message' => 'This date has not been released for booking yet.'], 422);
         }
 
+        // Av2.0 P3 — day-level capacity gate. The slot list endpoint
+        // already filters by this, but a customer could land here with a
+        // stale page or a direct payload. Re-enforce on submit.
+        $capacity = \App\Services\CapacityResolver::resolve($date, $settings, $requestedStaffId);
+        if ($capacity['full']) {
+            tenancy()->end();
+            return response()->json([
+                'message' => $capacity['source'] === 'staff'
+                    ? 'This stylist is fully booked for the day.'
+                    : 'This day is fully booked. Please choose another date.',
+            ], 422);
+        }
+
         // ── Global booking gate ──────────────────────────────────────────
         if ($settings && property_exists($settings, 'booking_enabled') && ! $settings->booking_enabled) {
             tenancy()->end();

@@ -23,15 +23,17 @@ class CalendarOverride extends Model
         'close_time',
         'break_start',
         'break_end',
+        'max_appointments',
         'staff_ids',
         'service_ids',
         'notes',
     ];
 
     protected $casts = [
-        'date'         => 'date',
-        'is_available' => 'boolean',
-        'staff_ids'    => 'array',
-        'service_ids'  => 'array',
+        'date'             => 'date',
+        'is_available'     => 'boolean',
+        'max_appointments' => 'integer',
+        'staff_ids'        => 'array',
+        'service_ids'      => 'array',
     ];
 }

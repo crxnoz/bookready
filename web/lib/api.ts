@@ -724,27 +724,49 @@ export async function updateEditorAvailability(data: AvailabilityData): Promise<
 
 /** Per-date override that layers on top of the weekly schedule. */
 export interface CalendarOverride {
-  id:            number
-  date:          string                // YYYY-MM-DD
-  is_available:  boolean
-  open_time:     string | null         // HH:MM, null = inherit weekly
-  close_time:    string | null
-  break_start:   string | null
-  break_end:     string | null
-  staff_ids:     number[] | null       // null = all staff
-  service_ids:   number[] | null       // null = all services
-  notes:         string | null
+  id:                number
+  date:              string             // YYYY-MM-DD
+  is_available:      boolean
+  open_time:         string | null      // HH:MM, null = inherit weekly
+  close_time:        string | null
+  break_start:       string | null
+  break_end:         string | null
+  /** Av2.0 P3: per-date daily capacity override (null = inherit default). */
+  max_appointments:  number | null
+  staff_ids:         number[] | null    // null = all staff
+  service_ids:       number[] | null    // null = all services
+  notes:             string | null
 }
 
 export interface CalendarOverridePayload {
-  is_available?: boolean
-  open_time?:    string | null
-  close_time?:   string | null
-  break_start?:  string | null
-  break_end?:    string | null
-  staff_ids?:    number[] | null
-  service_ids?:  number[] | null
-  notes?:        string | null
+  is_available?:     boolean
+  open_time?:        string | null
+  close_time?:       string | null
+  break_start?:      string | null
+  break_end?:        string | null
+  max_appointments?: number | null
+  staff_ids?:        number[] | null
+  service_ids?:      number[] | null
+  notes?:            string | null
+}
+
+/** Av2.0 P3 — calendar count + capacity per date. */
+export interface CalendarCount {
+  date:               string
+  appointment_count:  number
+  capacity:           number | null    // null = unlimited that day
+}
+
+export interface CalendarCountsResponse {
+  from:              string
+  to:                string
+  default_capacity:  number | null
+  counts:            CalendarCount[]
+}
+
+export async function getEditorCalendarCounts(from: string, to: string): Promise<CalendarCountsResponse> {
+  const qs = new URLSearchParams({ from, to }).toString()
+  return request<CalendarCountsResponse>(`/editor/calendar-counts?${qs}`)
 }
 
 export async function getEditorCalendarOverrides(
