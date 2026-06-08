@@ -778,6 +778,65 @@ export async function deleteEditorCalendarOverride(date: string): Promise<{ date
   return request(`/editor/calendar-overrides/${date}`, { method: 'DELETE' })
 }
 
+// ── Availability 2.0 · Phase 2 · Release strategy + custom drops ───────────
+
+export type ReleaseMode = 'always_open' | 'weekly' | 'biweekly' | 'monthly' | 'custom'
+
+export interface ReleaseStrategySettings {
+  slot_release_mode:           ReleaseMode
+  slot_release_window_days:    number | null
+  slot_release_day_of_week:    number | null
+  slot_release_day_of_month:   number | null
+  slot_release_time:           string | null     // HH:MM
+  slot_release_anchor_date:    string | null     // YYYY-MM-DD
+}
+
+export interface ReleaseStrategyPayload extends Partial<ReleaseStrategySettings> {}
+
+export interface SlotReleaseDrop {
+  id:             number
+  release_date:   string
+  available_from: string
+  available_to:   string
+}
+
+export interface SlotReleaseDropPayload {
+  release_date:   string
+  available_from: string
+  available_to:   string
+}
+
+export interface ReleaseState {
+  released_until:   string | null   // YYYY-MM-DD or null = always open
+  max_days_ahead:   number
+  max_bookable_to:  string
+  mode:             string
+}
+
+export async function getEditorReleaseState(): Promise<ReleaseState> {
+  return request<ReleaseState>('/editor/release-state')
+}
+
+export async function getEditorSlotReleaseDrops(): Promise<{ drops: SlotReleaseDrop[] }> {
+  return request<{ drops: SlotReleaseDrop[] }>('/editor/slot-release-drops')
+}
+
+export async function createEditorSlotReleaseDrop(payload: SlotReleaseDropPayload): Promise<SlotReleaseDrop> {
+  return request<SlotReleaseDrop>('/editor/slot-release-drops', {
+    method: 'POST', body: JSON.stringify(payload),
+  })
+}
+
+export async function updateEditorSlotReleaseDrop(id: number, payload: Partial<SlotReleaseDropPayload>): Promise<SlotReleaseDrop> {
+  return request<SlotReleaseDrop>(`/editor/slot-release-drops/${id}`, {
+    method: 'PATCH', body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteEditorSlotReleaseDrop(id: number): Promise<{ id: number; deleted: boolean }> {
+  return request(`/editor/slot-release-drops/${id}`, { method: 'DELETE' })
+}
+
 // ── Blocked dates (Phase 6) ──────────────────────────────────────────────────
 
 export async function getEditorBlockedDates(): Promise<BlockedDate[]> {

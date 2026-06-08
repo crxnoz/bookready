@@ -9,9 +9,11 @@ import {
   getEditorCalendarOverrides, getEditorCalendarOverride,
   upsertEditorCalendarOverride, deleteEditorCalendarOverride,
   getEditorHours, getEditorStaff, getEditorServices,
-  type CalendarOverride,
+  getEditorReleaseState,
+  type CalendarOverride, type ReleaseState,
 } from '@/lib/api'
 import type { HoursEntry, Service, ApiStaffMember } from '@/lib/types'
+import ReleaseStrategyPanel from './ReleaseStrategyPanel'
 import { cn } from '@/lib/cn'
 
 /**
@@ -40,14 +42,22 @@ import { cn } from '@/lib/cn'
 const DOW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 export default function CalendarOverridesEditor() {
-  const [cursor,    setCursor]    = useState<Date>(firstOfMonth(new Date()))
-  const [weekly,    setWeekly]    = useState<HoursEntry[]>([])
-  const [overrides, setOverrides] = useState<CalendarOverride[]>([])
-  const [staff,     setStaff]     = useState<ApiStaffMember[]>([])
-  const [services,  setServices]  = useState<Service[]>([])
-  const [loading,   setLoading]   = useState(true)
-  const [error,     setError]     = useState<string | null>(null)
+  const [cursor,      setCursor]      = useState<Date>(firstOfMonth(new Date()))
+  const [weekly,      setWeekly]      = useState<HoursEntry[]>([])
+  const [overrides,   setOverrides]   = useState<CalendarOverride[]>([])
+  const [staff,       setStaff]       = useState<ApiStaffMember[]>([])
+  const [services,    setServices]    = useState<Service[]>([])
+  const [releaseState, setReleaseState] = useState<ReleaseState | null>(null)
+  const [loading,     setLoading]     = useState(true)
+  const [error,       setError]       = useState<string | null>(null)
   const [editingDate, setEditingDate] = useState<string | null>(null)
+
+  // Av2.0 P2: re-fetch release state whenever the strategy panel saves.
+  // The calendar uses it to tint un-released cells.
+  async function refreshReleaseState() {
+    try { setReleaseState(await getEditorReleaseState()) }
+    catch { /* swallow — non-critical UI hint */ }
+  }
 
   // Bootstrap — weekly schedule + staff + services load once, overrides
   // re-fetch when the month changes.
@@ -57,9 +67,10 @@ export default function CalendarOverridesEditor() {
       getEditorHours().catch(() => [] as HoursEntry[]),
       getEditorStaff({ active: true }).catch(() => [] as ApiStaffMember[]),
       getEditorServices().catch(() => [] as Service[]),
-    ]).then(([h, s, sv]) => {
+      getEditorReleaseState().catch(() => null),
+    ]).then(([h, s, sv, rs]) => {
       if (cancelled) return
-      setWeekly(h); setStaff(s); setServices(sv)
+      setWeekly(h); setStaff(s); setServices(sv); setReleaseState(rs)
     }).catch(() => {
       if (! cancelled) setError('Could not load weekly hours.')
     })
@@ -116,6 +127,20 @@ export default function CalendarOverridesEditor() {
 
   return (
     <section className="w-full">
+      {/* Av2.0 P2 — diagonal-stripe overlay for un-released dates. Tailwind
+          doesn't express repeating-linear-gradient ergonomically, so a tiny
+          scoped style block sits here instead of polluting global CSS. */}
+      <style>{`
+        .cal-unreleased {
+          background-image: repeating-linear-gradient(
+            -45deg,
+            rgba(201, 168, 118, 0.18) 0,
+            rgba(201, 168, 118, 0.18) 4px,
+            transparent 4px,
+            transparent 10px
+          );
+        }
+      `}</style>
       {/* Header */}
       <header className="flex items-center justify-between gap-3 mb-3 flex-wrap">
         <div>
@@ -162,6 +187,10 @@ export default function CalendarOverridesEditor() {
         </div>
       )}
 
+      {/* Release strategy — sits ABOVE the grid because it controls
+          which cells render as un-released. */}
+      <ReleaseStrategyPanel onChange={refreshReleaseState} />
+
       {/* Day-of-week row */}
       <div className="grid grid-cols-7 mb-1.5">
         {DOW_LABELS.map(d => (
@@ -171,17 +200,25 @@ export default function CalendarOverridesEditor() {
 
       {/* Grid */}
       <div className="grid grid-cols-7 gap-px bg-[rgba(18,18,18,0.10)] border border-[rgba(18,18,18,0.10)]">
-        {cells.map((cell, i) => (
-          <CalendarCell
-            key={i}
-            cell={cell}
-            today={today}
-            cursorMonth={cursor.getMonth()}
-            override={overridesByDate.get(cell.dateStr)}
-            weekly={weeklyByDow.get(cell.dow)}
-            onClick={() => setEditingDate(cell.dateStr)}
-          />
-        ))}
+        {cells.map((cell, i) => {
+          // Av2.0 P2 — un-released = date is past the resolved release window.
+          // Strictly greater-than: if releasedUntil = Jun 15, Jun 15 itself IS bookable.
+          const unreleased =
+            releaseState?.released_until != null
+            && cell.dateStr > releaseState.released_until
+          return (
+            <CalendarCell
+              key={i}
+              cell={cell}
+              today={today}
+              cursorMonth={cursor.getMonth()}
+              override={overridesByDate.get(cell.dateStr)}
+              weekly={weeklyByDow.get(cell.dow)}
+              unreleased={unreleased}
+              onClick={() => setEditingDate(cell.dateStr)}
+            />
+          )
+        })}
       </div>
 
       {loading && (
@@ -196,7 +233,18 @@ export default function CalendarOverridesEditor() {
         <Legend swatchClass="bg-cream border border-[rgba(180,138,184,0.6)]" label="Custom — date override set" />
         <Legend swatchClass="bg-[rgba(180,40,40,0.10)] border border-[rgba(180,40,40,0.40)]" label="Closed by override" />
         <Legend swatchClass="bg-[rgba(18,18,18,0.06)] border border-[rgba(18,18,18,0.15)]" label="Weekly default: closed" />
+        <Legend swatchClass="cal-unreleased border border-[rgba(18,18,18,0.15)]" label="Not released for booking yet" />
       </div>
+
+      {releaseState?.released_until && (
+        <p className="text-[11px] text-muted-text mt-2">
+          Currently bookable through{' '}
+          <strong className="text-near-black">
+            {new Date(releaseState.released_until + 'T00:00:00').toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+          </strong>
+          {' '}({releaseState.mode} strategy).
+        </p>
+      )}
 
       {editingDate && (
         <OverrideEditorDialog
@@ -217,14 +265,15 @@ export default function CalendarOverridesEditor() {
 interface CellModel { date: Date; dateStr: string; dow: number; outsideMonth: boolean }
 
 function CalendarCell({
-  cell, today, cursorMonth, override, weekly, onClick,
+  cell, today, cursorMonth, override, weekly, unreleased, onClick,
 }: {
-  cell:        CellModel
-  today:       string
-  cursorMonth: number
-  override?:   CalendarOverride
-  weekly?:     HoursEntry
-  onClick:     () => void
+  cell:         CellModel
+  today:        string
+  cursorMonth:  number
+  override?:    CalendarOverride
+  weekly?:      HoursEntry
+  unreleased?:  boolean
+  onClick:      () => void
 }) {
   const isToday   = cell.dateStr === today
   const isPast    = cell.dateStr <  today
@@ -259,6 +308,9 @@ function CalendarCell({
     labelTone = 'text-near-black font-semibold'
   }
 
+  // Av2.0 P2 — un-released cells get a diagonal-stripe overlay regardless
+  // of the override state below them. Owners can still click to set an
+  // override; the date just isn't bookable yet for customers.
   return (
     <button
       type="button"
@@ -271,9 +323,10 @@ function CalendarCell({
         isToday && 'ring-2 ring-near-black ring-inset',
         isOutside && 'opacity-40',
         isPast && ! isToday && 'opacity-60',
+        unreleased && 'cal-unreleased',
         'hover:bg-blush focus:outline-none focus:bg-blush',
       )}
-      aria-label={`Edit ${cell.dateStr}`}
+      aria-label={`Edit ${cell.dateStr}${unreleased ? ' (not released)' : ''}`}
     >
       <span className={cn(
         'block text-[11px] font-bold tabular-nums',
@@ -282,7 +335,7 @@ function CalendarCell({
         {cell.date.getDate()}
       </span>
       <span className={cn('block text-[9px] mt-1 leading-tight truncate', labelTone)}>
-        {label}
+        {unreleased ? 'Not released' : label}
       </span>
       {override?.notes && (
         <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#B98AA8]" title={override.notes} />

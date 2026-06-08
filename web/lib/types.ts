@@ -771,7 +771,9 @@ export type NotificationSettingsPayload = Partial<Omit<NotificationSettings,
 
 // ── Booking settings ────────────────────────────────────────────────────────
 
-export type SlotReleaseMode = 'always_open' | 'weekly' | 'biweekly' | 'monthly'
+// Av2.0 P2: 'custom' joined the recurring strategies. Drops live in
+// the slot_release_drops tenant table.
+export type SlotReleaseMode = 'always_open' | 'weekly' | 'biweekly' | 'monthly' | 'custom'
 
 export interface BookingSettings {
   id?:                                 number
@@ -782,6 +784,11 @@ export interface BookingSettings {
   slot_interval_minutes:               number
   slot_release_mode:                   SlotReleaseMode
   slot_release_window_days:            number | null
+  // Av2.0 P2: cadence-specific fields
+  slot_release_day_of_week?:           number | null
+  slot_release_day_of_month?:          number | null
+  slot_release_time?:                  string | null
+  slot_release_anchor_date?:           string | null
   cancellation_window_hours:           number
   reschedule_window_hours:             number
   prevent_duplicate_client_bookings:   boolean
