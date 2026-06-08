@@ -186,7 +186,7 @@ export default function AfterHoursPanel() {
               </CollapsibleSection>
             </div>
 
-            <div className="px-5 pt-5">
+            <div className="pt-1">
               <Button onClick={save} loading={saving}>Save after-hours</Button>
             </div>
           </>

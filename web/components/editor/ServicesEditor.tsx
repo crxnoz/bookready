@@ -29,6 +29,16 @@ import {
 import { ComingSoonCard } from '@/components/editor/ComingSoonPanel'
 import { SectionHeader } from '@/components/editor/AvailabilitySections'
 import IconBox from '@/components/ui/IconBox'
+import SubTabNav, { type SubTab } from '@/components/editor/SubTabNav'
+
+type ServiceSubTab = 'services' | 'categories' | 'addons' | 'packages'
+
+const SERVICE_SUBTABS: SubTab[] = [
+  { id: 'services',   label: 'Services' },
+  { id: 'categories', label: 'Categories' },
+  { id: 'addons',     label: 'Add-ons' },
+  { id: 'packages',   label: 'Packages', soon: true },
+]
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -497,8 +507,7 @@ export default function ServicesEditor() {
   const [adding, setAdding]           = useState(false)
   const [dragIndex, setDragIndex]     = useState<number | null>(null)
   const [dragOver, setDragOver]       = useState<number | null>(null)
-  const [catsOpen, setCatsOpen]       = useState(false)
-  const [addonsOpen, setAddonsOpen]   = useState(false)
+  const [subTab, setSubTab]           = useState<ServiceSubTab>('services')
 
   useEffect(() => {
     Promise.all([
@@ -576,103 +585,117 @@ export default function ServicesEditor() {
   }
 
   return (
-    <div className="p-3 sm:p-5 md:p-6 space-y-5">
-      {/* Section anchor — icon box + live count + primary action */}
-      <SectionHeader
-        icon={Sparkles}
-        title="Your services"
-        subtitle={`${services.length} service${services.length !== 1 ? 's' : ''} · ${categories.length} categor${categories.length === 1 ? 'y' : 'ies'} · drag or use arrows to reorder.`}
-        action={
-          <Button size="sm" onClick={() => setAdding(true)}>
-            <Plus size={14} className="mr-1.5" />
-            Add Service
-          </Button>
-        }
+    <div>
+      <SubTabNav
+        items={SERVICE_SUBTABS}
+        activeId={subTab}
+        onSelect={id => setSubTab(id as ServiceSubTab)}
       />
 
-      {/* Inline add form composes at the top (matches Staff) */}
-      {adding && (
-        <AddServiceForm
-          onCreated={handleCreated}
-          onCancel={() => setAdding(false)}
-          nextSortOrder={services.length}
-          categories={categories}
-          staff={staff}
-          addons={addons}
-        />
-      )}
+      <div className="p-3 sm:p-5 md:p-6 space-y-5">
+        {status === 'error' && errorMsg && (
+          <div className="bg-danger-bg border border-danger px-4 py-3 text-xs text-danger">
+            {errorMsg}
+          </div>
+        )}
 
-      {status === 'error' && errorMsg && (
-        <div className="bg-danger-bg border border-danger px-4 py-3 text-xs text-danger">
-          {errorMsg}
-        </div>
-      )}
+        {/* ── Services ─────────────────────────────────────────── */}
+        {subTab === 'services' && (
+          <>
+            {/* Section anchor — icon box + live count + primary action */}
+            <SectionHeader
+              icon={Sparkles}
+              title="Your services"
+              subtitle={`${services.length} service${services.length !== 1 ? 's' : ''} · drag or use arrows to reorder.`}
+              action={
+                <Button size="sm" onClick={() => setAdding(true)}>
+                  <Plus size={14} className="mr-1.5" />
+                  Add Service
+                </Button>
+              }
+            />
 
-      {/* Categories panel */}
-      <CategoriesPanel
-        open={catsOpen}
-        onToggle={() => setCatsOpen(o => !o)}
-        categories={categories}
-        onCreated={handleCategoryCreated}
-        onUpdated={handleCategoryUpdated}
-        onDeleted={handleCategoryDeleted}
-      />
+            {/* Inline add form composes at the top (matches Staff) */}
+            {adding && (
+              <AddServiceForm
+                onCreated={handleCreated}
+                onCancel={() => setAdding(false)}
+                nextSortOrder={services.length}
+                categories={categories}
+                staff={staff}
+                addons={addons}
+              />
+            )}
 
-      {/* Add-ons panel */}
-      <AddonsPanel
-        open={addonsOpen}
-        onToggle={() => setAddonsOpen(o => !o)}
-        addons={addons}
-        onCreated={handleAddonCreated}
-        onUpdated={handleAddonUpdated}
-        onDeleted={handleAddonDeleted}
-      />
+            <div className="space-y-2">
+              {services.map((s, i) => (
+                <ServiceRow
+                  key={s.id}
+                  service={s}
+                  categories={categories}
+                  staff={staff}
+                  addons={addons}
+                  index={i}
+                  total={services.length}
+                  isDragging={dragIndex === i}
+                  isDragOver={dragOver === i && dragIndex !== i}
+                  onSaved={handleSaved}
+                  onDeleted={handleDeleted}
+                  onMoveUp={() => reorder(i, i - 1)}
+                  onMoveDown={() => reorder(i, i + 1)}
+                  onDragStart={() => setDragIndex(i)}
+                  onDragOver={e => { e.preventDefault(); setDragOver(i) }}
+                  onDrop={() => { reorder(dragIndex ?? i, i); setDragIndex(null); setDragOver(null) }}
+                  onDragEnd={() => { setDragIndex(null); setDragOver(null) }}
+                />
+              ))}
+            </div>
 
-      {/* Phase 18 — Packages teaser */}
-      <ComingSoonCard
-        icon={Package}
-        tone="accent"
-        title="Packages"
-        description="Bundle two or more services into a single bookable item with its own price + duration."
-        bullets={[
-          'Sell a "Spa Day" combo at a discount vs. individual services',
-          'Auto-block the right amount of time on the calendar',
-          'Track which packages sell best in Payments → Transactions',
-        ]}
-      />
+            {services.length === 0 && !adding && (
+              <div className="bg-white border border-hairline-soft px-4 py-10 text-center">
+                <Sparkles size={22} className="text-muted-text mx-auto mb-2" strokeWidth={1.5} />
+                <p className="text-sm font-semibold text-near-black">No services yet</p>
+                <p className="text-xs text-muted-text mt-0.5">Add your first service so clients can book it.</p>
+              </div>
+            )}
+          </>
+        )}
 
-      {/* Service rows */}
-      <div className="space-y-2">
-        {services.map((s, i) => (
-          <ServiceRow
-            key={s.id}
-            service={s}
+        {/* ── Categories ───────────────────────────────────────── */}
+        {subTab === 'categories' && (
+          <CategoriesPanel
             categories={categories}
-            staff={staff}
-            addons={addons}
-            index={i}
-            total={services.length}
-            isDragging={dragIndex === i}
-            isDragOver={dragOver === i && dragIndex !== i}
-            onSaved={handleSaved}
-            onDeleted={handleDeleted}
-            onMoveUp={() => reorder(i, i - 1)}
-            onMoveDown={() => reorder(i, i + 1)}
-            onDragStart={() => setDragIndex(i)}
-            onDragOver={e => { e.preventDefault(); setDragOver(i) }}
-            onDrop={() => { reorder(dragIndex ?? i, i); setDragIndex(null); setDragOver(null) }}
-            onDragEnd={() => { setDragIndex(null); setDragOver(null) }}
+            onCreated={handleCategoryCreated}
+            onUpdated={handleCategoryUpdated}
+            onDeleted={handleCategoryDeleted}
           />
-        ))}
-      </div>
+        )}
 
-      {services.length === 0 && !adding && (
-        <div className="bg-white border border-hairline-soft px-4 py-10 text-center">
-          <Sparkles size={22} className="text-muted-text mx-auto mb-2" strokeWidth={1.5} />
-          <p className="text-sm font-semibold text-near-black">No services yet</p>
-          <p className="text-xs text-muted-text mt-0.5">Add your first service so clients can book it.</p>
-        </div>
-      )}
+        {/* ── Add-ons ──────────────────────────────────────────── */}
+        {subTab === 'addons' && (
+          <AddonsPanel
+            addons={addons}
+            onCreated={handleAddonCreated}
+            onUpdated={handleAddonUpdated}
+            onDeleted={handleAddonDeleted}
+          />
+        )}
+
+        {/* ── Packages (coming soon) ───────────────────────────── */}
+        {subTab === 'packages' && (
+          <ComingSoonCard
+            icon={Package}
+            tone="accent"
+            title="Packages"
+            description="Bundle two or more services into a single bookable item with its own price + duration."
+            bullets={[
+              'Sell a "Spa Day" combo at a discount vs. individual services',
+              'Auto-block the right amount of time on the calendar',
+              'Track which packages sell best in Payments → Transactions',
+            ]}
+          />
+        )}
+      </div>
     </div>
   )
 }
@@ -682,10 +705,8 @@ export default function ServicesEditor() {
 const CATEGORIES_MAX = 8
 
 function CategoriesPanel({
-  open, onToggle, categories, onCreated, onUpdated, onDeleted,
+  categories, onCreated, onUpdated, onDeleted,
 }: {
-  open: boolean
-  onToggle: () => void
   categories: ServiceCategory[]
   onCreated: (c: ServiceCategory) => void
   onUpdated: (c: ServiceCategory) => void
@@ -696,11 +717,7 @@ function CategoriesPanel({
 
   return (
     <div className="bg-white border border-hairline-soft">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-cream transition-colors"
-      >
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-hairline-soft">
         <IconBox icon={Tag} size="md" />
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <p className="text-sm font-bold text-near-black">Categories</p>
@@ -708,11 +725,9 @@ function CategoriesPanel({
             {categories.length}/{CATEGORIES_MAX}
           </span>
         </div>
-        <ChevronDown size={16} className={`text-muted-text flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
+      </div>
 
-      {open && (
-        <div className="border-t border-hairline-soft p-4 space-y-3">
+      <div className="p-4 space-y-3">
           {categories.length === 0 && !adding && (
             <p className="text-2xs text-muted-text italic">
               No categories yet. Add a few to group services on your booking page.
@@ -757,7 +772,6 @@ function CategoriesPanel({
             />
           )}
         </div>
-      )}
     </div>
   )
 }
@@ -1179,10 +1193,8 @@ function AdvancedSection({
 const ADDONS_MAX = 20
 
 function AddonsPanel({
-  open, onToggle, addons, onCreated, onUpdated, onDeleted,
+  addons, onCreated, onUpdated, onDeleted,
 }: {
-  open: boolean
-  onToggle: () => void
   addons: ServiceAddon[]
   onCreated: (a: ServiceAddon) => void
   onUpdated: (a: ServiceAddon) => void
@@ -1193,11 +1205,7 @@ function AddonsPanel({
 
   return (
     <div className="bg-white border border-hairline-soft">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-cream transition-colors"
-      >
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-hairline-soft">
         <IconBox icon={Sparkles} size="md" />
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <p className="text-sm font-bold text-near-black">Add-ons</p>
@@ -1205,11 +1213,9 @@ function AddonsPanel({
             {addons.length}/{ADDONS_MAX}
           </span>
         </div>
-        <ChevronDown size={16} className={`text-muted-text flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
+      </div>
 
-      {open && (
-        <div className="border-t border-hairline-soft p-4 space-y-3">
+      <div className="p-4 space-y-3">
           {addons.length === 0 && !adding && (
             <p className="text-2xs text-muted-text italic">
               No add-ons yet. Add a few so services can offer extras at booking time.
@@ -1254,7 +1260,6 @@ function AddonsPanel({
             />
           )}
         </div>
-      )}
     </div>
   )
 }

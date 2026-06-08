@@ -223,14 +223,9 @@ export default function AvailabilityEditor() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="pb-8">
-      {/* Page heading — section + title live in EditorShell */}
-      <div className="px-5 pt-5 pb-4 border-b border-hairline-soft">
-        <p className="text-xs text-muted-text">Set your weekly hours and breaks, and block off holidays or closures. Daily limits and gaps live on the Capacity tab.</p>
-      </div>
-
+    <div className="space-y-4">
       {error && saveState === 'error' && (
-        <div className="mx-5 mt-4 px-4 py-3 bg-danger-bg border border-danger text-xs text-danger">
+        <div className="px-4 py-3 bg-danger-bg border border-danger text-xs text-danger">
           {error}
         </div>
       )}
@@ -278,7 +273,7 @@ export default function AvailabilityEditor() {
       </CollapsibleSection>
 
       {/* ─── Save bar ─── */}
-      <div className="px-5">
+      <div className="pt-1">
         <div className="flex items-center gap-4">
           <Button onClick={handleSave} size="md" disabled={saveState === 'saving'}>
             {saveState === 'saving' ? 'Saving…' : 'Save Availability'}

@@ -29,7 +29,7 @@ function fmt12(t: string | null): string {
 
 const INPUT = 'border border-hairline-strong bg-white px-3 py-1.5 text-sm text-near-black focus:outline-none focus:border-near-black'
 
-export default function AvailabilityRequestsEditor({ kind = 'standard' }: { kind?: 'standard' | 'squeeze_in' }) {
+export default function AvailabilityRequestsEditor({ kind = 'standard', embedded = false }: { kind?: 'standard' | 'squeeze_in'; embedded?: boolean }) {
   const isSqueeze = kind === 'squeeze_in'
   const [items,   setItems]   = useState<AvailabilityRequest[]>([])
   const [loading, setLoading] = useState(true)
@@ -88,19 +88,7 @@ export default function AvailabilityRequestsEditor({ kind = 'standard' }: { kind
     }
   }
 
-  return (
-    <TabShell>
-      <TabIntro>
-        {isSqueeze
-          ? 'Customers asking to be squeezed in on a fully-booked day — approve, suggest a time, or decline.'
-          : "Customers who asked for a time that wasn't open — approve to book instantly, suggest a different time, or decline."}
-      </TabIntro>
-
-      <Section
-        icon={Inbox}
-        title="Requests"
-        subtitle={isSqueeze ? 'Squeeze-in requests from clients on fully-booked days.' : 'Incoming availability requests waiting for your decision.'}
-      >
+  const body = (
         <AsyncBoundary
           loading={loading}
           error={error}
@@ -198,6 +186,26 @@ export default function AvailabilityRequestsEditor({ kind = 'standard' }: { kind
             })}
           </div>
         </AsyncBoundary>
+  )
+
+  // Embedded (e.g. inside the Squeeze-Ins tab) → just the queue; the parent
+  // supplies the TabShell + Section card so we don't nest cards/padding.
+  if (embedded) return body
+
+  return (
+    <TabShell>
+      <TabIntro>
+        {isSqueeze
+          ? 'Customers asking to be squeezed in on a fully-booked day — approve, suggest a time, or decline.'
+          : "Customers who asked for a time that wasn't open — approve to book instantly, suggest a different time, or decline."}
+      </TabIntro>
+
+      <Section
+        icon={Inbox}
+        title="Requests"
+        subtitle={isSqueeze ? 'Squeeze-in requests from clients on fully-booked days.' : 'Incoming availability requests waiting for your decision.'}
+      >
+        {body}
       </Section>
     </TabShell>
   )

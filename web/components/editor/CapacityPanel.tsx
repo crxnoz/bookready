@@ -194,7 +194,7 @@ export default function CapacityPanel() {
           </CollapsibleSection>
         )}
 
-        <div className="px-5 pt-5">
+        <div className="pt-1">
           <Button onClick={save} loading={saving}>Save capacity</Button>
         </div>
       </AsyncBoundary>

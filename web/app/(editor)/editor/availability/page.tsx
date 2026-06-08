@@ -1,7 +1,6 @@
 'use client'
 
 import { Suspense } from 'react'
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { CalendarDays, Users } from 'lucide-react'
 import EditorShell from '@/components/editor/EditorShell'
@@ -13,7 +12,8 @@ import WaitlistEditor from '@/components/editor/WaitlistEditor'
 import AvailabilityRequestsEditor from '@/components/editor/AvailabilityRequestsEditor'
 import AfterHoursPanel from '@/components/editor/AfterHoursPanel'
 import SqueezeInsPanel from '@/components/editor/SqueezeInsPanel'
-import { cn } from '@/lib/cn'
+import SubTabNav from '@/components/editor/SubTabNav'
+import NavCard from '@/components/ui/NavCard'
 
 /**
  * /editor/availability — Availability 2.0 hub.
@@ -72,17 +72,11 @@ function Hub() {
 
   return (
     <div>
-      <nav className="flex items-center gap-1 px-5 border-b border-hairline-soft overflow-x-auto overflow-y-hidden">
-        {TABS.map(t => (
-          <TabLink
-            key={t.id}
-            href={`/editor/availability?tab=${t.id}`}
-            active={tab === t.id}
-            label={t.label}
-            badge={t.badge}
-          />
-        ))}
-      </nav>
+      <SubTabNav
+        items={TABS}
+        activeId={tab}
+        hrefFor={id => `/editor/availability?tab=${id}`}
+      />
 
       {tab === 'calendar' && <CalendarOverridesEditor />}
       {tab === 'drops'    && <ReleaseStrategyPanel />}
@@ -103,51 +97,27 @@ function Hub() {
  */
 function AdvancedTab() {
   return (
-    <div>
-      <div className="mx-5 mt-5 border border-hairline-soft bg-cream/50 p-4 mb-5 text-sm text-muted-text">
+    <div className="p-3 sm:p-5 md:p-6 space-y-4">
+      <div className="border border-hairline-soft bg-cream/50 p-4 text-sm text-muted-text">
         The <strong className="text-near-black">Smart Calendar</strong> is your primary scheduling
         tool. The weekly schedule below is the fallback for any date you haven&apos;t customized —
         edit it if you keep regular hours, or ignore it and drive everything from the calendar.
       </div>
       <AvailabilityEditor />
-      <div className="mx-5 mt-6 mb-2 grid gap-2 sm:grid-cols-2">
-        <Link href="/editor/staff" className=" border border-hairline-soft bg-white p-4 hover:border-near-black/30 transition-colors">
-          <div className="flex items-center gap-2 text-near-black font-medium text-sm"><Users size={15} /> Staff availability</div>
-          <p className="text-xs text-muted-text mt-1">Per-staff hours, days off, and blocked dates.</p>
-        </Link>
-        <Link href="/editor/services" className=" border border-hairline-soft bg-white p-4 hover:border-near-black/30 transition-colors">
-          <div className="flex items-center gap-2 text-near-black font-medium text-sm"><CalendarDays size={15} /> Service availability</div>
-          <p className="text-xs text-muted-text mt-1">Which services are bookable and their durations.</p>
-        </Link>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <NavCard
+          icon={Users}
+          title="Staff availability"
+          description="Per-staff hours, days off, and blocked dates."
+          href="/editor/staff"
+        />
+        <NavCard
+          icon={CalendarDays}
+          title="Service availability"
+          description="Which services are bookable and their durations."
+          href="/editor/services"
+        />
       </div>
     </div>
-  )
-}
-
-function TabLink({
-  href, active, label, badge,
-}: {
-  href:   string
-  active: boolean
-  label:  string
-  badge?: string
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        'inline-flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border-b-2 -mb-px whitespace-nowrap',
-        active
-          ? 'text-near-black border-near-black'
-          : 'text-muted-text border-transparent hover:text-near-black',
-      )}
-    >
-      {label}
-      {badge && (
-        <span className="text-eyebrow font-bold tracking-[0.06em] uppercase bg-blush border border-hairline-soft text-near-black px-1 py-0.5 ml-1">
-          {badge}
-        </span>
-      )}
-    </Link>
   )
 }

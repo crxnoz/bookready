@@ -136,7 +136,7 @@ export default function ReleaseStrategyPanel({ onChange }: { onChange?: () => vo
   if (loading) {
     return (
       <TabShell>
-        <div className="px-5 pt-5 pb-4 flex items-center gap-2 text-xs text-muted-text">
+        <div className="flex items-center gap-2 text-xs text-muted-text">
           <Loader2 size={14} className="animate-spin" /> Loading release strategy…
         </div>
       </TabShell>
@@ -175,13 +175,13 @@ export default function ReleaseStrategyPanel({ onChange }: { onChange?: () => vo
       </TabIntro>
 
       {error && (
-        <div className="mx-5 mt-4 bg-danger-bg border border-danger p-2.5 text-2xs text-danger flex items-center gap-2">
+        <div className="bg-danger-bg border border-danger p-2.5 text-2xs text-danger flex items-center gap-2">
           <AlertCircle size={12} /> {error}
         </div>
       )}
 
       {/* Release strategy — mode picker + cadence sub-fields */}
-      <div className="border-b border-hairline-soft">
+      <div className="border border-hairline-soft bg-white">
         {/* Custom header with action button using the section chrome manually
             so the save button doesn't trigger the accordion toggle */}
         <div className="flex items-center gap-3 px-5 py-4">

@@ -188,7 +188,7 @@ export default function SqueezeInsPanel() {
 
       {/* The squeeze-in request queue */}
       <Section icon={Inbox} title="Squeeze-In Requests" subtitle="Pending requests from clients on fully-booked days">
-        <AvailabilityRequestsEditor kind="squeeze_in" />
+        <AvailabilityRequestsEditor kind="squeeze_in" embedded />
       </Section>
     </TabShell>
   )
