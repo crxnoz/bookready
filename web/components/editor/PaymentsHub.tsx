@@ -23,6 +23,7 @@ import type {
   StripePayout,
 } from '@/lib/types'
 import { PaymentPill, PaymentSummary } from '@/components/editor/AppointmentPaymentStatus'
+import StatusBadge from '@/components/ui/StatusBadge'
 import { cn } from '@/lib/cn'
 
 type SubTab = 'overview' | 'deposits' | 'transactions' | 'payouts'
@@ -699,27 +700,18 @@ function TransactionRow({ r }: { r: PaymentTransaction }) {
 }
 
 function TxStatusPill({ r }: { r: PaymentTransaction }) {
-  const map: Record<string, { label: string; cls: string }> = {
-    pending_payment:    { label: 'Deposit pending', cls: 'bg-white border border-hairline-strong text-muted-text' },
-    deposit_paid:       { label: 'Deposit',      cls: 'bg-lavender text-near-black' },
-    paid:               { label: 'Paid',         cls: 'bg-near-black text-white' },
-    refunded:           { label: 'Refunded',     cls: 'bg-white border border-hairline-strong text-muted-text' },
-    partially_refunded: { label: 'Part refund',  cls: 'bg-white border border-hairline-strong text-near-black' },
-    failed:             { label: 'Failed',       cls: 'bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] text-danger' },
-  }
+  // Disputes outrank everything; the ledger keeps the sub-status detail
+  // (needs response / under review) via a label override on the shared badge.
   if (r.dispute_status) {
     return (
-      <span className="text-eyebrow font-bold tracking-[0.06em] uppercase bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] text-danger px-1.5 py-0.5">
-        Dispute · {r.dispute_status.replace(/_/g, ' ')}
-      </span>
+      <StatusBadge
+        domain="payment"
+        status="disputed"
+        label={`Dispute · ${r.dispute_status.replace(/_/g, ' ')}`}
+      />
     )
   }
-  const cfg = map[r.payment_status] ?? { label: r.payment_status.replace(/_/g, ' '), cls: 'bg-cream text-muted-text' }
-  return (
-    <span className={cn('text-eyebrow font-bold tracking-[0.06em] uppercase px-1.5 py-0.5', cfg.cls)}>
-      {cfg.label}
-    </span>
-  )
+  return <StatusBadge domain="payment" status={r.payment_status} />
 }
 
 // ── Payouts tab (Phase 15) ──────────────────────────────────────────────────
@@ -783,16 +775,6 @@ function PayoutsList() {
 
 function PayoutRow({ p }: { p: StripePayout }) {
   const sym = p.currency === 'USD' ? '$' : ''
-  const status = (() => {
-    switch (p.status) {
-      case 'paid':       return { label: 'In your bank', cls: 'bg-near-black text-white' }
-      case 'pending':    return { label: 'Pending',      cls: 'bg-blush text-near-black' }
-      case 'in_transit': return { label: 'On the way',   cls: 'bg-lavender text-near-black' }
-      case 'canceled':   return { label: 'Canceled',     cls: 'bg-white border border-hairline-strong text-muted-text' }
-      case 'failed':     return { label: 'Failed',       cls: 'bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] text-danger' }
-      default:           return { label: p.status.replace(/_/g, ' '), cls: 'bg-cream text-muted-text' }
-    }
-  })()
   const arrival = new Date(p.arrival_date * 1000)
   const created = new Date(p.created_at * 1000)
   return (
@@ -802,9 +784,7 @@ function PayoutRow({ p }: { p: StripePayout }) {
           <div className="flex items-center gap-2 flex-wrap">
             <ArrowDownToLine size={11} className="text-muted-text" />
             <p className="text-sm font-bold text-near-black tabular-nums">{sym}{p.amount.toFixed(2)} {p.currency}</p>
-            <span className={cn('text-eyebrow font-bold tracking-[0.06em] uppercase px-1.5 py-0.5', status.cls)}>
-              {status.label}
-            </span>
+            <StatusBadge domain="payout" status={p.status} />
             {p.method && (
               <span className="text-eyebrow font-bold tracking-[0.06em] uppercase border border-hairline bg-white text-muted-text px-1.5 py-0.5">
                 {p.method}

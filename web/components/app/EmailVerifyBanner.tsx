@@ -50,9 +50,9 @@ export default function EmailVerifyBanner() {
   if (verified !== false) return null
 
   return (
-    <div className="bg-[#fff8e6] border-b border-[#f1d486] px-4 py-2.5 flex items-center gap-3">
+    <div className="bg-warning-bg border-b border-[#f1d486] px-4 py-2.5 flex items-center gap-3">
       <AlertTriangle size={14} className="text-warning flex-shrink-0" />
-      <p className="text-xs text-[#5a4500] leading-snug flex-1 min-w-0">
+      <p className="text-xs text-warning leading-snug flex-1 min-w-0">
         <strong className="font-bold">Verify your email</strong>.{' '}
         We sent a link when you signed up.{' '}
         {sent

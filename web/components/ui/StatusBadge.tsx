@@ -21,10 +21,14 @@ const TONE: Record<StatusTone, string> = {
 interface StatusBadgeProps {
   domain:    StatusDomain
   status:    string | null | undefined
+  /** Override the registry label (tone still comes from the registry).
+   *  Use sparingly — only where a denser view needs extra detail, e.g. the
+   *  transactions ledger showing a dispute's sub-status. */
+  label?:    string
   className?: string
 }
 
-export default function StatusBadge({ domain, status, className }: StatusBadgeProps) {
+export default function StatusBadge({ domain, status, label, className }: StatusBadgeProps) {
   const def = statusDef(domain, status)
   return (
     <span
@@ -34,7 +38,7 @@ export default function StatusBadge({ domain, status, className }: StatusBadgePr
         className,
       )}
     >
-      {def.label}
+      {label ?? def.label}
     </span>
   )
 }

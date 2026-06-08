@@ -10,6 +10,7 @@ import {
   deleteEditorBlockedDate,
 } from '@/lib/api'
 import Button from '@/components/ui/Button'
+import Toggle from '@/components/ui/Toggle'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
 import {
   Clock,
@@ -51,29 +52,6 @@ const DEFAULT_SETTINGS: AvailabilitySettings = {
 const BUFFER_OPTIONS = [0, 5, 10, 15, 20, 30, 45, 60]
 
 // ── Primitives ────────────────────────────────────────────────────────────────
-
-function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label?: string }) {
-  return (
-    <label className="flex items-center gap-2.5 cursor-pointer select-none">
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on}
-        onClick={() => onChange(!on)}
-        className={`relative inline-flex h-5 w-9 flex-shrink-0 transition-colors duration-150 focus:outline-none ${
-          on ? 'bg-near-black' : 'bg-[rgba(18,18,18,0.15)]'
-        }`}
-      >
-        <span
-          className={`inline-block h-4 w-4 bg-white shadow transform transition-transform duration-150 m-0.5 ${
-            on ? 'translate-x-4' : 'translate-x-0'
-          }`}
-        />
-      </button>
-      {label && <span className="text-sm font-medium text-near-black">{label}</span>}
-    </label>
-  )
-}
 
 function TimeInput({
   value,
@@ -189,7 +167,7 @@ function DayCard({
           <span className={`text-xs font-medium ${entry.is_open ? 'text-near-black' : 'text-muted-text'}`}>
             {entry.is_open ? 'Open' : 'Closed'}
           </span>
-          <Toggle on={entry.is_open} onChange={v => set('is_open', v)} />
+          <Toggle checked={entry.is_open} onChange={v => set('is_open', v)} />
         </div>
       </div>
 

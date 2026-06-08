@@ -22,6 +22,7 @@ import type {
   StaffBlockedDate,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 import ImageUploadField from '@/components/editor/ImageUploadField'
 
 // ── Form state ────────────────────────────────────────────────────────────────
@@ -703,6 +704,7 @@ function StaffBlockedDatesPanel({ staffId }: { staffId: number }) {
   const [end,    setEnd]    = useState('')
   const [reason, setReason] = useState('')
   const [adding, setAdding] = useState(false)
+  const confirm = useConfirm()
 
   useEffect(() => {
     let cancelled = false
@@ -734,7 +736,8 @@ function StaffBlockedDatesPanel({ staffId }: { staffId: number }) {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm('Remove this blocked date?')) return
+    const ok = await confirm({ title: 'Remove this blocked date?', message: 'This date will become bookable again.', confirmLabel: 'Remove', tone: 'danger' })
+    if (! ok) return
     try {
       await deleteEditorStaffBlockedDate(staffId, id)
       setRows(prev => (prev ?? []).filter(r => r.id !== id))

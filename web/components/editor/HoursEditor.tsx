@@ -2,30 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import Button from '@/components/ui/Button'
+import Toggle from '@/components/ui/Toggle'
 import { HoursEntry } from '@/lib/types'
 import { getEditorHours, updateEditorHours } from '@/lib/api'
 
 type PageStatus = 'loading' | 'idle' | 'saving' | 'saved' | 'error'
-
-function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      onClick={() => onChange(!on)}
-      className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer transition-colors duration-150 focus:outline-none ${
-        on ? 'bg-near-black' : 'bg-[rgba(18,18,18,0.12)]'
-      }`}
-    >
-      <span
-        className={`pointer-events-none inline-block h-4 w-4 bg-white shadow transform transition-transform duration-150 m-0.5 ${
-          on ? 'translate-x-4' : 'translate-x-0'
-        }`}
-      />
-    </button>
-  )
-}
 
 function TimeInput({
   value,
@@ -70,7 +51,7 @@ function DayRow({
           {entry.day_name}
         </span>
 
-        <Toggle on={entry.is_open} onChange={v => set('is_open', v)} />
+        <Toggle checked={entry.is_open} onChange={v => set('is_open', v)} />
 
         {entry.is_open ? (
           <div className="flex items-center gap-2 flex-1 flex-wrap">

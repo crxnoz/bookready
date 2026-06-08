@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Input from '@/components/ui/Input'
 import Textarea from '@/components/ui/Textarea'
 import Button from '@/components/ui/Button'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 import ImageUploadField from '@/components/editor/ImageUploadField'
 import { Service, ServiceCategory, ServiceAddon, ServiceAddonLink, ApiStaffMember } from '@/lib/types'
 import {
@@ -758,8 +759,10 @@ function CategoryRow({
   onDeleted: (id: number) => void
 }) {
   const [busy, setBusy] = useState(false)
+  const confirm = useConfirm()
   async function handleDelete() {
-    if (!confirm(`Delete "${category.name}"? Services in this category will be moved to "Uncategorized".`)) return
+    const ok = await confirm({ title: `Delete "${category.name}"?`, message: 'Services in this category move to "Uncategorized".', confirmLabel: 'Delete', tone: 'danger' })
+    if (! ok) return
     setBusy(true)
     try {
       await deleteEditorServiceCategory(category.id)
@@ -1253,8 +1256,10 @@ function AddonRow({
   onDeleted: (id: number) => void
 }) {
   const [busy, setBusy] = useState(false)
+  const confirm = useConfirm()
   async function handleDelete() {
-    if (!confirm(`Delete "${addon.name}"? Services linked to this add-on will lose the link. Past appointments keep their original details.`)) return
+    const ok = await confirm({ title: `Delete "${addon.name}"?`, message: 'Linked services lose the link. Past appointments keep their details.', confirmLabel: 'Delete', tone: 'danger' })
+    if (! ok) return
     setBusy(true)
     try {
       await deleteEditorServiceAddon(addon.id)

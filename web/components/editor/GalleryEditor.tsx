@@ -50,13 +50,13 @@ export default function GalleryEditor() {
 
             <div className="flex-1 space-y-2">
               <input
-                className="w-full text-sm bg-cream border border-hairline px-3 py-1.5 text-near-black placeholder:text-[#b0a99f] focus:outline-none focus:border-near-black/30"
+                className="w-full text-sm bg-cream border border-hairline px-3 py-1.5 text-near-black placeholder:text-faint-text focus:outline-none focus:border-near-black/30"
                 placeholder="Paste a link to your image"
                 value={img.url}
                 onChange={e => updateOne(img.id, { url: e.target.value })}
               />
               <input
-                className="w-full text-sm bg-cream border border-hairline px-3 py-1.5 text-near-black placeholder:text-[#b0a99f] focus:outline-none focus:border-near-black/30"
+                className="w-full text-sm bg-cream border border-hairline px-3 py-1.5 text-near-black placeholder:text-faint-text focus:outline-none focus:border-near-black/30"
                 placeholder="Image description (for screen readers)"
                 value={img.alt}
                 onChange={e => updateOne(img.id, { alt: e.target.value })}

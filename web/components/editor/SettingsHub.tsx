@@ -14,6 +14,8 @@ function useScrollResetOnTab(tab: string) {
 }
 import { useRouter } from 'next/navigation'
 import { clearAuth } from '@/lib/auth'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
+import Switch from '@/components/ui/Toggle'
 import {
   Building2, Calendar, CalendarClock, CreditCard, Bell, UserCircle,
   Plug, AlertTriangle, ChevronRight, ChevronDown, Loader2, Check, AlertCircle,
@@ -1293,6 +1295,7 @@ function AccountSettingsPanel() {
   const [signoutBusy, setSignoutBusy] = useState(false)
   const [signoutMsg,  setSignoutMsg]  = useState<string | null>(null)
   const [signoutErr,  setSignoutErr]  = useState<string | null>(null)
+  const confirm = useConfirm()
 
   useEffect(() => {
     let cancelled = false
@@ -1349,7 +1352,8 @@ function AccountSettingsPanel() {
   }
 
   async function handleSignOutEverywhere() {
-    if (! confirm('Sign out every other device that has used this account?')) return
+    const ok = await confirm({ title: 'Sign out everywhere?', message: 'Every other device signed in to this account will be signed out.', confirmLabel: 'Sign out', tone: 'danger' })
+    if (! ok) return
     setSignoutBusy(true); setSignoutErr(null); setSignoutMsg(null)
     try {
       const res = await signOutEverywhere()
@@ -1632,23 +1636,7 @@ function Toggle({
           {hint && <span className="text-2xs text-muted-text">{hint}</span>}
         </div>
       </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on}
-        onClick={() => { if (!disabled) onToggle() }}
-        disabled={disabled}
-        className={cn(
-          'relative inline-flex items-center w-10 h-5 transition-colors border flex-shrink-0',
-          on ? 'bg-near-black border-near-black' : 'bg-white border-hairline-strong',
-          disabled && 'opacity-40 cursor-not-allowed',
-        )}
-      >
-        <span className={cn(
-          'absolute top-0.5 w-3.5 h-3.5 bg-white border border-hairline-strong transition-all',
-          on ? 'left-[22px]' : 'left-0.5',
-        )} />
-      </button>
+      <Switch checked={on} onChange={onToggle} disabled={disabled} className="flex-shrink-0" />
     </div>
   )
 }
@@ -2095,6 +2083,7 @@ function PreferencesSettingsPanel() {
   // Plain password field — empty unless user types into it. We only send
   // it on save when the visibility is 'private' AND a password was typed.
   const [pwInput, setPwInput] = useState('')
+  const confirm = useConfirm()
 
   useEffect(() => {
     let cancelled = false
@@ -2144,7 +2133,8 @@ function PreferencesSettingsPanel() {
 
   async function clearPassword() {
     if (! draft) return
-    if (! confirm('Clear the site password? Anyone with the link will be able to view your site again (once you switch visibility back to public).')) return
+    const ok = await confirm({ title: 'Clear the site password?', message: 'Anyone with the link will be able to view your site again once visibility is public.', confirmLabel: 'Clear password', tone: 'danger' })
+    if (! ok) return
     setSaveState('saving'); setSaveErr(null)
     try {
       const next = await updateEditorBusiness({ site_password: '' })
@@ -2384,7 +2374,7 @@ function TextField({
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full px-3 py-2 text-sm text-near-black bg-transparent placeholder:text-[#c4bcb6] focus:outline-none"
+          className="w-full px-3 py-2 text-sm text-near-black bg-transparent placeholder:text-faint-text focus:outline-none"
         />
       </div>
       {hint && <p className="text-eyebrow text-muted-text mt-1">{hint}</p>}
@@ -2410,7 +2400,7 @@ function TextAreaField({
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
-        className="w-full mt-1.5 px-3 py-2 text-sm text-near-black bg-white border border-hairline-strong placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black resize-y leading-relaxed"
+        className="w-full mt-1.5 px-3 py-2 text-sm text-near-black bg-white border border-hairline-strong placeholder:text-faint-text focus:outline-none focus:border-near-black resize-y leading-relaxed"
       />
       {hint && <p className="text-eyebrow text-muted-text mt-1">{hint}</p>}
     </label>
@@ -2720,7 +2710,7 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          <div className="bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] px-3.5 py-3 text-xs leading-relaxed text-[#7a1f1f]">
+          <div className="bg-danger-bg border border-danger/30 px-3.5 py-3 text-xs leading-relaxed text-danger">
             <p className="font-semibold mb-1.5">This will permanently:</p>
             <ul className="list-disc list-outside pl-4 space-y-0.5">
               <li>Cancel your BookReady subscription (no more charges)</li>
@@ -2742,7 +2732,7 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
               onChange={e => setTyped(e.target.value)}
               placeholder={slug ?? 'yoursite'}
               autoComplete="off"
-              className="w-full bg-white border border-hairline-strong px-3 py-2.5 text-sm text-near-black font-mono placeholder:text-[#c4bcb6] focus:outline-none focus:border-danger transition-colors"
+              className="w-full bg-white border border-hairline-strong px-3 py-2.5 text-sm text-near-black font-mono placeholder:text-faint-text focus:outline-none focus:border-danger transition-colors"
             />
             {typedSlug && slug && !slugMatches && (
               <p className="text-2xs text-danger mt-1">
@@ -2937,7 +2927,7 @@ function EmailTemplateCard({
               value={value.subject ?? ''}
               onChange={e => onChange({ ...value, subject: e.target.value || null })}
               placeholder={meta.defaultSubject}
-              className="mt-1.5 w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black"
+              className="mt-1.5 w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-faint-text focus:outline-none focus:border-near-black"
               maxLength={255}
             />
           </label>
@@ -2948,7 +2938,7 @@ function EmailTemplateCard({
               value={value.intro ?? ''}
               onChange={e => onChange({ ...value, intro: e.target.value || null })}
               placeholder={meta.defaultIntro}
-              className="mt-1.5 w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black resize-y leading-relaxed"
+              className="mt-1.5 w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-faint-text focus:outline-none focus:border-near-black resize-y leading-relaxed"
               maxLength={2000}
             />
           </label>
@@ -2959,7 +2949,7 @@ function EmailTemplateCard({
               value={value.signoff ?? ''}
               onChange={e => onChange({ ...value, signoff: e.target.value || null })}
               placeholder="e.g. Thanks for choosing us, Anna"
-              className="mt-1.5 w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black resize-y leading-relaxed"
+              className="mt-1.5 w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-faint-text focus:outline-none focus:border-near-black resize-y leading-relaxed"
               maxLength={2000}
             />
           </label>
@@ -2987,7 +2977,7 @@ function EmailTemplateCard({
                 value={testTo}
                 onChange={e => setTestTo(e.target.value)}
                 placeholder="Send to… (defaults to your account email)"
-                className="flex-1 min-w-0 bg-white border border-hairline-strong px-3 py-1.5 text-xs text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black"
+                className="flex-1 min-w-0 bg-white border border-hairline-strong px-3 py-1.5 text-xs text-near-black placeholder:text-faint-text focus:outline-none focus:border-near-black"
               />
               <button
                 type="button"

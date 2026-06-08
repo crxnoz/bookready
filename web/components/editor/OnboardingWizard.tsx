@@ -794,8 +794,8 @@ function Field({ label, hint, children }: {
 }
 
 const labelCls = 'block text-eyebrow font-bold tracking-[0.16em] uppercase text-muted-text mb-1.5'
-const inputCls = 'w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black transition-colors'
-const textareaCls = 'w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black transition-colors resize-y leading-relaxed'
+const inputCls = 'w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-faint-text focus:outline-none focus:border-near-black transition-colors'
+const textareaCls = 'w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-faint-text focus:outline-none focus:border-near-black transition-colors resize-y leading-relaxed'
 
 // ── A10: Welcome scene ─────────────────────────────────────────────────
 function WelcomeScene({ firstName, businessName, onStart, onSignOut }: {

@@ -16,7 +16,7 @@ export type StatusTone =
   | 'neutral' | 'info' | 'success' | 'warning' | 'danger' | 'accent'
 
 export type StatusDomain =
-  | 'appointment' | 'payment' | 'connect' | 'entity' | 'waitlist' | 'request' | 'customer'
+  | 'appointment' | 'payment' | 'connect' | 'entity' | 'waitlist' | 'request' | 'customer' | 'payout'
 
 export interface StatusDef {
   label: string
@@ -77,6 +77,15 @@ const REGISTRY: Record<StatusDomain, Record<string, StatusDef>> = {
     regular:   { label: 'Regular',   tone: 'success' },
     vip:       { label: 'VIP',       tone: 'warning' },
     inactive:  { label: 'Inactive',  tone: 'neutral' },
+  },
+  // Stripe Connect payout status. Friendly owner-facing copy; "money landed"
+  // = success (green), matching how payments read 'paid' across the app.
+  payout: {
+    paid:       { label: 'In your bank', tone: 'success' },
+    pending:    { label: 'Pending',      tone: 'accent'  },
+    in_transit: { label: 'On the way',   tone: 'info'    },
+    canceled:   { label: 'Canceled',     tone: 'neutral' },
+    failed:     { label: 'Failed',       tone: 'danger'  },
   },
 }
 

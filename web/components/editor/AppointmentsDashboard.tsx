@@ -10,6 +10,8 @@ import {
 } from '@/lib/api'
 import type { Appointment, AppointmentStatus } from '@/lib/types'
 import { cn } from '@/lib/cn'
+import StatusBadge from '@/components/ui/StatusBadge'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 import { PaymentPill, PaymentSummary } from '@/components/editor/AppointmentPaymentStatus'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -37,31 +39,13 @@ function getWeekBounds(): [string, string] {
   return [start.toISOString().slice(0, 10), end.toISOString().slice(0, 10)]
 }
 
-// ── Status pill ───────────────────────────────────────────────────────────────
-
-const STATUS_CFG: Record<string, { label: string; cls: string }> = {
-  pending:   { label: 'Pending',   cls: 'bg-blush text-near-black' },
-  confirmed: { label: 'Confirmed', cls: 'bg-lavender text-near-black' },
-  completed: { label: 'Completed', cls: 'bg-near-black text-white' },
-  cancelled: { label: 'Cancelled', cls: 'bg-white border border-hairline-strong text-muted-text' },
-  no_show:   { label: 'No-show',   cls: 'bg-white border border-hairline-strong text-near-black' },
-}
-
-function StatusPill({ status }: { status: string }) {
-  const cfg = STATUS_CFG[status] ?? { label: status, cls: 'bg-white border border-hairline text-near-black' }
-  return (
-    <span className={cn('text-eyebrow font-bold tracking-[0.06em] uppercase px-2 py-0.5 flex-shrink-0 whitespace-nowrap', cfg.cls)}>
-      {cfg.label}
-    </span>
-  )
-}
-
 // ── Main component (Bookings Hub) ─────────────────────────────────────────────
 
 export default function AppointmentsDashboard() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
+  const confirm = useConfirm()
 
   useEffect(() => {
     getEditorAppointments({ limit: 200 })
@@ -95,7 +79,8 @@ export default function AppointmentsDashboard() {
   }
 
   async function handleDecline(id: number) {
-    if (!confirm('Decline this request?')) return
+    const ok = await confirm({ title: 'Decline this request?', message: 'The client will be notified their booking was declined.', confirmLabel: 'Decline', tone: 'danger' })
+    if (! ok) return
     setActionLoading(id)
     try {
       await deleteEditorAppointment(id)
@@ -255,7 +240,7 @@ function PreviewCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
             <p className="text-sm font-bold text-near-black truncate">{appt.customer_name}</p>
-            <StatusPill status={appt.status} />
+            <StatusBadge domain="appointment" status={appt.status} className="flex-shrink-0" />
             <PaymentPill appt={appt} />
           </div>
           <p className="text-2xs text-muted-text truncate">
@@ -311,7 +296,7 @@ function HubCard({
       'h-full min-h-[120px] flex flex-col justify-between p-4 border transition-colors',
       disabled
         ? 'bg-[rgba(18,18,18,0.02)] border-hairline-soft cursor-not-allowed'
-        : 'bg-white border-hairline hover:border-[#121212]'
+        : 'bg-white border-hairline hover:border-near-black'
     )}>
       <div>
         <div className="flex items-start justify-between gap-2 mb-1.5">

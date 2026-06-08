@@ -12,6 +12,7 @@ import {
   Clock, Building2,
 } from 'lucide-react'
 import ImageUploadField from '@/components/editor/ImageUploadField'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 import {
   ComingSoonPanel as ComingSoonHero,
   ComingSoonCard,
@@ -492,16 +493,16 @@ function CollapsibleSection({
   )
 }
 
-function StatusBadge({ children, tone = 'neutral' }: {
+function Chip({ children, tone = 'neutral' }: {
   children: React.ReactNode
   tone?: 'neutral' | 'muted' | 'accent'
 }) {
   return (
     <span className={cn(
       'inline-flex items-center gap-1 text-eyebrow font-bold tracking-[0.06em] uppercase px-1.5 py-0.5 border',
-      tone === 'neutral' && 'border-hairline-strong bg-cream text-[rgba(18,18,18,0.7)]',
-      tone === 'muted'   && 'border-transparent bg-lavender text-[rgba(18,18,18,0.55)]',
-      tone === 'accent'  && 'border-transparent bg-blush text-[rgba(18,18,18,0.7)]',
+      tone === 'neutral' && 'border-hairline-strong bg-cream text-muted-text',
+      tone === 'muted'   && 'border-transparent bg-lavender text-faint-text',
+      tone === 'accent'  && 'border-transparent bg-blush text-near-black',
     )}>
       {children}
     </span>
@@ -1346,7 +1347,7 @@ function ContentTabsPanel({
         subtitle="Rename the tabs your visitors see and choose which sections appear. Booking is always visible."
         icon={ListChecks}
         defaultOpen
-        statusBadge={hiddenCount > 0 && <StatusBadge tone="muted">{hiddenCount} hidden</StatusBadge>}
+        statusBadge={hiddenCount > 0 && <Chip tone="muted">{hiddenCount} hidden</Chip>}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {TAB_LABEL_FIELDS.map(({ key, sectionKey, label }) => {
@@ -1522,7 +1523,7 @@ function InstructionsEditorPanel({
       title={title}
       subtitle={subtitle}
       icon={icon}
-      statusBadge={<StatusBadge>{value.items.length} item{value.items.length === 1 ? '' : 's'}</StatusBadge>}
+      statusBadge={<Chip>{value.items.length} item{value.items.length === 1 ? '' : 's'}</Chip>}
     >
       <TextField
         label="Section heading"
@@ -1712,7 +1713,7 @@ function AboutEditorPanel({
       title="About"
       subtitle="The story shown on your About tab: who you are, what you do, what makes your work different."
       icon={Info}
-      statusBadge={<StatusBadge tone={filled ? 'neutral' : 'muted'}>{filled ? 'Set' : 'Default'}</StatusBadge>}
+      statusBadge={<Chip tone={filled ? 'neutral' : 'muted'}>{filled ? 'Set' : 'Default'}</Chip>}
     >
       {/* Image slots rendered with the About section. Most templates expose
           three (e.g. TFR's offset triptych); Blackline opts into a single
@@ -1938,9 +1939,9 @@ function PoliciesEditorPanel({ settings, onSaveSettings }: {
       subtitle="Cancellation, late arrival, no-show, deposit, and reschedule policies shown on the Policy tab."
       icon={FileText}
       statusBadge={!loading && (
-        <StatusBadge tone={setCount > 0 ? 'neutral' : 'muted'}>
+        <Chip tone={setCount > 0 ? 'neutral' : 'muted'}>
           {setCount}/{POLICY_FIELDS.length} set
-        </StatusBadge>
+        </Chip>
       )}
     >
       <PoliciesHeadingInline settings={settings} onSaveSettings={onSaveSettings} />
@@ -2514,6 +2515,7 @@ function GalleryManagerPanel({ settings, onSaveSettings }: {
   const [error, setError]     = useState<string | null>(null)
   const [busyId, setBusyId]   = useState<number | null>(null)
   const [editing, setEditing] = useState<GalleryItem | null>(null)
+  const confirm = useConfirm()
   // When the user clicks "Add image" inside a group we remember which group
   // it was so the new item is created with the right group_id pre-filled.
   const [addingForGroup, setAddingForGroup] = useState<number | null | 'none'>(null)
@@ -2558,7 +2560,8 @@ function GalleryManagerPanel({ settings, onSaveSettings }: {
   }
 
   async function remove(item: GalleryItem) {
-    if (!confirm(`Delete "${item.title ?? 'this image'}"? This can't be undone.`)) return
+    const ok = await confirm({ title: `Delete "${item.title ?? 'this image'}"?`, message: "This can't be undone.", confirmLabel: 'Delete', tone: 'danger' })
+    if (! ok) return
     setBusyId(item.id); setError(null)
     try {
       await deleteEditorGalleryItem(item.id)
@@ -2598,10 +2601,15 @@ function GalleryManagerPanel({ settings, onSaveSettings }: {
 
   async function removeGroup(g: GalleryGroup) {
     const inGroup = itemsForGroup(g.id).length
-    const msg = inGroup === 0
-      ? `Delete the "${g.heading}" collection?`
-      : `Delete the "${g.heading}" collection? Its ${inGroup} image${inGroup === 1 ? '' : 's'} will be kept but moved to "Ungrouped".`
-    if (!confirm(msg)) return
+    const ok = await confirm({
+      title: `Delete the "${g.heading}" collection?`,
+      message: inGroup === 0
+        ? 'The collection will be removed.'
+        : `Its ${inGroup} image${inGroup === 1 ? '' : 's'} will be kept but moved to "Ungrouped".`,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+    if (! ok) return
     setError(null)
     try {
       await deleteEditorGalleryGroup(g.id)
@@ -2624,7 +2632,7 @@ function GalleryManagerPanel({ settings, onSaveSettings }: {
       subtitle="Organize your work into up to 3 collections. Each can hold up to 6 photos."
       icon={ImageIcon}
       statusBadge={!loading && (
-        <StatusBadge>{totalImages} image{totalImages === 1 ? '' : 's'}</StatusBadge>
+        <Chip>{totalImages} image{totalImages === 1 ? '' : 's'}</Chip>
       )}
     >
       <GalleryHeadingInline settings={settings} onSaveSettings={onSaveSettings} />
@@ -3101,6 +3109,7 @@ function ResultsManagerPanel({ settings, onSaveSettings }: {
   const [error, setError]     = useState<string | null>(null)
   const [busyId, setBusyId]   = useState<number | null>(null)
   const [editing, setEditing] = useState<ResultsItem | null>(null)
+  const confirm = useConfirm()
   const [addingForGroup, setAddingForGroup] = useState<number | null | 'none'>(null)
   const [addingGroup, setAddingGroup]       = useState(false)
 
@@ -3143,7 +3152,8 @@ function ResultsManagerPanel({ settings, onSaveSettings }: {
   }
 
   async function remove(item: ResultsItem) {
-    if (!confirm(`Delete this pair? This can't be undone.`)) return
+    const ok = await confirm({ title: 'Delete this pair?', message: "This can't be undone.", confirmLabel: 'Delete', tone: 'danger' })
+    if (! ok) return
     setBusyId(item.id); setError(null)
     try {
       await deleteEditorResultsItem(item.id)
@@ -3183,10 +3193,15 @@ function ResultsManagerPanel({ settings, onSaveSettings }: {
 
   async function removeGroup(g: ResultsGroup) {
     const inGroup = itemsForGroup(g.id).length
-    const msg = inGroup === 0
-      ? `Delete the "${g.heading}" collection?`
-      : `Delete the "${g.heading}" collection? Its ${inGroup} pair${inGroup === 1 ? '' : 's'} will be kept but moved to "Ungrouped".`
-    if (!confirm(msg)) return
+    const ok = await confirm({
+      title: `Delete the "${g.heading}" collection?`,
+      message: inGroup === 0
+        ? 'The collection will be removed.'
+        : `Its ${inGroup} pair${inGroup === 1 ? '' : 's'} will be kept but moved to "Ungrouped".`,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+    if (! ok) return
     setError(null)
     try {
       await deleteEditorResultsGroup(g.id)
@@ -3208,7 +3223,7 @@ function ResultsManagerPanel({ settings, onSaveSettings }: {
       subtitle="Group your transformations into up to 3 collections. Each holds up to 6 pairs."
       icon={Sparkles}
       statusBadge={!loading && (
-        <StatusBadge>{totalPairs} pair{totalPairs === 1 ? '' : 's'}</StatusBadge>
+        <Chip>{totalPairs} pair{totalPairs === 1 ? '' : 's'}</Chip>
       )}
     >
       <ResultsHeadingInline settings={settings} onSaveSettings={onSaveSettings} />

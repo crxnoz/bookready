@@ -33,6 +33,7 @@ import type {
   Service,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 
 const TYPE_META: Record<BookingQuestionType, { label: string; icon: React.ElementType; hint: string }> = {
   text:     { label: 'Short text',  icon: Type,        hint: 'A single-line response.' },
@@ -51,6 +52,7 @@ export default function BookingFormEditor() {
   const [loadErr,   setLoadErr]   = useState<string | null>(null)
 
   const [editing,   setEditing]   = useState<BookingQuestion | 'new' | null>(null)
+  const confirm = useConfirm()
 
   useEffect(() => {
     let cancelled = false
@@ -79,7 +81,8 @@ export default function BookingFormEditor() {
   }
 
   async function handleDelete(q: BookingQuestion) {
-    if (! confirm(`Delete "${q.label}"? Past answers stay on existing appointments.`)) return
+    const ok = await confirm({ title: `Delete "${q.label}"?`, message: 'Past answers stay on existing appointments.', confirmLabel: 'Delete', tone: 'danger' })
+    if (! ok) return
     await deleteEditorBookingQuestion(q.id)
     await refresh()
   }
@@ -344,7 +347,7 @@ function QuestionDialog({
               onChange={e => setLabel(e.target.value)}
               placeholder="e.g. Do you have any allergies?"
               autoFocus={! isEdit}
-              className="w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black"
+              className="w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-faint-text focus:outline-none focus:border-near-black"
             />
           </div>
 
@@ -394,7 +397,7 @@ function QuestionDialog({
               value={helpText ?? ''}
               onChange={e => setHelpText(e.target.value)}
               placeholder="Shown under the question on the booking form"
-              className="w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black"
+              className="w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-faint-text focus:outline-none focus:border-near-black"
             />
           </div>
 
@@ -543,7 +546,7 @@ function DropdownOptionsEditor({
               value={v}
               onChange={e => patch(i, e.target.value)}
               placeholder={`Option ${i + 1}`}
-              className="flex-1 bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black"
+              className="flex-1 bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-faint-text focus:outline-none focus:border-near-black"
             />
             <button
               type="button"
