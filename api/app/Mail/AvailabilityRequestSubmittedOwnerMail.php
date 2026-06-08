@@ -9,8 +9,8 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Owner alert: a customer asked for a date that isn't currently bookable.
- * Links straight to the Availability → Requests tab to decide.
+ * Owner alert: a customer asked to be squeezed in on a fully-booked day.
+ * Links straight to the Availability → Squeeze-Ins tab to decide.
  */
 class AvailabilityRequestSubmittedOwnerMail extends Mailable
 {

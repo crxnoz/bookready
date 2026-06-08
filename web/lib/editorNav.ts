@@ -24,6 +24,7 @@ export type EditorSectionKey =
   | 'bookings'
   | 'customers'
   | 'payments'
+  | 'integrations'
   | 'settings'
 
 export type InnerNavMode = 'query-tab' | 'route'
@@ -138,6 +139,16 @@ export const EDITOR_SECTIONS: EditorSectionConfig[] = [
     ],
     defaultTitle:    'Payments',
     defaultSubtitle: 'Track deposits, balances, and customer payment activity.',
+  },
+  {
+    key:          'integrations',
+    label:        'Integrations',
+    hubPath:      '/editor/integrations',
+    pathPrefixes: ['/editor/integrations'],
+    innerNavMode: 'query-tab',
+    innerNav:     [],                     // single catalog page — no sub-tabs
+    defaultTitle:    'Integrations',
+    defaultSubtitle: 'Connect BookReady to the tools you already use — payments, calendars, marketing, and more.',
   },
   {
     key:          'settings',

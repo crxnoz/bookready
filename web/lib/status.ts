@@ -16,7 +16,7 @@ export type StatusTone =
   | 'neutral' | 'info' | 'success' | 'warning' | 'danger' | 'accent'
 
 export type StatusDomain =
-  | 'appointment' | 'payment' | 'connect' | 'entity' | 'waitlist' | 'request' | 'customer' | 'payout'
+  | 'appointment' | 'payment' | 'connect' | 'entity' | 'waitlist' | 'request' | 'customer' | 'payout' | 'integration'
 
 export interface StatusDef {
   label: string
@@ -86,6 +86,13 @@ const REGISTRY: Record<StatusDomain, Record<string, StatusDef>> = {
     in_transit: { label: 'On the way',   tone: 'info'    },
     canceled:   { label: 'Canceled',     tone: 'neutral' },
     failed:     { label: 'Failed',       tone: 'danger'  },
+  },
+  // Third-party integration connection state (Integrations hub).
+  integration: {
+    connected:       { label: 'Connected',     tone: 'success' },
+    not_connected:   { label: 'Not connected', tone: 'neutral' },
+    action_required: { label: 'Action needed', tone: 'warning' },
+    coming_soon:     { label: 'Coming soon',   tone: 'neutral' },
   },
 }
 

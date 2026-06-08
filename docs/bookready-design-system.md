@@ -126,6 +126,8 @@ Standards (use verbatim):
 | `EmptyState.tsx` | empty/zero states | icon + headline + guidance + optional CTA |
 | `AsyncBoundary.tsx` | loading/error/empty wrapper | `<AsyncBoundary loading error onRetry loadingLabel>` |
 | `SaveBar.tsx` | sticky save footer (boolean-triad API) | note: some big panels still use bespoke save bars — see §7 |
+| `IconBox.tsx` | the cream icon-box (BookReady signature) | `<IconBox icon size? tone? />` — `tone="dark"` for dark cards; re-exported from `AvailabilitySections` |
+| `NavCard.tsx` | nav / feature card (icon-box + title + desc + chevron) | `<NavCard icon title description? href?/onClick? status? action? tone? />` — renders Link/button/div, light+dark |
 
 Rules: never `window.confirm/alert` (use `useConfirm`/`useToast`). Never a hand-rolled status pill (use `StatusBadge` + add to the registry). Never a second "tag" component named `StatusBadge` (the WebsiteHub generic chip is named `Chip`).
 
@@ -141,14 +143,27 @@ Rules: never `window.confirm/alert` (use `useConfirm`/`useToast`). Never a hand-
 
 **Shell.** Every editor page is wrapped by `EditorShell` → `SectionTopBar` → `EditorInnerNav` → `EditorPageHeader` → content. Nav lives in **`web/lib/editorNav.ts`** (single source for sections + sub-tabs) — edit there, not the components. Hubs are one page with `?tab=` query sub-tabs (Website/Settings/Payments/Availability), not nested routes.
 
-**Availability-style section language** — `web/components/editor/AvailabilitySections.tsx` (the look the owner blessed; reuse for new full-width, sectioned surfaces):
-- `<TabShell>` — full-width `pb-8` container (no `max-w` cap → content fills width).
-- `<TabIntro>one line</TabIntro>` — description band under the page header.
-- `<CollapsibleSection icon title subtitle open onToggle>` — accordion section; **icon in the cream box**, chevron, collapsed-only subtitle. Manage `open` with a `useState<'a'|'b'|null>` accordion (first open).
-- `<Section icon title subtitle action?>` — same chrome, non-collapsible (e.g. the calendar grid).
-- `<SectionHeader>` / `<IconBox>` — the inline icon-box heading + the cream square itself.
+**Availability-style section language** — `web/components/editor/AvailabilitySections.tsx` (the blessed look; reuse for new full-width, sectioned surfaces). **As of the Bookings-cohesion pass these render as cards on a padded canvas:**
+- `<TabShell>` — full-width container that owns the **outer padding + gap**: `p-3 sm:p-5 md:p-6 space-y-4`. Its section children are therefore spaced apart and never touch the viewport edges. **Don't add your own `px-*`/`mx-*` to a direct TabShell child** (it double-pads) — put padding inside the card, and let a bare action button (e.g. Save) sit as a plain child.
+- `<TabIntro>one line</TabIntro>` — plain muted copy above the cards (no border/band of its own anymore).
+- `<Section icon title subtitle action? tone?>` — **a white card** (`bg-white border-hairline-soft`), icon-box header, non-collapsible. `action` = right-aligned header node (e.g. a Save button).
+- `<CollapsibleSection icon title subtitle open onToggle tone?>` — same card, accordion. Manage `open` with `useState<'a'|'b'|null>` (first open); collapsed-only subtitle.
+- **`tone="dark"`** on either → near-black card (`bg-near-black`, white text, translucent icon-box) for premium emphasis / contrast — used on **After Hours**. Budget ≤1 dark card per screen; reserve for a genuine "premium feature" surface.
+- `<SectionHeader icon title subtitle action?>` — the inline icon-box **list anchor** (NOT a card): sits at the top of a list/working area *on the cream canvas*, with the live count in `subtitle` and the primary "Add …" in `action`. This is the **Services / Staff** header pattern.
 
-**The icon-box** (BookReady signature): `w-7 h-7` (sm) / `w-8 h-8` (md) `bg-cream border border-hairline-soft flex items-center justify-center` wrapping a `text-muted-text` lucide icon (size 13/15). In Settings, `SectionTitle` renders it. *(Open question being designed: the exact site-wide scope of where the box applies vs. inline glyphs — see the icon-rule discussion.)*
+**In-page secondary nav** — `web/components/editor/SubTabNav.tsx`. Compact (`text-2xs`) underline tab strip for switching sub-views *inside* a page, one level below `EditorInnerNav`. Pass `hrefFor` for URL-driven tabs (Availability `?tab=`) or `onSelect` for local state (Services Categories/Add-ons/Packages). `soon` items get a muted "Soon" badge. The nav hierarchy on a page is therefore:
+
+```
+SectionTopBar   (Bookings)            ← section
+ EditorInnerNav (Availability…)       ← section sub-tabs (text-2xs, py-3)
+  EditorPageHeader (title + subtitle)  ← page identity
+   SubTabNav     (Smart Calendar…)    ← in-page sub-views (text-2xs, py-2 — more compact)
+    TabShell → cards                   ← content
+```
+
+**Non-collapsible tab-view pattern.** When a panel gets its own SubTabNav tab, it should NOT also be collapsible — render it as a plain card with a **static** icon-box header (no chevron, always-open content). Keep collapse only for *grouped items nested inside* a view (e.g. a service row that expands to edit). (Services Categories/Add-ons follow this.)
+
+**The icon-box** (BookReady signature) is the shared `web/components/ui/IconBox.tsx`: `w-7 h-7` (sm) / `w-8 h-8` (md) bordered square. Light = `bg-cream border-hairline-soft` + `text-muted-text` glyph (size 13/15); `tone="dark"` = `bg-white/10 border-white/20` + `text-white/80` glyph. `NavCard`, `SectionHeader`, `Section`, `CollapsibleSection` all consume it so the box is identical everywhere.
 
 ---
 
@@ -172,8 +187,8 @@ Rules: never `window.confirm/alert` (use `useConfirm`/`useToast`). Never a hand-
 ## 10. New-section checklist
 
 1. Nav entry in `editorNav.ts` (don't touch the nav components).
-2. Page wrapped in `EditorShell`; full-width via `TabShell`; `TabIntro` one-liner.
-3. Group content in `CollapsibleSection`/`Section` with icon-boxes; cards `bg-white border-hairline-soft`.
+2. Page wrapped in `EditorShell`; full-width via `TabShell` (it owns the `p-3 sm:p-5 md:p-6 space-y-4` padding — don't re-pad its direct children); `TabIntro` one-liner. Many sub-views → add a `SubTabNav`.
+3. Group content in `Section`/`CollapsibleSection` cards (white, icon-box header); anchor list pages with `SectionHeader` (icon-box + live count + Add `action`); reach for `tone="dark"` only for a single premium card.
 4. Eyebrow labels (`text-eyebrow tracking-eyebrow uppercase`), inputs from `ui/`, status via `StatusBadge` + registry.
 5. `useConfirm`/`useToast` for confirms/feedback; `AsyncBoundary` for load/error/empty.
 6. Spacing from §4; sharp everywhere; tokens only.
@@ -181,4 +196,4 @@ Rules: never `window.confirm/alert` (use `useConfirm`/`useToast`). Never a hand-
 
 ---
 
-*As-built reference. Live across the tenant editor as of the cohesion v1–v3 + Availability 2.0 + Settings-IA work. Sharp, tokenized, flat, editorial.*
+*As-built reference. Live across the tenant editor as of the cohesion v1–v3 + Availability 2.0 + Settings-IA + Bookings-cohesion (carded sections / compact `SubTabNav` / shared `IconBox` + `NavCard` / dark `tone`) work. Sharp, tokenized, flat, editorial.*

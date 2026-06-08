@@ -1111,7 +1111,7 @@ export async function declineAvailabilityRequest(id: number, note?: string): Pro
   })
 }
 
-// Public — customer submits / views / accepts.
+// Shared request payload — used by the squeeze-in submit helper.
 export interface PublicAvailabilityRequestPayload {
   customer_name:  string
   customer_email: string
@@ -1123,20 +1123,8 @@ export interface PublicAvailabilityRequestPayload {
   notes?:         string
 }
 
-export async function submitPublicAvailabilityRequest(
-  slug: string, payload: PublicAvailabilityRequestPayload,
-): Promise<{ id: number; message: string; duplicate?: boolean }> {
-  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.bkrdy.me') + '/v1'
-  const res = await fetch(`${baseUrl}/public/sites/${slug}/availability-requests`, {
-    method: 'POST',
-    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-  const body = await res.json().catch(() => ({} as Record<string, unknown>))
-  if (! res.ok) throw Object.assign(new Error((body as { message?: string }).message || 'Failed to send request'), { status: res.status })
-  return body as { id: number; message: string; duplicate?: boolean }
-}
-
+// Public — customer views / accepts an owner-suggested time (token-gated).
+// (Standard "request a closed date" submit was retired; squeeze-ins remain.)
 export interface PublicAvailabilityRequestView {
   status:         AvailabilityRequestStatus
   customer_name:  string

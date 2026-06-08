@@ -3,10 +3,12 @@
 import Link from 'next/link'
 import {
   ArrowRight, Calendar, CalendarMinus, CalendarOff,
-  ExternalLink, Mail, Megaphone, Plug, Rss,
+  ExternalLink, Mail, Megaphone, Rss,
   ShieldCheck, Square as SquareIcon, Building2, Webhook, Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import IconBox from '@/components/ui/IconBox'
+import StatusBadge from '@/components/ui/StatusBadge'
 import StripeConnectCard from '@/components/editor/StripeConnectCard'
 
 /**
@@ -64,19 +66,7 @@ export default function IntegrationsHub() {
 
   return (
     <div className="w-full p-3 sm:p-5 md:p-6 space-y-6 max-w-[1024px]">
-      {/* Page header */}
-      <header>
-        <div className="inline-flex items-center gap-2 text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text mb-1">
-          <Plug size={11} /> Integrations
-        </div>
-        <h1 className="text-2xl font-bold text-near-black tracking-tight">
-          Connect BookReady to the tools you already use.
-        </h1>
-        <p className="text-sm text-muted-text mt-1.5">
-          Payments, calendars, marketing, automation. Most of this is coming soon.
-          We&rsquo;re building it in the order most people ask for.
-        </p>
-      </header>
+      {/* Page header is provided by EditorShell (Integrations section). */}
 
       {/* Payments — Stripe is the one live integration; set it up + manage it here. */}
       <section>
@@ -232,13 +222,8 @@ function Tile({ t }: { t: IntegrationTile }) {
         dimmed && 'opacity-90',
       )}
     >
-      {/* Icon tile */}
-      <div className={cn(
-        'w-10 h-10 flex items-center justify-center flex-shrink-0',
-        dimmed ? 'bg-cream text-muted-text' : 'bg-cream text-near-black',
-      )}>
-        <Icon size={18} strokeWidth={1.8} />
-      </div>
+      {/* Icon tile — shared icon-box signature */}
+      <IconBox icon={Icon} size="md" />
 
       {/* Body */}
       <div className="flex flex-col gap-2 flex-1 min-w-0">
@@ -248,7 +233,7 @@ function Tile({ t }: { t: IntegrationTile }) {
               <h3 className="text-sm font-bold text-near-black tracking-tight truncate">
                 {t.name}
               </h3>
-              <StatusBadge status={t.status} label={t.statusLabel} />
+              <StatusBadge domain="integration" status={t.status} label={t.statusLabel} />
             </div>
             <p className="text-xs text-muted-text mt-0.5 leading-snug">
               {t.description}
@@ -268,26 +253,6 @@ function Tile({ t }: { t: IntegrationTile }) {
         </div>
       </div>
     </div>
-  )
-}
-
-// ── Status badge ───────────────────────────────────────────────────────────
-
-function StatusBadge({ status, label }: { status: IntegrationStatus; label?: string }) {
-  const map: Record<IntegrationStatus, { label: string; cls: string }> = {
-    connected:       { label: 'Connected',       cls: 'bg-lavender text-near-black' },
-    not_connected:   { label: 'Not connected',   cls: 'bg-cream text-muted-text' },
-    action_required: { label: 'Action needed',   cls: 'bg-blush text-near-black' },
-    coming_soon:     { label: 'Coming soon',     cls: 'bg-[rgba(18,18,18,0.06)] text-muted-text' },
-  }
-  const { label: defaultLabel, cls } = map[status]
-  return (
-    <span className={cn(
-      'inline-flex items-center text-eyebrow font-bold tracking-[0.10em] uppercase border border-hairline-soft px-1.5 py-0.5 whitespace-nowrap',
-      cls,
-    )}>
-      {label ?? defaultLabel}
-    </span>
   )
 }
 

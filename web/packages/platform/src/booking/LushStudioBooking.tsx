@@ -5,7 +5,7 @@ import {
   ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight,
   Clock, Heart, CalendarCheck, Image as ImageIcon, Loader2, X,
 } from 'lucide-react'
-import { getPublicAvailability, createPublicAppointment, uploadBookingAnswerImage, joinPublicWaitlist, submitPublicAvailabilityRequest, submitPublicSqueezeIn } from '@/lib/api'
+import { getPublicAvailability, createPublicAppointment, uploadBookingAnswerImage, joinPublicWaitlist, submitPublicSqueezeIn } from '@/lib/api'
 import type {
   AvailableSlot, PaymentChoice, PublicBookingPayload, Service,
   AvailabilityData, PublicPaymentSettings,
@@ -162,8 +162,7 @@ export default function LushStudioBooking({
   const [requestDate,    setRequestDate]    = useState('')
   const [requestTime,    setRequestTime]    = useState('')
   const [requestNotes,   setRequestNotes]   = useState('')
-  // Av2.0 P6 — same modal serves squeeze-ins; this flips copy + endpoint.
-  const [requestIsSqueeze, setRequestIsSqueeze] = useState(false)
+  // Av2.0 P6 — the request modal serves squeeze-ins (standard requests retired).
   const [requestFee,       setRequestFee]       = useState(0)
   // Customer-account awareness. Shared with the header widget via the
   // LushCustomerAuthProvider mounted at the template root — one /auth/me
@@ -1304,23 +1303,6 @@ export default function LushStudioBooking({
                       >
                         Join the waitlist <Heart size={12} />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRequestDate(date)
-                          setRequestTime('')
-                          setRequestNotes('')
-                          setRequestIsSqueeze(false)
-                          setRequestFee(0)
-                          setRequestMessage(null)
-                          setRequestError(null)
-                          setRequestOpen(true)
-                        }}
-                        className="brk-booking-back"
-                        style={{ borderColor: 'var(--lush-ink, #1a1a1a)' }}
-                      >
-                        Request this day <CalendarCheck size={12} />
-                      </button>
                       {slotState.status === 'loaded' && slotState.squeezeIn?.available && (
                         <button
                           type="button"
@@ -1328,7 +1310,6 @@ export default function LushStudioBooking({
                             setRequestDate(date)
                             setRequestTime('')
                             setRequestNotes('')
-                            setRequestIsSqueeze(true)
                             setRequestFee(slotState.squeezeIn?.fee ?? 0)
                             setRequestMessage(null)
                             setRequestError(null)
@@ -1992,8 +1973,8 @@ export default function LushStudioBooking({
           </div>
         )}
 
-        {/* Av2.0 P5 — Request this day modal. Active "fit me in" ask:
-            the owner reviews and approves / suggests / declines. */}
+        {/* Av2.0 P6 — Squeeze-in request modal. Active "fit me in" ask on a
+            full day; the owner reviews and approves / suggests / declines. */}
         {requestOpen && selectedService && (
           <div
             role="dialog"
@@ -2048,13 +2029,11 @@ export default function LushStudioBooking({
                   <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 6 }}>
                     <CalendarCheck size={20} />
                     <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
-                      {requestIsSqueeze ? 'Request a squeeze-in' : 'Request an appointment'}
+                      Request a squeeze-in
                     </h3>
                   </div>
                   <p style={{ margin: '0 0 14px', fontSize: 13, opacity: 0.8, lineHeight: 1.5 }}>
-                    {requestIsSqueeze
-                      ? <>This day is full, but ask {displayName} to squeeze you in for {selectedService.name}{requestFee ? <> — a <strong>${requestFee}</strong> fee applies if approved</> : ''}. They&rsquo;ll email you to confirm.</>
-                      : <>Ask {displayName} to fit you in for {selectedService.name}. They&rsquo;ll email you to confirm, suggest another time, or let you know if they can&rsquo;t.</>}
+                    This day is full, but ask {displayName} to squeeze you in for {selectedService.name}{requestFee ? <> — a <strong>${requestFee}</strong> fee applies if approved</> : ''}. They&rsquo;ll email you to confirm.
                   </p>
 
                   <div style={{ display: 'grid', gap: 10 }}>
@@ -2109,9 +2088,7 @@ export default function LushStudioBooking({
                           preferred_time: requestTime || undefined,
                           notes:          requestNotes.trim() || undefined,
                         }
-                        const res = requestIsSqueeze
-                          ? await submitPublicSqueezeIn(slug, payload)
-                          : await submitPublicAvailabilityRequest(slug, payload)
+                        const res = await submitPublicSqueezeIn(slug, payload)
                         setRequestMessage(res.message)
                       } catch (e) {
                         setRequestError(e instanceof Error ? e.message : 'Could not send your request.')

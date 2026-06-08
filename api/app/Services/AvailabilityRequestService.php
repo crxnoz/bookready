@@ -39,7 +39,7 @@ class AvailabilityRequestService
                 preferredDate: substr((string) $request->preferred_date, 0, 10),
                 preferredTime: $request->preferred_time ? substr((string) $request->preferred_time, 0, 5) : null,
                 notes:         $request->notes,
-                manageUrl:     'https://app.bkrdy.me/editor/availability?tab=requests',
+                manageUrl:     'https://app.bkrdy.me/editor/availability?tab=squeeze-ins',
             ));
         } catch (\Throwable $e) {
             Log::warning('availability-request owner alert failed', [

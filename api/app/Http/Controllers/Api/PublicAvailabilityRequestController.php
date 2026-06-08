@@ -14,11 +14,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 /**
- * Availability 2.0 · Phase 5 · Public availability-request surface.
- *
- *   POST /public/sites/{slug}/availability-requests
- *     Customer submits a request for a date that isn't open. No payment,
- *     no appointment — just demand capture (pay-after v1).
+ * Availability 2.0 · Public availability-request surface.
  *
  *   GET  /public/sites/{slug}/availability-requests/{token}
  *     View request status + any owner suggestion (token-gated, no login).
@@ -26,88 +22,14 @@ use Illuminate\Support\Str;
  *   POST /public/sites/{slug}/availability-requests/{token}/accept
  *     Accept an owner-suggested alternative → creates the appointment.
  *
+ *   POST /public/sites/{slug}/squeeze-ins
+ *     Submit a squeeze-in request on a fully-booked day (kind=squeeze_in).
+ *
+ * Standard "request a closed date" capture was retired; squeeze-ins remain.
  * Tenant resolution mirrors PublicWaitlistController.
  */
 class PublicAvailabilityRequestController extends Controller
 {
-    public function submit(Request $request, string $slug): JsonResponse
-    {
-        $validated = $request->validate([
-            'customer_name'  => 'required|string|max:200',
-            'customer_email' => 'required|email|max:200',
-            'customer_phone' => 'nullable|string|max:32',
-            'service_id'     => 'required|integer|min:1',
-            'staff_id'       => 'nullable|integer|min:1',
-            'preferred_date' => 'required|date_format:Y-m-d',
-            'preferred_time' => 'nullable|date_format:H:i',
-            'notes'          => 'nullable|string|max:1000',
-        ]);
-
-        $tenant = $this->resolveTenant($slug);
-        if (! $tenant) return response()->json(['message' => 'Site not found.'], 404);
-
-        // Owner email from central DB before switching connections.
-        $ownerEmail   = $tenant->owner?->email;
-        $businessName = $tenant->name ?? 'Our team';
-
-        tenancy()->initialize($tenant);
-
-        $service = Schema::hasTable('services')
-            ? DB::table('services')->where('id', $validated['service_id'])->where('is_active', true)->first()
-            : null;
-        if (! $service) {
-            tenancy()->end();
-            return response()->json(['message' => 'Service not found or unavailable.'], 422);
-        }
-
-        // Business name from tenant profile if present (nicer than tenant slug).
-        if (Schema::hasTable('business_profiles')) {
-            $bp = DB::table('business_profiles')->first();
-            if ($bp && ! empty($bp->business_name)) $businessName = $bp->business_name;
-        }
-
-        // De-dup: same email + service + date still pending → return existing.
-        $existing = DB::table('availability_requests')
-            ->where('customer_email', $validated['customer_email'])
-            ->where('service_id', $validated['service_id'])
-            ->where('preferred_date', $validated['preferred_date'])
-            ->whereIn('status', ['pending', 'suggested'])
-            ->first();
-        if ($existing) {
-            tenancy()->end();
-            return response()->json([
-                'id' => (int) $existing->id,
-                'message' => 'You already have a pending request for that date. We\'ll be in touch soon.',
-                'duplicate' => true,
-            ]);
-        }
-
-        $id = DB::table('availability_requests')->insertGetId([
-            'customer_name'  => $validated['customer_name'],
-            'customer_email' => $validated['customer_email'],
-            'customer_phone' => $validated['customer_phone'] ?? null,
-            'service_id'     => $validated['service_id'],
-            'staff_id'       => $validated['staff_id'] ?? null,
-            'preferred_date' => $validated['preferred_date'],
-            'preferred_time' => $validated['preferred_time'] ?? null,
-            'notes'          => $validated['notes'] ?? null,
-            'status'         => 'pending',
-            'action_token'   => Str::random(48),
-            'created_at'     => Carbon::now(),
-            'updated_at'     => Carbon::now(),
-        ]);
-
-        $row = DB::table('availability_requests')->find($id);
-        AvailabilityRequestService::notifyOwner($row, $businessName, $ownerEmail, (string) $tenant->id);
-
-        tenancy()->end();
-
-        return response()->json([
-            'id'      => $id,
-            'message' => 'Request sent! ' . $businessName . ' will email you with a decision soon.',
-        ], 201);
-    }
-
     /**
      * §6 — squeeze-in request (shown when a day is fully booked). Same
      * lifecycle as a standard request, but carries a fee + is gated by

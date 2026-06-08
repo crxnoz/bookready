@@ -8,8 +8,6 @@ import AvailabilityEditor from '@/components/editor/AvailabilityEditor'
 import CalendarOverridesEditor from '@/components/editor/CalendarOverridesEditor'
 import ReleaseStrategyPanel from '@/components/editor/ReleaseStrategyPanel'
 import CapacityPanel from '@/components/editor/CapacityPanel'
-import WaitlistEditor from '@/components/editor/WaitlistEditor'
-import AvailabilityRequestsEditor from '@/components/editor/AvailabilityRequestsEditor'
 import AfterHoursPanel from '@/components/editor/AfterHoursPanel'
 import SqueezeInsPanel from '@/components/editor/SqueezeInsPanel'
 import SubTabNav from '@/components/editor/SubTabNav'
@@ -25,15 +23,15 @@ import NavCard from '@/components/ui/NavCard'
  *   ?tab=calendar  (default)  Smart Calendar — per-date overrides
  *   ?tab=drops                Date Drops — scheduled release strategy
  *   ?tab=capacity             Capacity — daily caps (shop + per-staff)
- *   ?tab=waitlist             Waitlist — cancellation queue
  *   ?tab=advanced             Weekly schedule + booking rules (fallback)
  *
- * §4 After Hours, §5 Availability Requests, §6 Squeeze-Ins slot in here
- * as additional tabs as they ship.
+ * §4 After Hours and §6 Squeeze-Ins slot in here as additional tabs.
+ * (Waitlist lives in the Bookings nav at /editor/waitlist; the standalone
+ *  Requests tab has been retired from the hub.)
  */
 
 type TabId =
-  | 'calendar' | 'drops' | 'capacity' | 'after-hours' | 'squeeze-ins' | 'waitlist' | 'requests' | 'advanced'
+  | 'calendar' | 'drops' | 'capacity' | 'after-hours' | 'squeeze-ins' | 'advanced'
 
 interface TabDef {
   id:    TabId
@@ -47,8 +45,6 @@ const TABS: TabDef[] = [
   { id: 'capacity',    label: 'Capacity' },
   { id: 'after-hours', label: 'After Hours' },
   { id: 'squeeze-ins', label: 'Squeeze-Ins' },
-  { id: 'waitlist',    label: 'Waitlist' },
-  { id: 'requests',    label: 'Requests' },
   { id: 'advanced',    label: 'Advanced' },
 ]
 
@@ -83,8 +79,6 @@ function Hub() {
       {tab === 'capacity' && <CapacityPanel />}
       {tab === 'after-hours' && <AfterHoursPanel />}
       {tab === 'squeeze-ins' && <SqueezeInsPanel />}
-      {tab === 'waitlist' && <WaitlistEditor />}
-      {tab === 'requests' && <AvailabilityRequestsEditor />}
       {tab === 'advanced' && <AdvancedTab />}
     </div>
   )

@@ -151,11 +151,9 @@ Route::prefix('v1')->group(function () {
         [\App\Http\Controllers\Api\PublicWaitlistController::class, 'claim'])
         ->middleware('throttle:10,1');
 
-    // ── Public availability requests (Availability 2.0 Phase 5) ───────────
-    // Submit a request for an unavailable date; token-gated view + accept.
-    Route::post('public/sites/{slug}/availability-requests',
-        [\App\Http\Controllers\Api\PublicAvailabilityRequestController::class, 'submit'])
-        ->middleware('throttle:5,1');
+    // ── Public availability requests (Availability 2.0) ───────────────────
+    // Token-gated view + accept of an owner-suggested time (shared with
+    // squeeze-ins). Standard "request a closed date" submit was retired.
     Route::get('public/sites/{slug}/availability-requests/{token}',
         [\App\Http\Controllers\Api\PublicAvailabilityRequestController::class, 'show'])
         ->middleware('throttle:30,1');
