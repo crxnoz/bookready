@@ -1435,153 +1435,10 @@ function ChartDetailPanel({
   )
 }
 
-function monthLabel(iso: string): string {
-  if (! iso) return ''
-  const [y, m] = iso.split('-').map(s => parseInt(s, 10))
-  const d = new Date(y, m - 1, 1)
-  return d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' })
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// A14 — shared interactive bar-chart primitive
-// ────────────────────────────────────────────────────────────────────────────
-
-interface ChartBar {
-  key:           string
-  value:         number
-  primary:       string   // tooltip headline (date / week label)
-  secondary:     string   // tooltip detail (count / amount)
-  accent?:       boolean  // last-period highlight (current week / today)
-  accentColor?:  string   // override accent fill (defaults to near-black)
-  selected?:     boolean  // A15 — selected bar stays highlighted under the cursor
-}
-
-/**
- * Interactive bar chart used by Revenue + Bookings tiles.
- *
- * Features:
- *   - Custom hover tooltip that follows the hovered bar (positioned
- *     absolutely above the bar; auto-edge-clamped on left/right).
- *   - Mount animation: bars grow from 0 height in a 600ms CSS keyframe
- *     with a staggered start so the chart "deals out" left → right.
- *   - Click handler per bar (typically drills into a filtered view).
- *   - Hover dims non-hovered bars subtly so focus reads instantly.
- *   - Keyboard-accessible: each bar is a focusable button with the
- *     same tooltip behaviour on focus.
- */
-function InteractiveBarChart({
-  bars, startLabel, endLabel, emptyText, onBarClick,
-}: {
-  bars:        ChartBar[]
-  startLabel:  string
-  endLabel:    string
-  emptyText:   string
-  onBarClick?: (key: string) => void
-}) {
-  const [hover, setHover] = useState<number | null>(null)
-  const max = Math.max(1, ...bars.map(b => b.value))
-  const total = bars.reduce((s, b) => s + b.value, 0)
-  const selectedIdx = bars.findIndex(b => b.selected)
-
-  if (total === 0) {
-    return (
-      <div className="p-2 text-center">
-        <p className="text-[12px] text-muted-text">{emptyText}</p>
-      </div>
-    )
-  }
-
-  // Show tooltip for hovered bar if any, else for selected bar (sticky).
-  const tooltipIdx = hover ?? (selectedIdx >= 0 ? selectedIdx : null)
-
-  return (
-    <div>
-      <div className="relative" onMouseLeave={() => setHover(null)}>
-        {tooltipIdx != null && bars[tooltipIdx] && (
-          <ChartTooltip
-            primary={bars[tooltipIdx].primary}
-            secondary={bars[tooltipIdx].secondary}
-            position={(tooltipIdx + 0.5) / bars.length}
-          />
-        )}
-
-        <svg viewBox="0 0 320 120" preserveAspectRatio="none" className="w-full h-32 block">
-          {bars.map((b, i) => {
-            const xStep = 320 / bars.length
-            const pad   = bars.length > 10 ? 4 : 6
-            const x = i * xStep + pad
-            const barW = xStep - pad * 2
-            const h = b.value === 0 ? 2 : Math.max(4, (b.value / max) * 100)
-            const y = 110 - h
-            const isHover    = hover === i
-            const isSelected = !! b.selected
-            const accentFill = b.accentColor ?? '#121212'
-            // Selected bar always renders accent — even if it's not the
-            // current period — so the visual link to the detail panel
-            // below is unmistakable.
-            const baseFill = (b.accent || isSelected) ? accentFill : 'rgba(18,18,18,0.22)'
-            const hoverFill = (b.accent || isSelected) ? accentFill : 'rgba(18,18,18,0.55)'
-            return (
-              <g
-                key={b.key}
-                onMouseEnter={() => setHover(i)}
-                onFocus={() => setHover(i)}
-                onBlur={() => setHover(null)}
-                onClick={onBarClick ? () => onBarClick(b.key) : undefined}
-                tabIndex={onBarClick ? 0 : -1}
-                role={onBarClick ? 'button' : undefined}
-                aria-label={`${b.primary}: ${b.secondary}`}
-                aria-pressed={isSelected || undefined}
-                style={{ cursor: onBarClick ? 'pointer' : 'default', outline: 'none' }}
-              >
-                <rect x={i * xStep} y={0} width={xStep} height={120} fill="transparent" />
-                <rect
-                  className="onb-chart-bar"
-                  x={x}
-                  y={y}
-                  width={barW}
-                  height={h}
-                  fill={isHover ? hoverFill : baseFill}
-                  style={{
-                    transition: 'fill 120ms ease, opacity 120ms ease',
-                    opacity: (hover != null && ! isHover) || (selectedIdx >= 0 && ! isSelected && hover == null) ? 0.55 : 1,
-                    animationDelay: `${i * 35}ms`,
-                  }}
-                />
-              </g>
-            )
-          })}
-          <line x1="0" y1="110" x2="320" y2="110" stroke="rgba(18,18,18,0.15)" strokeWidth="0.5" />
-        </svg>
-
-        <style>{`
-          .onb-chart-bar {
-            transform-box: fill-box;
-            transform-origin: bottom;
-            animation-name: onbBarGrow;
-            animation-duration: 600ms;
-            animation-timing-function: cubic-bezier(.2,.7,.3,1);
-            animation-fill-mode: both;
-          }
-          @keyframes onbBarGrow {
-            from { transform: scaleY(0); }
-            to   { transform: scaleY(1); }
-          }
-        `}</style>
-      </div>
-      <div className="flex justify-between mt-2 text-[9px] tracking-[0.08em] uppercase text-muted-text">
-        <span>{startLabel}</span>
-        <span>{endLabel}</span>
-      </div>
-    </div>
-  )
-}
-
 /**
  * Tooltip positioned above the hovered point/bar. Clamps to the chart
  * edges so the leftmost / rightmost hover doesn't overflow the card.
- * Decoupled from ChartBar so both the bar chart and area chart can feed
- * it: pass primary (date/label), secondary (revenue), optional tertiary
+ * Takes primary (date/label), secondary (revenue), optional tertiary
  * (e.g. appointment count or a "not yet" note for future buckets).
  */
 function ChartTooltip({
@@ -1611,14 +1468,6 @@ function ChartTooltip({
       <div className="w-2 h-2 bg-near-black mx-auto rotate-45 -mt-1" />
     </div>
   )
-}
-
-/** Friendlier date for tooltips: "Tuesday, Jun 4". */
-function fmtDateFull(iso: string): string {
-  if (! iso) return ''
-  const [y, m, d] = iso.split('T')[0].split('-').map(s => parseInt(s, 10))
-  const date = new Date(y, m - 1, d)
-  return date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
 }
 
 interface NewCustomer { name: string; firstAppointmentDate: string }
