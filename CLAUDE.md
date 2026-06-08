@@ -246,11 +246,16 @@ Internal keys stay `settings.steps` and `settings.before_appointment` for backwa
 
 - **Both Stripe webhook routes** — `/api/v1/webhooks/stripe` (Cashier subscriptions, secret `STRIPE_WEBHOOK_SECRET`) and `/api/v1/webhooks/stripe/appointments` (Connect customer payments, secret `STRIPE_APPOINTMENT_WEBHOOK_SECRET`). Different controllers, different secrets — never swap.
 - Sanctum auth flow, `/auth/*` routes
-- `App\Services\SlotGenerator` (booking availability engine)
+- `App\Services\SlotGenerator` (booking availability engine) — singular exception: the **Availability 2.0** roadmap (see `docs/availability-2.0.md`) explicitly authorizes phase-by-phase modification. Any other work that touches this file needs founder sign-off.
 - Public booking endpoint `POST /api/v1/public/sites/{slug}/appointments`
 - Email notification flow (`App\Services\AppointmentMailer`, `App\Mail\*`)
 - SSL / domain config
 - `web/components/app/AppSidebar.tsx` main sidebar (Dashboard / Website / Bookings / Customers / Payments / Integrations / Settings) and `web/lib/editorNav.ts` (single source of truth for all editor section + sub-tab structure — touch this when adding nav, not the components).
+
+## Roadmap docs
+
+- `docs/pre-launch.md` — canonical launch checklist (email audit, copy sweep, security re-run as hard blockers; scale prep + SMS + SEO as continuous / time-gated).
+- `docs/availability-2.0.md` — calendar-first availability replacement, **post-launch v2 roadmap**. 8 phases, ~7 new tenant tables, SlotGenerator refactor authorized. Spec is locked; build sequence is engineering-ordered (not spec-ordered). Read before touching anything availability-related.
 
 ## Useful debugging entry points
 
