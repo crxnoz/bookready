@@ -17,9 +17,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Calendar, Clock, ExternalLink, Loader2, ChevronRight, CheckCircle2, Circle,
-  Megaphone, DollarSign, Activity, Sparkles, AlertCircle, ArrowUpRight,
+  DollarSign, Activity, Sparkles, AlertCircle, ArrowUpRight,
   TrendingUp, Users, UserPlus, Crown, Repeat, Lightbulb, Inbox, BarChart3,
-  X,
+  X, Plus, CalendarOff, CreditCard, AlertTriangle, Zap, Receipt, ArrowRight,
 } from 'lucide-react'
 import EditorShell from '@/components/editor/EditorShell'
 import WelcomeTour from '@/components/editor/WelcomeTour'
@@ -167,6 +167,14 @@ function DashboardBody() {
   // rotates without needing server state.
   const dailyTip          = useMemo(() => pickDailyTip(), [])
 
+  // ── Dashboard 2.0 — command-center derivations (recent-200 window) ──
+  const todayScheduled = useMemo(() => computeTodayScheduled(todaysAppointments), [todaysAppointments])
+  const attention      = useMemo(() => computeAttention(appts, todayStr),         [appts, todayStr])
+  const bookingSnap    = useMemo(() => computeBookingSnap(appts),                 [appts])
+  const health         = useMemo(() => computeHealth(appts),                      [appts])
+  const weekendAppts   = useMemo(() => findWeekendAppts(appts),                   [appts])
+  const growthOpps     = useMemo(() => computeGrowth(appts),                      [appts])
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   if (loading || redirecting) {
@@ -191,129 +199,122 @@ function DashboardBody() {
   }
 
   return (
-    <div className="w-full p-3 sm:p-5 md:p-6 space-y-5">
-      {/* First-run welcome — self-gates via users.welcomed_at, only renders
-          for owners who haven't dismissed it. Cheap on the steady-state
-          dashboard load (one GET that returns 200 bytes). */}
+    <div className="w-full p-3 sm:p-5 md:p-6 space-y-6">
       <WelcomeTour firstName={ownerFirstName || null} subdomain={slug} />
 
-      {/* ── A13: bigger personalized hero with daily tip ribbon ── */}
+      {/* ── Header: greeting, date, today snapshot, primary actions ── */}
       <header className="px-1">
-        <h1 className="text-[22px] sm:text-[28px] font-bold text-near-black tracking-tight leading-tight">
-          {greeting}{ownerFirstName ? <>, <span className="italic">{ownerFirstName}.</span></> : '.'}
-        </h1>
-        <p className="text-[13px] sm:text-[14px] text-muted-text mt-1.5">
-          Here&apos;s what&apos;s happening at <span className="font-semibold text-near-black">{businessName}</span> today.
-          {publicUrl && (
-            <>
-              {' '}
-              <a
-                href={publicUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 underline underline-offset-2 hover:text-near-black"
-              >
-                View site <ExternalLink size={11} />
-              </a>
-            </>
-          )}
-        </p>
-        {/* A13 — daily tip ribbon. Deterministic by day-of-year so it
-            shifts every morning without server state. */}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="min-w-0">
+            <h1 className="text-[22px] sm:text-[28px] font-bold text-near-black tracking-tight leading-tight">
+              {greeting}{ownerFirstName ? <>, <span className="italic">{ownerFirstName}.</span></> : '.'}
+            </h1>
+            <p className="text-[13px] text-muted-text mt-1.5">
+              {fmtWeekday(todayStr)} · <span className="font-semibold text-near-black">{todaysAppointments.length}</span> appointment{todaysAppointments.length === 1 ? '' : 's'} today
+              {todayScheduled > 0 && <> · <span className="font-semibold text-near-black">{money(todayScheduled, moneyBuckets.currency)}</span> scheduled</>}
+            </p>
+          </div>
+          <HeaderActions publicUrl={publicUrl} />
+        </div>
         <div className="mt-3 inline-flex items-center gap-2 text-[11px] text-near-black bg-cream border border-[rgba(18,18,18,0.10)] px-3 py-2">
           <Lightbulb size={12} className="text-[#c98a14] flex-shrink-0" strokeWidth={2} />
           <span className="leading-snug"><span className="font-bold uppercase tracking-[0.1em] text-[10px] text-muted-text">Today&rsquo;s tip · </span>{dailyTip}</span>
         </div>
       </header>
 
-      {/* ── A13: hero bookings tile — next appointment countdown ── */}
-      {nextAppt && (
-        <NextApptHero appt={nextAppt} />
-      )}
-
-      {/* ── Announcements ── */}
+      {/* ── BookReady Feed (dismissible) ── */}
       <AnnouncementsBlock items={announcements} />
 
-      {/* ── A13: Today + Tomorrow side-by-side ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <section>
-          <SectionHeader
-            icon={Calendar}
-            label="Today's appointments"
-            subtitle={todaysAppointments.length === 0
-              ? 'Nothing on the books for today.'
-              : `${todaysAppointments.length} appointment${todaysAppointments.length === 1 ? '' : 's'}`}
-            cta={{ label: 'See all', href: '/editor/appointments' }}
-          />
-          {todaysAppointments.length === 0 ? (
-            <EmptyTile
-              body="When someone books for today, they'll show up here."
-              actionLabel="View calendar"
-              actionHref="/editor/appointments"
-            />
-          ) : (
-            <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
-              {todaysAppointments.slice(0, 5).map(a => (
-                <TodayApptRow key={a.id} a={a} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section>
-          <SectionHeader
-            icon={Calendar}
-            label="Tomorrow"
-            subtitle={tomorrowAppts.length === 0
-              ? 'Nothing booked yet for tomorrow.'
-              : `${tomorrowAppts.length} appointment${tomorrowAppts.length === 1 ? '' : 's'}`}
-          />
-          {tomorrowAppts.length === 0 ? (
-            <EmptyTile
-              body="A blank day ahead. Maybe time to post your availability."
-            />
-          ) : (
-            <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
-              {tomorrowAppts.slice(0, 5).map(a => (
-                <TodayApptRow key={a.id} a={a} />
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
-
-      {/* ── A13: Week strip ── */}
-      <WeekStrip days={weekStrip} />
-
-      {/* ── A13: Pending requests counter (only when auto-confirm off + count > 0) ── */}
-      {pendingCount > 0 && (
-        <PendingRequestsTile count={pendingCount} />
+      {/* ── Setup checklist — only while incomplete (new tenants) ── */}
+      {setupPct < 100 && (
+        <SetupChecklist items={setupItems} doneCount={setupDoneCount} pct={setupPct} />
       )}
 
-      {/* ── A13/A15: Charts row — interactive, period-toggleable, inline detail ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <RevenueChart appts={appts} currency={moneyBuckets.currency} />
-        <BookingVolumeChart appts={appts} />
+      {/* ════════ LAYER 1 — TODAY ════════ */}
+      {nextAppt && <NextApptHero appt={nextAppt} />}
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <SummaryStatCard label="Appointments today" value={String(todaysAppointments.length)} href="/editor/appointments" icon={Calendar} />
+        <SummaryStatCard label="Scheduled today" value={money(todayScheduled, moneyBuckets.currency)} sub="expected revenue" href="/editor/payments" icon={DollarSign} />
+        <SummaryStatCard label="New customers" value={String(newCustomers.length)} sub="last 7 days" href="/editor/customers" icon={UserPlus} />
+        <SummaryStatCard label="Needs attention" value={String(attention.total)} href="/editor/appointments?status=pending" icon={Inbox} tone={attention.total > 0 ? 'warn' : 'default'} />
       </div>
 
-      {/* ── A13: Customer intelligence row ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <section>
+        <SectionHeader
+          icon={Calendar}
+          label="Today's schedule"
+          subtitle={todaysAppointments.length === 0
+            ? 'Nothing on the books for today.'
+            : `${todaysAppointments.length} appointment${todaysAppointments.length === 1 ? '' : 's'} on deck.`}
+          cta={{ label: 'See schedule', href: '/editor/appointments' }}
+        />
+        {todaysAppointments.length === 0 ? (
+          <EmptyTile body="When someone books for today, they'll show up here." actionLabel="View calendar" actionHref="/editor/appointments" />
+        ) : (
+          <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
+            {todaysAppointments.slice(0, 8).map(a => <TodayApptRow key={a.id} a={a} />)}
+            {todaysAppointments.length > 8 && (
+              <Link href="/editor/appointments" className="block px-3.5 py-2.5 text-[12px] font-semibold text-near-black hover:bg-cream/60">
+                + {todaysAppointments.length - 8} more today
+              </Link>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* ════════ LAYER 2 — NEEDS ATTENTION ════════ */}
+      <section>
+        <SectionHeader
+          icon={AlertTriangle}
+          label="Needs attention"
+          subtitle={attention.total === 0 ? "You're all caught up." : `${attention.total} thing${attention.total === 1 ? '' : 's'} to handle.`}
+        />
+        {attention.total === 0 ? (
+          <div className="bg-white border border-[rgba(20,140,80,0.30)] p-4 flex items-center gap-3">
+            <CheckCircle2 size={18} className="text-[#0f6f3d] flex-shrink-0" />
+            <div>
+              <p className="text-[13px] font-bold text-near-black">You&rsquo;re all caught up</p>
+              <p className="text-[11px] text-muted-text mt-0.5">No requests, payment issues, or unpaid balances right now.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {pendingCount > 0 && <PendingRequestsTile count={pendingCount} />}
+            {(attention.total - pendingCount) > 0 && <PaymentIssuesTile count={attention.total - pendingCount} />}
+          </div>
+        )}
+      </section>
+
+      <QuickActions />
+
+      {/* ════════ LAYER 3 — PERFORMANCE ════════ */}
+      <RevenueChart appts={appts} currency={moneyBuckets.currency} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <BookingSnapshotCard snap={bookingSnap} />
+        <UpcomingCard tomorrow={tomorrowAppts} weekend={weekendAppts} />
+      </div>
+      <WeekStrip days={weekStrip} />
+      <MoneySnapshot buckets={moneyBuckets} />
+
+      {/* ════════ LAYER 4 — BUSINESS HEALTH ════════ */}
+      <section>
+        <SectionHeader icon={Activity} label="Business health" subtitle="Based on your recent bookings." />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <HealthMetricCard label="Average ticket" value={money(health.avgTicket, health.currency)} sub="Per paid booking" icon={Receipt} />
+          <HealthMetricCard label="Return rate" value={`${repeatRatio.pct}%`} sub={`${repeatRatio.returning} of ${repeatRatio.total} rebooked`} icon={Repeat} />
+          <HealthMetricCard label="No-show rate" value={`${health.noShowRatePct}%`} sub="Of finished appointments" icon={AlertCircle} />
+        </div>
+      </section>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <NewCustomersCard customers={newCustomers} />
         <TopSpendersCard spenders={topSpenders} currency={moneyBuckets.currency} />
-        <RepeatRatioCard ratio={repeatRatio} />
       </div>
 
-      {/* ── Setup checklist + Money snapshot — side by side ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <SetupChecklist
-          items={setupItems}
-          doneCount={setupDoneCount}
-          pct={setupPct}
-        />
-        <MoneySnapshot buckets={moneyBuckets} />
-      </div>
+      {/* ════════ LAYER 5 — GROWTH OPPORTUNITIES ════════ */}
+      <GrowthOpportunitiesCard items={growthOpps} />
 
-      {/* ── Recent activity ── */}
+      {/* ── Recent activity (low priority) ── */}
       <section>
         <SectionHeader
           icon={Activity}
@@ -325,23 +326,16 @@ function DashboardBody() {
           <EmptyTile body="Once bookings start coming in, you'll see the latest ones here." />
         ) : (
           <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
-            {recentBookings.map(a => (
-              <ActivityRow key={a.id} a={a} />
-            ))}
+            {recentBookings.map(a => <ActivityRow key={a.id} a={a} />)}
           </div>
         )}
       </section>
 
-      {/* ── A13/#131: help footer ── */}
       <div className="pt-2 pb-1 text-center text-[11px] text-muted-text">
         Need a hand?{' '}
-        <Link href="/help" className="font-semibold text-near-black hover:underline">
-          Visit the Help Center
-        </Link>
+        <Link href="/help" className="font-semibold text-near-black hover:underline">Visit the Help Center</Link>
         {' '}or email{' '}
-        <a href="mailto:hello@mybookready.com" className="font-semibold text-near-black hover:underline">
-          hello@mybookready.com
-        </a>.
+        <a href="mailto:hello@mybookready.com" className="font-semibold text-near-black hover:underline">hello@mybookready.com</a>.
       </div>
     </div>
   )
@@ -464,53 +458,56 @@ function StatusPill({ status }: { status: string }) {
 }
 
 function AnnouncementsBlock({ items }: { items: PlatformAnnouncement[] }) {
-  // A13 declutter — show only the latest announcement. Older ones get a
-  // "View previous" link that opens the marketing-site archive page.
-  // Hide the section entirely when there's nothing to show.
-  if (items.length === 0) return null
+  // BookReady Feed — one active announcement, dismissible. Dismissal
+  // persists per-id in localStorage so it stays hidden after the owner
+  // closes it. Low priority: a standard card, never interrupts workflow.
   const a = items[0]
+  const annId = a ? String(a.id) : ''
+  const [dismissed, setDismissed] = useState(true)
+  useEffect(() => {
+    if (! annId) return
+    try { setDismissed(localStorage.getItem(`br_ann_dismissed_${annId}`) === '1') }
+    catch { setDismissed(false) }
+  }, [annId])
+
+  if (! a || dismissed) return null
   const when = a.published_at ?? a.created_at ?? ''
   const isInternal = !! a.cta_href && a.cta_href.startsWith('/')
+  const close = () => {
+    try { localStorage.setItem(`br_ann_dismissed_${annId}`, '1') } catch {}
+    setDismissed(true)
+  }
   return (
-    <section>
-      <SectionHeader
-        icon={Megaphone}
-        label="What's new"
-        subtitle="From the BookReady team."
-        cta={items.length > 1
-          ? { label: 'View previous', href: 'https://mybookready.com/announcements' }
-          : undefined}
-      />
-      <article className="bg-white border border-[rgba(18,18,18,0.10)] p-4 flex flex-col">
-        <div className="flex items-start gap-2.5 mb-2">
-          <Sparkles size={14} className="text-near-black mt-0.5 flex-shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-bold text-near-black leading-tight">{a.title}</p>
-            {when && <p className="text-[10px] text-muted-text mt-0.5">{fmtDate(when.slice(0, 10))}</p>}
-          </div>
+    <article className="bg-white border border-[rgba(18,18,18,0.10)] p-4 relative">
+      <button
+        type="button"
+        onClick={close}
+        aria-label="Dismiss"
+        className="absolute top-2.5 right-2.5 w-6 h-6 inline-flex items-center justify-center text-muted-text hover:text-near-black hover:bg-cream transition-colors"
+      >
+        <X size={13} />
+      </button>
+      <div className="flex items-start gap-2.5 mb-2 pr-6">
+        <Sparkles size={14} className="text-near-black mt-0.5 flex-shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">From the BookReady team</p>
+          <p className="text-[14px] font-bold text-near-black leading-tight mt-0.5">{a.title}</p>
+          {when && <p className="text-[10px] text-muted-text mt-0.5">{fmtDate(when.slice(0, 10))}</p>}
         </div>
-        <p className="text-[13px] text-near-black/80 leading-snug whitespace-pre-line">{a.body}</p>
-        {a.cta_label && a.cta_href && (
-          isInternal ? (
-            <Link
-              href={a.cta_href}
-              className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-near-black hover:underline self-start"
-            >
-              {a.cta_label} <ArrowUpRight size={11} />
-            </Link>
-          ) : (
-            <a
-              href={a.cta_href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-near-black hover:underline self-start"
-            >
-              {a.cta_label} <ArrowUpRight size={11} />
-            </a>
-          )
-        )}
-      </article>
-    </section>
+      </div>
+      <p className="text-[13px] text-near-black/80 leading-snug whitespace-pre-line">{a.body}</p>
+      {a.cta_label && a.cta_href && (
+        isInternal ? (
+          <Link href={a.cta_href} className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-near-black hover:underline self-start">
+            {a.cta_label} <ArrowUpRight size={11} />
+          </Link>
+        ) : (
+          <a href={a.cta_href} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-near-black hover:underline self-start">
+            {a.cta_label} <ArrowUpRight size={11} />
+          </a>
+        )
+      )}
+    </article>
   )
 }
 
@@ -1013,81 +1010,6 @@ function RevenueChart({ appts, currency }: { appts: Appointment[]; currency: str
   )
 }
 
-/**
- * Booking volume — period-toggleable bar chart of appointment count.
- * Click a bar to inline-expand the list of bookings made that period.
- */
-function BookingVolumeChart({ appts }: { appts: Appointment[] }) {
-  const [period, setPeriod]           = useState<ChartPeriod>('daily')
-  const [selectedKey, setSelectedKey] = useState<string | null>(null)
-  const buckets = useMemo(() => computeBookingsBuckets(appts, period), [appts, period])
-  const total = buckets.reduce((s, b) => s + b.value, 0)
-  const avg = total / Math.max(1, buckets.length)
-  const periodWord = period === 'daily' ? 'day' : period === 'weekly' ? 'week' : 'month'
-
-  const bars: ChartBar[] = buckets.map(b => ({
-    key:         b.key,
-    value:       b.value,
-    primary:     period === 'daily' ? fmtDateFull(b.startISO)
-                : period === 'weekly' ? `Week of ${fmtDate(b.startISO)}`
-                : monthLabel(b.startISO),
-    secondary:   `${b.value} booking${b.value === 1 ? '' : 's'}`,
-    accent:      b.isCurrent,
-    accentColor: '#0f6f3d',
-    selected:    selectedKey === b.key,
-  }))
-
-  const selectedBucket = buckets.find(b => b.key === selectedKey) ?? null
-  const contributing  = selectedBucket
-    ? appointmentsInRange(appts, selectedBucket.startISO, selectedBucket.endISO, 'created')
-    : []
-
-  return (
-    <section>
-      <SectionHeader
-        icon={Calendar}
-        label="Bookings"
-        subtitle={total === 0
-          ? `No bookings in this ${periodWord} window.`
-          : `${total} bookings total · ${avg.toFixed(1)}/${periodWord} avg`}
-      />
-      <div className="bg-white border border-[rgba(18,18,18,0.10)]">
-        <div className="px-4 pt-3 pb-1 flex justify-end">
-          <PeriodToggle value={period} onChange={p => { setPeriod(p); setSelectedKey(null) }} />
-        </div>
-        <div className="px-4 pb-4">
-          <InteractiveBarChart
-            bars={bars}
-            startLabel={buckets[0]?.label ?? ''}
-            endLabel={buckets[buckets.length - 1]?.label ?? ''}
-            emptyText={`No bookings in this ${periodWord} window.`}
-            onBarClick={key => setSelectedKey(prev => prev === key ? null : key)}
-          />
-        </div>
-        {selectedBucket && (
-          <ChartDetailPanel
-            label={
-              period === 'daily' ? fmtDateFull(selectedBucket.startISO)
-              : period === 'weekly' ? `Week of ${fmtDate(selectedBucket.startISO)}`
-              : monthLabel(selectedBucket.startISO)
-            }
-            valueLabel={`${selectedBucket.value} booking${selectedBucket.value === 1 ? '' : 's'}`}
-            onClose={() => setSelectedKey(null)}
-            empty={contributing.length === 0 ? 'No bookings made in this period.' : undefined}
-            rows={contributing.slice(0, 8).map(a => ({
-              key:       String(a.id),
-              primary:   a.customer_name,
-              secondary: `${a.service_name} · ${fmtDate(a.appointment_date)} at ${fmt12(a.start_time)}`,
-              right:     statusShortLabel(a.status),
-            }))}
-            overflowCount={contributing.length > 8 ? contributing.length - 8 : 0}
-          />
-        )}
-      </div>
-    </section>
-  )
-}
-
 // ────────────────────────────────────────────────────────────────────────────
 // A15 — period toggle + detail panel
 // ────────────────────────────────────────────────────────────────────────────
@@ -1179,12 +1101,6 @@ function ChartDetailPanel({
       `}</style>
     </div>
   )
-}
-
-/** Short status label for the bookings detail right column. */
-function statusShortLabel(status: string): string {
-  return status === 'no_show' ? 'No show'
-    : status.charAt(0).toUpperCase() + status.slice(1)
 }
 
 function monthLabel(iso: string): string {
@@ -1440,49 +1356,6 @@ function TopSpendersCard({ spenders, currency }: { spenders: TopSpender[]; curre
 
 interface RepeatRatio { total: number; returning: number; pct: number }
 
-function RepeatRatioCard({ ratio }: { ratio: RepeatRatio }) {
-  return (
-    <section>
-      <SectionHeader
-        icon={Repeat}
-        label="Repeat rate · last 20 bookings"
-        subtitle={ratio.total === 0
-          ? 'No booking history yet.'
-          : ratio.pct >= 60 ? 'Strong customer retention.'
-            : ratio.pct >= 30 ? 'Solid mix of new and returning.'
-              : 'Mostly fresh faces lately.'}
-      />
-      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
-        {ratio.total === 0 ? (
-          <p className="text-[12px] text-muted-text">
-            We&apos;ll start tracking once you have a few bookings logged.
-          </p>
-        ) : (
-          <>
-            <div className="flex items-baseline gap-2 mb-2">
-              <p className="text-[28px] font-bold text-near-black tabular-nums leading-none">
-                {ratio.pct}<span className="text-[16px] text-muted-text font-semibold">%</span>
-              </p>
-              <p className="text-[11px] text-muted-text">
-                {ratio.returning} of {ratio.total} returning
-              </p>
-            </div>
-            <div className="h-1.5 bg-cream rounded-full overflow-hidden">
-              <div
-                className="h-full transition-all duration-700"
-                style={{
-                  width: `${ratio.pct}%`,
-                  backgroundColor: ratio.pct >= 60 ? '#0f6f3d' : ratio.pct >= 30 ? '#5d8a1c' : '#c98a14',
-                }}
-              />
-            </div>
-          </>
-        )}
-      </div>
-    </section>
-  )
-}
-
 // ────────────────────────────────────────────────────────────────────────────
 // A13 — helpers for the new derivations
 // ────────────────────────────────────────────────────────────────────────────
@@ -1626,18 +1499,6 @@ function computeRevenueBuckets(appts: Appointment[], period: ChartPeriod): Perio
   })
 }
 
-function computeBookingsBuckets(appts: Appointment[], period: ChartPeriod): PeriodBucket[] {
-  return buildBuckets(period, (start, end) => {
-    let n = 0
-    for (const a of appts) {
-      if (! a.created_at) continue
-      const ts = new Date(a.created_at)
-      if (ts >= start && ts < end) n++
-    }
-    return n
-  })
-}
-
 /**
  * A15 — filter appointments to those whose timestamp falls in the bucket
  * range. `mode` controls which timestamp to use: 'created' for both
@@ -1732,6 +1593,298 @@ function computeRepeatRatio(appts: Appointment[]): RepeatRatio {
     returning,
     pct: total === 0 ? 0 : Math.round((returning / total) * 100),
   }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Dashboard 2.0 — command-center components + derivations
+// ────────────────────────────────────────────────────────────────────────────
+
+function HeaderActions({ publicUrl }: { publicUrl: string | null }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {publicUrl && (
+        <a href={publicUrl} target="_blank" rel="noopener noreferrer"
+           className="inline-flex items-center gap-1.5 bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-[12px] font-semibold text-near-black hover:border-near-black transition-colors">
+          <ExternalLink size={13} /> View website
+        </a>
+      )}
+      <Link href="/editor/appointments"
+            className="inline-flex items-center gap-1.5 bg-near-black text-white border border-near-black px-3 py-2 text-[12px] font-semibold hover:bg-white hover:text-near-black transition-colors">
+        <Plus size={13} /> Create appointment
+      </Link>
+      <Link href="/editor/customers"
+            className="inline-flex items-center gap-1.5 bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-[12px] font-semibold text-near-black hover:border-near-black transition-colors">
+        <UserPlus size={13} /> Add customer
+      </Link>
+    </div>
+  )
+}
+
+function SummaryStatCard({ label, value, sub, href, icon: Icon, tone = 'default' }: {
+  label: string; value: string; sub?: string; href: string; icon: React.ElementType; tone?: 'default' | 'warn'
+}) {
+  const warn = tone === 'warn'
+  return (
+    <Link href={href}
+          className={cn('block bg-white border p-3.5 hover:border-near-black transition-colors',
+            warn ? 'border-[rgba(180,120,0,0.40)]' : 'border-[rgba(18,18,18,0.10)]')}>
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-bold tracking-[0.12em] uppercase text-muted-text truncate">{label}</p>
+        <Icon size={13} className={warn ? 'text-[#8a5a00]' : 'text-muted-text'} strokeWidth={1.8} />
+      </div>
+      <p className={cn('text-[24px] sm:text-[26px] font-bold tabular-nums leading-tight mt-1', warn ? 'text-[#8a5a00]' : 'text-near-black')}>{value}</p>
+      {sub && <p className="text-[11px] text-muted-text mt-0.5">{sub}</p>}
+    </Link>
+  )
+}
+
+function PaymentIssuesTile({ count }: { count: number }) {
+  return (
+    <Link href="/editor/payments?tab=transactions"
+          className="block bg-[rgba(180,40,40,0.05)] border border-[rgba(180,40,40,0.30)] p-4 hover:bg-[rgba(180,40,40,0.09)] transition-colors">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 bg-white border border-[rgba(180,40,40,0.30)] flex items-center justify-center flex-shrink-0">
+          <AlertTriangle size={16} className="text-[#b42828]" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-bold text-[#b42828]">{count} payment {count === 1 ? 'issue' : 'issues'} to review</p>
+          <p className="text-[11px] text-[#b42828]/80 mt-0.5">Failed charges, disputes, or unpaid balances.</p>
+        </div>
+        <ArrowUpRight size={13} className="text-[#b42828] flex-shrink-0" />
+      </div>
+    </Link>
+  )
+}
+
+function QuickActions() {
+  const actions: { label: string; href: string; icon: React.ElementType }[] = [
+    { label: 'New appointment', href: '/editor/appointments', icon: Plus },
+    { label: 'Availability',    href: '/editor/availability', icon: Clock },
+    { label: 'Block a date',    href: '/editor/availability', icon: CalendarOff },
+    { label: 'Add customer',    href: '/editor/customers',    icon: UserPlus },
+    { label: 'Payments',        href: '/editor/payments',     icon: CreditCard },
+  ]
+  return (
+    <div className="flex flex-wrap gap-2">
+      {actions.map(act => {
+        const Icon = act.icon
+        return (
+          <Link key={act.label} href={act.href}
+                className="inline-flex items-center gap-1.5 bg-white border border-[rgba(18,18,18,0.12)] px-3 py-2 text-[12px] font-semibold text-near-black hover:border-near-black transition-colors">
+            <Icon size={13} strokeWidth={1.9} /> {act.label}
+          </Link>
+        )
+      })}
+    </div>
+  )
+}
+
+function BookingSnapshotCard({ snap }: { snap: BookingSnap }) {
+  const rows = [
+    { label: 'Confirmed',           value: snap.booked,    color: '#0f6f3d' },
+    { label: 'Pending',             value: snap.pending,   color: '#c98a14' },
+    { label: 'Completed',           value: snap.completed, color: '#121212' },
+    { label: 'Cancelled / no-show', value: snap.cancelled, color: '#b42828' },
+  ]
+  const max = Math.max(1, ...rows.map(r => r.value))
+  const total = rows.reduce((s, r) => s + r.value, 0)
+  return (
+    <section>
+      <SectionHeader icon={BarChart3} label="Booking snapshot"
+        subtitle={total === 0 ? 'No bookings yet.' : 'Your recent bookings by status.'}
+        cta={{ label: 'Open bookings', href: '/editor/appointments' }} />
+      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4 space-y-2.5">
+        {rows.map(r => (
+          <div key={r.label} className="flex items-center gap-3">
+            <span className="w-32 text-[11px] text-muted-text flex-shrink-0">{r.label}</span>
+            <div className="flex-1 h-2 bg-cream overflow-hidden">
+              <div className="h-full" style={{ width: `${(r.value / max) * 100}%`, backgroundColor: r.color }} />
+            </div>
+            <span className="w-8 text-right text-[13px] font-bold tabular-nums text-near-black">{r.value}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function UpcomingCard({ tomorrow, weekend }: { tomorrow: Appointment[]; weekend: Appointment[] }) {
+  return (
+    <section>
+      <SectionHeader icon={Calendar} label="Upcoming" subtitle="Tomorrow and this weekend."
+        cta={{ label: 'View all', href: '/editor/appointments' }} />
+      <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
+        <UpcomingRow label="Tomorrow" count={tomorrow.length} />
+        <UpcomingRow label="This weekend" count={weekend.length} />
+      </div>
+    </section>
+  )
+}
+
+function UpcomingRow({ label, count }: { label: string; count: number }) {
+  return (
+    <Link href="/editor/appointments" className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-cream/60 transition-colors">
+      <p className="text-[13px] font-semibold text-near-black">{label}</p>
+      <div className="flex items-center gap-2">
+        <span className="text-[13px] font-bold tabular-nums text-near-black">{count === 0 ? 'Open' : `${count} booked`}</span>
+        <ChevronRight size={14} className="text-muted-text" />
+      </div>
+    </Link>
+  )
+}
+
+function HealthMetricCard({ label, value, sub, icon: Icon }: { label: string; value: string; sub: string; icon: React.ElementType }) {
+  return (
+    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-bold tracking-[0.12em] uppercase text-muted-text">{label}</p>
+        <Icon size={13} className="text-muted-text" strokeWidth={1.8} />
+      </div>
+      <p className="text-[24px] font-bold tabular-nums text-near-black leading-tight mt-1">{value}</p>
+      <p className="text-[11px] text-muted-text mt-0.5">{sub}</p>
+    </div>
+  )
+}
+
+function GrowthOpportunitiesCard({ items }: { items: GrowthOpp[] }) {
+  if (items.length === 0) return null
+  return (
+    <section>
+      <SectionHeader icon={Zap} label="Growth opportunities" subtitle="Small moves that could add bookings." />
+      <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
+        {items.map((it, i) => (
+          <Link key={i} href={it.href} className="flex items-start gap-3 px-4 py-3 hover:bg-cream/60 transition-colors">
+            <span className="w-6 h-6 bg-cream border border-[rgba(18,18,18,0.10)] flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Sparkles size={12} className="text-[#c98a14]" />
+            </span>
+            <p className="flex-1 text-[13px] text-near-black leading-snug">{it.text}</p>
+            <span className="flex items-center gap-1 text-[11px] font-semibold text-near-black whitespace-nowrap mt-0.5">{it.cta} <ArrowRight size={12} /></span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+// ── Dashboard 2.0 derivation helpers ─────────────────────────────────────────
+
+function computeTodayScheduled(today: Appointment[]): number {
+  return round2(today.reduce((s, a) => s + (typeof a.service_price === 'number' ? a.service_price : 0), 0))
+}
+
+interface AttentionItem { label: string; detail: string; count: number; href: string }
+function computeAttention(appts: Appointment[], todayStr: string): { items: AttentionItem[]; total: number } {
+  const ACTIVE_DISPUTE = ['warning_needs_response', 'warning_under_review', 'needs_response', 'under_review']
+  const pending = appts.filter(a => a.status === 'pending').length
+  const paymentIssues = appts.filter(a =>
+    a.status !== 'cancelled' && (
+      a.payment_status === 'failed' ||
+      (a.dispute_status ? ACTIVE_DISPUTE.includes(a.dispute_status) : false)
+    )).length
+  const overdue = appts.filter(a =>
+    a.status !== 'cancelled' && a.status !== 'no_show' &&
+    typeof a.amount_due === 'number' && a.amount_due > 0 &&
+    a.payment_status !== 'paid' && a.appointment_date < todayStr).length
+  const items: AttentionItem[] = []
+  if (pending) items.push({ label: 'Booking requests', detail: 'Waiting for you to confirm', count: pending, href: '/editor/appointments?status=pending' })
+  if (paymentIssues) items.push({ label: 'Payment issues', detail: 'Failed charges or open disputes', count: paymentIssues, href: '/editor/payments?tab=transactions' })
+  if (overdue) items.push({ label: 'Unpaid balances', detail: 'Past appointments with money owed', count: overdue, href: '/editor/payments?tab=transactions' })
+  return { items, total: pending + paymentIssues + overdue }
+}
+
+interface BookingSnap { booked: number; pending: number; completed: number; cancelled: number }
+function computeBookingSnap(appts: Appointment[]): BookingSnap {
+  let booked = 0, pending = 0, completed = 0, cancelled = 0
+  for (const a of appts) {
+    if (a.status === 'confirmed') booked++
+    else if (a.status === 'pending') pending++
+    else if (a.status === 'completed') completed++
+    else if (a.status === 'cancelled' || a.status === 'no_show') cancelled++
+  }
+  return { booked, pending, completed, cancelled }
+}
+
+interface Health { avgTicket: number; noShowRatePct: number; currency: string }
+function computeHealth(appts: Appointment[]): Health {
+  let paidSum = 0, paidN = 0, currency = 'USD', completed = 0, noShow = 0
+  for (const a of appts) {
+    if (a.currency) currency = a.currency
+    const c = (a.deposit_paid_amount ?? 0) + (a.balance_paid_amount ?? 0)
+    if (c > 0) { paidSum += c; paidN++ }
+    if (a.status === 'completed') completed++
+    else if (a.status === 'no_show') noShow++
+  }
+  return {
+    avgTicket: paidN ? round2(paidSum / paidN) : 0,
+    noShowRatePct: (completed + noShow) ? Math.round((noShow / (completed + noShow)) * 100) : 0,
+    currency,
+  }
+}
+
+function findWeekendAppts(appts: Appointment[]): Appointment[] {
+  const now = new Date(); now.setHours(0, 0, 0, 0)
+  const dates = new Set<string>()
+  for (let i = 0; i < 8; i++) {
+    const d = new Date(now); d.setDate(d.getDate() + i)
+    const dow = d.getDay()
+    if (dow === 0 || dow === 6) dates.add(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`)
+  }
+  return appts.filter(a => dates.has(a.appointment_date) && a.status !== 'cancelled')
+}
+
+interface GrowthOpp { text: string; href: string; cta: string }
+function computeGrowth(appts: Appointment[]): GrowthOpp[] {
+  const out: GrowthOpp[] = []
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const now = new Date(); now.setHours(0, 0, 0, 0)
+
+  // Upcoming 7 days, count per day.
+  const upcoming: { iso: string; name: string; count: number }[] = []
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(now); d.setDate(d.getDate() + i)
+    const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+    upcoming.push({ iso, name: dayNames[d.getDay()], count: appts.filter(a => a.appointment_date === iso && a.status !== 'cancelled').length })
+  }
+  const busiest = [...upcoming].sort((a, b) => b.count - a.count)[0]
+  if (busiest && busiest.count >= 4) {
+    out.push({ text: `${busiest.name} is filling up (${busiest.count} booked). Open more slots or start a waitlist before it sells out.`, href: `/editor/appointments?date=${busiest.iso}`, cta: 'View day' })
+  }
+  const quiet = upcoming.find(d => d.count <= 1)
+  if (quiet) {
+    out.push({ text: `${quiet.name} is wide open. Promote it or offer a small perk to fill the gap.`, href: `/editor/appointments?date=${quiet.iso}`, cta: 'View day' })
+  }
+
+  // Busiest weekday overall.
+  const byDow = [0, 0, 0, 0, 0, 0, 0]
+  for (const a of appts) {
+    if (a.status === 'cancelled') continue
+    const d = new Date(a.appointment_date + 'T00:00:00')
+    if (! isNaN(d.getTime())) byDow[d.getDay()]++
+  }
+  if (byDow.reduce((s, n) => s + n, 0) >= 12) {
+    const maxDow = byDow.indexOf(Math.max(...byDow))
+    out.push({ text: `${dayNames[maxDow]} is your busiest day overall. Consider premium pricing or extended hours.`, href: '/editor/availability', cta: 'Review hours' })
+  }
+
+  // Regulars (5+ visits in the window).
+  const visits: Record<string, number> = {}
+  for (const a of appts) {
+    const k = (a.customer_email ?? a.customer_phone ?? a.customer_name ?? '').toLowerCase().trim()
+    if (! k) continue
+    visits[k] = (visits[k] ?? 0) + 1
+  }
+  const regulars = Object.values(visits).filter(n => n >= 5).length
+  if (regulars > 0) {
+    out.push({ text: `You have ${regulars} regular${regulars === 1 ? '' : 's'} with 5+ visits. A VIP perk could keep them coming back.`, href: '/editor/customers', cta: 'See customers' })
+  }
+
+  return out.slice(0, 3)
+}
+
+function fmtWeekday(iso: string): string {
+  if (! iso) return ''
+  const [y, m, d] = iso.split('-').map(s => parseInt(s, 10))
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
 }
 
 // A13 — daily-rotating tip for the hero. Deterministic by day-of-year
