@@ -54,6 +54,7 @@ use App\Http\Controllers\Api\Editor\ServiceAddonsController;
 use App\Http\Controllers\Api\Editor\BookingQuestionsController;
 use App\Http\Controllers\Api\PublicBookingAnswerUploadController;
 use App\Http\Controllers\Api\PublicSiteUnlockController;
+use App\Http\Controllers\Api\Editor\DashboardMetricsController;
 use App\Http\Controllers\Api\Editor\StaffController;
 use App\Http\Controllers\Api\Editor\StaffHoursController;
 use App\Http\Controllers\Api\Editor\StaffBlockedDatesController;
@@ -333,6 +334,10 @@ Route::prefix('v1')->group(function () {
 
         Route::get('policies',  [BusinessPolicyController::class, 'show']);
         Route::patch('policies', [BusinessPolicyController::class, 'update']);
+
+        // Dashboard 2.0 metrics (cached aggregate; all-time totals, period
+        // deltas, capacity-resolved % full).
+        Route::get('dashboard/metrics', [DashboardMetricsController::class, 'show']);
 
         Route::get('appointments',                   [AppointmentsController::class, 'index']);
         Route::post('appointments',                  [AppointmentsController::class, 'store']);

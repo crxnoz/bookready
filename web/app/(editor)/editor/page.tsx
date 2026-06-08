@@ -33,7 +33,9 @@ import {
   getEditorPolicies,
   getStripeConnectStatus,
   getEditorAppointments,
+  getEditorDashboardMetrics,
   getPlatformAnnouncements,
+  type EditorDashboardMetrics,
 } from '@/lib/api'
 import type {
   AuthUser, BusinessProfile, Service, HoursEntry, BusinessPolicy,
@@ -76,6 +78,10 @@ function DashboardBody() {
   const [stripe,   setStripe]   = useState<StripeConnectStatus | null>(null)
   const [appts,    setAppts]    = useState<Appointment[]>([])
   const [announcements, setAnnouncements] = useState<PlatformAnnouncement[]>([])
+  // Server-computed dashboard aggregates (all-time totals + period deltas
+  // + capacity-resolved "% full"). Falls back to client-side approximations
+  // until this resolves, then snaps to accurate numbers within a second.
+  const [metrics,  setMetrics]  = useState<EditorDashboardMetrics | null>(null)
   const [loading,  setLoading]  = useState(true)
   const [loadErr,  setLoadErr]  = useState<string | null>(null)
 
@@ -92,8 +98,12 @@ function DashboardBody() {
       // without paginating.
       getEditorAppointments({ limit: 200 }).catch(() => [] as Appointment[]),
       getPlatformAnnouncements().catch(() => [] as PlatformAnnouncement[]),
+      // Server aggregates (5-minute cache per tenant). On older builds this
+      // 404s; we treat the absence as "use client-side fallbacks" and don't
+      // surface an error.
+      getEditorDashboardMetrics().catch(() => null),
     ])
-      .then(([u, b, sv, hr, pol, st, ap, an]) => {
+      .then(([u, b, sv, hr, pol, st, ap, an, mx]) => {
         if (cancelled) return
         // First-run gate: send brand-new tenants to the onboarding wizard
         // before showing the dashboard. Skipping/finishing the wizard stamps
@@ -112,6 +122,7 @@ function DashboardBody() {
         setStripe(st as StripeConnectStatus | null)
         setAppts(Array.isArray(ap) ? (ap as Appointment[]) : [])
         setAnnouncements(Array.isArray(an) ? (an as PlatformAnnouncement[]) : [])
+        setMetrics((mx as EditorDashboardMetrics | null) ?? null)
       })
       .catch(e => { if (! cancelled) setLoadErr(e instanceof Error ? e.message : 'Failed to load') })
       .finally(() => { if (! cancelled) setLoading(false) })
@@ -289,7 +300,7 @@ function DashboardBody() {
       <QuickActions />
 
       {/* ════════ LAYER 3 — PERFORMANCE ════════ */}
-      <RevenueChart appts={appts} currency={moneyBuckets.currency} />
+      <RevenueChart appts={appts} currency={moneyBuckets.currency} metrics={metrics} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <BookingSnapshotCard snap={bookingSnap} />
         <UpcomingCard tomorrow={tomorrowAppts} weekend={weekendAppts} />
@@ -298,12 +309,35 @@ function DashboardBody() {
       <MoneySnapshot buckets={moneyBuckets} />
 
       {/* ════════ LAYER 4 — BUSINESS HEALTH ════════ */}
+      {/* Server metrics swap in when the dashboard/metrics endpoint resolves
+          (a few hundred ms after first paint). On older deploys it 404s and
+          we keep using the recent-window client calc; copy adapts so the
+          subtitle never misleads about the scope. */}
       <section>
-        <SectionHeader icon={Activity} label="Business health" subtitle="Based on your recent bookings." />
+        <SectionHeader
+          icon={Activity}
+          label="Business health"
+          subtitle={metrics ? 'All time.' : 'Based on your recent bookings.'}
+        />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <HealthMetricCard label="Average ticket" value={money(health.avgTicket, health.currency)} sub="Per paid booking" icon={Receipt} />
-          <HealthMetricCard label="Return rate" value={`${repeatRatio.pct}%`} sub={`${repeatRatio.returning} of ${repeatRatio.total} rebooked`} icon={Repeat} />
-          <HealthMetricCard label="No-show rate" value={`${health.noShowRatePct}%`} sub="Of finished appointments" icon={AlertCircle} />
+          <HealthMetricCard
+            label="Average ticket"
+            value={money(metrics?.avg_ticket ?? health.avgTicket, metrics?.currency ?? health.currency)}
+            sub="Per paid booking"
+            icon={Receipt}
+          />
+          <HealthMetricCard
+            label="Return rate"
+            value={`${metrics?.return_rate_pct ?? repeatRatio.pct}%`}
+            sub={metrics ? 'Customers who came back' : `${repeatRatio.returning} of ${repeatRatio.total} rebooked`}
+            icon={Repeat}
+          />
+          <HealthMetricCard
+            label="No-show rate"
+            value={`${metrics?.no_show_rate_pct ?? health.noShowRatePct}%`}
+            sub="Of finished appointments"
+            icon={AlertCircle}
+          />
         </div>
       </section>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -960,7 +994,11 @@ interface AreaData {
  * Clicking a point opens the inline detail panel below the chart listing
  * the appointments that contributed to that bucket.
  */
-function RevenueChart({ appts, currency }: { appts: Appointment[]; currency: string }) {
+function RevenueChart({ appts, currency, metrics }: {
+  appts:    Appointment[]
+  currency: string
+  metrics:  EditorDashboardMetrics | null
+}) {
   const [period, setPeriod]           = useState<ChartPeriod>('month')
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const data = useMemo(() => computeRevenueAreaData(appts, period), [appts, period])
@@ -973,8 +1011,19 @@ function RevenueChart({ appts, currency }: { appts: Appointment[]; currency: str
     a => ((a.deposit_paid_amount ?? 0) + (a.balance_paid_amount ?? 0)) > 0,
   )
 
-  const delta = data.priorTotal > 0
-    ? Math.round(((data.total - data.priorTotal) / data.priorTotal) * 100)
+  // Prefer server-computed period totals when available. The chart's
+  // point-by-point trend still comes from the 200-window of recent
+  // appointments; only the headline and the footer counts swap to the
+  // accurate aggregate. Falls back to client-side derived numbers when
+  // metrics hasn't resolved yet (or 404s on older deploys).
+  const serverRevenue = metrics?.revenue[period] ?? null
+  const serverAppts   = metrics?.appointments[period] ?? null
+  const total      = serverRevenue?.value ?? data.total
+  const priorTotal = serverRevenue?.prior ?? data.priorTotal
+  const totalAppts = serverAppts?.value   ?? data.totalAppts
+
+  const delta = priorTotal > 0
+    ? Math.round(((total - priorTotal) / priorTotal) * 100)
     : null
 
   let deltaCopy = ''
@@ -982,7 +1031,7 @@ function RevenueChart({ appts, currency }: { appts: Appointment[]; currency: str
   if (delta != null) {
     deltaCopy = `${delta >= 0 ? '+' : ''}${delta}% from ${priorWord}`
     deltaTone = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat'
-  } else if (data.total > 0) {
+  } else if (total > 0) {
     deltaCopy = `First ${periodNoun} with revenue`
     deltaTone = 'up'
   }
@@ -994,8 +1043,13 @@ function RevenueChart({ appts, currency }: { appts: Appointment[]; currency: str
       )
     : []
 
-  const headlineMoney = money(data.total, currency)
-  const avgTicket     = data.totalAppts > 0 ? money(data.total / data.totalAppts, currency) : null
+  const headlineMoney = money(total, currency)
+  const avgTicket     = totalAppts > 0 ? money(total / totalAppts, currency) : null
+
+  // "% full" chip only lights up when the tenant has capacity caps
+  // configured (Availability 2.0 P3 capacity model). Per the product
+  // call, we hide rather than fake the denominator with a heuristic.
+  const occupancyPct = metrics?.occupancy?.available ? metrics.occupancy.percent : null
 
   return (
     <section>
@@ -1038,20 +1092,27 @@ function RevenueChart({ appts, currency }: { appts: Appointment[]; currency: str
           )}
         </div>
 
-        {/* Footer line: appointments · avg ticket */}
+        {/* Footer line: appointments · avg ticket · % full (when capacity is set) */}
         {hasEverHadRevenue && (
           <div className="px-5 pb-4 text-[12px] text-muted-text">
-            {data.totalAppts === 0 ? (
+            {totalAppts === 0 ? (
               `No appointments ${period === 'today' ? 'yet today' : periodWord}.`
             ) : (
               <>
-                <span className="text-near-black font-medium tabular-nums">{data.totalAppts}</span>{' '}
-                {data.totalAppts === 1 ? 'appointment' : 'appointments'}
+                <span className="text-near-black font-medium tabular-nums">{totalAppts}</span>{' '}
+                {totalAppts === 1 ? 'appointment' : 'appointments'}
                 {avgTicket && (
                   <>
                     <span className="px-1.5 text-muted-text/60">·</span>
                     <span className="text-near-black font-medium tabular-nums">{avgTicket}</span>{' '}
                     avg ticket
+                  </>
+                )}
+                {occupancyPct != null && (
+                  <>
+                    <span className="px-1.5 text-muted-text/60">·</span>
+                    <span className="text-near-black font-medium tabular-nums">{occupancyPct}%</span>{' '}
+                    full this month
                   </>
                 )}
               </>

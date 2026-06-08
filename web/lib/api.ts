@@ -1707,6 +1707,52 @@ export async function getEditorAppointments(params?: {
   return request<Appointment[]>(`/editor/appointments${qs}`)
 }
 
+// ─── Dashboard 2.0 metrics ───────────────────────────────────────────────
+//
+// Server-computed aggregates for the /editor home dashboard. Backed by a
+// 5-minute cache per tenant. The dashboard page uses these for headline
+// numbers (all-time avg ticket, return rate, no-show rate) and for the
+// period totals + deltas on the Revenue Snapshot. The chart's point-by-
+// point data still comes from the recent appointment window since the
+// metrics endpoint only ships aggregates, not bucketed trends.
+
+export interface EditorDashboardPeriod { value: number; prior: number }
+
+export interface EditorDashboardOccupancy {
+  available: boolean
+  period:    'month'
+  percent:   number | null
+  booked:    number | null
+  capacity:  number | null
+}
+
+export interface EditorDashboardMetrics {
+  currency: string
+  revenue: {
+    all_time: number
+    today:    EditorDashboardPeriod
+    week:     EditorDashboardPeriod
+    month:    EditorDashboardPeriod
+    year:     EditorDashboardPeriod
+  }
+  appointments: {
+    all_time: number
+    today:    EditorDashboardPeriod
+    week:     EditorDashboardPeriod
+    month:    EditorDashboardPeriod
+    year:     EditorDashboardPeriod
+  }
+  avg_ticket:       number | null
+  return_rate_pct:  number | null
+  no_show_rate_pct: number | null
+  occupancy:        EditorDashboardOccupancy
+  generated_at:     string
+}
+
+export async function getEditorDashboardMetrics(): Promise<EditorDashboardMetrics> {
+  return request<EditorDashboardMetrics>('/editor/dashboard/metrics')
+}
+
 export async function createEditorAppointment(data: CreateAppointmentPayload): Promise<Appointment> {
   return request<Appointment>('/editor/appointments', {
     method: 'POST',
