@@ -3,9 +3,7 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import {
-  CalendarDays, Repeat, Rocket, Users, Clock, Inbox, Moon, Zap,
-} from 'lucide-react'
+import { CalendarDays, Users } from 'lucide-react'
 import EditorShell from '@/components/editor/EditorShell'
 import AvailabilityEditor from '@/components/editor/AvailabilityEditor'
 import CalendarOverridesEditor from '@/components/editor/CalendarOverridesEditor'
@@ -40,19 +38,18 @@ type TabId =
 interface TabDef {
   id:    TabId
   label: string
-  icon:  React.ElementType
   badge?: string
 }
 
 const TABS: TabDef[] = [
-  { id: 'calendar', label: 'Smart Calendar', icon: CalendarDays },
-  { id: 'drops',    label: 'Date Drops',     icon: Rocket },
-  { id: 'capacity', label: 'Capacity',       icon: Users },
-  { id: 'after-hours', label: 'After Hours', icon: Moon },
-  { id: 'squeeze-ins', label: 'Squeeze-Ins', icon: Zap },
-  { id: 'waitlist', label: 'Waitlist',       icon: Clock },
-  { id: 'requests', label: 'Requests',       icon: Inbox },
-  { id: 'advanced', label: 'Advanced',       icon: Repeat },
+  { id: 'calendar',    label: 'Smart Calendar' },
+  { id: 'drops',       label: 'Date Drops' },
+  { id: 'capacity',    label: 'Capacity' },
+  { id: 'after-hours', label: 'After Hours' },
+  { id: 'squeeze-ins', label: 'Squeeze-Ins' },
+  { id: 'waitlist',    label: 'Waitlist' },
+  { id: 'requests',    label: 'Requests' },
+  { id: 'advanced',    label: 'Advanced' },
 ]
 
 export default function AvailabilityPage() {
@@ -74,14 +71,13 @@ function Hub() {
   const tab: TabId = (TABS.some(t => t.id === raw) ? raw : 'calendar') as TabId
 
   return (
-    <>
-      <nav className="flex items-center gap-1 mb-5 border-b border-hairline-soft overflow-x-auto">
+    <div className="p-4 sm:p-5 md:p-6">
+      <nav className="flex items-center gap-1 mb-5 border-b border-hairline-soft overflow-x-auto overflow-y-hidden">
         {TABS.map(t => (
           <TabLink
             key={t.id}
             href={`/editor/availability?tab=${t.id}`}
             active={tab === t.id}
-            icon={t.icon}
             label={t.label}
             badge={t.badge}
           />
@@ -96,7 +92,7 @@ function Hub() {
       {tab === 'waitlist' && <WaitlistEditor />}
       {tab === 'requests' && <AvailabilityRequestsEditor />}
       {tab === 'advanced' && <AdvancedTab />}
-    </>
+    </div>
   )
 }
 
@@ -129,11 +125,10 @@ function AdvancedTab() {
 }
 
 function TabLink({
-  href, active, icon: Icon, label, badge,
+  href, active, label, badge,
 }: {
   href:   string
   active: boolean
-  icon:   React.ElementType
   label:  string
   badge?: string
 }) {
@@ -141,13 +136,12 @@ function TabLink({
     <Link
       href={href}
       className={cn(
-        'inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase px-3 py-2.5 border-b-2 -mb-px whitespace-nowrap',
+        'inline-flex items-center gap-1.5 text-sm font-medium px-3 py-2.5 border-b-2 -mb-px whitespace-nowrap',
         active
           ? 'text-near-black border-near-black'
           : 'text-muted-text border-transparent hover:text-near-black',
       )}
     >
-      <Icon size={12} />
       {label}
       {badge && (
         <span className="text-eyebrow font-bold tracking-[0.06em] uppercase bg-blush border border-hairline-soft text-near-black px-1 py-0.5 ml-1">
