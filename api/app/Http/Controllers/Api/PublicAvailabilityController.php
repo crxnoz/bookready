@@ -182,6 +182,17 @@ class PublicAvailabilityController extends Controller
                 ->all();
         }
 
+        // Av2.0 P2 — compute the release window (Always Open / Weekly /
+        // Bi-Weekly / Monthly / Custom). Drops list is empty for non-custom
+        // strategies, which is fine — the resolver ignores it.
+        $drops = [];
+        if (\Illuminate\Support\Facades\Schema::hasTable('slot_release_drops')) {
+            $drops = DB::table('slot_release_drops')->get()->all();
+        }
+        $releasedUntil = \App\Services\ReleaseWindowResolver::releasedUntil(
+            $settings, $drops, \Carbon\Carbon::now(config('app.timezone')),
+        );
+
         // Snapshot service data before ending tenancy
         $serviceData = [
             'id'               => (int)   $service->id,
@@ -201,6 +212,7 @@ class PublicAvailabilityController extends Controller
             appointments:  $appointments,
             appTimezone:   config('app.timezone'),
             blockedRanges: array_merge($blockedRanges, $staffBlockedRanges),
+            releasedUntil: $releasedUntil,
         );
 
         return response()->json([

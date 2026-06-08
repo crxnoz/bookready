@@ -290,6 +290,19 @@ class PublicManageBookingController extends Controller
             return response()->json(['message' => $override['closed_reason']], 422);
         }
         $hoursRow = $override['hoursRow'];
+
+        // Av2.0 P2 — release window enforced on reschedule too.
+        $drops = [];
+        if (\Illuminate\Support\Facades\Schema::hasTable('slot_release_drops')) {
+            $drops = DB::table('slot_release_drops')->get()->all();
+        }
+        $releasedUntil = \App\Services\ReleaseWindowResolver::releasedUntil(
+            $bs, $drops, \Carbon\Carbon::now(config('app.timezone')),
+        );
+        if ($releasedUntil !== null && $newDate > $releasedUntil->format('Y-m-d')) {
+            tenancy()->end();
+            return response()->json(['message' => 'This date has not been released for booking yet.'], 422);
+        }
         $others    = DB::table('appointments')
             ->where('appointment_date', $newDate)
             ->where('id', '!=', $row->id)
@@ -312,12 +325,13 @@ class PublicManageBookingController extends Controller
         }
 
         $result = SlotGenerator::generate(
-            date:         $newDate,
-            service:      $service,
-            hoursRow:     $hoursRow,
-            settings:     $bs,
-            appointments: $others,
-            appTimezone:  $tzId,
+            date:          $newDate,
+            service:       $service,
+            hoursRow:      $hoursRow,
+            settings:      $bs,
+            appointments:  $others,
+            appTimezone:   $tzId,
+            releasedUntil: $releasedUntil,
         );
         if (! SlotGenerator::containsSlot($result['slots'], $newStart)) {
             tenancy()->end();

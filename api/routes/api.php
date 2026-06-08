@@ -35,6 +35,7 @@ use App\Http\Controllers\Api\Editor\PaymentsTransactionsController;
 use App\Http\Controllers\Api\Editor\CalendarOverridesController;
 use App\Http\Controllers\Api\Editor\HoursController;
 use App\Http\Controllers\Api\Editor\BookingSettingsController;
+use App\Http\Controllers\Api\Editor\SlotReleaseDropsController;
 use App\Http\Controllers\Api\Editor\NotificationSettingsController;
 use App\Http\Controllers\Api\Editor\PaymentSettingsController;
 use App\Http\Controllers\Api\Editor\StripeConnectController;
@@ -361,6 +362,13 @@ Route::prefix('v1')->group(function () {
 
         Route::get('settings/bookings',               [BookingSettingsController::class, 'show']);
         Route::patch('settings/bookings',             [BookingSettingsController::class, 'update']);
+
+        // Av2.0 P2 — release window state + custom drops CRUD.
+        Route::get   ('release-state',                [BookingSettingsController::class, 'releaseState']);
+        Route::get   ('slot-release-drops',           [SlotReleaseDropsController::class, 'index']);
+        Route::post  ('slot-release-drops',           [SlotReleaseDropsController::class, 'store']);
+        Route::patch ('slot-release-drops/{id}',      [SlotReleaseDropsController::class, 'update'])->where('id', '\d+');
+        Route::delete('slot-release-drops/{id}',      [SlotReleaseDropsController::class, 'destroy'])->where('id', '\d+');
 
         Route::get('settings/notifications',          [NotificationSettingsController::class, 'show']);
         Route::patch('settings/notifications',        [NotificationSettingsController::class, 'update']);

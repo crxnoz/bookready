@@ -294,6 +294,19 @@ class PublicBookingController extends Controller
         }
         $hoursRow = $override['hoursRow'];
 
+        // Av2.0 P2 — re-validate release window on booking submit.
+        $drops = [];
+        if (\Illuminate\Support\Facades\Schema::hasTable('slot_release_drops')) {
+            $drops = DB::table('slot_release_drops')->get()->all();
+        }
+        $releasedUntil = \App\Services\ReleaseWindowResolver::releasedUntil(
+            $settings, $drops, \Carbon\Carbon::now(config('app.timezone')),
+        );
+        if ($releasedUntil !== null && $date > $releasedUntil->format('Y-m-d')) {
+            tenancy()->end();
+            return response()->json(['message' => 'This date has not been released for booking yet.'], 422);
+        }
+
         // ── Global booking gate ──────────────────────────────────────────
         if ($settings && property_exists($settings, 'booking_enabled') && ! $settings->booking_enabled) {
             tenancy()->end();
@@ -361,6 +374,7 @@ class PublicBookingController extends Controller
             appointments:  $appointments,
             appTimezone:   config('app.timezone'),
             blockedRanges: $blockedRanges,
+            releasedUntil: $releasedUntil,
         );
 
         if (! SlotGenerator::containsSlot($result['slots'], $startTime)) {

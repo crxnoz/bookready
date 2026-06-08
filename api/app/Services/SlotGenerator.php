@@ -23,6 +23,11 @@ class SlotGenerator
      * @param  string       $appTimezone    app timezone (e.g. 'America/New_York')
      * @param  array        $blockedRanges  optional list of ['start_date' => 'Y-m-d', 'end_date' => 'Y-m-d'|null].
      *                                      When $date falls in any range we short-circuit with a closed message.
+     * @param  ?Carbon       $releasedUntil  Av2.0 Phase 2: latest released date (inclusive) for the current
+     *                                       release strategy. NULL = no release gate (always open). Caller
+     *                                       computes this via App\Services\ReleaseWindowResolver. Kept as a
+     *                                       parameter (vs an inline lookup) to preserve SlotGenerator's
+     *                                       "no DB calls" contract.
      * @return array{slots: list<array{start_time:string,end_time:string,label:string}>, message: string|null}
      */
     public static function generate(
@@ -33,6 +38,7 @@ class SlotGenerator
         array   $appointments,
         string  $appTimezone = 'UTC',
         array   $blockedRanges = [],
+        ?Carbon $releasedUntil = null,
     ): array {
         $today    = Carbon::now($appTimezone)->format('Y-m-d');
         $now      = Carbon::now($appTimezone);
@@ -49,18 +55,16 @@ class SlotGenerator
         }
 
         // ── Slot release window ───────────────────────────────────────────
-        $releaseEnabled = (bool) ($settings->slot_release_enabled ?? false);
-        if ($releaseEnabled) {
-            $windowDays = (int) ($settings->slot_release_window_days ?? $maxDaysAhead);
-            $releaseMax = Carbon::parse($today, $appTimezone)->addDays($windowDays)->format('Y-m-d');
-            if ($date > $releaseMax) {
-                return [
-                    'slots'   => [],
-                    'message' => 'This date has not been released for booking yet.',
-                    // TODO: implement true scheduled release calendar based on slot_release_frequency,
-                    // slot_release_day_of_week, slot_release_day_of_month, and slot_release_time.
-                ];
-            }
+        // Av2.0 P2: real scheduled-release support. Caller computes
+        // `$releasedUntil` via App\Services\ReleaseWindowResolver (which
+        // knows about weekly/bi-weekly/monthly/custom strategies) and
+        // passes the resolved date in. SlotGenerator just gates on it —
+        // keeps the "no DB calls" contract intact.
+        if ($releasedUntil !== null && $date > $releasedUntil->format('Y-m-d')) {
+            return [
+                'slots'   => [],
+                'message' => 'This date has not been released for booking yet.',
+            ];
         }
 
         // ── Phase 6: tenant-wide blocked-date short-circuit ───────────────

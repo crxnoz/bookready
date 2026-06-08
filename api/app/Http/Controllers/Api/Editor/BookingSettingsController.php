@@ -26,7 +26,10 @@ use Illuminate\Support\Facades\DB;
  */
 class BookingSettingsController extends Controller
 {
-    private const ALLOWED_RELEASE_MODES = ['always_open', 'weekly', 'biweekly', 'monthly'];
+    // Av2.0 P2 — `custom` joins the recurring strategies (drops live in
+    // slot_release_drops). `always_open` collapses slot_release_enabled
+    // back to false so the public booking flow has no release gate.
+    private const ALLOWED_RELEASE_MODES = ['always_open', 'weekly', 'biweekly', 'monthly', 'custom'];
 
     private function format(object $row): array
     {
@@ -35,9 +38,15 @@ class BookingSettingsController extends Controller
 
         $releaseEnabled = (bool) ($row->slot_release_enabled ?? false);
         $releaseFreq    = $row->slot_release_frequency ?? null;
-        $mode = (! $releaseEnabled || ! in_array($releaseFreq, ['weekly', 'biweekly', 'monthly'], true))
+        $mode = (! $releaseEnabled || ! in_array($releaseFreq, ['weekly', 'biweekly', 'monthly', 'custom'], true))
             ? 'always_open'
             : $releaseFreq;
+
+        $anchorRaw = $get('slot_release_anchor_date');
+        $anchor    = $anchorRaw ? substr((string) $anchorRaw, 0, 10) : null;
+
+        $timeRaw   = $get('slot_release_time');
+        $time      = $timeRaw ? substr((string) $timeRaw, 0, 5) : null;
 
         return [
             'id'                                  => (int)  $row->id,
@@ -46,10 +55,19 @@ class BookingSettingsController extends Controller
             'minimum_notice_minutes'              => (int)  $row->minimum_notice_minutes,
             'max_days_ahead'                      => (int)  $row->max_days_ahead,
             'slot_interval_minutes'               => (int)  $row->booking_interval_minutes,
+            // Release strategy (Av2.0 P2)
             'slot_release_mode'                   =>        $mode,
             'slot_release_window_days'            => $row->slot_release_window_days !== null
                                                           ? (int) $row->slot_release_window_days
                                                           : null,
+            'slot_release_day_of_week'            => $row->slot_release_day_of_week !== null
+                                                          ? (int) $row->slot_release_day_of_week
+                                                          : null,
+            'slot_release_day_of_month'           => $row->slot_release_day_of_month !== null
+                                                          ? (int) $row->slot_release_day_of_month
+                                                          : null,
+            'slot_release_time'                   => $time,
+            'slot_release_anchor_date'            => $anchor,
             'cancellation_window_hours'           => (int)  ($get('cancellation_window_hours', 24)),
             'reschedule_window_hours'             => (int)  ($get('reschedule_window_hours', 24)),
             'prevent_duplicate_client_bookings'   => (bool) ($get('prevent_duplicate_client_bookings', false)),
@@ -107,6 +125,10 @@ class BookingSettingsController extends Controller
             'slot_interval_minutes'               => 'sometimes|integer|min:5|max:240',
             'slot_release_mode'                   => 'sometimes|in:' . implode(',', self::ALLOWED_RELEASE_MODES),
             'slot_release_window_days'            => 'sometimes|nullable|integer|min:1|max:365',
+            'slot_release_day_of_week'            => 'sometimes|nullable|integer|between:0,6',
+            'slot_release_day_of_month'           => 'sometimes|nullable|integer|between:1,31',
+            'slot_release_time'                   => 'sometimes|nullable|date_format:H:i',
+            'slot_release_anchor_date'            => 'sometimes|nullable|date_format:Y-m-d',
             'cancellation_window_hours'           => 'sometimes|integer|min:0|max:720',
             'reschedule_window_hours'             => 'sometimes|integer|min:0|max:720',
             'prevent_duplicate_client_bookings'   => 'sometimes|boolean',
@@ -155,6 +177,20 @@ class BookingSettingsController extends Controller
                 : null;
         }
 
+        // Av2.0 P2: cadence-specific fields.
+        if (array_key_exists('slot_release_day_of_week', $validated)) {
+            $patch['slot_release_day_of_week'] = $validated['slot_release_day_of_week'];
+        }
+        if (array_key_exists('slot_release_day_of_month', $validated)) {
+            $patch['slot_release_day_of_month'] = $validated['slot_release_day_of_month'];
+        }
+        if (array_key_exists('slot_release_time', $validated)) {
+            $patch['slot_release_time'] = $validated['slot_release_time'];
+        }
+        if (array_key_exists('slot_release_anchor_date', $validated)) {
+            $patch['slot_release_anchor_date'] = $validated['slot_release_anchor_date'];
+        }
+
         DB::table('booking_settings')->update($patch);
 
         $row    = DB::table('booking_settings')->first();
@@ -163,5 +199,47 @@ class BookingSettingsController extends Controller
         tenancy()->end();
 
         return response()->json($result);
+    }
+
+    /**
+     * GET /editor/release-state
+     *
+     * Av2.0 P2: returns the resolved release window for the calendar UI.
+     * Tells the Smart Calendar which dates are currently bookable so it
+     * can tint un-released cells.
+     */
+    public function releaseState(Request $request): JsonResponse
+    {
+        $tenant = Tenant::findOrFail($request->user()->tenant_id);
+        tenancy()->initialize($tenant);
+
+        $settings = DB::table('booking_settings')->first();
+        $drops    = \Illuminate\Support\Facades\Schema::hasTable('slot_release_drops')
+            ? DB::table('slot_release_drops')->get()->all()
+            : [];
+
+        $now           = \Carbon\Carbon::now(config('app.timezone'));
+        $releasedUntil = \App\Services\ReleaseWindowResolver::releasedUntil($settings, $drops, $now);
+
+        $maxDaysAhead  = (int) ($settings->max_days_ahead ?? 30);
+        $maxDate       = $now->copy()->addDays($maxDaysAhead)->toDateString();
+
+        // The effective upper bound is the MIN of release-window and
+        // max_days_ahead so the UI can render a single "bookable through"
+        // line without re-implementing the gate.
+        $effectiveTo = $releasedUntil
+            ? min($releasedUntil->toDateString(), $maxDate)
+            : $maxDate;
+
+        tenancy()->end();
+
+        return response()->json([
+            'released_until'   => $releasedUntil?->toDateString(),
+            'max_days_ahead'   => $maxDaysAhead,
+            'max_bookable_to'  => $effectiveTo,
+            'mode'             => ! ($settings->slot_release_enabled ?? false)
+                                    ? 'always_open'
+                                    : ($settings->slot_release_frequency ?? 'always_open'),
+        ]);
     }
 }
