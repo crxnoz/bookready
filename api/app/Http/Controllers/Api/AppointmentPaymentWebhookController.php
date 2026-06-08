@@ -670,6 +670,26 @@ class AppointmentPaymentWebhookController extends Controller
                     $update['cancellation_reason'] = 'Payment not completed';
                 }
                 DB::table('appointments')->where('id', $appointmentId)->update($update);
+
+                // Av2.0 P7 — slot is now genuinely free. Offer it to the
+                // waitlist if anyone's matching. We deliberately skip
+                // the refund/dispute branches above — those happen AFTER
+                // the appointment date and offering past slots is useless.
+                try {
+                    $cancelledRow = DB::table('appointments')->find($appointmentId);
+                    if ($cancelledRow) {
+                        $bp = Schema::hasTable('business_profiles') ? DB::table('business_profiles')->first() : null;
+                        \App\Services\WaitlistService::onAppointmentCancelled(
+                            $cancelledRow,
+                            (string) ($bp->business_name ?? $tenantId),
+                            (string) $tenantId,
+                        );
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('waitlist on-cancel (webhook) failed', [
+                        'tenant_id' => $tenantId, 'appointment_id' => $appointmentId, 'error' => $e->getMessage(),
+                    ]);
+                }
             }
 
             tenancy()->end();

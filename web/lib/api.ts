@@ -859,6 +859,90 @@ export async function deleteEditorSlotReleaseDrop(id: number): Promise<{ id: num
   return request(`/editor/slot-release-drops/${id}`, { method: 'DELETE' })
 }
 
+// ── Availability 2.0 · Phase 7 · Waitlist ─────────────────────────────────
+
+export type WaitlistStatus = 'pending' | 'notified' | 'claimed' | 'expired' | 'removed'
+
+export interface WaitlistEntry {
+  id:                      number
+  customer_name:           string
+  customer_email:          string
+  customer_phone:          string | null
+  service_id:              number
+  service_name:            string | null
+  staff_id:                number | null
+  staff_name:              string | null
+  preferred_date:          string | null
+  earliest_date:           string
+  latest_date:             string
+  notes:                   string | null
+  status:                  WaitlistStatus
+  notified_at:             string | null
+  notification_expires_at: string | null
+  created_at:              string | null
+}
+
+export async function getEditorWaitlist(): Promise<{ data: WaitlistEntry[] }> {
+  return request<{ data: WaitlistEntry[] }>('/editor/waitlist')
+}
+
+export async function updateEditorWaitlistEntry(
+  id: number,
+  payload: { status: 'removed' },
+): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/editor/waitlist/${id}`, {
+    method: 'PATCH',
+    body:   JSON.stringify(payload),
+  })
+}
+
+// Public — customer joins the waitlist from the booking widget.
+export interface PublicWaitlistJoinPayload {
+  customer_name:  string
+  customer_email: string
+  customer_phone?: string
+  service_id:     number
+  staff_id?:      number
+  preferred_date?: string  // YYYY-MM-DD
+  earliest_date:  string   // YYYY-MM-DD
+  latest_date:    string   // YYYY-MM-DD
+  notes?:         string
+}
+
+export async function joinPublicWaitlist(
+  slug: string,
+  payload: PublicWaitlistJoinPayload,
+): Promise<{ id: number; message: string; duplicate?: boolean }> {
+  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.bkrdy.me') + '/v1'
+  const res = await fetch(`${baseUrl}/public/sites/${slug}/waitlist`, {
+    method:  'POST',
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload),
+  })
+  const body = await res.json().catch(() => ({} as Record<string, unknown>))
+  if (! res.ok) throw Object.assign(new Error((body as { message?: string }).message || 'Failed to join waitlist'), { status: res.status })
+  return body as { id: number; message: string; duplicate?: boolean }
+}
+
+export async function claimPublicWaitlist(
+  slug: string,
+  token: string,
+): Promise<{
+  appointment_id:    number
+  appointment_date:  string
+  start_time:        string
+  message:           string
+}> {
+  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.bkrdy.me') + '/v1'
+  const res = await fetch(`${baseUrl}/public/sites/${slug}/waitlist/claim/${token}`, {
+    method:  'POST',
+    headers: { 'Accept': 'application/json' },
+  })
+  const body = await res.json().catch(() => ({} as Record<string, unknown>))
+  if (! res.ok) throw Object.assign(new Error((body as { message?: string }).message || 'Could not claim spot'), { status: res.status })
+  return body as { appointment_id: number; appointment_date: string; start_time: string; message: string }
+}
+
 // ── Blocked dates (Phase 6) ──────────────────────────────────────────────────
 
 export async function getEditorBlockedDates(): Promise<BlockedDate[]> {

@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\Editor\CalendarOverridesController;
 use App\Http\Controllers\Api\Editor\HoursController;
 use App\Http\Controllers\Api\Editor\BookingSettingsController;
 use App\Http\Controllers\Api\Editor\SlotReleaseDropsController;
+use App\Http\Controllers\Api\Editor\WaitlistController;
 use App\Http\Controllers\Api\Editor\NotificationSettingsController;
 use App\Http\Controllers\Api\Editor\PaymentSettingsController;
 use App\Http\Controllers\Api\Editor\StripeConnectController;
@@ -130,6 +131,19 @@ Route::prefix('v1')->group(function () {
     Route::post('public/sites/{slug}/manage/{token}/cancel',      [PublicManageBookingController::class, 'cancel'])
         ->middleware('throttle:10,1');
     Route::post('public/sites/{slug}/manage/{token}/reschedule',  [PublicManageBookingController::class, 'reschedule'])
+        ->middleware('throttle:10,1');
+
+    // ── Public waitlist (Availability 2.0 Phase 7) ────────────────────────
+    // Join the waitlist for a service when a desired day is full / locked.
+    // Throttled at 5/min/IP — joining doesn't need to be a hot loop and
+    // we don't want spam-bots flooding the waitlist table.
+    Route::post('public/sites/{slug}/waitlist',
+        [\App\Http\Controllers\Api\PublicWaitlistController::class, 'join'])
+        ->middleware('throttle:5,1');
+    // Claim a token-gated offer. The token itself is the secret, throttled
+    // so a leaked link can't be brute-force enumerated.
+    Route::post('public/sites/{slug}/waitlist/claim/{token}',
+        [\App\Http\Controllers\Api\PublicWaitlistController::class, 'claim'])
         ->middleware('throttle:10,1');
 
     // ── Public tip flow (token-gated) ────────────────────────────────────
@@ -370,6 +384,10 @@ Route::prefix('v1')->group(function () {
         Route::post  ('slot-release-drops',           [SlotReleaseDropsController::class, 'store']);
         Route::patch ('slot-release-drops/{id}',      [SlotReleaseDropsController::class, 'update'])->where('id', '\d+');
         Route::delete('slot-release-drops/{id}',      [SlotReleaseDropsController::class, 'destroy'])->where('id', '\d+');
+
+        // Av2.0 P7 — owner's waitlist view.
+        Route::get   ('waitlist',                     [WaitlistController::class, 'index']);
+        Route::patch ('waitlist/{id}',                [WaitlistController::class, 'update'])->where('id', '\d+');
 
         Route::get('settings/notifications',          [NotificationSettingsController::class, 'show']);
         Route::patch('settings/notifications',        [NotificationSettingsController::class, 'update']);

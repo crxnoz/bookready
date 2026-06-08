@@ -5,7 +5,7 @@ import {
   ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight,
   Clock, Heart, CalendarCheck, Image as ImageIcon, Loader2, X,
 } from 'lucide-react'
-import { getPublicAvailability, createPublicAppointment, uploadBookingAnswerImage } from '@/lib/api'
+import { getPublicAvailability, createPublicAppointment, uploadBookingAnswerImage, joinPublicWaitlist } from '@/lib/api'
 import type {
   AvailableSlot, PaymentChoice, PublicBookingPayload, Service,
   AvailabilityData, PublicPaymentSettings,
@@ -142,6 +142,17 @@ export default function LushStudioBooking({
   const [questionAnswers, setQuestionAnswers] = useState<Record<number, { value?: string | boolean; image_url?: string }>>({})
   const [uploadingFor,    setUploadingFor]    = useState<number | null>(null)
   const [uploadErrFor,    setUploadErrFor]    = useState<number | null>(null)
+  // Av2.0 P7 — waitlist modal state. Triggered from the empty-slots branch
+  // when a customer's chosen day has nothing available. We surface a CTA
+  // to join the waitlist for that window; if a spot opens, they get an
+  // email with a claim link.
+  const [waitlistOpen,     setWaitlistOpen]     = useState(false)
+  const [waitlistBusy,     setWaitlistBusy]     = useState(false)
+  const [waitlistMessage,  setWaitlistMessage]  = useState<string | null>(null)
+  const [waitlistError,    setWaitlistError]    = useState<string | null>(null)
+  const [waitlistEarliest, setWaitlistEarliest] = useState('')
+  const [waitlistLatest,   setWaitlistLatest]   = useState('')
+  const [waitlistNotes,    setWaitlistNotes]    = useState('')
   // Customer-account awareness. Shared with the header widget via the
   // LushCustomerAuthProvider mounted at the template root — one /auth/me
   // probe per page load, not one per consumer. When the visitor signs
@@ -1256,7 +1267,31 @@ export default function LushStudioBooking({
                 <p className="lush-slot-msg lush-slot-error">{slotState.message}</p>
               )}
               {slotState.status === 'loaded' && slotState.slots.length === 0 && (
-                <p className="lush-slot-msg">{slotState.message ?? 'No times available. Try another day.'}</p>
+                <div>
+                  <p className="lush-slot-msg">{slotState.message ?? 'No times available. Try another day.'}</p>
+                  {selectedService && date && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Default a 14-day window starting from the chosen day —
+                        // the customer can tighten before submitting.
+                        const startIso = date
+                        const endDate = new Date(date + 'T00:00:00')
+                        endDate.setDate(endDate.getDate() + 14)
+                        const endIso = dateKey(endDate)
+                        setWaitlistEarliest(startIso)
+                        setWaitlistLatest(endIso)
+                        setWaitlistMessage(null)
+                        setWaitlistError(null)
+                        setWaitlistOpen(true)
+                      }}
+                      className="brk-booking-next"
+                      style={{ marginTop: 8 }}
+                    >
+                      Join the waitlist for this day <Heart size={12} />
+                    </button>
+                  )}
+                </div>
               )}
               {slotState.status === 'loaded' && slotState.slots.length > 0 && (
                 <div className="brk-booking-times">
@@ -1731,6 +1766,174 @@ export default function LushStudioBooking({
             </p>
           </div>
         </div>
+
+        {/* Av2.0 P7 — Join Waitlist modal. Surfaced when the selected day
+            has zero slots; closes on success, X, or backdrop click. The
+            customer's name/email are reused from the booking form so they
+            don't have to retype. */}
+        {waitlistOpen && selectedService && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            onClick={() => !waitlistBusy && setWaitlistOpen(false)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 1000,
+              background: 'rgba(20,20,20,0.55)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 16,
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: 'var(--lush-cream, #faf6f1)',
+                color: 'var(--lush-ink, #1a1a1a)',
+                borderRadius: 20,
+                padding: '22px 22px 20px',
+                maxWidth: 440,
+                width: '100%',
+                boxShadow: '0 18px 60px rgba(0,0,0,0.25)',
+                position: 'relative',
+              }}
+            >
+              <button
+                onClick={() => setWaitlistOpen(false)}
+                disabled={waitlistBusy}
+                aria-label="Close"
+                style={{
+                  position: 'absolute', top: 12, right: 12,
+                  border: 0, background: 'transparent', cursor: 'pointer',
+                  padding: 6, borderRadius: 999, color: 'currentColor',
+                }}
+              >
+                <X size={18} />
+              </button>
+
+              {waitlistMessage ? (
+                <div>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8 }}>
+                    <Check size={20} />
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>You&rsquo;re on the list</h3>
+                  </div>
+                  <p style={{ margin: '4px 0 16px', fontSize: 14, lineHeight: 1.5 }}>{waitlistMessage}</p>
+                  <button
+                    type="button"
+                    className="brk-booking-next"
+                    onClick={() => setWaitlistOpen(false)}
+                    style={{ width: '100%' }}
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 6 }}>
+                    <Heart size={20} />
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Join the waitlist</h3>
+                  </div>
+                  <p style={{ margin: '0 0 14px', fontSize: 13, opacity: 0.8, lineHeight: 1.5 }}>
+                    We&rsquo;ll email you if a {selectedService.name} spot opens between these dates.
+                  </p>
+
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    <label className="brk-booking-field">
+                      <span>Your Name *</span>
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        placeholder="Your name"
+                      />
+                    </label>
+                    <label className="brk-booking-field">
+                      <span>Email *</span>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                      />
+                    </label>
+                    <label className="brk-booking-field">
+                      <span>Phone (optional)</span>
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={e => setPhone(e.target.value)}
+                        placeholder="(555) 555-5555"
+                      />
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <label className="brk-booking-field">
+                        <span>Earliest *</span>
+                        <input
+                          type="date"
+                          value={waitlistEarliest}
+                          onChange={e => setWaitlistEarliest(e.target.value)}
+                        />
+                      </label>
+                      <label className="brk-booking-field">
+                        <span>Latest *</span>
+                        <input
+                          type="date"
+                          value={waitlistLatest}
+                          onChange={e => setWaitlistLatest(e.target.value)}
+                        />
+                      </label>
+                    </div>
+                    <label className="brk-booking-field">
+                      <span>Notes (optional)</span>
+                      <textarea
+                        value={waitlistNotes}
+                        onChange={e => setWaitlistNotes(e.target.value)}
+                        placeholder="Anything you'd like us to know?"
+                        rows={2}
+                      />
+                    </label>
+                  </div>
+
+                  {waitlistError && (
+                    <p style={{
+                      marginTop: 10, fontSize: 13, color: '#a4252b',
+                      background: 'rgba(164,37,43,0.08)', padding: '8px 10px', borderRadius: 10,
+                    }}>{waitlistError}</p>
+                  )}
+
+                  <button
+                    type="button"
+                    className="brk-booking-next"
+                    style={{ width: '100%', marginTop: 14 }}
+                    disabled={waitlistBusy || !name.trim() || !email.trim() || !waitlistEarliest || !waitlistLatest}
+                    onClick={async () => {
+                      setWaitlistBusy(true)
+                      setWaitlistError(null)
+                      try {
+                        const res = await joinPublicWaitlist(slug, {
+                          customer_name:  name.trim(),
+                          customer_email: email.trim(),
+                          customer_phone: phone.trim() || undefined,
+                          service_id:     selectedService.id,
+                          staff_id:       effectiveStaffId ?? undefined,
+                          preferred_date: date || undefined,
+                          earliest_date:  waitlistEarliest,
+                          latest_date:    waitlistLatest,
+                          notes:          waitlistNotes.trim() || undefined,
+                        })
+                        setWaitlistMessage(res.message)
+                      } catch (e) {
+                        setWaitlistError(e instanceof Error ? e.message : 'Could not join the waitlist.')
+                      } finally {
+                        setWaitlistBusy(false)
+                      }
+                    }}
+                  >
+                    {waitlistBusy ? <><Loader2 size={14} className="lush-spin" /> Joining…</> : <>Join waitlist <Check size={14} strokeWidth={3} /></>}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
       </div>
     </section>

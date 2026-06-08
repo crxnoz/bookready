@@ -595,6 +595,23 @@ class AppointmentsController extends Controller
                 AppointmentMailer::sendConfirmed($emailAppt, $emailBusiness, $emailNotify);
             } elseif ($statusChanged && $newStatus === 'cancelled') {
                 AppointmentMailer::sendCancelled($emailAppt, $emailBusiness, $emailNotify);
+                // Av2.0 P7 — waitlist auto-fill on owner-cancel.
+                // Tenancy already ended at this point, so re-init briefly.
+                try {
+                    tenancy()->initialize($tenant);
+                    $apptForWaitlist = DB::table('appointments')->find($appointment);
+                    if ($apptForWaitlist) {
+                        \App\Services\WaitlistService::onAppointmentCancelled(
+                            $apptForWaitlist, $emailBusiness ?? (string) $tenant->id, (string) $tenant->id,
+                        );
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('waitlist on-cancel failed', [
+                        'tenant' => $tenant->id, 'appointment' => $appointment, 'error' => $e->getMessage(),
+                    ]);
+                } finally {
+                    try { tenancy()->end(); } catch (\Throwable) {}
+                }
             }
         }
 
@@ -647,6 +664,18 @@ class AppointmentsController extends Controller
             ];
             $emailBusiness = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
             $emailNotify   = NotificationSettingsService::load();
+        }
+
+        // Av2.0 P7 — waitlist auto-fill on owner-delete-cancel. Runs
+        // inside tenancy so WaitlistService can query waitlist_entries.
+        try {
+            \App\Services\WaitlistService::onAppointmentCancelled(
+                $appt, (string) ($emailBusiness ?? $tenant->id), (string) $tenant->id,
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('waitlist on-cancel failed', [
+                'tenant' => $tenant->id, 'appointment' => $appointment, 'error' => $e->getMessage(),
+            ]);
         }
 
         tenancy()->end();

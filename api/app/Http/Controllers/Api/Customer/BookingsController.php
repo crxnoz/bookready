@@ -234,6 +234,24 @@ class BookingsController extends Controller
             'updated_at' => now(),
         ]);
 
+        // Av2.0 P7 — waitlist auto-fill on cancel.
+        try {
+            $cancelledRow = (object) [
+                'id'               => $row->id,
+                'service_id'       => $row->service_id,
+                'staff_id'         => property_exists($row, 'staff_id') ? $row->staff_id : null,
+                'appointment_date' => $row->appointment_date,
+                'start_time'       => $row->start_time,
+                'end_time'         => $row->end_time,
+                'currency'         => $row->currency ?? 'usd',
+            ];
+            \App\Services\WaitlistService::onAppointmentCancelled($cancelledRow, $businessName, (string) $tenant->id);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('waitlist on-cancel failed', [
+                'tenant' => $tenant->id, 'appointment' => $row->id, 'error' => $e->getMessage(),
+            ]);
+        }
+
         // Build the notification payload before ending tenancy.
         $extras = AppointmentMailer::buildExtras(
             (int) $row->id,
