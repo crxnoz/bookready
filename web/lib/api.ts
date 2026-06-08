@@ -720,6 +720,64 @@ export async function updateEditorAvailability(data: AvailabilityData): Promise<
   })
 }
 
+// ── Availability 2.0 · Phase 1 · Per-date calendar overrides ───────────────
+
+/** Per-date override that layers on top of the weekly schedule. */
+export interface CalendarOverride {
+  id:            number
+  date:          string                // YYYY-MM-DD
+  is_available:  boolean
+  open_time:     string | null         // HH:MM, null = inherit weekly
+  close_time:    string | null
+  break_start:   string | null
+  break_end:     string | null
+  staff_ids:     number[] | null       // null = all staff
+  service_ids:   number[] | null       // null = all services
+  notes:         string | null
+}
+
+export interface CalendarOverridePayload {
+  is_available?: boolean
+  open_time?:    string | null
+  close_time?:   string | null
+  break_start?:  string | null
+  break_end?:    string | null
+  staff_ids?:    number[] | null
+  service_ids?:  number[] | null
+  notes?:        string | null
+}
+
+export async function getEditorCalendarOverrides(
+  from: string, to: string,
+): Promise<{ overrides: CalendarOverride[]; from: string; to: string }> {
+  const qs = new URLSearchParams({ from, to }).toString()
+  return request(`/editor/calendar-overrides?${qs}`)
+}
+
+export async function getEditorCalendarOverride(date: string): Promise<CalendarOverride | null> {
+  try {
+    return await request<CalendarOverride>(`/editor/calendar-overrides/${date}`)
+  } catch (e) {
+    // 404 means "no override for this date" — return null so caller can branch.
+    const status = (e as Error & { status?: number }).status
+    if (status === 404) return null
+    throw e
+  }
+}
+
+export async function upsertEditorCalendarOverride(
+  date: string, payload: CalendarOverridePayload,
+): Promise<CalendarOverride> {
+  return request<CalendarOverride>(`/editor/calendar-overrides/${date}`, {
+    method: 'PUT',
+    body:   JSON.stringify(payload),
+  })
+}
+
+export async function deleteEditorCalendarOverride(date: string): Promise<{ date: string; cleared: boolean }> {
+  return request(`/editor/calendar-overrides/${date}`, { method: 'DELETE' })
+}
+
 // ── Blocked dates (Phase 6) ──────────────────────────────────────────────────
 
 export async function getEditorBlockedDates(): Promise<BlockedDate[]> {
