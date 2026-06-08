@@ -257,6 +257,19 @@ Internal keys stay `settings.steps` and `settings.before_appointment` for backwa
 - **`SaveBar` is currently duplicated** in three files (`WebsiteHub.tsx`, `SettingsHub.tsx`, `account/profile/page.tsx`) and `useSettingsForm` only lives in `WebsiteHub.tsx`. Consolidating into a shared module is a worthwhile cleanup. Until then, copy the `WebsiteHub` version when adding a new panel — it's the most complete and is already wired to the preview-refresh signal.
 - **Preview auto-refresh**: every successful save in `WebsiteHub` bumps a shared `previewKey` that re-keys the preview iframe and appends `?preview=N` for cache-busting. New editors should call the parent's `saveSettings`/`toggleSection` helpers so the bump happens automatically.
 
+## Design system (build new editor UI on-system)
+
+**`docs/bookready-design-system.md` is the authoritative build reference — read it before building any new editor section.** The non-negotiables (the first is hard-enforced by `cd web && npm run check:ui`):
+
+- **SHARP — `radius 0` everywhere.** No `rounded-*` in editor scope (`components/editor`, `components/app`, `components/ui`, `app/(editor)`); `check:ui` hard-fails on any. Public templates (`web/templates/*`) are intentionally exempt (Lush/Pétale are soft on purpose).
+- **Tokens, never inline hex (chrome).** Palette: `cream` / `near-black` / `muted-text` / `faint-text` / `blush` / `lavender`; hairlines `hairline-soft` / `hairline` / `hairline-strong`; status `success(-bg)` / `warning(-bg/-icon)` / `danger(-bg)` (one fg + one tint each). Tinted borders via opacity modifier (e.g. `border-danger/30`). Exemptions (raw color OK): calendar legend, chart SVG fills, color-picker swatches, reserved gradient stops `soon-from`/`soon-to`.
+- **Type tokens:** `text-eyebrow` + `tracking-eyebrow` + `uppercase font-bold text-muted-text` = the BookReady eyebrow label (section/stat labels); `text-2xs` for badges/dense meta. No arbitrary `text-[Npx]`.
+- **`cn()` + custom-token GOTCHA:** if you add a custom `text-*`/`tracking-*` to `tailwind.config.ts`, you MUST also register it in `web/lib/cn.ts`'s `extendTailwindMerge` — otherwise tailwind-merge misclassifies it as a text-color and strips the size when a color token follows in the same `cn()`, so the element inherits the parent size and renders huge (a real shipped bug).
+- **Shared primitives only** — `web/components/ui/`: Button, Input/Textarea/Select, Toggle, StatusBadge, Card, Banner, Modal, Drawer, Toast (`useToast`), ConfirmDialog (`useConfirm`), EmptyState, AsyncBoundary, SaveBar. **Never** `window.confirm`/`alert` (use `useConfirm`/`useToast`); never a hand-rolled status pill.
+- **Status registry** — `web/lib/status.ts` (`statusDef(domain, value) → {label, tone}`). Add new statuses here with a best-fit tone; never pick a color at the call site.
+- **Section language** — `web/components/editor/AvailabilitySections.tsx` (`TabShell` / `TabIntro` / `CollapsibleSection` / `Section` / `IconBox`): full-width, icon-in-cream-box headers, collapsible accordions. Reuse for new sectioned surfaces. The cream **icon-box** (`w-7/8 h-7/8 bg-cream border border-hairline-soft`, `text-muted-text` glyph) is the section-header signature.
+- **Gradients reserved** (Coming-Soon / marquee only, ≤1/screen). **lucide-react icons only, no emojis.**
+
 ## What NOT to touch without explicit reason
 
 - **Both Stripe webhook routes** — `/api/v1/webhooks/stripe` (Cashier subscriptions, secret `STRIPE_WEBHOOK_SECRET`) and `/api/v1/webhooks/stripe/appointments` (Connect customer payments, secret `STRIPE_APPOINTMENT_WEBHOOK_SECRET`). Different controllers, different secrets — never swap.
