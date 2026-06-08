@@ -1,18 +1,7 @@
 'use client'
 
 import type { Appointment } from '@/lib/types'
-import { cn } from '@/lib/cn'
-
-// Payment status → label + chip style. Mirrors the StatusPill design but
-// with a quieter palette so it never out-shouts the booking-status pill.
-const PAYMENT_CFG: Record<string, { label: string; cls: string }> = {
-  pending_payment:     { label: 'Deposit pending',     cls: 'bg-white border border-[rgba(180,120,0,0.35)] text-[#8a5a00]' },
-  deposit_paid:        { label: 'Deposit paid',        cls: 'bg-white border border-[rgba(20,140,80,0.40)] text-[#0f6f3d]' },
-  paid:                { label: 'Paid',                cls: 'bg-white border border-[rgba(20,140,80,0.40)] text-[#0f6f3d]' },
-  failed:              { label: 'Payment failed',      cls: 'bg-white border border-[rgba(180,40,40,0.40)] text-[#b42828]' },
-  refunded:            { label: 'Refunded',            cls: 'bg-white border border-[rgba(18,18,18,0.20)] text-muted-text' },
-  partially_refunded:  { label: 'Partially refunded',  cls: 'bg-white border border-[rgba(18,18,18,0.20)] text-muted-text' },
-}
+import StatusBadge from '@/components/ui/StatusBadge'
 
 // Open dispute statuses we treat as live ("there's a chargeback in flight").
 // `won` / `lost` / `warning_closed` are resolved and shouldn't paint the pill.
@@ -22,30 +11,19 @@ const ACTIVE_DISPUTE_STATUSES = new Set([
 ])
 
 /**
- * Inline pill showing the appointment's payment status. Renders nothing
- * when no payment is required (status missing / null / 'none') so old
- * appointments don't get a redundant chip. An active dispute outranks
- * everything — we paint a single loud red 'Disputed' chip instead.
+ * Inline pill showing the appointment's payment status. Delegates to the
+ * shared registry-driven <StatusBadge domain="payment"> so payment badges
+ * read identically across Appointments, Payments, and the Dashboard.
+ * Renders nothing when no payment is required. An active dispute outranks
+ * everything → a single 'Disputed' chip.
  */
 export function PaymentPill({ appt }: { appt: Appointment }) {
   const status = appt.payment_status
   if (!status || status === 'none') return null
-
-  // Disputes win the pill — owner needs to see it before anything else.
   if (appt.dispute_status && ACTIVE_DISPUTE_STATUSES.has(appt.dispute_status)) {
-    return (
-      <span className={cn('text-[9px] font-bold tracking-[0.06em] uppercase px-2 py-0.5 flex-shrink-0 whitespace-nowrap', 'bg-[#fff3f3] border border-[rgba(180,40,40,0.55)] text-[#b42828]')}>
-        Disputed
-      </span>
-    )
+    return <StatusBadge domain="payment" status="disputed" />
   }
-
-  const cfg = PAYMENT_CFG[status] ?? { label: status.replace(/_/g, ' '), cls: 'bg-white border border-[rgba(18,18,18,0.12)] text-near-black' }
-  return (
-    <span className={cn('text-[9px] font-bold tracking-[0.06em] uppercase px-2 py-0.5 flex-shrink-0 whitespace-nowrap', cfg.cls)}>
-      {cfg.label}
-    </span>
-  )
+  return <StatusBadge domain="payment" status={status} />
 }
 
 /**
@@ -82,7 +60,7 @@ export function PaymentSummary({ appt }: { appt: Appointment }) {
   if (refunded != null && refunded > 0) parts.push(`refunded ${sym}${refunded.toFixed(2)}`)
   if (parts.length === 0) return null
   return (
-    <p className="text-[11px] text-muted-text truncate mt-0.5">
+    <p className="text-2xs text-muted-text truncate mt-0.5">
       {parts.join(' · ')}
     </p>
   )

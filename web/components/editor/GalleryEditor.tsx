@@ -36,7 +36,7 @@ export default function GalleryEditor() {
         {data.gallery.map((img, i) => (
           <div
             key={img.id}
-            className="flex gap-3 items-start p-3 bg-white border border-[rgba(18,18,18,0.10)]"
+            className="flex gap-3 items-start p-3 bg-white border border-hairline-soft"
           >
             {/* Placeholder thumbnail */}
             <div className="w-16 h-16 bg-[#f0ede8] flex items-center justify-center flex-shrink-0">
@@ -50,13 +50,13 @@ export default function GalleryEditor() {
 
             <div className="flex-1 space-y-2">
               <input
-                className="w-full text-sm bg-cream border border-[rgba(18,18,18,0.12)] px-3 py-1.5 text-near-black placeholder:text-[#b0a99f] focus:outline-none focus:border-near-black/30"
+                className="w-full text-sm bg-cream border border-hairline px-3 py-1.5 text-near-black placeholder:text-[#b0a99f] focus:outline-none focus:border-near-black/30"
                 placeholder="Paste a link to your image"
                 value={img.url}
                 onChange={e => updateOne(img.id, { url: e.target.value })}
               />
               <input
-                className="w-full text-sm bg-cream border border-[rgba(18,18,18,0.12)] px-3 py-1.5 text-near-black placeholder:text-[#b0a99f] focus:outline-none focus:border-near-black/30"
+                className="w-full text-sm bg-cream border border-hairline px-3 py-1.5 text-near-black placeholder:text-[#b0a99f] focus:outline-none focus:border-near-black/30"
                 placeholder="Image description (for screen readers)"
                 value={img.alt}
                 onChange={e => updateOne(img.id, { alt: e.target.value })}
@@ -65,7 +65,7 @@ export default function GalleryEditor() {
 
             <button
               onClick={() => deleteOne(img.id)}
-              className="p-1.5 text-muted-text hover:text-red-500 transition-colors"
+              className="p-1.5 text-muted-text hover:text-danger transition-colors"
             >
               <Trash2 size={14} />
             </button>

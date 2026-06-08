@@ -163,16 +163,16 @@ function PaymentsOverview() {
     <>
       {stripeNeedsAttention && (
         <div className="bg-white border border-[rgba(180,120,0,0.35)] p-3.5 flex items-start gap-3">
-          <AlertCircle size={14} className="text-[#8a5a00] flex-shrink-0 mt-0.5" />
+          <AlertCircle size={14} className="text-warning flex-shrink-0 mt-0.5" />
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-semibold text-[#8a5a00]">Stripe not fully connected</p>
-            <p className="text-[11px] text-muted-text mt-0.5">
+            <p className="text-sm font-semibold text-warning">Stripe not fully connected</p>
+            <p className="text-2xs text-muted-text mt-0.5">
               Your customers can&apos;t complete payment until your Stripe setup is finished. Finish setup to start accepting deposits.
             </p>
           </div>
           <Link
             href="/editor/settings?tab=payments"
-            className="text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-1.5 hover:bg-[#2a2a2a] flex-shrink-0"
+            className="text-2xs font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-1.5 hover:opacity-90 flex-shrink-0"
           >
             Open Settings
           </Link>
@@ -233,16 +233,16 @@ function PaymentsOverview() {
       </div>
 
       {/* Recent activity */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)]">
-        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[rgba(18,18,18,0.08)]">
+      <section className="bg-white border border-hairline-soft">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-hairline-soft">
           <div>
-            <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Recent activity</p>
-            <p className="text-[11px] text-muted-text mt-0.5">Latest customer payment status changes.</p>
+            <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Recent activity</p>
+            <p className="text-2xs text-muted-text mt-0.5">Latest customer payment status changes.</p>
           </div>
           {recent.length > 0 && (
             <Link
               href={hrefFor('deposits')}
-              className="inline-flex items-center gap-1 text-[11px] font-semibold tracking-[0.06em] uppercase text-near-black hover:underline"
+              className="inline-flex items-center gap-1 text-2xs font-semibold tracking-[0.06em] uppercase text-near-black hover:underline"
             >
               View all <ChevronRight size={11} />
             </Link>
@@ -250,7 +250,7 @@ function PaymentsOverview() {
         </div>
         {recent.length === 0 ? (
           <div className="px-4 py-6 text-center">
-            <p className="text-[11px] text-muted-text">
+            <p className="text-2xs text-muted-text">
               No payment activity yet. Once customers start paying deposits they&apos;ll show up here.
             </p>
           </div>
@@ -360,16 +360,16 @@ function DepositsList() {
               type="button"
               onClick={() => setFilter(f.key)}
               className={cn(
-                'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.04em] px-3 py-1.5 border whitespace-nowrap flex-shrink-0',
+                'inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.04em] px-3 py-1.5 border whitespace-nowrap flex-shrink-0',
                 active
                   ? 'bg-near-black border-near-black text-white'
-                  : 'bg-white border-[rgba(18,18,18,0.15)] text-near-black hover:border-near-black',
+                  : 'bg-white border-hairline-strong text-near-black hover:border-near-black',
               )}
             >
               {f.label}
               {typeof n === 'number' && (
                 <span className={cn(
-                  'text-[9px] font-bold tracking-[0.04em] px-1 py-px',
+                  'text-eyebrow font-bold tracking-[0.04em] px-1 py-px',
                   active ? 'bg-white/10 text-white' : 'bg-cream text-muted-text',
                 )}>
                   {n}
@@ -381,15 +381,15 @@ function DepositsList() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="bg-white border border-[rgba(18,18,18,0.10)] p-6 text-center">
-          <p className="text-[11px] text-muted-text">
+        <div className="bg-white border border-hairline-soft p-6 text-center">
+          <p className="text-2xs text-muted-text">
             {filter === 'none'
               ? 'No appointments without a payment requirement match.'
               : 'No appointments match this filter yet.'}
           </p>
         </div>
       ) : (
-        <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
+        <div className="bg-white border border-hairline-soft divide-y divide-[rgba(18,18,18,0.06)]">
           {filtered.map(a => <ActivityRow key={a.id} appt={a} dense={false} />)}
         </div>
       )}
@@ -410,20 +410,20 @@ function ActivityRow({ appt, dense = true }: { appt: Appointment; dense?: boolea
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
             {appt.receipt_number && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.15)] bg-cream text-near-black px-2 py-0.5 tabular-nums">
+              <span className="inline-flex items-center gap-1 text-eyebrow font-bold tracking-[0.06em] uppercase border border-hairline-strong bg-cream text-near-black px-2 py-0.5 tabular-nums">
                 <Hash size={9} /> {appt.receipt_number.replace(/^R-/, '')}
               </span>
             )}
-            <p className={cn('font-bold text-near-black truncate', dense ? 'text-[13px]' : 'text-sm')}>
+            <p className={cn('font-bold text-near-black truncate', dense ? 'text-sm' : 'text-sm')}>
               {appt.customer_name}
             </p>
             {hasPayment ? <PaymentPill appt={appt} /> : (
-              <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.12)] bg-cream text-muted-text px-1.5 py-0.5">
+              <span className="text-eyebrow font-bold tracking-[0.06em] uppercase border border-hairline bg-cream text-muted-text px-1.5 py-0.5">
                 No payment
               </span>
             )}
           </div>
-          <p className="text-[11px] text-muted-text truncate flex items-center gap-1">
+          <p className="text-2xs text-muted-text truncate flex items-center gap-1">
             {appt.service_name}
             <span className="text-muted-text">·</span>
             <Calendar size={10} />
@@ -456,18 +456,18 @@ function StatCard({
 }) {
   const body = (
     <>
-      <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">{label}</p>
+      <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">{label}</p>
       <p className={cn(
         'text-lg font-bold mt-1 tracking-tight tabular-nums',
-        accent === 'positive' ? 'text-[#0f6f3d]'
-          : accent === 'warn'  ? 'text-[#8a5a00]'
-          : accent === 'danger'? 'text-[#b42828]'
+        accent === 'positive' ? 'text-success'
+          : accent === 'warn'  ? 'text-warning'
+          : accent === 'danger'? 'text-danger'
           : accent === 'muted' ? 'text-muted-text'
           : 'text-near-black',
       )}>{value}</p>
-      {hint && <p className="text-[10px] text-muted-text mt-0.5">{hint}</p>}
+      {hint && <p className="text-eyebrow text-muted-text mt-0.5">{hint}</p>}
       {href && (
-        <p className="text-[9px] font-semibold text-muted-text group-hover:text-near-black mt-1 inline-flex items-center gap-0.5">
+        <p className="text-eyebrow font-semibold text-muted-text group-hover:text-near-black mt-1 inline-flex items-center gap-0.5">
           {cta ?? 'View'} <ChevronRight size={10} />
         </p>
       )}
@@ -477,14 +477,14 @@ function StatCard({
     return (
       <Link
         href={href}
-        className="group bg-white border border-[rgba(18,18,18,0.10)] px-3.5 py-3 block hover:bg-cream transition-colors"
+        className="group bg-white border border-hairline-soft px-3.5 py-3 block hover:bg-cream transition-colors"
       >
         {body}
       </Link>
     )
   }
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)] px-3.5 py-3">
+    <div className="bg-white border border-hairline-soft px-3.5 py-3">
       {body}
     </div>
   )
@@ -508,28 +508,28 @@ function CardLink({
         'group flex items-start gap-3 border px-3.5 py-3 transition-colors',
         primary
           ? 'bg-near-black border-near-black text-white hover:bg-white hover:text-near-black'
-          : 'bg-white border-[rgba(18,18,18,0.10)] text-near-black hover:border-near-black',
+          : 'bg-white border-hairline-soft text-near-black hover:border-near-black',
         soon && 'opacity-70',
       )}
     >
       <span className={cn(
         'w-8 h-8 flex items-center justify-center flex-shrink-0 border',
         primary
-          ? 'bg-white/10 border-white/20 text-white group-hover:bg-cream group-hover:text-near-black group-hover:border-[rgba(18,18,18,0.08)]'
-          : 'bg-cream border-[rgba(18,18,18,0.08)] text-near-black',
+          ? 'bg-white/10 border-white/20 text-white group-hover:bg-cream group-hover:text-near-black group-hover:border-hairline-soft'
+          : 'bg-cream border-hairline-soft text-near-black',
       )}>
         <Icon size={14} strokeWidth={1.8} />
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className={cn('text-[13px] font-semibold', primary ? 'text-white group-hover:text-near-black' : 'text-near-black')}>{title}</p>
+          <p className={cn('text-sm font-semibold', primary ? 'text-white group-hover:text-near-black' : 'text-near-black')}>{title}</p>
           {soon && (
-            <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.15)] bg-cream text-muted-text px-1.5 py-0.5">
+            <span className="text-eyebrow font-bold tracking-[0.06em] uppercase border border-hairline-strong bg-cream text-muted-text px-1.5 py-0.5">
               Soon
             </span>
           )}
         </div>
-        <p className={cn('text-[11px] mt-0.5', primary ? 'text-white/75 group-hover:text-muted-text' : 'text-muted-text')}>{body}</p>
+        <p className={cn('text-2xs mt-0.5', primary ? 'text-white/75 group-hover:text-muted-text' : 'text-muted-text')}>{body}</p>
       </div>
       {external
         ? <ExternalLink size={13} className={cn('mt-1 flex-shrink-0', primary ? 'text-white/75 group-hover:text-muted-text' : 'text-muted-text group-hover:text-near-black')} />
@@ -591,7 +591,7 @@ function TransactionsList() {
           placeholder="Search by receipt #, customer, or service…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full border border-[rgba(18,18,18,0.15)] bg-white pl-9 pr-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
+          className="w-full border border-hairline-strong bg-white pl-9 pr-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
         />
         {search && (
           <button
@@ -615,10 +615,10 @@ function TransactionsList() {
               type="button"
               onClick={() => setFilter(f.key)}
               className={cn(
-                'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.04em] px-3 py-1.5 border whitespace-nowrap flex-shrink-0',
+                'inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.04em] px-3 py-1.5 border whitespace-nowrap flex-shrink-0',
                 active
                   ? 'bg-near-black border-near-black text-white'
-                  : 'bg-white border-[rgba(18,18,18,0.15)] text-near-black hover:border-near-black',
+                  : 'bg-white border-hairline-strong text-near-black hover:border-near-black',
               )}
             >
               {f.label}
@@ -632,15 +632,15 @@ function TransactionsList() {
       ) : error ? (
         <ErrorRow message={error} />
       ) : rows.length === 0 ? (
-        <div className="bg-white border border-[rgba(18,18,18,0.10)] p-6 text-center">
-          <p className="text-[11px] text-muted-text">
+        <div className="bg-white border border-hairline-soft p-6 text-center">
+          <p className="text-2xs text-muted-text">
             {committed
               ? `No transactions match “${committed}”.`
               : 'No transactions match this filter yet.'}
           </p>
         </div>
       ) : (
-        <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
+        <div className="bg-white border border-hairline-soft divide-y divide-[rgba(18,18,18,0.06)]">
           {rows.map(r => <TransactionRow key={r.appointment_id} r={r} />)}
         </div>
       )}
@@ -659,19 +659,19 @@ function TransactionRow({ r }: { r: PaymentTransaction }) {
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center gap-2 flex-wrap">
             {r.receipt_number && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.15)] bg-cream text-near-black px-2 py-0.5 tabular-nums">
+              <span className="inline-flex items-center gap-1 text-eyebrow font-bold tracking-[0.06em] uppercase border border-hairline-strong bg-cream text-near-black px-2 py-0.5 tabular-nums">
                 <Hash size={9} /> {r.receipt_number.replace(/^R-/, '')}
               </span>
             )}
-            <p className="text-[13px] font-bold text-near-black truncate">{r.customer_name}</p>
+            <p className="text-sm font-bold text-near-black truncate">{r.customer_name}</p>
             <TxStatusPill r={r} />
             {r.payment_method && (
-              <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.12)] bg-white text-muted-text px-1.5 py-0.5">
+              <span className="text-eyebrow font-bold tracking-[0.06em] uppercase border border-hairline bg-white text-muted-text px-1.5 py-0.5">
                 {r.payment_method}
               </span>
             )}
           </div>
-          <p className="text-[11px] text-muted-text truncate flex items-center gap-1">
+          <p className="text-2xs text-muted-text truncate flex items-center gap-1">
             {r.service_name}
             <span className="text-muted-text">·</span>
             <Calendar size={10} />
@@ -679,16 +679,16 @@ function TransactionRow({ r }: { r: PaymentTransaction }) {
             <span className="text-muted-text">·</span>
             {fmt12(r.start_time)}
           </p>
-          <p className="text-[11px] text-near-black font-semibold tabular-nums">
+          <p className="text-2xs text-near-black font-semibold tabular-nums">
             {sym}{r.paid_amount.toFixed(2)}
             {(r.tip_amount ?? 0) > 0 && (
-              <span className="text-[#0f6f3d] ml-2">+ {sym}{(r.tip_amount ?? 0).toFixed(2)} tip</span>
+              <span className="text-success ml-2">+ {sym}{(r.tip_amount ?? 0).toFixed(2)} tip</span>
             )}
             {(r.refunded_amount ?? 0) > 0 && (
               <span className="text-muted-text ml-2">− {sym}{(r.refunded_amount ?? 0).toFixed(2)} refund</span>
             )}
             {(r.amount_due ?? 0) > 0 && (
-              <span className="text-[#b42828] ml-2">{sym}{(r.amount_due ?? 0).toFixed(2)} due</span>
+              <span className="text-danger ml-2">{sym}{(r.amount_due ?? 0).toFixed(2)} due</span>
             )}
           </p>
         </div>
@@ -700,23 +700,23 @@ function TransactionRow({ r }: { r: PaymentTransaction }) {
 
 function TxStatusPill({ r }: { r: PaymentTransaction }) {
   const map: Record<string, { label: string; cls: string }> = {
-    pending_payment:    { label: 'Deposit pending', cls: 'bg-white border border-[rgba(18,18,18,0.20)] text-muted-text' },
+    pending_payment:    { label: 'Deposit pending', cls: 'bg-white border border-hairline-strong text-muted-text' },
     deposit_paid:       { label: 'Deposit',      cls: 'bg-lavender text-near-black' },
     paid:               { label: 'Paid',         cls: 'bg-near-black text-white' },
-    refunded:           { label: 'Refunded',     cls: 'bg-white border border-[rgba(18,18,18,0.20)] text-muted-text' },
-    partially_refunded: { label: 'Part refund',  cls: 'bg-white border border-[rgba(18,18,18,0.20)] text-near-black' },
-    failed:             { label: 'Failed',       cls: 'bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] text-[#b42828]' },
+    refunded:           { label: 'Refunded',     cls: 'bg-white border border-hairline-strong text-muted-text' },
+    partially_refunded: { label: 'Part refund',  cls: 'bg-white border border-hairline-strong text-near-black' },
+    failed:             { label: 'Failed',       cls: 'bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] text-danger' },
   }
   if (r.dispute_status) {
     return (
-      <span className="text-[9px] font-bold tracking-[0.06em] uppercase bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] text-[#b42828] px-1.5 py-0.5">
+      <span className="text-eyebrow font-bold tracking-[0.06em] uppercase bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] text-danger px-1.5 py-0.5">
         Dispute · {r.dispute_status.replace(/_/g, ' ')}
       </span>
     )
   }
   const cfg = map[r.payment_status] ?? { label: r.payment_status.replace(/_/g, ' '), cls: 'bg-cream text-muted-text' }
   return (
-    <span className={cn('text-[9px] font-bold tracking-[0.06em] uppercase px-1.5 py-0.5', cfg.cls)}>
+    <span className={cn('text-eyebrow font-bold tracking-[0.06em] uppercase px-1.5 py-0.5', cfg.cls)}>
       {cfg.label}
     </span>
   )
@@ -746,9 +746,9 @@ function PayoutsList() {
   if (data.payouts.length === 0) {
     const isConnectMissing = ['not_connected', 'onboarding_started', 'pending', 'restricted'].includes(data.status)
     return (
-      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-6 sm:p-8">
+      <div className="bg-white border border-hairline-soft p-6 sm:p-8">
         <div className="flex items-start gap-4">
-          <span className="w-10 h-10 flex items-center justify-center bg-cream border border-[rgba(18,18,18,0.08)] text-near-black flex-shrink-0">
+          <span className="w-10 h-10 flex items-center justify-center bg-cream border border-hairline-soft text-near-black flex-shrink-0">
             <Banknote size={18} strokeWidth={1.8} />
           </span>
           <div className="min-w-0 flex-1">
@@ -763,7 +763,7 @@ function PayoutsList() {
             {isConnectMissing && (
               <Link
                 href="/editor/settings?tab=payments"
-                className="inline-flex items-center gap-1 mt-3 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-1.5 hover:bg-[#2a2a2a]"
+                className="inline-flex items-center gap-1 mt-3 text-2xs font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-1.5 hover:opacity-90"
               >
                 Open Settings
               </Link>
@@ -775,7 +775,7 @@ function PayoutsList() {
   }
 
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
+    <div className="bg-white border border-hairline-soft divide-y divide-[rgba(18,18,18,0.06)]">
       {data.payouts.map(p => <PayoutRow key={p.id} p={p} />)}
     </div>
   )
@@ -788,8 +788,8 @@ function PayoutRow({ p }: { p: StripePayout }) {
       case 'paid':       return { label: 'In your bank', cls: 'bg-near-black text-white' }
       case 'pending':    return { label: 'Pending',      cls: 'bg-blush text-near-black' }
       case 'in_transit': return { label: 'On the way',   cls: 'bg-lavender text-near-black' }
-      case 'canceled':   return { label: 'Canceled',     cls: 'bg-white border border-[rgba(18,18,18,0.20)] text-muted-text' }
-      case 'failed':     return { label: 'Failed',       cls: 'bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] text-[#b42828]' }
+      case 'canceled':   return { label: 'Canceled',     cls: 'bg-white border border-hairline-strong text-muted-text' }
+      case 'failed':     return { label: 'Failed',       cls: 'bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] text-danger' }
       default:           return { label: p.status.replace(/_/g, ' '), cls: 'bg-cream text-muted-text' }
     }
   })()
@@ -801,23 +801,23 @@ function PayoutRow({ p }: { p: StripePayout }) {
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center gap-2 flex-wrap">
             <ArrowDownToLine size={11} className="text-muted-text" />
-            <p className="text-[13px] font-bold text-near-black tabular-nums">{sym}{p.amount.toFixed(2)} {p.currency}</p>
-            <span className={cn('text-[9px] font-bold tracking-[0.06em] uppercase px-1.5 py-0.5', status.cls)}>
+            <p className="text-sm font-bold text-near-black tabular-nums">{sym}{p.amount.toFixed(2)} {p.currency}</p>
+            <span className={cn('text-eyebrow font-bold tracking-[0.06em] uppercase px-1.5 py-0.5', status.cls)}>
               {status.label}
             </span>
             {p.method && (
-              <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.12)] bg-white text-muted-text px-1.5 py-0.5">
+              <span className="text-eyebrow font-bold tracking-[0.06em] uppercase border border-hairline bg-white text-muted-text px-1.5 py-0.5">
                 {p.method}
               </span>
             )}
           </div>
-          <p className="text-[11px] text-muted-text">
+          <p className="text-2xs text-muted-text">
             Started {created.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             <span className="mx-1">·</span>
             Arrives {arrival.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </p>
           {p.failure_message && (
-            <p className="text-[11px] text-[#b42828] mt-1">{p.failure_message}</p>
+            <p className="text-2xs text-danger mt-1">{p.failure_message}</p>
           )}
         </div>
       </div>
@@ -835,7 +835,7 @@ function LoadingRow() {
 
 function ErrorRow({ message }: { message: string }) {
   return (
-    <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-[#b42828] flex items-center gap-2">
+    <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-danger flex items-center gap-2">
       <AlertCircle size={14} /> {message}
     </div>
   )
@@ -866,22 +866,22 @@ function StripeDashboardButton() {
   }
 
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 flex items-center gap-3">
+    <div className="bg-white border border-hairline-soft p-3.5 flex items-center gap-3">
       <ExternalLink size={14} className="text-near-black flex-shrink-0" />
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-semibold text-near-black">Open your Stripe dashboard</p>
-        <p className="text-[11px] text-muted-text mt-0.5">
+        <p className="text-sm font-semibold text-near-black">Open your Stripe dashboard</p>
+        <p className="text-2xs text-muted-text mt-0.5">
           View payouts, transactions, and update your bank details directly in Stripe.
         </p>
         {err && (
-          <p className="text-[11px] text-[#b42828] mt-1">{err}</p>
+          <p className="text-2xs text-danger mt-1">{err}</p>
         )}
       </div>
       <button
         type="button"
         onClick={handleClick}
         disabled={busy}
-        className="text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.20)] bg-white px-3 py-1.5 hover:border-near-black transition-colors flex-shrink-0 disabled:opacity-50"
+        className="text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white px-3 py-1.5 hover:border-near-black transition-colors flex-shrink-0 disabled:opacity-50"
       >
         {busy ? 'Opening…' : 'Open Stripe'}
       </button>

@@ -6,7 +6,13 @@ import {
   updateEditorWaitlistEntry,
   type WaitlistEntry,
 } from '@/lib/api'
-import { Clock, Mail, Phone, Trash2, AlertCircle } from 'lucide-react'
+import { Clock, Mail, Phone, Trash2 } from 'lucide-react'
+import StatusBadge from '@/components/ui/StatusBadge'
+import AsyncBoundary from '@/components/ui/AsyncBoundary'
+import EmptyState from '@/components/ui/EmptyState'
+import Card from '@/components/ui/Card'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { useToast } from '@/components/ui/Toast'
 
 function formatDate(d: string | null): string {
   if (! d) return '—'
@@ -19,33 +25,21 @@ function formatDate(d: string | null): string {
   }
 }
 
-function StatusBadge({ status }: { status: WaitlistEntry['status'] }) {
-  const tone =
-    status === 'notified' ? 'bg-blush text-near-black border-near-black/15'
-    : status === 'pending' ? 'bg-cream text-near-black border-near-black/10'
-    : 'bg-near-black/5 text-muted-text border-near-black/10'
-  const label =
-    status === 'notified' ? 'Offer sent'
-    : status === 'pending' ? 'Waiting'
-    : status
-  return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${tone}`}>
-      {status === 'notified' && <Clock className="size-3" />}
-      {label}
-    </span>
-  )
-}
-
 /**
- * Owner's waitlist queue (pending + notified entries). Used both by the
+ * Owner's waitlist queue (pending + notified entries). Used by both the
  * standalone /editor/waitlist page and the Availability hub's Waitlist tab.
- * No EditorShell wrapper here so it can be embedded either way.
+ * No EditorShell wrapper here so it embeds either way.
+ *
+ * Cohesion v1: shared StatusBadge / AsyncBoundary / EmptyState / Card +
+ * Confirm + Toast. No local status map, no native confirm()/alert().
  */
 export default function WaitlistEditor() {
   const [entries, setEntries] = useState<WaitlistEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState<string | null>(null)
   const [busyId,  setBusyId]  = useState<number | null>(null)
+  const confirm = useConfirm()
+  const toast   = useToast()
 
   async function load() {
     setLoading(true); setError(null)
@@ -62,13 +56,20 @@ export default function WaitlistEditor() {
   useEffect(() => { void load() }, [])
 
   async function remove(id: number) {
-    if (! confirm('Remove this person from the waitlist? They will not be notified again.')) return
+    const ok = await confirm({
+      title: 'Remove from waitlist?',
+      message: 'They won’t be notified again.',
+      confirmLabel: 'Remove',
+      tone: 'danger',
+    })
+    if (! ok) return
     setBusyId(id)
     try {
       await updateEditorWaitlistEntry(id, { status: 'removed' })
       setEntries(prev => prev.filter(e => e.id !== id))
+      toast.success('Removed from waitlist')
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Could not remove this entry.')
+      toast.error(e instanceof Error ? e.message : 'Could not remove this entry.')
     } finally {
       setBusyId(null)
     }
@@ -81,47 +82,37 @@ export default function WaitlistEditor() {
         automatically gets a 2-hour claim link by email — first come, first served.
       </p>
 
-      {loading && (
-        <div className="rounded-2xl border border-[rgba(18,18,18,0.10)] bg-white p-6 text-center text-sm text-muted-text">
-          Loading the queue…
-        </div>
-      )}
-
-      {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 flex items-start gap-3">
-          <AlertCircle className="size-5 shrink-0 mt-0.5" />
-          <div>{error}</div>
-        </div>
-      )}
-
-      {! loading && ! error && entries.length === 0 && (
-        <div className="rounded-2xl border border-[rgba(18,18,18,0.10)] bg-white p-8 text-center">
-          <h3 className="text-near-black font-medium">No one&apos;s waiting</h3>
-          <p className="mt-1.5 text-sm text-muted-text">
-            When your calendar fills up, clients can join the waitlist from your booking page.
-            They&apos;ll appear here in the order they joined.
-          </p>
-        </div>
-      )}
-
-      {! loading && ! error && entries.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border border-[rgba(18,18,18,0.10)] bg-white">
+      <AsyncBoundary
+        loading={loading}
+        error={error}
+        isEmpty={entries.length === 0}
+        onRetry={load}
+        loadingLabel="Loading the queue…"
+        empty={
+          <EmptyState
+            icon={Clock}
+            title="No one's waiting"
+            description="When your calendar fills up, clients can join the waitlist from your booking page. They'll appear here in the order they joined."
+          />
+        }
+      >
+        <Card padding="none" className="overflow-hidden">
           <table className="w-full">
-            <thead className="border-b border-[rgba(18,18,18,0.08)] bg-cream/60">
-              <tr className="text-left text-[11px] uppercase tracking-wide text-muted-text">
-                <th className="px-4 py-3 font-medium">Client</th>
-                <th className="px-4 py-3 font-medium">Service</th>
-                <th className="px-4 py-3 font-medium">Window</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium w-12 text-right">·</th>
+            <thead className="border-b border-hairline-soft bg-cream/60">
+              <tr className="text-left text-eyebrow uppercase tracking-eyebrow text-muted-text">
+                <th className="px-4 py-3 font-bold">Client</th>
+                <th className="px-4 py-3 font-bold">Service</th>
+                <th className="px-4 py-3 font-bold">Window</th>
+                <th className="px-4 py-3 font-bold">Status</th>
+                <th className="px-4 py-3 font-bold w-12 text-right">·</th>
               </tr>
             </thead>
             <tbody>
               {entries.map(e => (
-                <tr key={e.id} className="border-b border-[rgba(18,18,18,0.05)] last:border-b-0 align-top">
+                <tr key={e.id} className="border-b border-hairline-soft last:border-b-0 align-top">
                   <td className="px-4 py-3.5 text-sm">
                     <div className="font-medium text-near-black">{e.customer_name}</div>
-                    <div className="mt-0.5 flex flex-col gap-0.5 text-[12px] text-muted-text">
+                    <div className="mt-0.5 flex flex-col gap-0.5 text-xs text-muted-text">
                       <a href={`mailto:${e.customer_email}`} className="flex items-center gap-1.5 hover:text-near-black">
                         <Mail className="size-3" /> {e.customer_email}
                       </a>
@@ -135,22 +126,22 @@ export default function WaitlistEditor() {
                   <td className="px-4 py-3.5 text-sm">
                     <div className="text-near-black">{e.service_name || `Service #${e.service_id}`}</div>
                     {e.staff_name && (
-                      <div className="mt-0.5 text-[12px] text-muted-text">with {e.staff_name}</div>
+                      <div className="mt-0.5 text-xs text-muted-text">with {e.staff_name}</div>
                     )}
                   </td>
                   <td className="px-4 py-3.5 text-sm">
                     <div className="text-near-black">{formatDate(e.earliest_date)} — {formatDate(e.latest_date)}</div>
                     {e.preferred_date && (
-                      <div className="mt-0.5 text-[12px] text-muted-text">prefers {formatDate(e.preferred_date)}</div>
+                      <div className="mt-0.5 text-xs text-muted-text">prefers {formatDate(e.preferred_date)}</div>
                     )}
                     {e.notes && (
-                      <div className="mt-1 text-[12px] text-muted-text italic line-clamp-2">&ldquo;{e.notes}&rdquo;</div>
+                      <div className="mt-1 text-xs text-muted-text italic line-clamp-2">&ldquo;{e.notes}&rdquo;</div>
                     )}
                   </td>
                   <td className="px-4 py-3.5 text-sm">
-                    <StatusBadge status={e.status} />
+                    <StatusBadge domain="waitlist" status={e.status} />
                     {e.status === 'notified' && e.notification_expires_at && (
-                      <div className="mt-1 text-[11px] text-muted-text">
+                      <div className="mt-1 text-2xs text-muted-text">
                         link expires {new Date(e.notification_expires_at).toLocaleString(undefined, { hour: 'numeric', minute: '2-digit', month: 'short', day: 'numeric' })}
                       </div>
                     )}
@@ -159,7 +150,7 @@ export default function WaitlistEditor() {
                     <button
                       onClick={() => remove(e.id)}
                       disabled={busyId === e.id}
-                      className="inline-flex items-center justify-center rounded-full p-1.5 text-muted-text hover:bg-near-black/5 hover:text-red-600 disabled:opacity-40"
+                      className="inline-flex items-center justify-center p-1.5 text-muted-text hover:bg-near-black/5 hover:text-danger disabled:opacity-40"
                       title="Remove from waitlist"
                       aria-label="Remove from waitlist"
                     >
@@ -170,8 +161,8 @@ export default function WaitlistEditor() {
               ))}
             </tbody>
           </table>
-        </div>
-      )}
+        </Card>
+      </AsyncBoundary>
     </div>
   )
 }

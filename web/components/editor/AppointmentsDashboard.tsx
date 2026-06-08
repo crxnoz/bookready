@@ -43,14 +43,14 @@ const STATUS_CFG: Record<string, { label: string; cls: string }> = {
   pending:   { label: 'Pending',   cls: 'bg-blush text-near-black' },
   confirmed: { label: 'Confirmed', cls: 'bg-lavender text-near-black' },
   completed: { label: 'Completed', cls: 'bg-near-black text-white' },
-  cancelled: { label: 'Cancelled', cls: 'bg-white border border-[rgba(18,18,18,0.20)] text-muted-text' },
-  no_show:   { label: 'No-show',   cls: 'bg-white border border-[rgba(18,18,18,0.20)] text-near-black' },
+  cancelled: { label: 'Cancelled', cls: 'bg-white border border-hairline-strong text-muted-text' },
+  no_show:   { label: 'No-show',   cls: 'bg-white border border-hairline-strong text-near-black' },
 }
 
 function StatusPill({ status }: { status: string }) {
-  const cfg = STATUS_CFG[status] ?? { label: status, cls: 'bg-white border border-[rgba(18,18,18,0.12)] text-near-black' }
+  const cfg = STATUS_CFG[status] ?? { label: status, cls: 'bg-white border border-hairline text-near-black' }
   return (
-    <span className={cn('text-[9px] font-bold tracking-[0.06em] uppercase px-2 py-0.5 flex-shrink-0 whitespace-nowrap', cfg.cls)}>
+    <span className={cn('text-eyebrow font-bold tracking-[0.06em] uppercase px-2 py-0.5 flex-shrink-0 whitespace-nowrap', cfg.cls)}>
       {cfg.label}
     </span>
   )
@@ -113,7 +113,7 @@ export default function AppointmentsDashboard() {
 
         {/* Stats strip — each cell is a deep-link into the Appointments
             page with the matching filter pre-applied. */}
-        <div className="grid grid-cols-3 border border-[rgba(18,18,18,0.10)] divide-x divide-[rgba(18,18,18,0.10)] overflow-hidden">
+        <div className="grid grid-cols-3 border border-hairline-soft divide-x divide-[rgba(18,18,18,0.10)] overflow-hidden">
           {([
             { label: 'Pending',   value: pending.length,   icon: Clock,    filter: 'pending' },
             { label: 'Today',     value: todayAp.length,   icon: Calendar, filter: 'today'   },
@@ -126,10 +126,10 @@ export default function AppointmentsDashboard() {
             >
               <div className="flex items-center gap-1 mb-1.5">
                 <Icon size={10} className="text-muted-text flex-shrink-0" />
-                <p className="text-[8px] font-bold tracking-[0.10em] uppercase text-muted-text truncate">{label}</p>
+                <p className="text-eyebrow font-bold tracking-[0.10em] uppercase text-muted-text truncate">{label}</p>
               </div>
               <p className="text-2xl font-bold text-near-black tabular-nums">{loading ? 'None' : value}</p>
-              <p className="text-[9px] font-semibold text-muted-text group-hover:text-near-black mt-0.5 inline-flex items-center gap-0.5">
+              <p className="text-eyebrow font-semibold text-muted-text group-hover:text-near-black mt-0.5 inline-flex items-center gap-0.5">
                 View <ChevronRight size={10} />
               </p>
             </Link>
@@ -138,7 +138,7 @@ export default function AppointmentsDashboard() {
 
         {/* Section cards */}
         <div>
-          <p className="text-[10px] font-bold tracking-[0.16em] uppercase text-muted-text mb-3">Manage</p>
+          <p className="text-eyebrow font-bold tracking-[0.16em] uppercase text-muted-text mb-3">Manage</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <HubCard
               href="/editor/appointments"
@@ -168,33 +168,33 @@ export default function AppointmentsDashboard() {
         <div>
           <div className="flex items-start justify-between gap-3 mb-3">
             <div>
-              <p className="text-[10px] font-bold tracking-[0.16em] uppercase text-muted-text">
+              <p className="text-eyebrow font-bold tracking-[0.16em] uppercase text-muted-text">
                 Appointments Preview
               </p>
-              <p className="text-[11px] text-muted-text mt-0.5">
+              <p className="text-2xs text-muted-text mt-0.5">
                 A quick look at your schedule and recent booking requests.
               </p>
             </div>
             <Link
               href="/editor/appointments"
-              className="text-[10px] font-bold text-near-black border border-[rgba(18,18,18,0.15)] px-3 py-1.5 hover:bg-cream transition-colors flex-shrink-0 whitespace-nowrap"
+              className="text-eyebrow font-bold text-near-black border border-hairline-strong px-3 py-1.5 hover:bg-cream transition-colors flex-shrink-0 whitespace-nowrap"
             >
               View all
             </Link>
           </div>
 
           {loading ? (
-            <div className="bg-white border border-[rgba(18,18,18,0.10)] px-4 py-8 text-center text-sm text-muted-text">
+            <div className="bg-white border border-hairline-soft px-4 py-8 text-center text-sm text-muted-text">
               Loading…
             </div>
           ) : previewAppts.length === 0 ? (
-            <div className="bg-white border border-[rgba(18,18,18,0.10)] px-4 py-10 text-center">
+            <div className="bg-white border border-hairline-soft px-4 py-10 text-center">
               <Calendar size={20} className="text-muted-text mx-auto mb-2" />
               <p className="text-sm font-semibold text-near-black mb-1">No upcoming appointments</p>
               <p className="text-xs text-muted-text mb-4">No bookings scheduled yet.</p>
               <Link
                 href="/editor/appointments"
-                className="inline-flex items-center gap-1.5 bg-near-black text-white px-4 py-2.5 text-xs font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors"
+                className="inline-flex items-center gap-1.5 bg-near-black text-white px-4 py-2.5 text-xs font-bold tracking-[0.08em] uppercase hover:opacity-90 transition-colors"
               >
                 <Plus size={11} /> Create Appointment
               </Link>
@@ -212,7 +212,7 @@ export default function AppointmentsDashboard() {
               ))}
               <Link
                 href="/editor/appointments"
-                className="flex items-center justify-center gap-1 text-[11px] font-semibold text-near-black border border-[rgba(18,18,18,0.12)] bg-white py-3 hover:bg-cream transition-colors"
+                className="flex items-center justify-center gap-1 text-2xs font-semibold text-near-black border border-hairline bg-white py-3 hover:bg-cream transition-colors"
               >
                 View all appointments <ChevronRight size={11} />
               </Link>
@@ -244,10 +244,10 @@ function PreviewCard({
   return (
     <div className={cn(
       'bg-white border px-4 py-3',
-      isToday ? 'border-near-black' : 'border-[rgba(18,18,18,0.10)]',
+      isToday ? 'border-near-black' : 'border-hairline-soft',
     )}>
       {isToday && (
-        <div className="text-[9px] font-bold tracking-[0.12em] uppercase text-near-black mb-2">
+        <div className="text-eyebrow font-bold tracking-[0.12em] uppercase text-near-black mb-2">
           Today
         </div>
       )}
@@ -258,12 +258,12 @@ function PreviewCard({
             <StatusPill status={appt.status} />
             <PaymentPill appt={appt} />
           </div>
-          <p className="text-[11px] text-muted-text truncate">
+          <p className="text-2xs text-muted-text truncate">
             {appt.service_name} · {fmtDate(appt.appointment_date)} at {fmt12(appt.start_time)}
           </p>
           <PaymentSummary appt={appt} />
           {(appt.customer_email || appt.customer_phone) && (
-            <p className="text-[11px] text-muted-text truncate mt-0.5">
+            <p className="text-2xs text-muted-text truncate mt-0.5">
               {appt.customer_email || appt.customer_phone}
             </p>
           )}
@@ -273,14 +273,14 @@ function PreviewCard({
             <button
               onClick={onConfirm}
               disabled={busy}
-              className="px-2.5 py-1.5 text-[10px] font-bold bg-near-black text-white hover:bg-[#2a2a2a] transition-colors disabled:opacity-50"
+              className="px-2.5 py-1.5 text-eyebrow font-bold bg-near-black text-white hover:opacity-90 transition-colors disabled:opacity-50"
             >
               Confirm
             </button>
             <button
               onClick={onDecline}
               disabled={busy}
-              className="px-2.5 py-1.5 text-[10px] font-semibold border border-[rgba(18,18,18,0.12)] text-muted-text hover:text-near-black transition-colors disabled:opacity-50"
+              className="px-2.5 py-1.5 text-eyebrow font-semibold border border-hairline text-muted-text hover:text-near-black transition-colors disabled:opacity-50"
             >
               Decline
             </button>
@@ -310,8 +310,8 @@ function HubCard({
     <div className={cn(
       'h-full min-h-[120px] flex flex-col justify-between p-4 border transition-colors',
       disabled
-        ? 'bg-[rgba(18,18,18,0.02)] border-[rgba(18,18,18,0.08)] cursor-not-allowed'
-        : 'bg-white border-[rgba(18,18,18,0.12)] hover:border-[#121212]'
+        ? 'bg-[rgba(18,18,18,0.02)] border-hairline-soft cursor-not-allowed'
+        : 'bg-white border-hairline hover:border-[#121212]'
     )}>
       <div>
         <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -319,22 +319,22 @@ function HubCard({
             {title}
           </p>
           {badge && (
-            <span className="text-[9px] font-bold bg-blush text-near-black px-2 py-0.5 flex-shrink-0">
+            <span className="text-eyebrow font-bold bg-blush text-near-black px-2 py-0.5 flex-shrink-0">
               {badge}
             </span>
           )}
           {disabled && (
-            <span className="text-[9px] font-bold text-muted-text border border-[rgba(18,18,18,0.12)] px-2 py-0.5 flex-shrink-0">
+            <span className="text-eyebrow font-bold text-muted-text border border-hairline px-2 py-0.5 flex-shrink-0">
               Soon
             </span>
           )}
         </div>
-        <p className={cn('text-[12px]', disabled ? 'text-[rgba(18,18,18,0.35)]' : 'text-muted-text')}>
+        <p className={cn('text-xs', disabled ? 'text-[rgba(18,18,18,0.35)]' : 'text-muted-text')}>
           {description}
         </p>
       </div>
       <div className={cn(
-        'mt-3 text-[11px] font-semibold flex items-center gap-0.5',
+        'mt-3 text-2xs font-semibold flex items-center gap-0.5',
         disabled ? 'invisible' : 'text-near-black'
       )}>
         Open <ChevronRight size={11} />

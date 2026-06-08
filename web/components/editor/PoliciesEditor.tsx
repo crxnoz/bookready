@@ -130,7 +130,7 @@ export default function PoliciesEditor() {
       </div>
 
       {error && (
-        <p className="text-xs text-red-500 font-medium">{error}</p>
+        <p className="text-xs text-danger font-medium">{error}</p>
       )}
 
       <div className="flex items-center gap-4">
@@ -142,7 +142,7 @@ export default function PoliciesEditor() {
           {saveState === 'saving' ? 'Saving…' : 'Save Policies'}
         </Button>
         {saveState === 'saved' && (
-          <span className="text-xs text-green-600 font-medium">Saved</span>
+          <span className="text-xs text-success font-medium">Saved</span>
         )}
       </div>
     </div>

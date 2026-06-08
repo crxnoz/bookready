@@ -76,13 +76,13 @@ export default function MarkPaidDialog({ appt, onClose, onSubmit }: MarkPaidDial
       onClick={() => { if (!busy) onClose() }}
     >
       <div
-        className="w-full sm:max-w-[440px] bg-white border-t sm:border border-[rgba(18,18,18,0.10)] flex flex-col max-h-[92vh]"
+        className="w-full sm:max-w-[440px] bg-white border-t sm:border border-hairline-soft flex flex-col max-h-[92vh]"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(18,18,18,0.10)]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-hairline-soft">
           <div>
-            <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-1">
+            <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text mb-1">
               Mark as paid
             </p>
             <h2 className="text-base font-bold text-near-black tracking-tight">
@@ -102,13 +102,13 @@ export default function MarkPaidDialog({ appt, onClose, onSubmit }: MarkPaidDial
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-5">
           {/* Service summary */}
-          <div className="bg-[rgba(18,18,18,0.03)] border border-[rgba(18,18,18,0.08)] px-4 py-3">
-            <p className="text-[11px] text-muted-text">{appt.service_name}</p>
-            <p className="text-[11px] text-muted-text mt-0.5">
+          <div className="bg-[rgba(18,18,18,0.03)] border border-hairline-soft px-4 py-3">
+            <p className="text-2xs text-muted-text">{appt.service_name}</p>
+            <p className="text-2xs text-muted-text mt-0.5">
               {appt.appointment_date} · {appt.start_time}
             </p>
             {price > 0 && (
-              <div className="mt-2.5 pt-2.5 border-t border-[rgba(18,18,18,0.08)] flex justify-between text-xs">
+              <div className="mt-2.5 pt-2.5 border-t border-hairline-soft flex justify-between text-xs">
                 <span className="text-muted-text">Service price</span>
                 <span className="font-semibold text-near-black">{sym}{price.toFixed(2)}</span>
               </div>
@@ -117,10 +117,10 @@ export default function MarkPaidDialog({ appt, onClose, onSubmit }: MarkPaidDial
 
           {/* Amount */}
           <div>
-            <label className="block text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-2">
+            <label className="block text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text mb-2">
               Amount paid
             </label>
-            <div className="flex items-center border border-[rgba(18,18,18,0.15)] focus-within:border-near-black">
+            <div className="flex items-center border border-hairline-strong focus-within:border-near-black">
               <span className="px-3 text-sm text-muted-text">{sym}</span>
               <input
                 type="number"
@@ -135,7 +135,7 @@ export default function MarkPaidDialog({ appt, onClose, onSubmit }: MarkPaidDial
               <span className="px-3 text-xs text-muted-text">{currency}</span>
             </div>
             {isDeposit && (
-              <p className="mt-1.5 text-[11px] text-muted-text">
+              <p className="mt-1.5 text-2xs text-muted-text">
                 Less than the service price, so it will be recorded as a deposit. Balance of{' '}
                 <span className="font-semibold text-near-black">{sym}{(price - numericAmount).toFixed(2)}</span> due at appointment.
               </p>
@@ -144,17 +144,17 @@ export default function MarkPaidDialog({ appt, onClose, onSubmit }: MarkPaidDial
 
           {/* Method */}
           <div>
-            <label className="block text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-2">
+            <label className="block text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text mb-2">
               Method
             </label>
-            <div className="grid grid-cols-4 border border-[rgba(18,18,18,0.15)]">
+            <div className="grid grid-cols-4 border border-hairline-strong">
               {METHODS.map(m => (
                 <button
                   key={m.value}
                   type="button"
                   onClick={() => setMethod(m.value)}
                   className={
-                    'py-2.5 text-[11px] font-bold tracking-[0.06em] uppercase transition-colors ' +
+                    'py-2.5 text-2xs font-bold tracking-[0.06em] uppercase transition-colors ' +
                     (method === m.value
                       ? 'bg-near-black text-white'
                       : 'bg-white text-muted-text hover:text-near-black')
@@ -168,7 +168,7 @@ export default function MarkPaidDialog({ appt, onClose, onSubmit }: MarkPaidDial
 
           {/* Note */}
           <div>
-            <label className="block text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-2">
+            <label className="block text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text mb-2">
               Note <span className="text-muted-text/60 normal-case tracking-normal font-normal">(optional)</span>
             </label>
             <input
@@ -177,29 +177,29 @@ export default function MarkPaidDialog({ appt, onClose, onSubmit }: MarkPaidDial
               onChange={e => setNote(e.target.value)}
               maxLength={500}
               placeholder="Reference for your records"
-              className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black transition-colors"
+              className="w-full bg-white border border-hairline-strong px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black transition-colors"
             />
           </div>
 
           {err && (
-            <div className="px-3 py-2 bg-red-50 border border-red-200 text-xs text-red-700">
+            <div className="px-3 py-2 bg-danger-bg border border-danger text-xs text-danger">
               {err}
             </div>
           )}
 
-          <p className="text-[11px] text-muted-text">
+          <p className="text-2xs text-muted-text">
             This payment is recorded for your records only. No card processing happens
             and it cannot be refunded through Stripe.
           </p>
         </form>
 
         {/* Footer */}
-        <div className="flex gap-2 p-5 border-t border-[rgba(18,18,18,0.10)]">
+        <div className="flex gap-2 p-5 border-t border-hairline-soft">
           <button
             type="button"
             onClick={() => { if (!busy) onClose() }}
             disabled={busy}
-            className="flex-1 border border-[rgba(18,18,18,0.20)] bg-white text-[11px] font-bold tracking-[0.18em] uppercase py-3 text-near-black hover:border-near-black transition-colors disabled:opacity-50"
+            className="flex-1 border border-hairline-strong bg-white text-2xs font-bold tracking-[0.18em] uppercase py-3 text-near-black hover:border-near-black transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
@@ -207,7 +207,7 @@ export default function MarkPaidDialog({ appt, onClose, onSubmit }: MarkPaidDial
             type="submit"
             onClick={handleSubmit}
             disabled={busy || invalid}
-            className="flex-1 bg-near-black text-white text-[11px] font-bold tracking-[0.18em] uppercase py-3 hover:bg-[#2a2a2a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 bg-near-black text-white text-2xs font-bold tracking-[0.18em] uppercase py-3 hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {busy ? 'Saving…' : 'Record payment'}
           </button>

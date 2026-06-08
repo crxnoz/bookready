@@ -46,13 +46,13 @@ export default function AppShell({ children, slug }: AppShellProps) {
         <EmailVerifyBanner />
 
         {/* Mobile-only hamburger row — desktop uses the sidebar instead */}
-        <div className="md:hidden flex items-center gap-2 border-b border-[rgba(18,18,18,0.10)] bg-white px-3 py-2 flex-shrink-0">
+        <div className="md:hidden flex items-center gap-2 border-b border-hairline-soft bg-white px-3 py-2 flex-shrink-0">
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
             aria-label="Open menu"
             aria-expanded={drawerOpen}
-            className="w-9 h-9 flex items-center justify-center text-near-black border border-[rgba(18,18,18,0.10)] hover:border-near-black"
+            className="w-9 h-9 flex items-center justify-center text-near-black border border-hairline-soft hover:border-near-black"
           >
             <Menu size={16} />
           </button>
@@ -61,7 +61,7 @@ export default function AppShell({ children, slug }: AppShellProps) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.svg" alt="" className="w-3 h-3 invert" />
             </div>
-            <p className="text-[12px] font-bold text-near-black tracking-tight truncate">BookReady</p>
+            <p className="text-xs font-bold text-near-black tracking-tight truncate">BookReady</p>
           </div>
         </div>
 

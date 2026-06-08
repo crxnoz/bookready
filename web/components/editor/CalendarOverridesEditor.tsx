@@ -14,6 +14,7 @@ import {
 } from '@/lib/api'
 import type { HoursEntry, Service, ApiStaffMember } from '@/lib/types'
 import { cn } from '@/lib/cn'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 
 /**
  * Availability 2.0 · Phase 1 · Smart Calendar
@@ -176,18 +177,18 @@ export default function CalendarOverridesEditor() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="w-9 h-9 inline-flex items-center justify-center bg-white border border-[rgba(18,18,18,0.15)] text-near-black hover:border-near-black"
+            className="w-9 h-9 inline-flex items-center justify-center bg-white border border-hairline-strong text-near-black hover:border-near-black"
             aria-label="Previous month"
           >
             <ChevronLeft size={14} />
           </button>
-          <div className="text-[13px] font-bold text-near-black tracking-tight w-36 text-center">
+          <div className="text-sm font-bold text-near-black tracking-tight w-36 text-center">
             {monthLabel}
           </div>
           <button
             type="button"
             onClick={() => navigate(1)}
-            className="w-9 h-9 inline-flex items-center justify-center bg-white border border-[rgba(18,18,18,0.15)] text-near-black hover:border-near-black"
+            className="w-9 h-9 inline-flex items-center justify-center bg-white border border-hairline-strong text-near-black hover:border-near-black"
             aria-label="Next month"
           >
             <ChevronRight size={14} />
@@ -195,7 +196,7 @@ export default function CalendarOverridesEditor() {
           <button
             type="button"
             onClick={() => setCursor(firstOfMonth(new Date()))}
-            className="text-[11px] font-semibold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2 hover:border-near-black"
+            className="text-2xs font-semibold tracking-[0.06em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:border-near-black"
           >
             Today
           </button>
@@ -203,7 +204,7 @@ export default function CalendarOverridesEditor() {
       </header>
 
       {error && (
-        <div className="bg-white border border-[rgba(180,40,40,0.20)] p-3 text-xs text-[#b42828] flex items-center gap-2 mb-3">
+        <div className="bg-white border border-danger p-3 text-xs text-danger flex items-center gap-2 mb-3">
           <AlertCircle size={14} /> {error}
         </div>
       )}
@@ -211,12 +212,12 @@ export default function CalendarOverridesEditor() {
       {/* Day-of-week row */}
       <div className="grid grid-cols-7 mb-1.5">
         {DOW_LABELS.map(d => (
-          <div key={d} className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text text-center py-1.5">{d}</div>
+          <div key={d} className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text text-center py-1.5">{d}</div>
         ))}
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-7 gap-px bg-[rgba(18,18,18,0.10)] border border-[rgba(18,18,18,0.10)]">
+      <div className="grid grid-cols-7 gap-px bg-[rgba(18,18,18,0.10)] border border-hairline-soft">
         {cells.map((cell, i) => {
           // Av2.0 P2 — un-released = date is past the resolved release window.
           // Strictly greater-than: if releasedUntil = Jun 15, Jun 15 itself IS bookable.
@@ -255,25 +256,25 @@ export default function CalendarOverridesEditor() {
       </div>
 
       {loading && (
-        <p className="text-[10px] text-muted-text mt-2 inline-flex items-center gap-1.5">
+        <p className="text-eyebrow text-muted-text mt-2 inline-flex items-center gap-1.5">
           <Loader2 size={10} className="animate-spin" /> Loading overrides…
         </p>
       )}
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center gap-3 mt-3 text-[10px] text-muted-text">
-        <Legend swatchClass="bg-white border border-[rgba(18,18,18,0.15)]" label="Default — weekly schedule applies" />
+      <div className="flex flex-wrap items-center gap-3 mt-3 text-eyebrow text-muted-text">
+        <Legend swatchClass="bg-white border border-hairline-strong" label="Default — weekly schedule applies" />
         <Legend swatchClass="bg-cream border border-[rgba(180,138,184,0.6)]" label="Custom — date override set" />
         <Legend swatchClass="bg-[rgba(180,40,40,0.10)] border border-[rgba(180,40,40,0.40)]" label="Closed by override" />
-        <Legend swatchClass="bg-[rgba(18,18,18,0.06)] border border-[rgba(18,18,18,0.15)]" label="Weekly default: closed" />
-        <Legend swatchClass="cal-unreleased border border-[rgba(18,18,18,0.15)]" label="Not released for booking yet" />
-        <Legend swatchClass="bg-[rgba(15,111,61,0.06)] border border-[rgba(18,18,18,0.15)]" label="Has space (under 70% booked)" />
-        <Legend swatchClass="bg-[rgba(201,168,118,0.14)] border border-[rgba(18,18,18,0.15)]" label="Nearly full (70-99%)" />
-        <Legend swatchClass="bg-[rgba(180,40,40,0.08)] border border-[rgba(18,18,18,0.15)]" label="Full (capacity reached)" />
+        <Legend swatchClass="bg-[rgba(18,18,18,0.06)] border border-hairline-strong" label="Weekly default: closed" />
+        <Legend swatchClass="cal-unreleased border border-hairline-strong" label="Not released for booking yet" />
+        <Legend swatchClass="bg-[rgba(15,111,61,0.06)] border border-hairline-strong" label="Has space (under 70% booked)" />
+        <Legend swatchClass="bg-[rgba(201,168,118,0.14)] border border-hairline-strong" label="Nearly full (70-99%)" />
+        <Legend swatchClass="bg-[rgba(180,40,40,0.08)] border border-hairline-strong" label="Full (capacity reached)" />
       </div>
 
       {releaseState?.released_until && (
-        <p className="text-[11px] text-muted-text mt-2">
+        <p className="text-2xs text-muted-text mt-2">
           Currently bookable through{' '}
           <strong className="text-near-black">
             {new Date(releaseState.released_until + 'T00:00:00').toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
@@ -343,7 +344,7 @@ function CalendarCell({
     bg = 'bg-[rgba(180,40,40,0.06)]'
     border = 'border-[rgba(180,40,40,0.35)]'
     label = 'Closed (override)'
-    labelTone = 'text-[#b42828]'
+    labelTone = 'text-danger'
   } else {
     // Available override — render effective hours (override fills weekly)
     bg = 'bg-cream'
@@ -393,22 +394,22 @@ function CalendarCell({
     >
       <div className="flex items-start justify-between gap-1">
         <span className={cn(
-          'block text-[11px] font-bold tabular-nums',
+          'block text-2xs font-bold tabular-nums',
           isToday ? 'text-near-black' : 'text-near-black/80',
         )}>
           {cell.date.getDate()}
         </span>
         {capLabel && ! isClosed && (
-          <span className="text-[9px] font-bold tabular-nums text-near-black/70 leading-none mt-0.5">
+          <span className="text-eyebrow font-bold tabular-nums text-near-black/70 leading-none mt-0.5">
             {capLabel}
           </span>
         )}
       </div>
-      <span className={cn('block text-[9px] mt-1 leading-tight truncate', labelTone)}>
+      <span className={cn('block text-eyebrow mt-1 leading-tight truncate', labelTone)}>
         {unreleased ? 'Not released' : label}
       </span>
       {override?.notes && (
-        <span className="absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full bg-[#B98AA8]" title={override.notes} />
+        <span className="absolute bottom-1 right-1 w-1.5 h-1.5  bg-[#B98AA8]" title={override.notes} />
       )}
     </button>
   )
@@ -443,6 +444,7 @@ function OverrideEditorDialog({
   const [deleting,   setDeleting]   = useState(false)
   const [error,      setError]      = useState<string | null>(null)
   const [hasExisting, setHasExisting] = useState(false)
+  const confirm = useConfirm()
 
   const [isAvailable, setIsAvailable] = useState(true)
   const [openTime,    setOpenTime]    = useState('')
@@ -512,7 +514,13 @@ function OverrideEditorDialog({
   }
 
   async function clearOverride() {
-    if (! confirm('Clear the override and fall back to the weekly schedule for this day?')) return
+    const ok = await confirm({
+      title: 'Clear this override?',
+      message: 'This day falls back to your weekly schedule.',
+      confirmLabel: 'Clear',
+      tone: 'danger',
+    })
+    if (! ok) return
     setDeleting(true); setError(null)
     try {
       await deleteEditorCalendarOverride(date)
@@ -530,16 +538,16 @@ function OverrideEditorDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40" onClick={onClose}>
       <div
-        className="relative bg-white border border-[rgba(18,18,18,0.10)] w-full max-w-md max-h-[92vh] overflow-y-auto shadow-xl"
+        className="relative bg-white border border-hairline-soft w-full max-w-md max-h-[92vh] overflow-y-auto shadow-xl"
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
-        <header className="flex items-start justify-between gap-3 px-5 py-4 border-b border-[rgba(18,18,18,0.08)] sticky top-0 bg-white z-10">
+        <header className="flex items-start justify-between gap-3 px-5 py-4 border-b border-hairline-soft sticky top-0 bg-white z-10">
           <div>
-            <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">Day override</p>
+            <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text">Day override</p>
             <h2 className="text-base font-bold text-near-black mt-0.5">{dateLabel}</h2>
-            <p className="text-[11px] text-muted-text mt-1 inline-flex items-center gap-1">
+            <p className="text-2xs text-muted-text mt-1 inline-flex items-center gap-1">
               <Info size={11} /> {weeklyDesc}
             </p>
           </div>
@@ -571,7 +579,7 @@ function OverrideEditorDialog({
                   <TimeField label="Open"  value={openTime}  onChange={setOpenTime}  placeholder={weekly?.open_time ?? '10:00'} />
                   <TimeField label="Close" value={closeTime} onChange={setCloseTime} placeholder={weekly?.close_time ?? '18:00'} />
                 </div>
-                <p className="text-[10px] text-muted-text -mt-1">
+                <p className="text-eyebrow text-muted-text -mt-1">
                   Leave a time blank to inherit the weekly default.
                 </p>
 
@@ -581,7 +589,7 @@ function OverrideEditorDialog({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5">
+                  <label className="block text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5">
                     Max appointments for this day
                   </label>
                   <input
@@ -591,9 +599,9 @@ function OverrideEditorDialog({
                     value={maxAppts}
                     onChange={e => setMaxAppts(e.target.value)}
                     placeholder={defaultCapacity !== null && defaultCapacity !== undefined ? `Default: ${defaultCapacity}` : 'Default: no limit'}
-                    className="w-32 bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black tabular-nums"
+                    className="w-32 bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black tabular-nums"
                   />
-                  <p className="text-[10px] text-muted-text mt-1">
+                  <p className="text-eyebrow text-muted-text mt-1">
                     Leave blank to use the default cap from booking settings. Set a number to cap THIS date specifically.
                   </p>
                 </div>
@@ -615,7 +623,7 @@ function OverrideEditorDialog({
                 />
 
                 <div>
-                  <label className="block text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5">
+                  <label className="block text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5">
                     Notes (optional)
                   </label>
                   <input
@@ -624,28 +632,28 @@ function OverrideEditorDialog({
                     onChange={e => setNotes(e.target.value)}
                     maxLength={200}
                     placeholder="e.g. holiday hours · staff training · special event"
-                    className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+                    className="w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
                   />
                 </div>
               </>
             )}
 
             {error && (
-              <div className="bg-white border border-[rgba(180,40,40,0.20)] p-2.5 text-[11px] text-[#b42828] flex items-center gap-2">
+              <div className="bg-white border border-danger p-2.5 text-2xs text-danger flex items-center gap-2">
                 <AlertCircle size={12} /> {error}
               </div>
             )}
           </div>
         )}
 
-        <footer className="sticky bottom-0 bg-white border-t border-[rgba(18,18,18,0.08)] px-5 py-3 flex items-center justify-between gap-2">
+        <footer className="sticky bottom-0 bg-white border-t border-hairline-soft px-5 py-3 flex items-center justify-between gap-2">
           <div>
             {hasExisting && (
               <button
                 type="button"
                 onClick={clearOverride}
                 disabled={deleting}
-                className="text-[11px] font-semibold tracking-[0.06em] uppercase text-[#b42828] hover:underline disabled:opacity-50 inline-flex items-center gap-1"
+                className="text-2xs font-semibold tracking-[0.06em] uppercase text-danger hover:underline disabled:opacity-50 inline-flex items-center gap-1"
               >
                 {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />} Clear override
               </button>
@@ -656,7 +664,7 @@ function OverrideEditorDialog({
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="text-[11px] font-semibold tracking-[0.08em] uppercase text-muted-text hover:text-near-black px-2 py-2"
+              className="text-2xs font-semibold tracking-[0.08em] uppercase text-muted-text hover:text-near-black px-2 py-2"
             >
               Cancel
             </button>
@@ -665,10 +673,10 @@ function OverrideEditorDialog({
               onClick={save}
               disabled={saving || loading}
               className={cn(
-                'inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.08em] uppercase px-3.5 py-2 border',
+                'inline-flex items-center gap-1.5 text-2xs font-bold tracking-[0.08em] uppercase px-3.5 py-2 border',
                 saving || loading
-                  ? 'bg-cream border-[rgba(18,18,18,0.10)] text-muted-text cursor-wait'
-                  : 'bg-near-black border-near-black text-white hover:bg-[#2a2a2a]',
+                  ? 'bg-cream border-hairline-soft text-muted-text cursor-wait'
+                  : 'bg-near-black border-near-black text-white hover:opacity-90',
               )}
             >
               {saving ? <Loader2 size={11} className="animate-spin" /> : <Save size={11} />}
@@ -691,12 +699,12 @@ function PillToggle({
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.08em] uppercase border px-3.5 py-2',
+        'inline-flex items-center gap-1.5 text-2xs font-bold tracking-[0.08em] uppercase border px-3.5 py-2',
         on
           ? tone === 'good'
-            ? 'bg-[rgba(15,111,61,0.06)] border-[#0f6f3d] text-[#0f6f3d]'
-            : 'bg-[rgba(180,40,40,0.06)] border-[#b42828] text-[#b42828]'
-          : 'bg-white border-[rgba(18,18,18,0.15)] text-muted-text hover:border-near-black',
+            ? 'bg-[rgba(15,111,61,0.06)] border-success text-success'
+            : 'bg-[rgba(180,40,40,0.06)] border-danger text-danger'
+          : 'bg-white border-hairline-strong text-muted-text hover:border-near-black',
       )}
     >
       {label}
@@ -709,13 +717,13 @@ function TimeField({
 }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <div>
-      <label className="block text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5">{label}</label>
+      <label className="block text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5">{label}</label>
       <input
         type="time"
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder ?? ''}
-        className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+        className="w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
       />
     </div>
   )
@@ -737,11 +745,11 @@ function MultiSelect({
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2 mb-1.5">
-        <label className="block text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">{label}</label>
+        <label className="block text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">{label}</label>
         <button
           type="button"
           onClick={() => setExpanded(e => !e)}
-          className="text-[10px] font-semibold text-muted-text hover:text-near-black inline-flex items-center gap-1"
+          className="text-eyebrow font-semibold text-muted-text hover:text-near-black inline-flex items-center gap-1"
         >
           {helper} {expanded ? <Minus size={10} /> : <Plus size={10} />}
         </button>
@@ -750,12 +758,12 @@ function MultiSelect({
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="w-full text-left bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-[12px] text-muted-text hover:border-near-black"
+          className="w-full text-left bg-white border border-hairline-strong px-3 py-2 text-xs text-muted-text hover:border-near-black"
         >
           {isAll ? `All ${label.toLowerCase()}` : `${selected!.length} selected — click to edit`}
         </button>
       ) : (
-        <div className="bg-white border border-[rgba(18,18,18,0.15)] p-2 space-y-1 max-h-48 overflow-y-auto">
+        <div className="bg-white border border-hairline-strong p-2 space-y-1 max-h-48 overflow-y-auto">
           <label className="flex items-center gap-2 px-1 py-1 cursor-pointer hover:bg-cream">
             <input
               type="checkbox"
@@ -763,7 +771,7 @@ function MultiSelect({
               onChange={e => onChange(e.target.checked ? null : [])}
               className="h-3.5 w-3.5 accent-near-black"
             />
-            <span className="text-[12px] text-near-black font-semibold">All {label.toLowerCase()}</span>
+            <span className="text-xs text-near-black font-semibold">All {label.toLowerCase()}</span>
           </label>
           <div className="h-px bg-[rgba(18,18,18,0.08)]" />
           {options.map(opt => {
@@ -781,7 +789,7 @@ function MultiSelect({
                   }}
                   className="h-3.5 w-3.5 accent-near-black"
                 />
-                <span className={cn('text-[12px]', isAll ? 'text-muted-text' : 'text-near-black')}>
+                <span className={cn('text-xs', isAll ? 'text-muted-text' : 'text-near-black')}>
                   {opt.label}
                 </span>
               </label>

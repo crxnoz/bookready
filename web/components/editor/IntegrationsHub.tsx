@@ -81,13 +81,13 @@ export default function IntegrationsHub() {
     <div className="w-full p-3 sm:p-5 md:p-6 space-y-6 max-w-[1024px]">
       {/* Page header */}
       <header>
-        <div className="inline-flex items-center gap-2 text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-1">
+        <div className="inline-flex items-center gap-2 text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text mb-1">
           <Plug size={11} /> Integrations
         </div>
         <h1 className="text-2xl font-bold text-near-black tracking-tight">
           Connect BookReady to the tools you already use.
         </h1>
-        <p className="text-[13px] text-muted-text mt-1.5">
+        <p className="text-sm text-muted-text mt-1.5">
           Payments, calendars, marketing, automation. Most of this is coming soon.
           We&rsquo;re building it in the order most people ask for.
         </p>
@@ -100,7 +100,7 @@ export default function IntegrationsHub() {
       )}
 
       {err && (
-        <div className="bg-white border border-[rgba(180,40,40,0.20)] p-3 text-xs text-[#b42828] flex items-center gap-2">
+        <div className="bg-white border border-[rgba(180,40,40,0.20)] p-3 text-xs text-danger flex items-center gap-2">
           <AlertCircle size={14} /> {err}
         </div>
       )}
@@ -252,7 +252,7 @@ function CategorySection({ category }: { category: IntegrationCategory }) {
         <h2 className="text-xs font-bold tracking-[0.18em] uppercase text-near-black">
           {category.title}
         </h2>
-        <p className="text-[12px] text-muted-text mt-0.5">{category.description}</p>
+        <p className="text-xs text-muted-text mt-0.5">{category.description}</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {category.tiles.map(tile => (
@@ -272,7 +272,7 @@ function Tile({ t }: { t: IntegrationTile }) {
   return (
     <div
       className={cn(
-        'bg-white border border-[rgba(18,18,18,0.10)] p-4 flex items-start gap-3 min-w-0',
+        'bg-white border border-hairline-soft p-4 flex items-start gap-3 min-w-0',
         dimmed && 'opacity-90',
       )}
     >
@@ -289,16 +289,16 @@ function Tile({ t }: { t: IntegrationTile }) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-[13px] font-bold text-near-black tracking-tight truncate">
+              <h3 className="text-sm font-bold text-near-black tracking-tight truncate">
                 {t.name}
               </h3>
               <StatusBadge status={t.status} label={t.statusLabel} />
             </div>
-            <p className="text-[12px] text-muted-text mt-0.5 leading-snug">
+            <p className="text-xs text-muted-text mt-0.5 leading-snug">
               {t.description}
             </p>
             {t.hint && (
-              <p className="text-[11px] text-muted-text mt-1.5 inline-flex items-center gap-1">
+              <p className="text-2xs text-muted-text mt-1.5 inline-flex items-center gap-1">
                 <ShieldCheck size={10} className="opacity-60" />
                 {t.hint}
               </p>
@@ -327,7 +327,7 @@ function StatusBadge({ status, label }: { status: IntegrationStatus; label?: str
   const { label: defaultLabel, cls } = map[status]
   return (
     <span className={cn(
-      'inline-flex items-center text-[9px] font-bold tracking-[0.10em] uppercase border border-[rgba(18,18,18,0.10)] px-1.5 py-0.5 whitespace-nowrap',
+      'inline-flex items-center text-eyebrow font-bold tracking-[0.10em] uppercase border border-hairline-soft px-1.5 py-0.5 whitespace-nowrap',
       cls,
     )}>
       {label ?? defaultLabel}
@@ -338,14 +338,14 @@ function StatusBadge({ status, label }: { status: IntegrationStatus; label?: str
 // ── Action button ──────────────────────────────────────────────────────────
 
 function ActionButton({ tile }: { tile: IntegrationTile }) {
-  const baseCls = 'inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.10em] uppercase px-3 py-2 border whitespace-nowrap'
+  const baseCls = 'inline-flex items-center gap-1.5 text-eyebrow font-bold tracking-[0.10em] uppercase px-3 py-2 border whitespace-nowrap'
 
   if (tile.status === 'coming_soon') {
     return (
       <button
         type="button"
         disabled
-        className={cn(baseCls, 'border-[rgba(18,18,18,0.10)] bg-white text-muted-text cursor-not-allowed')}
+        className={cn(baseCls, 'border-hairline-soft bg-white text-muted-text cursor-not-allowed')}
         title="Coming soon. Tell us if you want this sooner."
       >
         Coming soon
@@ -357,7 +357,7 @@ function ActionButton({ tile }: { tile: IntegrationTile }) {
     return (
       <Link
         href={tile.manageHref ?? '#'}
-        className={cn(baseCls, 'border-[rgba(18,18,18,0.15)] bg-white text-near-black hover:border-near-black')}
+        className={cn(baseCls, 'border-hairline-strong bg-white text-near-black hover:border-near-black')}
       >
         Configure <ArrowRight size={11} />
       </Link>
@@ -368,7 +368,7 @@ function ActionButton({ tile }: { tile: IntegrationTile }) {
     return (
       <Link
         href={tile.manageHref ?? tile.connectHref ?? '#'}
-        className={cn(baseCls, 'border-[#8a5a00] bg-blush text-near-black hover:bg-white')}
+        className={cn(baseCls, 'border-warning bg-blush text-near-black hover:bg-white')}
       >
         Finish setup <ArrowRight size={11} />
       </Link>

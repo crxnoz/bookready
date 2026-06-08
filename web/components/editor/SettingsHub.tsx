@@ -154,15 +154,15 @@ function OverviewPanel() {
                 'group flex items-start gap-3 border bg-white px-3.5 py-3 transition-colors',
                 isDanger
                   ? 'border-[rgba(180,40,40,0.20)] hover:border-[rgba(180,40,40,0.55)]'
-                  : 'border-[rgba(18,18,18,0.10)] hover:border-near-black',
+                  : 'border-hairline-soft hover:border-near-black',
               )}
             >
               <span
                 className={cn(
                   'w-8 h-8 flex items-center justify-center flex-shrink-0 border',
                   isDanger
-                    ? 'bg-[rgba(180,40,40,0.06)] border-[rgba(180,40,40,0.20)] text-[#b42828]'
-                    : 'bg-cream border-[rgba(18,18,18,0.08)] text-near-black',
+                    ? 'bg-[rgba(180,40,40,0.06)] border-[rgba(180,40,40,0.20)] text-danger'
+                    : 'bg-cream border-hairline-soft text-near-black',
                 )}
               >
                 <Icon size={14} strokeWidth={1.8} />
@@ -170,16 +170,16 @@ function OverviewPanel() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className={cn(
-                    'text-[13px] font-semibold',
-                    isDanger ? 'text-[#b42828]' : 'text-near-black',
+                    'text-sm font-semibold',
+                    isDanger ? 'text-danger' : 'text-near-black',
                   )}>{g.label}</p>
                   {g.status === 'soon' && (
-                    <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.15)] bg-cream text-muted-text px-1.5 py-0.5">
+                    <span className="text-eyebrow font-bold tracking-[0.06em] uppercase border border-hairline-strong bg-cream text-muted-text px-1.5 py-0.5">
                       Soon
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-muted-text mt-0.5">{g.hint}</p>
+                <p className="text-2xs text-muted-text mt-0.5">{g.hint}</p>
               </div>
               <ChevronRight size={14} className="text-muted-text group-hover:text-near-black mt-1 flex-shrink-0" />
             </Link>
@@ -199,18 +199,18 @@ function PlaceholderPanel({ tab }: { tab: SettingsTab }) {
     <div className="space-y-3">
       <Link
         href={hrefFor('overview')}
-        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
+        className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-tight text-near-black hover:underline"
       >
         ← Back to Settings
       </Link>
-      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-6 flex items-start gap-4">
-        <span className="w-10 h-10 flex items-center justify-center bg-cream border border-[rgba(18,18,18,0.08)] text-near-black flex-shrink-0">
+      <div className="bg-white border border-hairline-soft p-6 flex items-start gap-4">
+        <span className="w-10 h-10 flex items-center justify-center bg-cream border border-hairline-soft text-near-black flex-shrink-0">
           <Icon size={18} strokeWidth={1.8} />
         </span>
         <div className="min-w-0">
           <h2 className="text-sm font-bold text-near-black">{group?.label ?? 'Settings'}</h2>
           <p className="text-xs text-muted-text mt-1">{group?.hint}</p>
-          <p className="text-[11px] text-muted-text mt-3">
+          <p className="text-2xs text-muted-text mt-3">
             This section isn&apos;t live yet. Check back soon.
           </p>
         </div>
@@ -353,7 +353,7 @@ function PaymentSettingsPanel() {
   }
   if (loadErr || !draft) {
     return (
-      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-[#b42828] flex items-center gap-2">
+      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-danger flex items-center gap-2">
         <AlertCircle size={14} /> {loadErr ?? 'Could not load payment settings'}
       </div>
     )
@@ -367,7 +367,7 @@ function PaymentSettingsPanel() {
     <div className="space-y-3">
       <Link
         href={hrefFor('overview')}
-        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
+        className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-tight text-near-black hover:underline"
       >
         ← Back to Settings
       </Link>
@@ -391,7 +391,7 @@ function PaymentSettingsPanel() {
       />
 
       {/* Master toggle */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-2">
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-2">
         <Toggle
           label="Enable customer payments"
           hint="Turn this off and customers book without paying."
@@ -400,7 +400,7 @@ function PaymentSettingsPanel() {
           onToggle={() => patch({ payments_enabled: !draft.payments_enabled })}
         />
         {draft.payments_enabled && draft.stripe_connect_status !== 'active' && (
-          <p className="text-[11px] text-[#8a5a00] inline-flex items-start gap-1.5 mt-1">
+          <p className="text-2xs text-warning inline-flex items-start gap-1.5 mt-1">
             <AlertCircle size={11} className="mt-0.5 flex-shrink-0" />
             Finish your Stripe setup above so customers can actually pay.
             Until then, bookings that require payment will be blocked.
@@ -412,8 +412,8 @@ function PaymentSettingsPanel() {
       <section className={cn(
         'bg-white border p-3.5 space-y-3 transition-opacity',
         paymentsOff
-          ? 'border-[rgba(18,18,18,0.06)] opacity-60'
-          : 'border-[rgba(18,18,18,0.10)]',
+          ? 'border-hairline-soft opacity-60'
+          : 'border-hairline-soft',
       )}>
         <Toggle
           label="Require a deposit"
@@ -438,8 +438,8 @@ function PaymentSettingsPanel() {
                 className={cn(
                   'w-full appearance-none bg-white border px-3 py-2 pr-8 text-sm text-near-black focus:outline-none',
                   depositInputsLocked
-                    ? 'border-[rgba(18,18,18,0.08)] bg-cream cursor-not-allowed'
-                    : 'border-[rgba(18,18,18,0.15)] focus:border-near-black',
+                    ? 'border-hairline-soft bg-cream cursor-not-allowed'
+                    : 'border-hairline-strong focus:border-near-black',
                 )}
               >
                 <option value="percent">Percent (%)</option>
@@ -459,8 +459,8 @@ function PaymentSettingsPanel() {
             <div className={cn(
               'mt-1.5 flex items-center border',
               depositInputsLocked
-                ? 'border-[rgba(18,18,18,0.08)] bg-cream'
-                : 'border-[rgba(18,18,18,0.15)] focus-within:border-near-black bg-white',
+                ? 'border-hairline-soft bg-cream'
+                : 'border-hairline-strong focus-within:border-near-black bg-white',
             )}>
               <span className="px-2 text-muted-text">
                 {draft.deposit_type === 'percent' ? <Percent size={12} /> : <DollarSign size={12} />}
@@ -489,8 +489,8 @@ function PaymentSettingsPanel() {
       <section className={cn(
         'bg-white border p-3.5 space-y-3 transition-opacity',
         paymentsOff
-          ? 'border-[rgba(18,18,18,0.06)] opacity-60'
-          : 'border-[rgba(18,18,18,0.10)]',
+          ? 'border-hairline-soft opacity-60'
+          : 'border-hairline-soft',
       )}>
         <Toggle
           label="Allow full payment up front"
@@ -530,12 +530,12 @@ function PaymentSettingsPanel() {
 
         {/* Late-fee config (only meaningful when save_cards_for_reuse is on) */}
         <div className={cn(
-          'border-t border-[rgba(18,18,18,0.06)] pt-3 space-y-3',
+          'border-t border-hairline-soft pt-3 space-y-3',
           (!draft.save_cards_for_reuse || paymentsOff) && 'opacity-60',
         )}>
           <div>
-            <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1">Late fees</p>
-            <p className="text-[11px] text-muted-text">
+            <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-1">Late fees</p>
+            <p className="text-2xs text-muted-text">
               {draft.save_cards_for_reuse
                 ? 'Manually charge the saved card when a customer no-shows or cancels too late.'
                 : 'Turn on “Save cards for repeat customers” to enable late fees.'}
@@ -557,7 +557,7 @@ function PaymentSettingsPanel() {
               disabled={!draft.save_cards_for_reuse || paymentsOff}
             />
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-muted-text">
+          <div className="flex items-center gap-2 text-2xs text-muted-text">
             <span>Cancellation is &ldquo;late&rdquo; within</span>
             <input
               type="number"
@@ -566,33 +566,33 @@ function PaymentSettingsPanel() {
               value={draft.late_cancel_window_hours ?? 24}
               onChange={e => patch({ late_cancel_window_hours: Math.max(0, Math.min(336, parseInt(e.target.value, 10) || 0)) })}
               disabled={!draft.save_cards_for_reuse || paymentsOff}
-              className="w-16 bg-white border border-[rgba(18,18,18,0.15)] px-2 py-1 text-[11px] text-near-black focus:outline-none focus:border-near-black transition-colors disabled:opacity-50"
+              className="w-16 bg-white border border-hairline-strong px-2 py-1 text-2xs text-near-black focus:outline-none focus:border-near-black transition-colors disabled:opacity-50"
             />
             <span>hours of the appointment.</span>
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-[rgba(18,18,18,0.06)] pt-3">
+        <div className="flex items-center justify-between gap-3 border-t border-hairline-soft pt-3">
           <div>
-            <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Currency</p>
-            <p className="text-[11px] text-muted-text mt-0.5">Multi-currency support is coming soon.</p>
+            <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Currency</p>
+            <p className="text-2xs text-muted-text mt-0.5">Multi-currency support is coming soon.</p>
           </div>
-          <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-near-black border border-[rgba(18,18,18,0.15)] bg-cream px-3 py-1.5">
+          <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-near-black border border-hairline-strong bg-cream px-3 py-1.5">
             {draft.currency}
           </span>
         </div>
       </section>
 
       {/* Save bar */}
-      <div className="sticky bottom-0 bg-cream/95 backdrop-blur border-t border-[rgba(18,18,18,0.08)] pt-3 pb-2 flex items-center justify-between gap-3">
-        <div className="text-[11px] text-muted-text">
+      <div className="sticky bottom-0 bg-cream/95 backdrop-blur border-t border-hairline-soft pt-3 pb-2 flex items-center justify-between gap-3">
+        <div className="text-2xs text-muted-text">
           {saveState === 'saved' && (
             <span className="inline-flex items-center gap-1 text-near-black">
               <Check size={12} /> Saved
             </span>
           )}
           {saveState === 'error' && (
-            <span className="inline-flex items-center gap-1 text-[#b42828]">
+            <span className="inline-flex items-center gap-1 text-danger">
               <AlertCircle size={12} /> {saveErr ?? 'Could not save'}
             </span>
           )}
@@ -605,10 +605,10 @@ function PaymentSettingsPanel() {
           onClick={save}
           disabled={!dirty || saveState === 'saving'}
           className={cn(
-            'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase px-3 py-2',
+            'inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase px-3 py-2',
             dirty
               ? 'bg-near-black text-white hover:bg-white hover:text-near-black border border-near-black'
-              : 'bg-cream text-muted-text border border-[rgba(18,18,18,0.10)] cursor-not-allowed',
+              : 'bg-cream text-muted-text border border-hairline-soft cursor-not-allowed',
           )}
         >
           {saveState === 'saving'
@@ -744,7 +744,7 @@ function BookingSettingsPanel() {
   }
   if (loadErr || !draft) {
     return (
-      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-[#b42828] flex items-center gap-2">
+      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-danger flex items-center gap-2">
         <AlertCircle size={14} /> {loadErr ?? 'Could not load booking settings'}
       </div>
     )
@@ -756,7 +756,7 @@ function BookingSettingsPanel() {
     <div className="space-y-3">
       <Link
         href={hrefFor('overview')}
-        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
+        className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-tight text-near-black hover:underline"
       >
         ← Back to Settings
       </Link>
@@ -769,7 +769,7 @@ function BookingSettingsPanel() {
       </header>
 
       {/* Booking enabled */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-2">
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-2">
         <Toggle
           label="Booking enabled"
           hint="When this is off, your public site shows a friendly unavailable message and no new bookings can come in."
@@ -780,14 +780,14 @@ function BookingSettingsPanel() {
       </section>
 
       {/* Confirmation + duplicate guard */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
         <Toggle
           label="Auto-confirm bookings"
           hint="Newly booked appointments are marked confirmed immediately (or right after the deposit clears) instead of pending review."
           on={draft.auto_confirm_bookings}
           onToggle={() => patch({ auto_confirm_bookings: !draft.auto_confirm_bookings })}
         />
-        <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
+        <div className="border-t border-hairline-soft pt-3">
           <Toggle
             label="Prevent duplicate customer bookings"
             hint="Reject a booking when the same customer (by email or phone) already holds the same service at the same time."
@@ -798,7 +798,7 @@ function BookingSettingsPanel() {
       </section>
 
       {/* Booking window */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <NumberField
             label="Minimum notice"
@@ -819,7 +819,7 @@ function BookingSettingsPanel() {
             hint="How far in the future bookings can be made."
           />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-[rgba(18,18,18,0.06)] pt-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-hairline-soft pt-3">
           <SelectField
             label="Time between appointment start times"
             value={String(draft.slot_interval_minutes)}
@@ -841,7 +841,7 @@ function BookingSettingsPanel() {
           />
         </div>
         {releaseHasWindow && (
-          <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
+          <div className="border-t border-hairline-soft pt-3">
             <NumberField
               label="Release window"
               suffix="days"
@@ -856,7 +856,7 @@ function BookingSettingsPanel() {
       </section>
 
       {/* Cancellation / reschedule */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <NumberField
             label="Cancellation window"
@@ -883,7 +883,7 @@ function BookingSettingsPanel() {
           knobs BookReady acts on automatically; the public-facing copy lives
           in Website → Policies. */}
       {policyDraft && (
-        <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+        <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
           <SectionTitle icon={ShieldCheck} label="Enforcement rules" hint="Real rules. BookReady enforces these automatically." />
 
           <Toggle
@@ -893,7 +893,7 @@ function BookingSettingsPanel() {
             onToggle={() => patchPolicy({ require_policy_agreement: !policyDraft.require_policy_agreement })}
           />
 
-          <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
+          <div className="border-t border-hairline-soft pt-3">
             <Toggle
               label="Forfeit deposit on late cancellation"
               hint="When a customer cancels within the cancellation window, their deposit becomes non-refundable. You can still refund manually."
@@ -902,7 +902,7 @@ function BookingSettingsPanel() {
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-[rgba(18,18,18,0.06)] pt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-hairline-soft pt-3">
             <NumberField
               label="Max reschedules per booking"
               value={policyDraft.max_reschedules_per_booking ?? 0}
@@ -926,15 +926,15 @@ function BookingSettingsPanel() {
       )}
 
       {/* Save bar */}
-      <div className="sticky bottom-0 bg-cream/95 backdrop-blur border-t border-[rgba(18,18,18,0.08)] pt-3 pb-2 flex items-center justify-between gap-3">
-        <div className="text-[11px] text-muted-text">
+      <div className="sticky bottom-0 bg-cream/95 backdrop-blur border-t border-hairline-soft pt-3 pb-2 flex items-center justify-between gap-3">
+        <div className="text-2xs text-muted-text">
           {saveState === 'saved' && (
             <span className="inline-flex items-center gap-1 text-near-black">
               <Check size={12} /> Saved
             </span>
           )}
           {saveState === 'error' && (
-            <span className="inline-flex items-center gap-1 text-[#b42828]">
+            <span className="inline-flex items-center gap-1 text-danger">
               <AlertCircle size={12} /> {saveErr ?? 'Could not save'}
             </span>
           )}
@@ -945,10 +945,10 @@ function BookingSettingsPanel() {
           onClick={save}
           disabled={!dirty || saveState === 'saving'}
           className={cn(
-            'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase px-3 py-2',
+            'inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase px-3 py-2',
             dirty
               ? 'bg-near-black text-white hover:bg-white hover:text-near-black border border-near-black'
-              : 'bg-cream text-muted-text border border-[rgba(18,18,18,0.10)] cursor-not-allowed',
+              : 'bg-cream text-muted-text border border-hairline-soft cursor-not-allowed',
           )}
         >
           {saveState === 'saving'
@@ -1033,7 +1033,7 @@ function NotificationSettingsPanel() {
   }
   if (loadErr || !draft) {
     return (
-      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-[#b42828] flex items-center gap-2">
+      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-danger flex items-center gap-2">
         <AlertCircle size={14} /> {loadErr ?? 'Could not load notification settings'}
       </div>
     )
@@ -1043,7 +1043,7 @@ function NotificationSettingsPanel() {
     <div className="space-y-3">
       <Link
         href={hrefFor('overview')}
-        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
+        className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-tight text-near-black hover:underline"
       >
         ← Back to Settings
       </Link>
@@ -1056,8 +1056,8 @@ function NotificationSettingsPanel() {
       </header>
 
       {/* Booking emails */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
-        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Booking emails</p>
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
+        <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Booking emails</p>
         <Toggle
           label="Owner: new booking request"
           hint="Notify you when a customer submits a booking request or pays a deposit."
@@ -1065,7 +1065,7 @@ function NotificationSettingsPanel() {
           on={draft.owner_booking_email_enabled}
           onToggle={() => patch({ owner_booking_email_enabled: !draft.owner_booking_email_enabled })}
         />
-        <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
+        <div className="border-t border-hairline-soft pt-3">
           <Toggle
             label="Customer: request received"
             hint="Send a receipt to the customer when their booking request comes in."
@@ -1073,7 +1073,7 @@ function NotificationSettingsPanel() {
             onToggle={() => patch({ client_booking_email_enabled: !draft.client_booking_email_enabled })}
           />
         </div>
-        <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
+        <div className="border-t border-hairline-soft pt-3">
           <Toggle
             label="Customer: appointment confirmed"
             hint="Send when you confirm an appointment."
@@ -1081,7 +1081,7 @@ function NotificationSettingsPanel() {
             onToggle={() => patch({ appointment_confirmed_email_enabled: !draft.appointment_confirmed_email_enabled })}
           />
         </div>
-        <div className="border-t border-[rgba(18,18,18,0.06)] pt-3">
+        <div className="border-t border-hairline-soft pt-3">
           <Toggle
             label="Customer: appointment cancelled"
             hint="Send when an appointment is cancelled."
@@ -1092,8 +1092,8 @@ function NotificationSettingsPanel() {
       </section>
 
       {/* Reminder */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
-        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Reminders</p>
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
+        <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Reminders</p>
         <Toggle
           label="Send appointment reminders"
           hint="Email each customer a set number of hours before their appointment."
@@ -1124,61 +1124,61 @@ function NotificationSettingsPanel() {
       />
 
       {/* Reply-to + sender name */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
-        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">How your emails appear</p>
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
+        <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">How your emails appear</p>
 
         {/* Phase 17 — show what FROM address Resend will actually use, since
             owners often want to verify it matches their domain. */}
-        <div className="bg-cream/60 border border-[rgba(18,18,18,0.08)] p-2.5">
-          <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Sent-from address</p>
-          <p className="text-[12px] text-near-black mt-0.5 font-mono break-all">
+        <div className="bg-cream/60 border border-hairline-soft p-2.5">
+          <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Sent-from address</p>
+          <p className="text-xs text-near-black mt-0.5 font-mono break-all">
             {(draft.effective_from_name || 'BookReady')} &lt;{draft.effective_from_address || 'Not set'}&gt;
           </p>
-          <p className="text-[10px] text-muted-text mt-1.5">
+          <p className="text-eyebrow text-muted-text mt-1.5">
             This is the address customers see in their inbox. The reply address and sent-from name below customize it.
           </p>
         </div>
 
         <label className="block">
-          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Reply address</span>
+          <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Reply address</span>
           <input
             type="email"
             value={draft.reply_to_email ?? ''}
             onChange={e => patch({ reply_to_email: e.target.value || null })}
             placeholder="hello@yourbusiness.com"
-            className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+            className="mt-1.5 w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
             maxLength={255}
           />
-          <p className="text-[10px] text-muted-text mt-1">
+          <p className="text-eyebrow text-muted-text mt-1">
             Replies from customers land here. Leave blank to use the owner email on file.
           </p>
         </label>
         <label className="block">
-          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Sent-from name</span>
+          <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Sent-from name</span>
           <input
             type="text"
             value={draft.sender_name ?? ''}
             onChange={e => patch({ sender_name: e.target.value || null })}
             placeholder="Your business name"
-            className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+            className="mt-1.5 w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
             maxLength={120}
           />
-          <p className="text-[10px] text-muted-text mt-1">
+          <p className="text-eyebrow text-muted-text mt-1">
             Shown as the sent-from name on emails. Defaults to BookReady when blank.
           </p>
         </label>
       </section>
 
       {/* Save bar */}
-      <div className="sticky bottom-0 bg-cream/95 backdrop-blur border-t border-[rgba(18,18,18,0.08)] pt-3 pb-2 flex items-center justify-between gap-3">
-        <div className="text-[11px] text-muted-text">
+      <div className="sticky bottom-0 bg-cream/95 backdrop-blur border-t border-hairline-soft pt-3 pb-2 flex items-center justify-between gap-3">
+        <div className="text-2xs text-muted-text">
           {saveState === 'saved' && (
             <span className="inline-flex items-center gap-1 text-near-black">
               <Check size={12} /> Saved
             </span>
           )}
           {saveState === 'error' && (
-            <span className="inline-flex items-center gap-1 text-[#b42828]">
+            <span className="inline-flex items-center gap-1 text-danger">
               <AlertCircle size={12} /> {saveErr ?? 'Could not save'}
             </span>
           )}
@@ -1189,10 +1189,10 @@ function NotificationSettingsPanel() {
           onClick={save}
           disabled={!dirty || saveState === 'saving'}
           className={cn(
-            'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase px-3 py-2',
+            'inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase px-3 py-2',
             dirty
               ? 'bg-near-black text-white hover:bg-white hover:text-near-black border border-near-black'
-              : 'bg-cream text-muted-text border border-[rgba(18,18,18,0.10)] cursor-not-allowed',
+              : 'bg-cream text-muted-text border border-hairline-soft cursor-not-allowed',
           )}
         >
           {saveState === 'saving'
@@ -1217,8 +1217,8 @@ function NumberField({
 }) {
   return (
     <label className="block">
-      <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">{label}</span>
-      <div className="mt-1.5 flex items-center border border-[rgba(18,18,18,0.15)] bg-white focus-within:border-near-black">
+      <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">{label}</span>
+      <div className="mt-1.5 flex items-center border border-hairline-strong bg-white focus-within:border-near-black">
         <input
           type="number"
           inputMode="numeric"
@@ -1232,9 +1232,9 @@ function NumberField({
           }}
           className="w-full px-3 py-2 text-sm text-near-black bg-transparent focus:outline-none tabular-nums"
         />
-        {suffix && <span className="px-2 text-[11px] text-muted-text">{suffix}</span>}
+        {suffix && <span className="px-2 text-2xs text-muted-text">{suffix}</span>}
       </div>
-      {hint && <p className="text-[10px] text-muted-text mt-1">{hint}</p>}
+      {hint && <p className="text-eyebrow text-muted-text mt-1">{hint}</p>}
     </label>
   )
 }
@@ -1250,12 +1250,12 @@ function SelectField({
 }) {
   return (
     <label className="block">
-      <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">{label}</span>
+      <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">{label}</span>
       <div className="relative mt-1.5">
         <select
           value={value}
           onChange={e => onChange(e.target.value)}
-          className="w-full appearance-none bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 pr-8 text-sm text-near-black focus:outline-none focus:border-near-black"
+          className="w-full appearance-none bg-white border border-hairline-strong px-3 py-2 pr-8 text-sm text-near-black focus:outline-none focus:border-near-black"
         >
           {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
@@ -1264,7 +1264,7 @@ function SelectField({
           className="absolute right-2.5 top-1/2 -translate-y-1/2 rotate-90 text-muted-text pointer-events-none"
         />
       </div>
-      {hint && <p className="text-[10px] text-muted-text mt-1">{hint}</p>}
+      {hint && <p className="text-eyebrow text-muted-text mt-1">{hint}</p>}
     </label>
   )
 }
@@ -1372,7 +1372,7 @@ function AccountSettingsPanel() {
   }
   if (loadErr || !profile) {
     return (
-      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-[#b42828] flex items-center gap-2">
+      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-danger flex items-center gap-2">
         <AlertCircle size={14} /> {loadErr ?? 'Could not load account'}
       </div>
     )
@@ -1382,7 +1382,7 @@ function AccountSettingsPanel() {
     <div className="space-y-3">
       <Link
         href={hrefFor('overview')}
-        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
+        className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-tight text-near-black hover:underline"
       >
         ← Back to Settings
       </Link>
@@ -1395,41 +1395,41 @@ function AccountSettingsPanel() {
       </header>
 
       {/* Profile */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
-        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Profile</p>
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
+        <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Profile</p>
         <label className="block">
-          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Name</span>
+          <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Name</span>
           <input
             type="text"
             value={name}
             onChange={e => setName(e.target.value)}
             maxLength={100}
-            className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+            className="mt-1.5 w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
           />
         </label>
         <label className="block">
-          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Email</span>
+          <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Email</span>
           <input
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
             maxLength={255}
-            className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+            className="mt-1.5 w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
           />
-          <p className="text-[10px] text-muted-text mt-1">
+          <p className="text-eyebrow text-muted-text mt-1">
             Used for signing in and as the default reply address for booking emails.
           </p>
         </label>
 
-        <div className="flex items-center justify-between gap-3 pt-1 border-t border-[rgba(18,18,18,0.06)]">
-          <div className="text-[11px] text-muted-text">
+        <div className="flex items-center justify-between gap-3 pt-1 border-t border-hairline-soft">
+          <div className="text-2xs text-muted-text">
             {profSave === 'saved' && (
               <span className="inline-flex items-center gap-1 text-near-black">
                 <Check size={12} /> Saved
               </span>
             )}
             {profSave === 'error' && (
-              <span className="inline-flex items-center gap-1 text-[#b42828]">
+              <span className="inline-flex items-center gap-1 text-danger">
                 <AlertCircle size={12} /> {profErr ?? 'Could not save'}
               </span>
             )}
@@ -1440,10 +1440,10 @@ function AccountSettingsPanel() {
             onClick={saveProfile}
             disabled={! profileDirty || profSave === 'saving'}
             className={cn(
-              'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase px-3 py-2',
+              'inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase px-3 py-2',
               profileDirty
                 ? 'bg-near-black text-white hover:bg-white hover:text-near-black border border-near-black'
-                : 'bg-cream text-muted-text border border-[rgba(18,18,18,0.10)] cursor-not-allowed',
+                : 'bg-cream text-muted-text border border-hairline-soft cursor-not-allowed',
             )}
           >
             {profSave === 'saving'
@@ -1454,56 +1454,56 @@ function AccountSettingsPanel() {
       </section>
 
       {/* Password */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
-        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Change password</p>
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
+        <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Change password</p>
         <label className="block">
-          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Current password</span>
+          <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Current password</span>
           <input
             type="password"
             value={currentPw}
             onChange={e => setCurrentPw(e.target.value)}
             autoComplete="current-password"
-            className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+            className="mt-1.5 w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
           />
         </label>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="block">
-            <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">New password</span>
+            <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">New password</span>
             <input
               type="password"
               value={newPw}
               onChange={e => setNewPw(e.target.value)}
               autoComplete="new-password"
               minLength={8}
-              className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+              className="mt-1.5 w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
             />
-            <p className="text-[10px] text-muted-text mt-1">At least 8 characters.</p>
+            <p className="text-eyebrow text-muted-text mt-1">At least 8 characters.</p>
           </label>
           <label className="block">
-            <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Confirm new password</span>
+            <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Confirm new password</span>
             <input
               type="password"
               value={newPw2}
               onChange={e => setNewPw2(e.target.value)}
               autoComplete="new-password"
               minLength={8}
-              className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+              className="mt-1.5 w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
             />
             {newPw && newPw2 && newPw !== newPw2 && (
-              <p className="text-[10px] text-[#b42828] mt-1">Passwords don&rsquo;t match.</p>
+              <p className="text-eyebrow text-danger mt-1">Passwords don&rsquo;t match.</p>
             )}
           </label>
         </div>
 
-        <div className="flex items-center justify-between gap-3 pt-1 border-t border-[rgba(18,18,18,0.06)]">
-          <div className="text-[11px] text-muted-text">
+        <div className="flex items-center justify-between gap-3 pt-1 border-t border-hairline-soft">
+          <div className="text-2xs text-muted-text">
             {pwSave === 'saved' && (
               <span className="inline-flex items-center gap-1 text-near-black">
                 <Check size={12} /> Password updated
               </span>
             )}
             {pwSave === 'error' && (
-              <span className="inline-flex items-center gap-1 text-[#b42828]">
+              <span className="inline-flex items-center gap-1 text-danger">
                 <AlertCircle size={12} /> {pwErr ?? 'Password change failed'}
               </span>
             )}
@@ -1513,10 +1513,10 @@ function AccountSettingsPanel() {
             onClick={changePw}
             disabled={! pwReady || pwSave === 'saving'}
             className={cn(
-              'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase px-3 py-2',
+              'inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase px-3 py-2',
               pwReady
                 ? 'bg-near-black text-white hover:bg-white hover:text-near-black border border-near-black'
-                : 'bg-cream text-muted-text border border-[rgba(18,18,18,0.10)] cursor-not-allowed',
+                : 'bg-cream text-muted-text border border-hairline-soft cursor-not-allowed',
             )}
           >
             {pwSave === 'saving'
@@ -1527,34 +1527,34 @@ function AccountSettingsPanel() {
       </section>
 
       {/* Security — sign out everywhere */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
-        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Security</p>
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
+        <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Security</p>
         <div className="flex items-start gap-3">
           <UserCircle size={14} className="text-near-black flex-shrink-0 mt-1" strokeWidth={1.8} />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-near-black">Sign out everywhere else</p>
-            <p className="text-[11px] text-muted-text mt-0.5">
+            <p className="text-2xs text-muted-text mt-0.5">
               Ends every active session for your account except this device.
               Useful if you logged in somewhere you shouldn&rsquo;t still be signed in.
             </p>
             {signoutMsg && (
-              <p className="text-[11px] text-[#0f6f3d] mt-2 inline-flex items-center gap-1">
+              <p className="text-2xs text-success mt-2 inline-flex items-center gap-1">
                 <Check size={11} /> {signoutMsg}
               </p>
             )}
             {signoutErr && (
-              <p className="text-[11px] text-[#b42828] mt-2 inline-flex items-center gap-1">
+              <p className="text-2xs text-danger mt-2 inline-flex items-center gap-1">
                 <AlertCircle size={11} /> {signoutErr}
               </p>
             )}
           </div>
         </div>
-        <div className="flex items-center justify-end pt-1 border-t border-[rgba(18,18,18,0.06)]">
+        <div className="flex items-center justify-end pt-1 border-t border-hairline-soft">
           <button
             type="button"
             onClick={handleSignOutEverywhere}
             disabled={signoutBusy}
-            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-60"
           >
             {signoutBusy
               ? <><Loader2 size={11} className="animate-spin" /> Signing out</>
@@ -1570,7 +1570,7 @@ function AccountSettingsPanel() {
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+    <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
       {children}
     </span>
   )
@@ -1588,9 +1588,9 @@ function MoneyInput({
   const sym = currency === 'USD' ? '$' : ''
   return (
     <div>
-      <label className="block text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1">{label}</label>
+      <label className="block text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-1">{label}</label>
       <div className={cn(
-        'flex items-center border border-[rgba(18,18,18,0.15)] focus-within:border-near-black',
+        'flex items-center border border-hairline-strong focus-within:border-near-black',
         disabled && 'opacity-50',
       )}>
         <span className="px-2.5 text-xs text-muted-text">{sym}</span>
@@ -1607,7 +1607,7 @@ function MoneyInput({
           placeholder="0.00"
           className="flex-1 py-2 px-2 text-sm text-near-black bg-white outline-none disabled:opacity-50"
         />
-        <span className="px-2.5 text-[11px] text-muted-text">{currency}</span>
+        <span className="px-2.5 text-2xs text-muted-text">{currency}</span>
       </div>
     </div>
   )
@@ -1629,7 +1629,7 @@ function Toggle({
         {Icon && <Icon size={14} className="text-near-black flex-shrink-0" strokeWidth={1.8} />}
         <div className="min-w-0">
           <span className="text-sm text-near-black block">{label}</span>
-          {hint && <span className="text-[11px] text-muted-text">{hint}</span>}
+          {hint && <span className="text-2xs text-muted-text">{hint}</span>}
         </div>
       </div>
       <button
@@ -1640,12 +1640,12 @@ function Toggle({
         disabled={disabled}
         className={cn(
           'relative inline-flex items-center w-10 h-5 transition-colors border flex-shrink-0',
-          on ? 'bg-near-black border-near-black' : 'bg-white border-[rgba(18,18,18,0.25)]',
+          on ? 'bg-near-black border-near-black' : 'bg-white border-hairline-strong',
           disabled && 'opacity-40 cursor-not-allowed',
         )}
       >
         <span className={cn(
-          'absolute top-0.5 w-3.5 h-3.5 bg-white border border-[rgba(18,18,18,0.15)] transition-all',
+          'absolute top-0.5 w-3.5 h-3.5 bg-white border border-hairline-strong transition-all',
           on ? 'left-[22px]' : 'left-0.5',
         )} />
       </button>
@@ -1716,37 +1716,37 @@ function StripeConnectBlock({
     positive: 'border-[rgba(20,140,80,0.40)]',
     warn:     'border-[rgba(180,120,0,0.35)]',
     danger:   'border-[rgba(180,40,40,0.40)]',
-    neutral:  'border-[rgba(18,18,18,0.10)]',
+    neutral:  'border-hairline-soft',
   }[meta.tone]
 
   const iconCls = {
-    positive: 'text-[#0f6f3d]',
-    warn:     'text-[#8a5a00]',
-    danger:   'text-[#b42828]',
+    positive: 'text-success',
+    warn:     'text-warning',
+    danger:   'text-danger',
     neutral:  'text-near-black',
   }[meta.tone]
 
   return (
     <section className={cn('bg-white border p-3.5 space-y-3', borderCls)}>
       <div className="flex items-start gap-3">
-        <span className={cn('w-8 h-8 flex items-center justify-center bg-cream border border-[rgba(18,18,18,0.08)] flex-shrink-0', iconCls)}>
+        <span className={cn('w-8 h-8 flex items-center justify-center bg-cream border border-hairline-soft flex-shrink-0', iconCls)}>
           <Icon size={14} strokeWidth={1.8} />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-bold text-near-black">{meta.title}</p>
             <span className={cn(
-              'text-[9px] font-bold tracking-[0.06em] uppercase border px-1.5 py-0.5 whitespace-nowrap',
-              meta.tone === 'positive' ? 'bg-white border-[rgba(20,140,80,0.40)] text-[#0f6f3d]'
-                : meta.tone === 'warn' ? 'bg-white border-[rgba(180,120,0,0.35)] text-[#8a5a00]'
-                : meta.tone === 'danger' ? 'bg-white border-[rgba(180,40,40,0.40)] text-[#b42828]'
-                : 'bg-cream border-[rgba(18,18,18,0.15)] text-muted-text',
+              'text-eyebrow font-bold tracking-[0.06em] uppercase border px-1.5 py-0.5 whitespace-nowrap',
+              meta.tone === 'positive' ? 'bg-white border-[rgba(20,140,80,0.40)] text-success'
+                : meta.tone === 'warn' ? 'bg-white border-[rgba(180,120,0,0.35)] text-warning'
+                : meta.tone === 'danger' ? 'bg-white border-[rgba(180,40,40,0.40)] text-danger'
+                : 'bg-cream border-hairline-strong text-muted-text',
             )}>{statusLabel(status)}</span>
           </div>
-          <p className="text-[11px] text-muted-text mt-1">{meta.body}</p>
+          <p className="text-2xs text-muted-text mt-1">{meta.body}</p>
 
           {(settings.stripe_connect_account_id || settings.stripe_connect_last_checked_at) && (
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-0.5 mt-2 text-[11px]">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-0.5 mt-2 text-2xs">
               {settings.stripe_connect_account_id && (
                 <div className="flex justify-between sm:block">
                   <dt className="text-muted-text">Stripe reference</dt>
@@ -1777,18 +1777,18 @@ function StripeConnectBlock({
       </div>
 
       {error && (
-        <div className="text-[11px] text-[#b42828] flex items-center gap-1.5">
+        <div className="text-2xs text-danger flex items-center gap-1.5">
           <AlertCircle size={11} /> {error}
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[rgba(18,18,18,0.06)]">
+      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-hairline-soft">
         {status === 'not_connected' && (
           <button
             type="button"
             onClick={onStart}
             disabled={busy !== 'idle'}
-            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 hover:bg-white hover:text-near-black border border-near-black disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 hover:bg-white hover:text-near-black border border-near-black disabled:opacity-60"
           >
             {busy === 'starting'
               ? <><Loader2 size={11} className="animate-spin" /> Starting</>
@@ -1800,7 +1800,7 @@ function StripeConnectBlock({
             type="button"
             onClick={onContinue}
             disabled={busy !== 'idle'}
-            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 hover:bg-white hover:text-near-black border border-near-black disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 hover:bg-white hover:text-near-black border border-near-black disabled:opacity-60"
           >
             {busy === 'refreshing'
               ? <><Loader2 size={11} className="animate-spin" /> Opening</>
@@ -1812,7 +1812,7 @@ function StripeConnectBlock({
             type="button"
             onClick={onRefresh}
             disabled={busy !== 'idle'}
-            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-60"
           >
             {busy === 'syncing'
               ? <><Loader2 size={11} className="animate-spin" /> Refreshing</>
@@ -1913,7 +1913,7 @@ function BusinessSettingsPanel() {
   }
   if (loadErr || !draft) {
     return (
-      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-[#b42828] flex items-center gap-2">
+      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-danger flex items-center gap-2">
         <AlertCircle size={14} /> {loadErr ?? 'Could not load business settings'}
       </div>
     )
@@ -1929,7 +1929,7 @@ function BusinessSettingsPanel() {
     <div className="space-y-3">
       <Link
         href={hrefFor('overview')}
-        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
+        className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-tight text-near-black hover:underline"
       >
         ← Back to Settings
       </Link>
@@ -1947,23 +1947,23 @@ function BusinessSettingsPanel() {
           href={`https://${tenantSlug}.bkrdy.me`}
           target="_blank"
           rel="noopener noreferrer"
-          className="block bg-white border border-[rgba(18,18,18,0.10)] p-3.5 hover:border-near-black transition-colors group"
+          className="block bg-white border border-hairline-soft p-3.5 hover:border-near-black transition-colors group"
         >
           <div className="flex items-start gap-3">
             <ExternalLink size={14} className="text-near-black mt-0.5 flex-shrink-0" />
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Your public site</p>
-              <p className="text-[13px] font-semibold text-near-black mt-0.5 truncate">
+              <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Your public site</p>
+              <p className="text-sm font-semibold text-near-black mt-0.5 truncate">
                 {tenantSlug}.bkrdy.me
               </p>
             </div>
-            <span className="text-[11px] text-muted-text group-hover:text-near-black">View →</span>
+            <span className="text-2xs text-muted-text group-hover:text-near-black">View →</span>
           </div>
         </a>
       )}
 
       {/* Identity */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
         <SectionTitle icon={Building2} label="Identity" hint="How your business shows up across BookReady." />
         <TextField
           label="Business name"
@@ -1997,7 +1997,7 @@ function BusinessSettingsPanel() {
       </section>
 
       {/* Public contact */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
         <SectionTitle icon={Mail} label="Public contact" hint="Shown to customers on your booking site." />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <TextField
@@ -2028,7 +2028,7 @@ function BusinessSettingsPanel() {
       </section>
 
       {/* Address */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
         <SectionTitle icon={MapPin} label="Address" hint="Helps customers find you. Address shows on your public site." />
         <TextField
           label="Street address"
@@ -2166,7 +2166,7 @@ function PreferencesSettingsPanel() {
   }
   if (loadErr || !draft) {
     return (
-      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-[#b42828] flex items-center gap-2">
+      <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-danger flex items-center gap-2">
         <AlertCircle size={14} /> {loadErr ?? 'Could not load preferences'}
       </div>
     )
@@ -2181,7 +2181,7 @@ function PreferencesSettingsPanel() {
     <div className="space-y-3">
       <Link
         href={hrefFor('overview')}
-        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
+        className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-tight text-near-black hover:underline"
       >
         ← Back to Settings
       </Link>
@@ -2194,7 +2194,7 @@ function PreferencesSettingsPanel() {
       </header>
 
       {/* Time + format */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
         <SectionTitle icon={CalendarClock} label="Time & format" hint="Used across the app, emails, and your public site." />
 
         <SelectField
@@ -2217,7 +2217,7 @@ function PreferencesSettingsPanel() {
           />
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-[rgba(18,18,18,0.06)] pt-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-hairline-soft pt-3">
           <SelectField
             label="Week starts on"
             value={String(draft.week_start_day ?? 0)}
@@ -2241,7 +2241,7 @@ function PreferencesSettingsPanel() {
       </section>
 
       {/* Defaults */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
         <SectionTitle icon={Calendar} label="Defaults" hint="Speed up common owner workflows." />
 
         <NumberField
@@ -2256,7 +2256,7 @@ function PreferencesSettingsPanel() {
       </section>
 
       {/* Communication */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
         <SectionTitle icon={Mail} label="Communication" hint="Show up consistently across emails and the booking site." />
 
         <TextAreaField
@@ -2278,7 +2278,7 @@ function PreferencesSettingsPanel() {
       </section>
 
       {/* Site visibility */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
         <SectionTitle icon={Lock} label="Site visibility" hint="Who can see your booking site." />
 
         <SelectField
@@ -2305,7 +2305,7 @@ function PreferencesSettingsPanel() {
               <button
                 type="button"
                 onClick={clearPassword}
-                className="text-[10px] font-bold tracking-[0.14em] uppercase text-[#b42828] hover:underline"
+                className="text-eyebrow font-bold tracking-[0.14em] uppercase text-danger hover:underline"
               >
                 Clear password
               </button>
@@ -2349,11 +2349,11 @@ function SectionTitle({
   hint?: string
 }) {
   return (
-    <div className="flex items-start gap-2 border-b border-[rgba(18,18,18,0.06)] pb-2.5 mb-1">
+    <div className="flex items-start gap-2 border-b border-hairline-soft pb-2.5 mb-1">
       <Icon size={14} className="text-near-black mt-0.5 flex-shrink-0" strokeWidth={1.8} />
       <div className="min-w-0">
-        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-near-black">{label}</p>
-        {hint && <p className="text-[11px] text-muted-text mt-0.5">{hint}</p>}
+        <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-near-black">{label}</p>
+        {hint && <p className="text-2xs text-muted-text mt-0.5">{hint}</p>}
       </div>
     </div>
   )
@@ -2372,8 +2372,8 @@ function TextField({
 }) {
   return (
     <label className="block">
-      <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">{label}</span>
-      <div className="mt-1.5 flex items-center border border-[rgba(18,18,18,0.15)] bg-white focus-within:border-near-black">
+      <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">{label}</span>
+      <div className="mt-1.5 flex items-center border border-hairline-strong bg-white focus-within:border-near-black">
         {Icon && (
           <span className="pl-2.5 pr-1 text-muted-text flex-shrink-0">
             <Icon size={13} strokeWidth={1.8} />
@@ -2387,7 +2387,7 @@ function TextField({
           className="w-full px-3 py-2 text-sm text-near-black bg-transparent placeholder:text-[#c4bcb6] focus:outline-none"
         />
       </div>
-      {hint && <p className="text-[10px] text-muted-text mt-1">{hint}</p>}
+      {hint && <p className="text-eyebrow text-muted-text mt-1">{hint}</p>}
     </label>
   )
 }
@@ -2404,15 +2404,15 @@ function TextAreaField({
 }) {
   return (
     <label className="block">
-      <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">{label}</span>
+      <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">{label}</span>
       <textarea
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
-        className="w-full mt-1.5 px-3 py-2 text-sm text-near-black bg-white border border-[rgba(18,18,18,0.15)] placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black resize-y leading-relaxed"
+        className="w-full mt-1.5 px-3 py-2 text-sm text-near-black bg-white border border-hairline-strong placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black resize-y leading-relaxed"
       />
-      {hint && <p className="text-[10px] text-muted-text mt-1">{hint}</p>}
+      {hint && <p className="text-eyebrow text-muted-text mt-1">{hint}</p>}
     </label>
   )
 }
@@ -2431,15 +2431,15 @@ function SaveBar({
   onSave:    () => void
 }) {
   return (
-    <div className="sticky bottom-0 bg-cream/95 backdrop-blur border-t border-[rgba(18,18,18,0.08)] pt-3 pb-2 flex items-center justify-between gap-3">
-      <div className="text-[11px] text-muted-text">
+    <div className="sticky bottom-0 bg-cream/95 backdrop-blur border-t border-hairline-soft pt-3 pb-2 flex items-center justify-between gap-3">
+      <div className="text-2xs text-muted-text">
         {saveState === 'saved' && (
           <span className="inline-flex items-center gap-1 text-near-black">
             <Check size={12} /> Saved
           </span>
         )}
         {saveState === 'error' && (
-          <span className="inline-flex items-center gap-1 text-[#b42828]">
+          <span className="inline-flex items-center gap-1 text-danger">
             <AlertCircle size={12} /> {saveErr ?? 'Could not save'}
           </span>
         )}
@@ -2450,10 +2450,10 @@ function SaveBar({
         onClick={onSave}
         disabled={!dirty || saveState === 'saving'}
         className={cn(
-          'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase px-3 py-2',
+          'inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase px-3 py-2',
           dirty
             ? 'bg-near-black text-white hover:bg-white hover:text-near-black border border-near-black'
-            : 'bg-cream text-muted-text border border-[rgba(18,18,18,0.10)] cursor-not-allowed',
+            : 'bg-cream text-muted-text border border-hairline-soft cursor-not-allowed',
         )}
       >
         {saveState === 'saving'
@@ -2510,7 +2510,7 @@ function DangerSettingsPanel() {
     <div className="space-y-3">
       <Link
         href={hrefFor('overview')}
-        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline"
+        className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-tight text-near-black hover:underline"
       >
         ← Back to Settings
       </Link>
@@ -2523,20 +2523,20 @@ function DangerSettingsPanel() {
       </header>
 
       {/* Pause bookings (read-only status with deep-link to source) */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5">
+      <section className="bg-white border border-hairline-soft p-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0">
             <span className={cn(
               'w-9 h-9 flex items-center justify-center border flex-shrink-0',
               bookingsPaused
-                ? 'bg-[rgba(180,120,0,0.08)] border-[rgba(180,120,0,0.35)] text-[#8a5a00]'
-                : 'bg-cream border-[rgba(18,18,18,0.08)] text-near-black',
+                ? 'bg-[rgba(180,120,0,0.08)] border-[rgba(180,120,0,0.35)] text-warning'
+                : 'bg-cream border-hairline-soft text-near-black',
             )}>
               <Calendar size={15} strokeWidth={1.8} />
             </span>
             <div className="min-w-0">
-              <p className="text-[13px] font-semibold text-near-black">Pause bookings</p>
-              <p className="text-[11px] text-muted-text mt-0.5">
+              <p className="text-sm font-semibold text-near-black">Pause bookings</p>
+              <p className="text-2xs text-muted-text mt-0.5">
                 {loading
                   ? 'Checking status…'
                   : bookingsPaused
@@ -2547,7 +2547,7 @@ function DangerSettingsPanel() {
           </div>
           <Link
             href={hrefFor('booking')}
-            className="text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.20)] bg-white px-3 py-1.5 hover:border-near-black transition-colors flex-shrink-0"
+            className="text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white px-3 py-1.5 hover:border-near-black transition-colors flex-shrink-0"
           >
             {bookingsPaused ? 'Manage' : 'Pause →'}
           </Link>
@@ -2555,7 +2555,7 @@ function DangerSettingsPanel() {
       </section>
 
       {/* Export data */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-3">
+      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
         <SectionTitle
           icon={Download}
           label="Export your data"
@@ -2576,7 +2576,7 @@ function DangerSettingsPanel() {
           />
         </div>
         {exportErr && (
-          <div className="px-3 py-2 bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+          <div className="px-3 py-2 bg-danger-bg border border-danger text-xs text-danger flex items-center gap-2">
             <AlertCircle size={12} /> {exportErr}
           </div>
         )}
@@ -2586,12 +2586,12 @@ function DangerSettingsPanel() {
       <section className="bg-white border border-[rgba(180,40,40,0.30)] p-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0">
-            <span className="w-9 h-9 flex items-center justify-center border bg-[rgba(180,40,40,0.06)] border-[rgba(180,40,40,0.30)] text-[#b42828] flex-shrink-0">
+            <span className="w-9 h-9 flex items-center justify-center border bg-[rgba(180,40,40,0.06)] border-[rgba(180,40,40,0.30)] text-danger flex-shrink-0">
               <Trash2 size={15} strokeWidth={1.8} />
             </span>
             <div className="min-w-0">
-              <p className="text-[13px] font-semibold text-[#b42828]">Delete BookReady account</p>
-              <p className="text-[11px] text-muted-text mt-0.5 leading-snug">
+              <p className="text-sm font-semibold text-danger">Delete BookReady account</p>
+              <p className="text-2xs text-muted-text mt-0.5 leading-snug">
                 Permanently deletes your booking site, every appointment, your customer list, and your owner login. Stripe transaction history is preserved in Stripe.
                 This cannot be undone. Export your data first.
               </p>
@@ -2600,7 +2600,7 @@ function DangerSettingsPanel() {
           <button
             type="button"
             onClick={() => setShowDeleteModal(true)}
-            className="text-[11px] font-bold tracking-[0.08em] uppercase border border-[rgba(180,40,40,0.45)] bg-white text-[#b42828] px-3 py-1.5 hover:bg-[rgba(180,40,40,0.05)] transition-colors flex-shrink-0"
+            className="text-2xs font-bold tracking-[0.08em] uppercase border border-[rgba(180,40,40,0.45)] bg-white text-danger px-3 py-1.5 hover:bg-[rgba(180,40,40,0.05)] transition-colors flex-shrink-0"
           >
             Delete account
           </button>
@@ -2628,20 +2628,20 @@ function ExportCard({
       onClick={onClick}
       disabled={busy}
       className={cn(
-        'text-left bg-cream border border-[rgba(18,18,18,0.10)] p-3 flex items-start gap-3 transition-colors',
+        'text-left bg-cream border border-hairline-soft p-3 flex items-start gap-3 transition-colors',
         busy ? 'opacity-60 cursor-wait' : 'hover:border-near-black',
       )}
     >
-      <span className="w-7 h-7 flex items-center justify-center bg-white border border-[rgba(18,18,18,0.10)] text-near-black flex-shrink-0">
+      <span className="w-7 h-7 flex items-center justify-center bg-white border border-hairline-soft text-near-black flex-shrink-0">
         {busy
           ? <Loader2 size={12} className="animate-spin" />
           : <Download size={12} strokeWidth={1.8} />}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-[12px] font-semibold text-near-black">{label}</p>
+        <p className="text-xs font-semibold text-near-black">{label}</p>
         <p className="text-[10.5px] text-muted-text mt-0.5 leading-snug">{description}</p>
       </div>
-      <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text flex-shrink-0 self-center">
+      <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text flex-shrink-0 self-center">
         {busy ? 'Exporting…' : 'CSV ↓'}
       </span>
     </button>
@@ -2701,7 +2701,7 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(180,40,40,0.20)]">
           <div>
-            <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-[#b42828] mb-1">
+            <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-danger mb-1">
               Permanent deletion
             </p>
             <h2 className="text-base font-bold text-near-black tracking-tight">
@@ -2720,11 +2720,11 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          <div className="bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] px-3.5 py-3 text-[12px] leading-relaxed text-[#7a1f1f]">
+          <div className="bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] px-3.5 py-3 text-xs leading-relaxed text-[#7a1f1f]">
             <p className="font-semibold mb-1.5">This will permanently:</p>
             <ul className="list-disc list-outside pl-4 space-y-0.5">
               <li>Cancel your BookReady subscription (no more charges)</li>
-              <li>Delete your booking site at <span className="font-mono text-[11px]">{slug ?? '…'}.bkrdy.me</span></li>
+              <li>Delete your booking site at <span className="font-mono text-2xs">{slug ?? '…'}.bkrdy.me</span></li>
               <li>Delete all appointments, customers, services, staff, and gallery items</li>
               <li>Delete your owner login and every active session</li>
               <li>Disconnect your Stripe Connect link (Stripe history + balance stays in Stripe)</li>
@@ -2733,7 +2733,7 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-1.5">
+            <label className="block text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text mb-1.5">
               Type your site address to confirm
             </label>
             <input
@@ -2742,17 +2742,17 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
               onChange={e => setTyped(e.target.value)}
               placeholder={slug ?? 'yoursite'}
               autoComplete="off"
-              className="w-full bg-white border border-[rgba(18,18,18,0.20)] px-3 py-2.5 text-sm text-near-black font-mono placeholder:text-[#c4bcb6] focus:outline-none focus:border-[#b42828] transition-colors"
+              className="w-full bg-white border border-hairline-strong px-3 py-2.5 text-sm text-near-black font-mono placeholder:text-[#c4bcb6] focus:outline-none focus:border-danger transition-colors"
             />
             {typedSlug && slug && !slugMatches && (
-              <p className="text-[11px] text-[#b42828] mt-1">
+              <p className="text-2xs text-danger mt-1">
                 That doesn&rsquo;t match. Type <span className="font-mono">{slug}</span> exactly.
               </p>
             )}
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-1.5">
+            <label className="block text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text mb-1.5">
               Your current password
             </label>
             <input
@@ -2760,12 +2760,12 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
               value={password}
               onChange={e => setPassword(e.target.value)}
               autoComplete="current-password"
-              className="w-full bg-white border border-[rgba(18,18,18,0.20)] px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-[#b42828] transition-colors"
+              className="w-full bg-white border border-hairline-strong px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-danger transition-colors"
             />
           </div>
 
           {err && (
-            <div className="px-3 py-2 bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+            <div className="px-3 py-2 bg-danger-bg border border-danger text-xs text-danger flex items-center gap-2">
               <AlertCircle size={12} /> {err}
             </div>
           )}
@@ -2776,7 +2776,7 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={() => { if (!busy) onClose() }}
             disabled={busy}
-            className="flex-1 border border-[rgba(18,18,18,0.20)] bg-white text-[11px] font-bold tracking-[0.18em] uppercase py-3 text-near-black hover:border-near-black transition-colors disabled:opacity-50"
+            className="flex-1 border border-hairline-strong bg-white text-2xs font-bold tracking-[0.18em] uppercase py-3 text-near-black hover:border-near-black transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
@@ -2784,7 +2784,7 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={handleDelete}
             disabled={!canSubmit}
-            className="flex-1 bg-[#b42828] text-white text-[11px] font-bold tracking-[0.18em] uppercase py-3 hover:bg-[#8a1d1d] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 bg-danger text-white text-2xs font-bold tracking-[0.18em] uppercase py-3 hover:bg-[#8a1d1d] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {busy ? 'Deleting…' : 'Delete forever'}
           </button>
@@ -2849,12 +2849,12 @@ function EmailContentEditor({
   onChange: (key: EmailTemplateKey, value: EmailTemplateOverride) => void
 }) {
   return (
-    <section className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5 space-y-2.5">
+    <section className="bg-white border border-hairline-soft p-3.5 space-y-2.5">
       <div className="flex items-start gap-2 mb-1">
         <Mail size={13} className="text-near-black mt-0.5 flex-shrink-0" />
         <div className="min-w-0">
-          <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Email content</p>
-          <p className="text-[11px] text-muted-text mt-0.5">
+          <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Email content</p>
+          <p className="text-2xs text-muted-text mt-0.5">
             Override the subject line, opening, or sign-off on the 5 emails that go to your customers.
             Leave blank to use BookReady defaults. Sample data + your saved overrides are used for test sends.
           </p>
@@ -2917,67 +2917,67 @@ function EmailTemplateCard({
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-[13px] font-semibold text-near-black">{meta.label}</p>
+            <p className="text-sm font-semibold text-near-black">{meta.label}</p>
             {hasOverride && (
-              <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.15)] bg-cream text-near-black px-1.5 py-0.5">
+              <span className="text-eyebrow font-bold tracking-[0.06em] uppercase border border-hairline-strong bg-cream text-near-black px-1.5 py-0.5">
                 Customized
               </span>
             )}
           </div>
-          <p className="text-[11px] text-muted-text mt-0.5">{meta.description}</p>
+          <p className="text-2xs text-muted-text mt-0.5">{meta.description}</p>
         </div>
       </button>
 
       {open && (
         <div className="mt-3 pl-5 space-y-2.5">
           <label className="block">
-            <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Subject</span>
+            <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Subject</span>
             <input
               type="text"
               value={value.subject ?? ''}
               onChange={e => onChange({ ...value, subject: e.target.value || null })}
               placeholder={meta.defaultSubject}
-              className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black"
+              className="mt-1.5 w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black"
               maxLength={255}
             />
           </label>
           <label className="block">
-            <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Intro paragraph</span>
+            <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Intro paragraph</span>
             <textarea
               rows={3}
               value={value.intro ?? ''}
               onChange={e => onChange({ ...value, intro: e.target.value || null })}
               placeholder={meta.defaultIntro}
-              className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black resize-y leading-relaxed"
+              className="mt-1.5 w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black resize-y leading-relaxed"
               maxLength={2000}
             />
           </label>
           <label className="block">
-            <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Sign-off paragraph</span>
+            <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Sign-off paragraph</span>
             <textarea
               rows={2}
               value={value.signoff ?? ''}
               onChange={e => onChange({ ...value, signoff: e.target.value || null })}
               placeholder="e.g. Thanks for choosing us, Anna"
-              className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black resize-y leading-relaxed"
+              className="mt-1.5 w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black resize-y leading-relaxed"
               maxLength={2000}
             />
           </label>
 
-          <div className="pt-1 border-t border-[rgba(18,18,18,0.06)] space-y-2">
+          <div className="pt-1 border-t border-hairline-soft space-y-2">
             {/* Status row — error gets red treatment, success gets a
                 clearly-visible green confirmation strip with a check
                 icon so it reads as "yes, sent" at a glance. Defaults
                 back to muted helper copy when neither has fired. */}
             {sendMsg?.kind === 'ok' ? (
-              <div className="flex items-center gap-2 px-2.5 py-1.5 bg-green-50 border border-green-200 text-[11px] text-green-800">
+              <div className="flex items-center gap-2 px-2.5 py-1.5 bg-success-bg border border-green-200 text-2xs text-success">
                 <Check size={12} className="flex-shrink-0" />
                 <span className="font-semibold">{sendMsg.text}</span>
               </div>
             ) : sendMsg?.kind === 'err' ? (
-              <p className="text-[11px] text-[#b42828]">{sendMsg.text}</p>
+              <p className="text-2xs text-danger">{sendMsg.text}</p>
             ) : (
-              <p className="text-[11px] text-muted-text">
+              <p className="text-2xs text-muted-text">
                 Send a test to verify deliverability + saved content. Leave the address blank to use your account email.
               </p>
             )}
@@ -2987,13 +2987,13 @@ function EmailTemplateCard({
                 value={testTo}
                 onChange={e => setTestTo(e.target.value)}
                 placeholder="Send to… (defaults to your account email)"
-                className="flex-1 min-w-0 bg-white border border-[rgba(18,18,18,0.15)] px-3 py-1.5 text-[12px] text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black"
+                className="flex-1 min-w-0 bg-white border border-hairline-strong px-3 py-1.5 text-xs text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black"
               />
               <button
                 type="button"
                 onClick={testSend}
                 disabled={sending}
-                className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.10em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2.5 py-1.5 hover:border-near-black disabled:opacity-50 whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 text-eyebrow font-bold tracking-[0.10em] uppercase border border-hairline-strong bg-white text-near-black px-2.5 py-1.5 hover:border-near-black disabled:opacity-50 whitespace-nowrap"
               >
                 {sending
                   ? <><Loader2 size={11} className="animate-spin" /> Sending</>

@@ -75,7 +75,7 @@ function Hub() {
 
   return (
     <>
-      <nav className="flex items-center gap-1 mb-5 border-b border-[rgba(18,18,18,0.10)] overflow-x-auto">
+      <nav className="flex items-center gap-1 mb-5 border-b border-hairline-soft overflow-x-auto">
         {TABS.map(t => (
           <TabLink
             key={t.id}
@@ -108,20 +108,20 @@ function Hub() {
 function AdvancedTab() {
   return (
     <div>
-      <div className="rounded-xl border border-[rgba(18,18,18,0.10)] bg-cream/50 p-4 mb-5 text-[13px] text-muted-text">
+      <div className=" border border-hairline-soft bg-cream/50 p-4 mb-5 text-sm text-muted-text">
         The <strong className="text-near-black">Smart Calendar</strong> is your primary scheduling
         tool. The weekly schedule below is the fallback for any date you haven&apos;t customized —
         edit it if you keep regular hours, or ignore it and drive everything from the calendar.
       </div>
       <AvailabilityEditor />
       <div className="mt-6 grid gap-2 sm:grid-cols-2">
-        <Link href="/editor/staff" className="rounded-xl border border-[rgba(18,18,18,0.10)] bg-white p-4 hover:border-near-black/30 transition-colors">
+        <Link href="/editor/staff" className=" border border-hairline-soft bg-white p-4 hover:border-near-black/30 transition-colors">
           <div className="flex items-center gap-2 text-near-black font-medium text-sm"><Users size={15} /> Staff availability</div>
-          <p className="text-[12px] text-muted-text mt-1">Per-staff hours, days off, and blocked dates.</p>
+          <p className="text-xs text-muted-text mt-1">Per-staff hours, days off, and blocked dates.</p>
         </Link>
-        <Link href="/editor/services" className="rounded-xl border border-[rgba(18,18,18,0.10)] bg-white p-4 hover:border-near-black/30 transition-colors">
+        <Link href="/editor/services" className=" border border-hairline-soft bg-white p-4 hover:border-near-black/30 transition-colors">
           <div className="flex items-center gap-2 text-near-black font-medium text-sm"><CalendarDays size={15} /> Service availability</div>
-          <p className="text-[12px] text-muted-text mt-1">Which services are bookable and their durations.</p>
+          <p className="text-xs text-muted-text mt-1">Which services are bookable and their durations.</p>
         </Link>
       </div>
     </div>
@@ -141,7 +141,7 @@ function TabLink({
     <Link
       href={href}
       className={cn(
-        'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase px-3 py-2.5 border-b-2 -mb-px whitespace-nowrap',
+        'inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase px-3 py-2.5 border-b-2 -mb-px whitespace-nowrap',
         active
           ? 'text-near-black border-near-black'
           : 'text-muted-text border-transparent hover:text-near-black',
@@ -150,7 +150,7 @@ function TabLink({
       <Icon size={12} />
       {label}
       {badge && (
-        <span className="text-[8px] font-bold tracking-[0.06em] uppercase bg-blush border border-[rgba(18,18,18,0.10)] text-near-black px-1 py-0.5 ml-1">
+        <span className="text-eyebrow font-bold tracking-[0.06em] uppercase bg-blush border border-hairline-soft text-near-black px-1 py-0.5 ml-1">
           {badge}
         </span>
       )}

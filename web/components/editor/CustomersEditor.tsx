@@ -46,6 +46,9 @@ import type {
   Service,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
+import StatusBadge from '@/components/ui/StatusBadge'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { useToast } from '@/components/ui/Toast'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -94,50 +97,9 @@ function daysAgo(date: string | null): string | null {
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
-const STATUS_CFG: Record<CustomerStatus, { label: string; cls: string }> = {
-  new:       { label: 'New',       cls: 'bg-blush border-transparent text-near-black' },
-  returning: { label: 'Returning', cls: 'bg-lavender border-transparent text-near-black' },
-  regular:   { label: 'Regular',   cls: 'bg-near-black border-near-black text-white' },
-  vip:       { label: 'VIP',       cls: 'bg-gradient-to-r from-[#E8C7DA] to-[#C9B4E6] border-transparent text-near-black' },
-  inactive:  { label: 'Inactive',  cls: 'bg-white border-[rgba(18,18,18,0.20)] text-muted-text' },
-}
-
-function StatusBadge({ status }: { status: CustomerStatus }) {
-  const cfg = STATUS_CFG[status]
-  return (
-    <span
-      className={cn(
-        'text-[9px] font-bold tracking-[0.06em] uppercase border px-2 py-0.5 flex-shrink-0 whitespace-nowrap',
-        cfg.cls,
-      )}
-    >
-      {status === 'vip' && <Star size={9} className="inline -mt-px mr-1" fill="currentColor" />}
-      {cfg.label}
-    </span>
-  )
-}
-
-// Appointment status pill — same palette as AppointmentsEditor so the
-// timeline reads consistently with the bookings page.
-function ApptStatusPill({ status }: { status: string }) {
-  const cfg: Record<string, string> = {
-    pending:   'bg-blush text-near-black',
-    confirmed: 'bg-lavender text-near-black',
-    completed: 'bg-near-black text-white',
-    cancelled: 'bg-white border border-[rgba(18,18,18,0.20)] text-muted-text',
-    no_show:   'bg-white border border-[rgba(18,18,18,0.20)] text-near-black',
-  }
-  return (
-    <span
-      className={cn(
-        'text-[9px] font-bold tracking-[0.06em] uppercase px-2 py-0.5 whitespace-nowrap',
-        cfg[status] ?? 'bg-white border border-[rgba(18,18,18,0.12)] text-near-black',
-      )}
-    >
-      {status.replace('_', '-')}
-    </span>
-  )
-}
+// Status badges use the shared registry-driven <StatusBadge>:
+//   domain="customer"    → lifecycle tier (New/Returning/Regular/VIP/Inactive)
+//   domain="appointment" → the drawer's appointment timeline
 
 // ── Filter chip type ──────────────────────────────────────────────────────────
 
@@ -269,20 +231,20 @@ export default function CustomersEditor() {
         <div className="flex items-center justify-end gap-2">
           <button
             onClick={() => setShowTagsModal(true)}
-            className="flex items-center gap-1.5 bg-white border border-[rgba(18,18,18,0.15)] text-near-black px-3 py-1.5 text-[10px] font-bold tracking-[0.08em] uppercase hover:bg-cream transition-colors"
+            className="flex items-center gap-1.5 bg-white border border-hairline-strong text-near-black px-3 py-1.5 text-eyebrow font-bold tracking-[0.08em] uppercase hover:bg-cream transition-colors"
           >
             <TagIcon size={11} /> Manage Tags
           </button>
           <button
             onClick={() => setShowCreate(true)}
-            className="flex items-center gap-1.5 bg-near-black text-white px-3 py-1.5 text-[10px] font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors"
+            className="flex items-center gap-1.5 bg-near-black text-white px-3 py-1.5 text-eyebrow font-bold tracking-[0.08em] uppercase hover:opacity-90 transition-colors"
           >
             <Plus size={11} /> Add Customer
           </button>
         </div>
 
         {/* Stats strip — same visual language as AppointmentsEditor. */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 border border-[rgba(18,18,18,0.10)] divide-y sm:divide-y-0 sm:divide-x divide-[rgba(18,18,18,0.10)] overflow-hidden">
+        <div className="grid grid-cols-2 sm:grid-cols-4 border border-hairline-soft divide-y sm:divide-y-0 sm:divide-x divide-hairline-soft overflow-hidden">
           {([
             { label: 'Total',       value: stats.total,      icon: Users,         filter: 'all'         as Filter },
             { label: 'VIP',         value: stats.vip,        icon: Star,          filter: 'vip'         as Filter },
@@ -302,10 +264,10 @@ export default function CustomersEditor() {
               >
                 <div className="flex items-center gap-1 mb-1.5">
                   <Icon size={10} className="text-muted-text flex-shrink-0" />
-                  <p className="text-[8px] font-bold tracking-[0.10em] uppercase text-muted-text truncate">{label}</p>
+                  <p className="text-eyebrow font-bold tracking-[0.10em] uppercase text-muted-text truncate">{label}</p>
                 </div>
                 <p className="text-2xl font-bold text-near-black tabular-nums">{loading ? 'None' : value}</p>
-                <p className="text-[9px] font-semibold text-muted-text group-hover:text-near-black mt-0.5 inline-flex items-center gap-0.5">
+                <p className="text-eyebrow font-semibold text-muted-text group-hover:text-near-black mt-0.5 inline-flex items-center gap-0.5">
                   {isActive ? 'Viewing' : 'View'} <ChevronRight size={10} />
                 </p>
               </button>
@@ -321,7 +283,7 @@ export default function CustomersEditor() {
             placeholder="Search by name, email, or phone…"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full border border-[rgba(18,18,18,0.15)] bg-white pl-9 pr-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
+            className="w-full border border-hairline-strong bg-white pl-9 pr-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
           />
         </div>
 
@@ -333,10 +295,10 @@ export default function CustomersEditor() {
               type="button"
               onClick={() => setFilter(key)}
               className={cn(
-                'px-3 py-1.5 text-[10px] font-semibold border transition-colors',
+                'px-3 py-1.5 text-eyebrow font-semibold border transition-colors',
                 filter === key
                   ? 'bg-near-black text-white border-near-black'
-                  : 'bg-white text-muted-text border-[rgba(18,18,18,0.12)] hover:text-near-black',
+                  : 'bg-white text-muted-text border-hairline hover:text-near-black',
               )}
             >
               {label}
@@ -441,8 +403,8 @@ export default function CustomersEditor() {
 function EmptyMessage({ children, error = false }: { children: React.ReactNode; error?: boolean }) {
   return (
     <div className={cn(
-      'bg-white border border-[rgba(18,18,18,0.10)] px-5 py-12 text-center text-sm',
-      error ? 'text-red-500' : 'text-muted-text',
+      'bg-white border border-hairline-soft px-5 py-12 text-center text-sm',
+      error ? 'text-danger' : 'text-muted-text',
     )}>
       {children}
     </div>
@@ -457,20 +419,20 @@ function CustomerRow({ customer: c, onOpen }: { customer: Customer; onOpen: () =
     <button
       type="button"
       onClick={onOpen}
-      className="w-full text-left bg-white border border-[rgba(18,18,18,0.10)] hover:border-near-black transition-colors px-4 py-3.5 flex items-start gap-3"
+      className="w-full text-left bg-white border border-hairline-soft hover:border-near-black transition-colors px-4 py-3.5 flex items-start gap-3"
     >
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-sm font-bold text-near-black truncate">{c.name}</p>
-          <StatusBadge status={c.status} />
+          <StatusBadge domain="customer" status={c.status} />
           {balanceDue && (
-            <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.20)] bg-blush text-near-black px-2 py-0.5">
+            <span className="text-eyebrow font-bold tracking-[0.06em] uppercase border border-hairline-strong bg-blush text-near-black px-2 py-0.5">
               {fmtMoney(c.outstanding_balance)} due
             </span>
           )}
           {c.no_show_risk && (
             <span
-              className="inline-flex items-center gap-1 text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(180,40,40,0.30)] bg-[#fff3f3] text-[#b42828] px-2 py-0.5"
+              className="inline-flex items-center gap-1 text-eyebrow font-bold tracking-[0.06em] uppercase border border-danger bg-danger-bg text-danger px-2 py-0.5"
               title="2+ no-shows in last 5 visits or ≥30% no-show rate"
             >
               <AlertTriangle size={9} /> No-show risk
@@ -478,7 +440,7 @@ function CustomerRow({ customer: c, onOpen }: { customer: Customer; onOpen: () =
           )}
           {c.is_account_holder && (
             <span
-              className="inline-flex items-center gap-1 text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.20)] bg-lavender text-near-black px-2 py-0.5"
+              className="inline-flex items-center gap-1 text-eyebrow font-bold tracking-[0.06em] uppercase border border-hairline-strong bg-lavender text-near-black px-2 py-0.5"
               title="This customer has a BookReady account: verified email, stable identity, can self-manage bookings."
             >
               Account
@@ -489,16 +451,16 @@ function CustomerRow({ customer: c, onOpen }: { customer: Customer; onOpen: () =
           <div className="flex items-center gap-1 flex-wrap">
             {tagsShown.map(t => <TagChip key={t.id} tag={t} />)}
             {tagsExtra > 0 && (
-              <span className="text-[10px] font-semibold text-muted-text">+{tagsExtra}</span>
+              <span className="text-eyebrow font-semibold text-muted-text">+{tagsExtra}</span>
             )}
           </div>
         )}
         {(c.email || c.phone) && (
-          <p className="text-[11px] text-muted-text truncate">
+          <p className="text-2xs text-muted-text truncate">
             {[c.email, c.phone].filter(Boolean).join(' · ')}
           </p>
         )}
-        <div className="flex items-center gap-3 text-[11px] text-muted-text flex-wrap mt-1">
+        <div className="flex items-center gap-3 text-2xs text-muted-text flex-wrap mt-1">
           <span className="flex items-center gap-1">
             <Calendar size={10} />
             {c.appointment_count === 0
@@ -565,7 +527,7 @@ function CustomerDrawer({
         className="absolute inset-0 bg-near-black/40 cursor-default"
       />
       {/* Panel */}
-      <div className="ml-auto relative bg-cream w-full sm:max-w-lg h-full overflow-y-auto shadow-xl border-l border-[rgba(18,18,18,0.10)]">
+      <div className="ml-auto relative bg-cream w-full sm:max-w-lg h-full overflow-y-auto shadow-xl border-l border-hairline-soft">
         {loading || !drawerCustomer ? (
           <div className="p-6 text-sm text-muted-text">Loading customer…</div>
         ) : (
@@ -609,6 +571,7 @@ function DrawerContent({
   // Sync local notes when drawer opens for a different customer.
   useEffect(() => { setNotes(c.notes ?? ''); setNotesSaved(false) }, [c.id, c.notes])
 
+  const toast = useToast()
   const notesDirty = (c.notes ?? '') !== notes
 
   async function saveNotes() {
@@ -628,7 +591,7 @@ function DrawerContent({
       // Hide the saved chip after a bit so it feels live.
       setTimeout(() => setNotesSaved(false), 2200)
     } catch {
-      // Leave the user's text intact; they can retry.
+      toast.error('Could not save note')
     } finally {
       setNotesSaving(false)
     }
@@ -639,6 +602,9 @@ function DrawerContent({
     try {
       const updated = await toggleEditorCustomerVip(c.id, ! c.is_vip)
       onApply(updated)
+      toast.success(updated.is_vip ? 'Marked VIP' : 'VIP removed')
+    } catch {
+      toast.error('Could not update VIP')
     } finally {
       setVipBusy(false)
     }
@@ -650,11 +616,11 @@ function DrawerContent({
   return (
     <>
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-cream border-b border-[rgba(18,18,18,0.10)] px-5 py-4 flex items-start justify-between gap-3">
+      <div className="sticky top-0 z-10 bg-cream border-b border-hairline-soft px-5 py-4 flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-lg font-bold text-near-black truncate">{c.name}</h2>
-            <StatusBadge status={c.status} />
+            <StatusBadge domain="customer" status={c.status} />
           </div>
           {(c.email || c.phone) && (
             <p className="text-xs text-muted-text mt-1 truncate">
@@ -751,13 +717,13 @@ function DrawerContent({
         {/* Appointment timeline */}
         <DrawerSection title="Appointment history" badge={`${c.appointments.length}`}>
           {c.appointments.length === 0 ? (
-            <div className="bg-white border border-[rgba(18,18,18,0.08)] px-4 py-6 text-center text-xs text-muted-text">
+            <div className="bg-white border border-hairline-soft px-4 py-6 text-center text-xs text-muted-text">
               No appointments yet.
             </div>
           ) : (
             <div className="relative pl-4">
               {/* Vertical timeline rule */}
-              <div className="absolute left-1.5 top-1 bottom-1 w-px bg-[rgba(18,18,18,0.10)]" aria-hidden="true" />
+              <div className="absolute left-1.5 top-1 bottom-1 w-px bg-hairline-soft" aria-hidden="true" />
               <ul className="space-y-3">
                 {c.appointments.map(a => (
                   <TimelineRow key={a.id} a={a} />
@@ -771,7 +737,7 @@ function DrawerContent({
         <DrawerSection
           title="Private notes"
           subtitle="Only visible to your team, never shared with the customer."
-          badge={notesSaved ? <span className="text-[9px] font-bold tracking-[0.08em] uppercase text-[#0f6f3d]">Saved</span> : null}
+          badge={notesSaved ? <span className="text-eyebrow font-bold tracking-[0.08em] uppercase text-success">Saved</span> : null}
         >
           <textarea
             id="drawer-notes-textarea"
@@ -779,14 +745,14 @@ function DrawerContent({
             onChange={e => setNotes(e.target.value)}
             placeholder="Allergies, preferences, conversation starters…"
             rows={5}
-            className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black resize-none"
+            className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black resize-none"
           />
           <div className="flex justify-end mt-2">
             <button
               type="button"
               onClick={saveNotes}
               disabled={! notesDirty || notesSaving}
-              className="px-3 py-1.5 text-[10px] font-bold tracking-[0.08em] uppercase bg-near-black text-white hover:bg-[#2a2a2a] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 text-eyebrow font-bold tracking-[0.08em] uppercase bg-near-black text-white hover:opacity-90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {notesSaving ? 'Saving…' : 'Save note'}
             </button>
@@ -811,11 +777,11 @@ function DrawerSection({
     <section className="space-y-2">
       <div className="flex items-end justify-between gap-2">
         <div>
-          <p className="text-[9px] font-bold tracking-[0.16em] uppercase text-muted-text">{title}</p>
-          {subtitle && <p className="text-[11px] text-muted-text">{subtitle}</p>}
+          <p className="text-eyebrow font-bold tracking-[0.16em] uppercase text-muted-text">{title}</p>
+          {subtitle && <p className="text-2xs text-muted-text">{subtitle}</p>}
         </div>
         {badge && (
-          <span className="text-[9px] font-bold tracking-[0.08em] uppercase text-muted-text">{badge}</span>
+          <span className="text-eyebrow font-bold tracking-[0.08em] uppercase text-muted-text">{badge}</span>
         )}
       </div>
       {children}
@@ -835,12 +801,12 @@ function DrawerAction({
   active?:  boolean
 }) {
   const className = cn(
-    'flex items-center justify-center gap-1.5 px-3 py-2.5 text-[10px] font-bold tracking-[0.08em] uppercase border transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+    'flex items-center justify-center gap-1.5 px-3 py-2.5 text-eyebrow font-bold tracking-[0.08em] uppercase border transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
     primary
-      ? 'bg-near-black text-white border-near-black hover:bg-[#2a2a2a]'
+      ? 'bg-near-black text-white border-near-black hover:opacity-90'
       : active
-        ? 'bg-near-black text-white border-near-black hover:bg-[#2a2a2a]'
-        : 'bg-white text-near-black border-[rgba(18,18,18,0.15)] hover:bg-cream',
+        ? 'bg-near-black text-white border-near-black hover:opacity-90'
+        : 'bg-white text-near-black border-hairline-strong hover:bg-cream',
   )
   if (href) {
     return (
@@ -856,10 +822,10 @@ function DrawerAction({
 
 function ContactRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | null }) {
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.08)] px-3 py-2.5 flex items-center gap-3">
+    <div className="bg-white border border-hairline-soft px-3 py-2.5 flex items-center gap-3">
       <span className="text-muted-text flex-shrink-0">{icon}</span>
       <div className="min-w-0 flex-1">
-        <p className="text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text">{label}</p>
+        <p className="text-eyebrow font-bold tracking-[0.10em] uppercase text-muted-text">{label}</p>
         <p className="text-xs text-near-black truncate">{value || 'None'}</p>
       </div>
     </div>
@@ -875,12 +841,12 @@ function SnapshotCell({
   small?:  boolean
 }) {
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.08)] px-3 py-2.5">
-      <p className="text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text">{label}</p>
+    <div className="bg-white border border-hairline-soft px-3 py-2.5">
+      <p className="text-eyebrow font-bold tracking-[0.10em] uppercase text-muted-text">{label}</p>
       <p className={cn(
         'font-bold tabular-nums mt-0.5',
         small ? 'text-xs capitalize' : 'text-base',
-        accent === 'warn' ? 'text-[#b42828]' : 'text-near-black',
+        accent === 'warn' ? 'text-danger' : 'text-near-black',
       )}>
         {value}
       </p>
@@ -897,35 +863,35 @@ function TimelineRow({ a }: { a: CustomerAppointmentRow }) {
     <li className="relative">
       <span
         className={cn(
-          'absolute -left-3 top-1.5 w-2.5 h-2.5 rounded-full border-2 border-cream',
+          'absolute -left-3 top-1.5 w-2.5 h-2.5  border-2 border-cream',
           a.status === 'completed' ? 'bg-near-black' :
           a.status === 'confirmed' ? 'bg-[#C9B4E6]' :
           a.status === 'pending'   ? 'bg-[#E8C7DA]' :
-                                     'bg-[rgba(18,18,18,0.20)]',
+                                     'bg-hairline-strong',
         )}
         aria-hidden="true"
       />
-      <div className="bg-white border border-[rgba(18,18,18,0.08)] px-3 py-2.5 ml-1">
+      <div className="bg-white border border-hairline-soft px-3 py-2.5 ml-1">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <p className="text-xs font-bold text-near-black">
             {fmtDate(a.appointment_date)}
             <span className="text-muted-text font-normal ml-2">{fmt12(a.start_time)}</span>
           </p>
-          <ApptStatusPill status={a.status} />
+          <StatusBadge domain="appointment" status={a.status} />
         </div>
-        <p className="text-[11px] text-muted-text mt-1 truncate">{a.service_name}</p>
+        <p className="text-2xs text-muted-text mt-1 truncate">{a.service_name}</p>
         {(paid > 0 || due > 0 || tip > 0 || refund > 0) && (
-          <p className="text-[10px] text-muted-text mt-1.5 flex items-center gap-2 flex-wrap">
+          <p className="text-eyebrow text-muted-text mt-1.5 flex items-center gap-2 flex-wrap">
             {paid > 0 && (
               <span className="text-near-black">
                 <DollarSign size={9} className="inline -mt-px" />{paid.toFixed(0)} paid
               </span>
             )}
             {due > 0 && (
-              <span className="text-[#b42828]">{fmtMoney(due)} due</span>
+              <span className="text-danger">{fmtMoney(due)} due</span>
             )}
             {tip > 0 && (
-              <span className="text-[#0f6f3d]">+{fmtMoney(tip)} tip</span>
+              <span className="text-success">+{fmtMoney(tip)} tip</span>
             )}
             {refund > 0 && (
               <span className="text-muted-text">−{fmtMoney(refund)} refunded</span>
@@ -993,8 +959,8 @@ function CreateCustomerDialog({
         aria-label="Close dialog"
         className="absolute inset-0 bg-near-black/40 cursor-default"
       />
-      <div className="relative bg-white w-full max-w-md border border-[rgba(18,18,18,0.12)] max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(18,18,18,0.08)]">
+      <div className="relative bg-white w-full max-w-md border border-hairline max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-hairline-soft">
           <h2 className="text-sm font-bold text-near-black tracking-tight">New Customer</h2>
           <button onClick={onClose} className="text-muted-text hover:text-near-black transition-colors">
             <X size={16} />
@@ -1002,39 +968,39 @@ function CreateCustomerDialog({
         </div>
         <form onSubmit={submit} className="p-5 space-y-4">
           {error && (
-            <p className="text-xs text-red-600 bg-red-50 border border-red-200 px-3 py-2">{error}</p>
+            <p className="text-xs text-danger bg-danger-bg border border-danger px-3 py-2">{error}</p>
           )}
           <input
             type="text" placeholder="Full name *" required
             value={form.name} onChange={e => set('name', e.target.value)}
-            className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
+            className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
           />
           <input
             type="email" placeholder="Email"
             value={form.email} onChange={e => set('email', e.target.value)}
-            className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
+            className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
           />
           <input
             type="tel" placeholder="Phone"
             value={form.phone} onChange={e => set('phone', e.target.value)}
-            className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
+            className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
           />
           <textarea
             placeholder="Private notes (optional)"
             value={form.notes} onChange={e => set('notes', e.target.value)}
             rows={3}
-            className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black resize-none"
+            className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black resize-none"
           />
           <div className="flex gap-3 pt-1">
             <button
               type="submit" disabled={saving}
-              className="flex-1 bg-near-black text-white py-2.5 text-xs font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors disabled:opacity-50"
+              className="flex-1 bg-near-black text-white py-2.5 text-xs font-bold tracking-[0.08em] uppercase hover:opacity-90 transition-colors disabled:opacity-50"
             >
               {saving ? 'Saving…' : 'Add customer'}
             </button>
             <button
               type="button" onClick={onClose}
-              className="border border-[rgba(18,18,18,0.15)] bg-white px-4 py-2.5 text-xs font-semibold text-near-black hover:bg-cream transition-colors"
+              className="border border-hairline-strong bg-white px-4 py-2.5 text-xs font-semibold text-near-black hover:bg-cream transition-colors"
             >
               Cancel
             </button>
@@ -1069,7 +1035,7 @@ function TagChip({ tag, onRemove }: { tag: CustomerTag; onRemove?: () => void })
     : undefined
   return (
     <span
-      className="inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.04em] border border-[rgba(18,18,18,0.12)] bg-white text-near-black px-2 py-0.5"
+      className="inline-flex items-center gap-1 text-eyebrow font-semibold tracking-[0.04em] border border-hairline bg-white text-near-black px-2 py-0.5"
       style={style}
     >
       {tag.name}
@@ -1162,14 +1128,14 @@ function TagsPicker({
           type="button"
           onClick={() => setOpen(o => ! o)}
           disabled={busy}
-          className="inline-flex items-center gap-1 text-[10px] font-bold tracking-[0.08em] uppercase border border-dashed border-[rgba(18,18,18,0.30)] text-near-black bg-white px-2 py-0.5 hover:bg-cream transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-1 text-eyebrow font-bold tracking-[0.08em] uppercase border border-dashed border-hairline-strong text-near-black bg-white px-2 py-0.5 hover:bg-cream transition-colors disabled:opacity-50"
         >
           <Plus size={10} /> Add tag
         </button>
       </div>
 
       {open && (
-        <div className="absolute z-20 mt-2 left-0 w-[280px] bg-white border border-[rgba(18,18,18,0.15)] shadow-xl p-2">
+        <div className="absolute z-20 mt-2 left-0 w-[280px] bg-white border border-hairline-strong shadow-xl p-2">
           {! creating && (
             <>
               <input
@@ -1177,11 +1143,11 @@ function TagsPicker({
                 placeholder="Search tags…"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                className="w-full border border-[rgba(18,18,18,0.12)] bg-white px-2 py-1.5 text-xs text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black mb-2"
+                className="w-full border border-hairline bg-white px-2 py-1.5 text-xs text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black mb-2"
               />
               <div className="max-h-44 overflow-y-auto space-y-1">
                 {filtered.length === 0 ? (
-                  <p className="text-[11px] text-muted-text px-1.5 py-2">
+                  <p className="text-2xs text-muted-text px-1.5 py-2">
                     {available.length === 0
                       ? 'No tags yet. Create one below.'
                       : 'No matching tags.'}
@@ -1201,7 +1167,7 @@ function TagsPicker({
               <button
                 type="button"
                 onClick={() => { setCreating(true); setNewName(query) }}
-                className="mt-2 w-full flex items-center justify-center gap-1 text-[10px] font-bold tracking-[0.08em] uppercase bg-near-black text-white py-1.5 hover:bg-[#2a2a2a] transition-colors"
+                className="mt-2 w-full flex items-center justify-center gap-1 text-eyebrow font-bold tracking-[0.08em] uppercase bg-near-black text-white py-1.5 hover:opacity-90 transition-colors"
               >
                 <Plus size={10} /> Create new tag
               </button>
@@ -1209,7 +1175,7 @@ function TagsPicker({
           )}
           {creating && (
             <div className="space-y-2">
-              <p className="text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text">New tag</p>
+              <p className="text-eyebrow font-bold tracking-[0.10em] uppercase text-muted-text">New tag</p>
               <input
                 type="text"
                 placeholder="Tag name"
@@ -1217,7 +1183,7 @@ function TagsPicker({
                 onChange={e => setNewName(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') submitNew() }}
                 autoFocus
-                className="w-full border border-[rgba(18,18,18,0.12)] bg-white px-2 py-1.5 text-xs text-near-black focus:outline-none focus:border-near-black"
+                className="w-full border border-hairline bg-white px-2 py-1.5 text-xs text-near-black focus:outline-none focus:border-near-black"
               />
               <ColorPalettePicker value={newColor} onChange={setNewColor} />
               <div className="flex gap-2 pt-1">
@@ -1225,12 +1191,12 @@ function TagsPicker({
                   type="button"
                   onClick={submitNew}
                   disabled={! newName.trim() || busy}
-                  className="flex-1 bg-near-black text-white py-1.5 text-[10px] font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors disabled:opacity-50"
+                  className="flex-1 bg-near-black text-white py-1.5 text-eyebrow font-bold tracking-[0.08em] uppercase hover:opacity-90 transition-colors disabled:opacity-50"
                 >Create</button>
                 <button
                   type="button"
                   onClick={() => { setCreating(false); setNewName(''); setNewColor(null) }}
-                  className="border border-[rgba(18,18,18,0.15)] bg-white px-3 py-1.5 text-[10px] font-semibold text-near-black hover:bg-cream transition-colors"
+                  className="border border-hairline-strong bg-white px-3 py-1.5 text-eyebrow font-semibold text-near-black hover:bg-cream transition-colors"
                 >Cancel</button>
               </div>
             </div>
@@ -1250,7 +1216,7 @@ function ColorPalettePicker({
         type="button"
         onClick={() => onChange(null)}
         className={cn(
-          'w-6 h-6 border border-[rgba(18,18,18,0.15)] flex items-center justify-center text-[9px] font-bold',
+          'w-6 h-6 border border-hairline-strong flex items-center justify-center text-eyebrow font-bold',
           value === null && 'ring-2 ring-near-black',
         )}
         title="No color"
@@ -1262,7 +1228,7 @@ function ColorPalettePicker({
           onClick={() => onChange(p.hex)}
           style={{ backgroundColor: p.hex }}
           className={cn(
-            'w-6 h-6 border border-[rgba(18,18,18,0.15)]',
+            'w-6 h-6 border border-hairline-strong',
             value === p.hex && 'ring-2 ring-near-black',
           )}
           title={p.name}
@@ -1317,6 +1283,7 @@ function PreferencesForm({
     (form.birthday                 || null) !== (p.birthday                 ?? null) ||
     (form.preferences_notes        || null) !== (p.preferences_notes        ?? null)
 
+  const toast = useToast()
   async function save() {
     if (! dirty) return
     setSaving(true)
@@ -1335,6 +1302,8 @@ function PreferencesForm({
       onApply(updated)
       setSaved(true)
       setTimeout(() => setSaved(false), 2200)
+    } catch {
+      toast.error('Could not save preferences')
     } finally {
       setSaving(false)
     }
@@ -1376,8 +1345,8 @@ function PreferencesForm({
           { value: 'phone', label: 'Phone call' },
         ]}
       />
-      <div className="bg-white border border-[rgba(18,18,18,0.08)] px-3 py-2.5">
-        <p className="text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text mb-1">Birthday</p>
+      <div className="bg-white border border-hairline-soft px-3 py-2.5">
+        <p className="text-eyebrow font-bold tracking-[0.10em] uppercase text-muted-text mb-1">Birthday</p>
         <input
           type="date"
           value={form.birthday}
@@ -1385,11 +1354,11 @@ function PreferencesForm({
           className="w-full text-xs text-near-black bg-transparent focus:outline-none"
         />
       </div>
-      <div className="bg-white border border-[rgba(18,18,18,0.08)] px-3 py-2.5">
-        <p className="text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text mb-1">
+      <div className="bg-white border border-hairline-soft px-3 py-2.5">
+        <p className="text-eyebrow font-bold tracking-[0.10em] uppercase text-muted-text mb-1">
           Service preferences
         </p>
-        <p className="text-[10px] text-muted-text mb-2">
+        <p className="text-eyebrow text-muted-text mb-2">
           Hair / skin / nails / lashes specifics, allergies, formulas they hate, etc.
         </p>
         <textarea
@@ -1402,13 +1371,13 @@ function PreferencesForm({
       </div>
       <div className="flex items-center justify-end gap-2">
         {saved && (
-          <span className="text-[9px] font-bold tracking-[0.08em] uppercase text-[#0f6f3d]">Saved</span>
+          <span className="text-eyebrow font-bold tracking-[0.08em] uppercase text-success">Saved</span>
         )}
         <button
           type="button"
           onClick={save}
           disabled={! dirty || saving}
-          className="px-3 py-1.5 text-[10px] font-bold tracking-[0.08em] uppercase bg-near-black text-white hover:bg-[#2a2a2a] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-3 py-1.5 text-eyebrow font-bold tracking-[0.08em] uppercase bg-near-black text-white hover:opacity-90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {saving ? 'Saving…' : 'Save preferences'}
         </button>
@@ -1426,8 +1395,8 @@ function PrefDropdown({
   options:  { value: string; label: string }[]
 }) {
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.08)] px-3 py-2.5">
-      <p className="text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text mb-1">{label}</p>
+    <div className="bg-white border border-hairline-soft px-3 py-2.5">
+      <p className="text-eyebrow font-bold tracking-[0.10em] uppercase text-muted-text mb-1">{label}</p>
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
@@ -1457,6 +1426,7 @@ function ManageTagsModal({
   const [editName, setEditName]   = useState('')
   const [editColor, setEditColor] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const confirm = useConfirm()
 
   async function submitNew() {
     const name = newName.trim()
@@ -1476,7 +1446,13 @@ function ManageTagsModal({
     } finally { setBusy(false) }
   }
   async function remove(id: number) {
-    if (! confirm('Delete this tag? It will be removed from every customer.')) return
+    const ok = await confirm({
+      title: 'Delete this tag?',
+      message: 'It will be removed from every customer.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    })
+    if (! ok) return
     setBusy(true)
     try { await onDelete(id) } finally { setBusy(false) }
   }
@@ -1489,8 +1465,8 @@ function ManageTagsModal({
         aria-label="Close dialog"
         className="absolute inset-0 bg-near-black/40 cursor-default"
       />
-      <div className="relative bg-white w-full max-w-md border border-[rgba(18,18,18,0.12)] max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(18,18,18,0.08)]">
+      <div className="relative bg-white w-full max-w-md border border-hairline max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-hairline-soft">
           <h2 className="text-sm font-bold text-near-black tracking-tight inline-flex items-center gap-2">
             <TagIcon size={14} /> Manage Tags
           </h2>
@@ -1505,7 +1481,7 @@ function ManageTagsModal({
           )}
 
           {tags.map(t => (
-            <div key={t.id} className="border border-[rgba(18,18,18,0.08)] bg-white p-3">
+            <div key={t.id} className="border border-hairline-soft bg-white p-3">
               {editingId === t.id ? (
                 <div className="space-y-2">
                   <input
@@ -1513,7 +1489,7 @@ function ManageTagsModal({
                     value={editName}
                     onChange={e => setEditName(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') submitEdit(t.id) }}
-                    className="w-full border border-[rgba(18,18,18,0.12)] bg-white px-2 py-1.5 text-xs text-near-black focus:outline-none focus:border-near-black"
+                    className="w-full border border-hairline bg-white px-2 py-1.5 text-xs text-near-black focus:outline-none focus:border-near-black"
                     autoFocus
                   />
                   <ColorPalettePicker value={editColor} onChange={setEditColor} />
@@ -1522,12 +1498,12 @@ function ManageTagsModal({
                       type="button"
                       onClick={() => submitEdit(t.id)}
                       disabled={busy}
-                      className="flex-1 bg-near-black text-white py-1.5 text-[10px] font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors disabled:opacity-50"
+                      className="flex-1 bg-near-black text-white py-1.5 text-eyebrow font-bold tracking-[0.08em] uppercase hover:opacity-90 transition-colors disabled:opacity-50"
                     >Save</button>
                     <button
                       type="button"
                       onClick={() => setEditingId(null)}
-                      className="border border-[rgba(18,18,18,0.15)] bg-white px-3 py-1.5 text-[10px] font-semibold text-near-black hover:bg-cream transition-colors"
+                      className="border border-hairline-strong bg-white px-3 py-1.5 text-eyebrow font-semibold text-near-black hover:bg-cream transition-colors"
                     >Cancel</button>
                   </div>
                 </div>
@@ -1548,7 +1524,7 @@ function ManageTagsModal({
                       type="button"
                       onClick={() => remove(t.id)}
                       disabled={busy}
-                      className="text-muted-text hover:text-[#b42828] p-1"
+                      className="text-muted-text hover:text-danger p-1"
                       title="Delete"
                     >
                       <Trash2 size={12} />
@@ -1560,8 +1536,8 @@ function ManageTagsModal({
           ))}
 
           {creating ? (
-            <div className="border border-[rgba(18,18,18,0.08)] bg-cream p-3 space-y-2">
-              <p className="text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text">New tag</p>
+            <div className="border border-hairline-soft bg-cream p-3 space-y-2">
+              <p className="text-eyebrow font-bold tracking-[0.10em] uppercase text-muted-text">New tag</p>
               <input
                 type="text"
                 placeholder="Tag name (e.g. Allergy: latex)"
@@ -1569,7 +1545,7 @@ function ManageTagsModal({
                 onChange={e => setNewName(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') submitNew() }}
                 autoFocus
-                className="w-full border border-[rgba(18,18,18,0.12)] bg-white px-2 py-1.5 text-xs text-near-black focus:outline-none focus:border-near-black"
+                className="w-full border border-hairline bg-white px-2 py-1.5 text-xs text-near-black focus:outline-none focus:border-near-black"
               />
               <ColorPalettePicker value={newColor} onChange={setNewColor} />
               <div className="flex gap-2 pt-1">
@@ -1577,12 +1553,12 @@ function ManageTagsModal({
                   type="button"
                   onClick={submitNew}
                   disabled={! newName.trim() || busy}
-                  className="flex-1 bg-near-black text-white py-1.5 text-[10px] font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors disabled:opacity-50"
+                  className="flex-1 bg-near-black text-white py-1.5 text-eyebrow font-bold tracking-[0.08em] uppercase hover:opacity-90 transition-colors disabled:opacity-50"
                 >Create</button>
                 <button
                   type="button"
                   onClick={() => { setCreating(false); setNewName(''); setNewColor(null) }}
-                  className="border border-[rgba(18,18,18,0.15)] bg-white px-3 py-1.5 text-[10px] font-semibold text-near-black hover:bg-cream transition-colors"
+                  className="border border-hairline-strong bg-white px-3 py-1.5 text-eyebrow font-semibold text-near-black hover:bg-cream transition-colors"
                 >Cancel</button>
               </div>
             </div>
@@ -1590,7 +1566,7 @@ function ManageTagsModal({
             <button
               type="button"
               onClick={() => setCreating(true)}
-              className="w-full inline-flex items-center justify-center gap-1 bg-near-black text-white py-2 text-[10px] font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors"
+              className="w-full inline-flex items-center justify-center gap-1 bg-near-black text-white py-2 text-eyebrow font-bold tracking-[0.08em] uppercase hover:opacity-90 transition-colors"
             >
               <Plus size={11} /> New tag
             </button>

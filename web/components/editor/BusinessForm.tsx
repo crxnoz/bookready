@@ -100,13 +100,13 @@ export default function BusinessForm({ onAfterSave }: { onAfterSave?: () => void
     <div className="p-5 space-y-6">
       {/* Heading */}
       <div>
-        <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-1">Business Info</p>
+        <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text mb-1">Business Info</p>
         <h2 className="text-lg font-bold text-near-black tracking-tight mb-0.5">Your business profile</h2>
         <p className="text-xs text-muted-text">This info appears throughout your public booking site.</p>
       </div>
 
       {status === 'error' && errorMsg && (
-        <div className="bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
+        <div className="bg-danger-bg border border-danger px-4 py-3 text-xs text-danger">
           {errorMsg}
         </div>
       )}
@@ -121,7 +121,7 @@ export default function BusinessForm({ onAfterSave }: { onAfterSave?: () => void
             onBlur={() => setTouched(t => ({ ...t, business_name: true }))}
           />
           {touched.business_name && validation.business_name && (
-            <p className="text-[11px] text-red-600 mt-1">{validation.business_name}</p>
+            <p className="text-2xs text-danger mt-1">{validation.business_name}</p>
           )}
         </div>
         <Input
@@ -138,11 +138,11 @@ export default function BusinessForm({ onAfterSave }: { onAfterSave?: () => void
         />
       </div>
 
-      <hr className="border-[rgba(18,18,18,0.08)]" />
+      <hr className="border-hairline-soft" />
 
       {/* Contact */}
       <div className="space-y-4">
-        <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">Contact</p>
+        <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text">Contact</p>
 
         {/* Phone + Email — 1 col on mobile, 2 col on sm+ */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -161,7 +161,7 @@ export default function BusinessForm({ onAfterSave }: { onAfterSave?: () => void
               onBlur={() => setTouched(t => ({ ...t, public_email: true }))}
             />
             {touched.public_email && validation.public_email && (
-              <p className="text-[11px] text-red-600 mt-1">{validation.public_email}</p>
+              <p className="text-2xs text-danger mt-1">{validation.public_email}</p>
             )}
           </div>
         </div>
@@ -211,7 +211,7 @@ export default function BusinessForm({ onAfterSave }: { onAfterSave?: () => void
           {status === 'saving' ? 'Saving…' : 'Save Changes'}
         </Button>
         {status === 'saved' && (
-          <span className="text-xs text-green-600 font-semibold">Saved ✓</span>
+          <span className="text-xs text-success font-semibold">Saved ✓</span>
         )}
         {hasErrors && (
           <span className="text-xs text-muted-text">Fix required fields to save.</span>

@@ -177,7 +177,7 @@ function ServiceRow({
   return (
     <div
       className={`border bg-white transition-colors ${
-        isDragOver ? 'border-near-black' : 'border-[rgba(18,18,18,0.10)]'
+        isDragOver ? 'border-near-black' : 'border-hairline-soft'
       } ${isDragging ? 'opacity-40' : ''}`}
       draggable
       onDragStart={onDragStart}
@@ -214,7 +214,7 @@ function ServiceRow({
         </div>
 
         {/* Thumbnail — small square so the row stays compact */}
-        <div className="w-10 h-10 bg-cream border border-[rgba(18,18,18,0.08)] flex-shrink-0 overflow-hidden">
+        <div className="w-10 h-10 bg-cream border border-hairline-soft flex-shrink-0 overflow-hidden">
           {service.image_url
             /* eslint-disable-next-line @next/next/no-img-element */
             ? <img src={service.image_url} alt={service.name} className="w-full h-full object-cover" />
@@ -232,12 +232,12 @@ function ServiceRow({
               {service.name || 'Untitled Service'}
             </p>
             {categoryName && (
-              <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.12)] bg-cream text-near-black px-1.5 py-0.5 flex-shrink-0">
+              <span className="text-eyebrow font-bold tracking-[0.06em] uppercase border border-hairline bg-cream text-near-black px-1.5 py-0.5 flex-shrink-0">
                 {categoryName}
               </span>
             )}
             {!service.is_active && (
-              <span className="text-[10px] font-bold tracking-wide uppercase text-amber-600">
+              <span className="text-eyebrow font-bold tracking-wide uppercase text-warning">
                 Inactive
               </span>
             )}
@@ -259,7 +259,7 @@ function ServiceRow({
 
       {/* Edit form */}
       {open && (
-        <div className="px-4 pb-4 border-t border-[rgba(18,18,18,0.08)] pt-4 space-y-3">
+        <div className="px-4 pb-4 border-t border-hairline-soft pt-4 space-y-3">
           {/* Photo (thumbnail-size) */}
           <div className="w-32">
             <ImageUploadField
@@ -301,11 +301,11 @@ function ServiceRow({
 
           {/* Category — dropdown of existing categories */}
           <label className="block">
-            <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Category</span>
+            <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Category</span>
             <select
               value={draft.category_id}
               onChange={e => set('category_id', e.target.value)}
-              className="w-full mt-1.5 bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+              className="w-full mt-1.5 bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
             >
               <option value="">Uncategorized</option>
               {categories.map(c => (
@@ -331,7 +331,7 @@ function ServiceRow({
             onChange={(next) => setDraft(prev => ({ ...prev, ...next }))}
           />
 
-          {error && <p className="text-xs text-red-600">{error}</p>}
+          {error && <p className="text-xs text-danger">{error}</p>}
 
           <div className="flex items-center justify-between pt-1">
             <Button size="sm" onClick={handleSave} disabled={saving || deleting}>
@@ -340,7 +340,7 @@ function ServiceRow({
             <button
               onClick={handleDelete}
               disabled={deleting}
-              className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 font-semibold transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 text-xs text-danger hover:text-danger font-semibold transition-colors disabled:opacity-50"
             >
               <Trash2 size={12} />
               {deleting ? 'Removing…' : 'Remove'}
@@ -424,8 +424,8 @@ function AddServiceForm({
   }
 
   return (
-    <div className="border border-[rgba(18,18,18,0.15)] bg-cream p-4 space-y-3">
-      <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">New Service</p>
+    <div className="border border-hairline-strong bg-cream p-4 space-y-3">
+      <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text">New Service</p>
 
       <div className="w-32">
         <ImageUploadField
@@ -446,11 +446,11 @@ function AddServiceForm({
       </div>
 
       <label className="block">
-        <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Category</span>
+        <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Category</span>
         <select
           value={draft.category_id}
           onChange={e => set('category_id', e.target.value)}
-          className="w-full mt-1.5 bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+          className="w-full mt-1.5 bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
         >
           <option value="">Uncategorized</option>
           {categories.map(c => (
@@ -466,7 +466,7 @@ function AddServiceForm({
         onChange={(next) => setDraft(prev => ({ ...prev, ...next }))}
       />
 
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
 
       <div className="flex items-center gap-3 pt-1">
         <Button size="sm" onClick={handleCreate} disabled={saving}>
@@ -582,7 +582,7 @@ export default function ServicesEditor() {
       </div>
 
       {status === 'error' && errorMsg && (
-        <div className="bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
+        <div className="bg-danger-bg border border-danger px-4 py-3 text-xs text-danger">
           {errorMsg}
         </div>
       )}
@@ -683,7 +683,7 @@ function CategoriesPanel({
   const [editing, setEditing] = useState<ServiceCategory | null>(null)
 
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)]">
+    <div className="bg-white border border-hairline-soft">
       <button
         type="button"
         onClick={onToggle}
@@ -692,7 +692,7 @@ function CategoriesPanel({
         <div className="flex items-center gap-2 min-w-0">
           <Tag size={14} className="text-near-black flex-shrink-0" />
           <p className="text-sm font-bold text-near-black">Categories</p>
-          <span className="text-[10px] font-bold tracking-[0.06em] uppercase text-muted-text">
+          <span className="text-eyebrow font-bold tracking-[0.06em] uppercase text-muted-text">
             {categories.length}/{CATEGORIES_MAX}
           </span>
         </div>
@@ -700,9 +700,9 @@ function CategoriesPanel({
       </button>
 
       {open && (
-        <div className="border-t border-[rgba(18,18,18,0.08)] p-4 space-y-3">
+        <div className="border-t border-hairline-soft p-4 space-y-3">
           {categories.length === 0 && !adding && (
-            <p className="text-[11px] text-muted-text italic">
+            <p className="text-2xs text-muted-text italic">
               No categories yet. Add a few to group services on your booking page.
             </p>
           )}
@@ -724,7 +724,7 @@ function CategoriesPanel({
             <button
               type="button"
               onClick={() => setAdding(true)}
-              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2.5 py-1.5 hover:border-near-black"
+              className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-2.5 py-1.5 hover:border-near-black"
             >
               <Plus size={12} /> Add Category
             </button>
@@ -769,8 +769,8 @@ function CategoryRow({
     }
   }
   return (
-    <div className="flex items-center gap-2 border border-[rgba(18,18,18,0.08)] bg-cream/50 p-2">
-      <div className="w-10 h-10 bg-white border border-[rgba(18,18,18,0.08)] flex-shrink-0 overflow-hidden">
+    <div className="flex items-center gap-2 border border-hairline-soft bg-cream/50 p-2">
+      <div className="w-10 h-10 bg-white border border-hairline-soft flex-shrink-0 overflow-hidden">
         {category.image_url
           /* eslint-disable-next-line @next/next/no-img-element */
           ? <img src={category.image_url} alt={category.name} className="w-full h-full object-cover" />
@@ -778,16 +778,16 @@ function CategoryRow({
         }
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[12px] font-semibold text-near-black truncate">{category.name}</p>
+        <p className="text-xs font-semibold text-near-black truncate">{category.name}</p>
         {category.description && (
-          <p className="text-[10px] text-muted-text truncate">{category.description}</p>
+          <p className="text-eyebrow text-muted-text truncate">{category.description}</p>
         )}
       </div>
       <button
         type="button"
         onClick={onEdit}
         disabled={busy}
-        className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black flex-shrink-0"
+        className="w-7 h-7 inline-flex items-center justify-center border border-hairline-soft bg-white text-near-black hover:border-near-black flex-shrink-0"
         title="Edit"
       >
         <Edit2 size={11} />
@@ -796,7 +796,7 @@ function CategoryRow({
         type="button"
         onClick={handleDelete}
         disabled={busy}
-        className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600 flex-shrink-0"
+        className="w-7 h-7 inline-flex items-center justify-center border border-hairline-soft bg-white text-near-black hover:border-danger hover:text-danger flex-shrink-0"
         title="Delete"
       >
         <Trash2 size={11} />
@@ -844,8 +844,8 @@ function CategoryDialog({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-sm border border-[rgba(18,18,18,0.15)] max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between border-b border-[rgba(18,18,18,0.10)] px-4 py-3">
+      <div className="bg-white w-full max-w-sm border border-hairline-strong max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-hairline-soft px-4 py-3">
           <h3 className="text-sm font-bold text-near-black">{category ? 'Edit category' : 'New category'}</h3>
           <button onClick={onClose} className="text-muted-text hover:text-near-black"><X size={16} /></button>
         </div>
@@ -881,14 +881,14 @@ function CategoryDialog({
             <span className="text-xs font-semibold text-near-black">Active</span>
           </label>
           {error && (
-            <p className="text-xs text-red-700 flex items-center gap-1.5">
+            <p className="text-xs text-danger flex items-center gap-1.5">
               <AlertCircle size={12} /> {error}
             </p>
           )}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-hairline-soft">
             <button
               type="button" onClick={onClose}
-              className="text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2"
+              className="text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2"
             >Cancel</button>
             <Button size="sm" type="submit" disabled={saving}>
               {saving ? 'Saving…' : category ? 'Save' : 'Create'}
@@ -955,7 +955,7 @@ function AdvancedSection({
     || draft.linked_addons.length > 0
 
   return (
-    <div className="border border-[rgba(18,18,18,0.10)] bg-cream/40">
+    <div className="border border-hairline-soft bg-cream/40">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
@@ -965,7 +965,7 @@ function AdvancedSection({
           <SettingsIcon size={13} className="text-near-black flex-shrink-0" />
           <span className="text-xs font-bold text-near-black">Advanced</span>
           {overridesActive && (
-            <span className="text-[9px] font-bold tracking-[0.06em] uppercase bg-lavender text-near-black px-1.5 py-0.5">
+            <span className="text-eyebrow font-bold tracking-[0.06em] uppercase bg-lavender text-near-black px-1.5 py-0.5">
               Custom settings
             </span>
           )}
@@ -977,10 +977,10 @@ function AdvancedSection({
       </button>
 
       {open && (
-        <div className="border-t border-[rgba(18,18,18,0.08)] p-3 space-y-3.5">
+        <div className="border-t border-hairline-soft p-3 space-y-3.5">
           {/* Buffers */}
           <div>
-            <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5">
+            <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5">
               Custom gaps
             </p>
             <div className="grid grid-cols-2 gap-3">
@@ -999,7 +999,7 @@ function AdvancedSection({
                 onChange={e => onChange({ buffer_after_override_minutes: e.target.value })}
               />
             </div>
-            <p className="text-[10px] text-muted-text mt-1.5">
+            <p className="text-eyebrow text-muted-text mt-1.5">
               Leave blank to use the default from Booking Settings. Enter 0 to
               turn off the gap for this service only.
             </p>
@@ -1007,7 +1007,7 @@ function AdvancedSection({
 
           {/* Available days */}
           <div>
-            <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5">
+            <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5">
               Available days
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -1019,10 +1019,10 @@ function AdvancedSection({
                     type="button"
                     onClick={() => toggleDay(dow)}
                     className={
-                      'text-[10px] font-bold tracking-[0.08em] uppercase border px-2 py-1.5 transition-colors '
+                      'text-eyebrow font-bold tracking-[0.08em] uppercase border px-2 py-1.5 transition-colors '
                       + (active
                         ? 'bg-near-black text-white border-near-black'
-                        : 'bg-white text-muted-text border-[rgba(18,18,18,0.15)] hover:text-near-black')
+                        : 'bg-white text-muted-text border-hairline-strong hover:text-near-black')
                     }
                   >
                     {label}
@@ -1030,7 +1030,7 @@ function AdvancedSection({
                 )
               })}
             </div>
-            <p className="text-[10px] text-muted-text mt-1.5">
+            <p className="text-eyebrow text-muted-text mt-1.5">
               {draft.available_days.length === 0
                 ? 'No restriction. Uses the business hours.'
                 : 'Service is only offered on the selected days.'}
@@ -1040,15 +1040,15 @@ function AdvancedSection({
           {/* Assigned staff */}
           <div>
             <div className="flex items-center justify-between gap-2 mb-1.5">
-              <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text inline-flex items-center gap-1.5">
+              <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text inline-flex items-center gap-1.5">
                 <Users size={11} /> Assigned staff
               </p>
-              <span className="text-[10px] text-muted-text">
+              <span className="text-eyebrow text-muted-text">
                 {draft.assigned_staff_ids.length}/{staff.length}
               </span>
             </div>
             {staff.length === 0 ? (
-              <p className="text-[11px] text-muted-text italic">
+              <p className="text-2xs text-muted-text italic">
                 No active staff to assign yet.
               </p>
             ) : (
@@ -1061,10 +1061,10 @@ function AdvancedSection({
                       type="button"
                       onClick={() => toggleStaff(s.id)}
                       className={
-                        'inline-flex items-center gap-1.5 text-[11px] font-semibold border px-2 py-1.5 transition-colors '
+                        'inline-flex items-center gap-1.5 text-2xs font-semibold border px-2 py-1.5 transition-colors '
                         + (active
                           ? 'bg-near-black text-white border-near-black'
-                          : 'bg-white text-near-black border-[rgba(18,18,18,0.15)] hover:border-near-black')
+                          : 'bg-white text-near-black border-hairline-strong hover:border-near-black')
                       }
                     >
                       {s.photo_url
@@ -1078,7 +1078,7 @@ function AdvancedSection({
                 })}
               </div>
             )}
-            <p className="text-[10px] text-muted-text mt-1.5">
+            <p className="text-eyebrow text-muted-text mt-1.5">
               {draft.assigned_staff_ids.length === 0
                 ? 'No staff assigned. Any staff can perform this service.'
                 : 'Only the selected staff will be offered for this service.'}
@@ -1088,15 +1088,15 @@ function AdvancedSection({
           {/* Linked add-ons — pick from the global catalog + per-link required flag. */}
           <div>
             <div className="flex items-center justify-between gap-2 mb-1.5">
-              <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text inline-flex items-center gap-1.5">
+              <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text inline-flex items-center gap-1.5">
                 <Sparkles size={11} /> Add-ons
               </p>
-              <span className="text-[10px] text-muted-text">
+              <span className="text-eyebrow text-muted-text">
                 {draft.linked_addons.length}/{addons.length}
               </span>
             </div>
             {addons.length === 0 ? (
-              <p className="text-[11px] text-muted-text italic">
+              <p className="text-2xs text-muted-text italic">
                 No add-ons in the catalog yet. Add some in the Add-ons panel above.
               </p>
             ) : (
@@ -1112,7 +1112,7 @@ function AdvancedSection({
                         'flex items-center gap-2 border p-2 transition-colors '
                         + (active
                           ? 'bg-white border-near-black'
-                          : 'bg-white border-[rgba(18,18,18,0.10)] hover:border-near-black')
+                          : 'bg-white border-hairline-soft hover:border-near-black')
                       }
                     >
                       <button
@@ -1125,8 +1125,8 @@ function AdvancedSection({
                         {active && <span className="block w-2 h-2 bg-near-black" />}
                       </button>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[12px] font-semibold text-near-black truncate">{a.name}</p>
-                        <p className="text-[10px] text-muted-text">
+                        <p className="text-xs font-semibold text-near-black truncate">{a.name}</p>
+                        <p className="text-eyebrow text-muted-text">
                           +${a.extra_price.toFixed(2)} · +{a.extra_duration_minutes} min
                         </p>
                       </div>
@@ -1135,10 +1135,10 @@ function AdvancedSection({
                           type="button"
                           onClick={() => toggleAddonRequired(a.id)}
                           className={
-                            'text-[9px] font-bold tracking-[0.08em] uppercase border px-2 py-1 transition-colors flex-shrink-0 '
+                            'text-eyebrow font-bold tracking-[0.08em] uppercase border px-2 py-1 transition-colors flex-shrink-0 '
                             + (required
                               ? 'bg-near-black text-white border-near-black'
-                              : 'bg-white text-muted-text border-[rgba(18,18,18,0.15)] hover:text-near-black')
+                              : 'bg-white text-muted-text border-hairline-strong hover:text-near-black')
                           }
                           title={required ? 'Required for this service' : 'Optional for this service'}
                         >
@@ -1150,7 +1150,7 @@ function AdvancedSection({
                 })}
               </div>
             )}
-            <p className="text-[10px] text-muted-text mt-1.5">
+            <p className="text-eyebrow text-muted-text mt-1.5">
               Required add-ons are pre-checked on the booking form and can't be removed by the customer.
             </p>
           </div>
@@ -1178,7 +1178,7 @@ function AddonsPanel({
   const [editing, setEditing] = useState<ServiceAddon | null>(null)
 
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)]">
+    <div className="bg-white border border-hairline-soft">
       <button
         type="button"
         onClick={onToggle}
@@ -1187,7 +1187,7 @@ function AddonsPanel({
         <div className="flex items-center gap-2 min-w-0">
           <Sparkles size={14} className="text-near-black flex-shrink-0" />
           <p className="text-sm font-bold text-near-black">Add-ons</p>
-          <span className="text-[10px] font-bold tracking-[0.06em] uppercase text-muted-text">
+          <span className="text-eyebrow font-bold tracking-[0.06em] uppercase text-muted-text">
             {addons.length}/{ADDONS_MAX}
           </span>
         </div>
@@ -1195,9 +1195,9 @@ function AddonsPanel({
       </button>
 
       {open && (
-        <div className="border-t border-[rgba(18,18,18,0.08)] p-4 space-y-3">
+        <div className="border-t border-hairline-soft p-4 space-y-3">
           {addons.length === 0 && !adding && (
-            <p className="text-[11px] text-muted-text italic">
+            <p className="text-2xs text-muted-text italic">
               No add-ons yet. Add a few so services can offer extras at booking time.
             </p>
           )}
@@ -1219,7 +1219,7 @@ function AddonsPanel({
             <button
               type="button"
               onClick={() => setAdding(true)}
-              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2.5 py-1.5 hover:border-near-black"
+              className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-2.5 py-1.5 hover:border-near-black"
             >
               <Plus size={12} /> Add Add-on
             </button>
@@ -1264,8 +1264,8 @@ function AddonRow({
     }
   }
   return (
-    <div className="flex items-center gap-2 border border-[rgba(18,18,18,0.08)] bg-cream/50 p-2">
-      <div className="w-10 h-10 bg-white border border-[rgba(18,18,18,0.08)] flex-shrink-0 overflow-hidden">
+    <div className="flex items-center gap-2 border border-hairline-soft bg-cream/50 p-2">
+      <div className="w-10 h-10 bg-white border border-hairline-soft flex-shrink-0 overflow-hidden">
         {addon.image_url
           /* eslint-disable-next-line @next/next/no-img-element */
           ? <img src={addon.image_url} alt={addon.name} className="w-full h-full object-cover" />
@@ -1274,14 +1274,14 @@ function AddonRow({
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="text-[12px] font-semibold text-near-black truncate">{addon.name}</p>
+          <p className="text-xs font-semibold text-near-black truncate">{addon.name}</p>
           {!addon.is_active && (
-            <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.12)] text-muted-text px-1 py-0.5">
+            <span className="text-eyebrow font-bold tracking-[0.06em] uppercase border border-hairline text-muted-text px-1 py-0.5">
               Inactive
             </span>
           )}
         </div>
-        <p className="text-[10px] text-muted-text">
+        <p className="text-eyebrow text-muted-text">
           +${addon.extra_price.toFixed(2)} · +{addon.extra_duration_minutes} min
         </p>
       </div>
@@ -1289,7 +1289,7 @@ function AddonRow({
         type="button"
         onClick={onEdit}
         disabled={busy}
-        className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black flex-shrink-0"
+        className="w-7 h-7 inline-flex items-center justify-center border border-hairline-soft bg-white text-near-black hover:border-near-black flex-shrink-0"
         title="Edit"
       >
         <Edit2 size={11} />
@@ -1298,7 +1298,7 @@ function AddonRow({
         type="button"
         onClick={handleDelete}
         disabled={busy}
-        className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600 flex-shrink-0"
+        className="w-7 h-7 inline-flex items-center justify-center border border-hairline-soft bg-white text-near-black hover:border-danger hover:text-danger flex-shrink-0"
         title="Delete"
       >
         <Trash2 size={11} />
@@ -1350,8 +1350,8 @@ function AddonDialog({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-sm border border-[rgba(18,18,18,0.15)] max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between border-b border-[rgba(18,18,18,0.10)] px-4 py-3">
+      <div className="bg-white w-full max-w-sm border border-hairline-strong max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-hairline-soft px-4 py-3">
           <h3 className="text-sm font-bold text-near-black">{addon ? 'Edit add-on' : 'New add-on'}</h3>
           <button onClick={onClose} className="text-muted-text hover:text-near-black"><X size={16} /></button>
         </div>
@@ -1381,14 +1381,14 @@ function AddonDialog({
             <span className="text-xs font-semibold text-near-black">Active</span>
           </label>
           {error && (
-            <p className="text-xs text-red-700 flex items-center gap-1.5">
+            <p className="text-xs text-danger flex items-center gap-1.5">
               <AlertCircle size={12} /> {error}
             </p>
           )}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-hairline-soft">
             <button
               type="button" onClick={onClose}
-              className="text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2"
+              className="text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2"
             >Cancel</button>
             <Button size="sm" type="submit" disabled={saving}>
               {saving ? 'Saving…' : addon ? 'Save' : 'Create'}

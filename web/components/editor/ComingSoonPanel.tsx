@@ -44,7 +44,7 @@ export function ComingSoonPanel({
   return (
     <div className="space-y-5">
       {/* Hero */}
-      <div className="bg-gradient-to-br from-[#FFE5F0] via-white to-[#F0E5FF] border border-[rgba(18,18,18,0.10)] p-6 sm:p-8 relative overflow-hidden">
+      <div className="bg-gradient-to-br from-[#FFE5F0] via-white to-[#F0E5FF] border border-hairline-soft p-6 sm:p-8 relative overflow-hidden">
         {/* Decorative sparkles */}
         <Sparkles
           size={120}
@@ -52,13 +52,13 @@ export function ComingSoonPanel({
           className="absolute -top-4 -right-4 text-[rgba(255,61,190,0.08)] pointer-events-none"
         />
         <div className="relative">
-          <p className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.18em] uppercase text-near-black bg-white border border-near-black px-2 py-1">
+          <p className="inline-flex items-center gap-1.5 text-eyebrow font-bold tracking-[0.18em] uppercase text-near-black bg-white border border-near-black px-2 py-1">
             <Sparkles size={11} /> {eyebrow}
           </p>
           <h2 className="text-xl sm:text-2xl font-bold text-near-black mt-3 tracking-tight">
             {title}
           </h2>
-          <p className="text-[13px] text-near-black/75 mt-2 max-w-2xl leading-relaxed">
+          <p className="text-sm text-near-black/75 mt-2 max-w-2xl leading-relaxed">
             {intro}
           </p>
         </div>
@@ -72,7 +72,7 @@ export function ComingSoonPanel({
       </div>
 
       {/* Footer note */}
-      <p className="text-[11px] text-muted-text text-center pt-2">
+      <p className="text-2xs text-muted-text text-center pt-2">
         Have a feature request? Reply to any BookReady email and let us know what you want most.
       </p>
     </div>
@@ -88,7 +88,7 @@ function FeatureTile({ feature }: { feature: SoonFeature }) {
         'border p-4 flex flex-col gap-2.5',
         accent
           ? 'bg-[#FFF5FB] border-[rgba(255,61,190,0.25)]'
-          : 'bg-white border-[rgba(18,18,18,0.10)]',
+          : 'bg-white border-hairline-soft',
       )}
     >
       <div className="flex items-start gap-2">
@@ -96,22 +96,22 @@ function FeatureTile({ feature }: { feature: SoonFeature }) {
           'w-9 h-9 flex items-center justify-center border flex-shrink-0',
           accent
             ? 'bg-white border-[rgba(255,61,190,0.30)] text-[#b8197f]'
-            : 'bg-cream border-[rgba(18,18,18,0.08)] text-near-black',
+            : 'bg-cream border-hairline-soft text-near-black',
         )}>
           <Icon size={15} strokeWidth={1.8} />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-[13px] font-bold text-near-black">{feature.title}</p>
+            <p className="text-sm font-bold text-near-black">{feature.title}</p>
             <SoonBadge />
           </div>
         </div>
       </div>
-      <p className="text-[12px] text-near-black/70 leading-relaxed">{feature.description}</p>
+      <p className="text-xs text-near-black/70 leading-relaxed">{feature.description}</p>
       {feature.bullets && feature.bullets.length > 0 && (
         <ul className="space-y-1 mt-1">
           {feature.bullets.map((b, i) => (
-            <li key={i} className="text-[11px] text-near-black/70 leading-snug flex items-start gap-1.5">
+            <li key={i} className="text-2xs text-near-black/70 leading-snug flex items-start gap-1.5">
               <span className="text-[#b8197f] mt-1 flex-shrink-0">·</span>
               <span>{b}</span>
             </li>
@@ -146,7 +146,7 @@ export function ComingSoonCard({
         'border p-4 relative',
         accent
           ? 'bg-[#FFF5FB] border-[rgba(255,61,190,0.25)]'
-          : 'bg-white border-[rgba(18,18,18,0.10)] border-dashed',
+          : 'bg-white border-hairline-soft border-dashed',
       )}
     >
       <div className="flex items-start gap-3">
@@ -154,20 +154,20 @@ export function ComingSoonCard({
           'w-9 h-9 flex items-center justify-center border flex-shrink-0',
           accent
             ? 'bg-white border-[rgba(255,61,190,0.30)] text-[#b8197f]'
-            : 'bg-cream border-[rgba(18,18,18,0.10)] text-muted-text',
+            : 'bg-cream border-hairline-soft text-muted-text',
         )}>
           <Icon size={15} strokeWidth={1.8} />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-[13px] font-semibold text-near-black">{title}</p>
+            <p className="text-sm font-semibold text-near-black">{title}</p>
             <SoonBadge />
           </div>
-          <p className="text-[11px] text-near-black/65 mt-1 leading-relaxed">{description}</p>
+          <p className="text-2xs text-near-black/65 mt-1 leading-relaxed">{description}</p>
           {bullets && bullets.length > 0 && (
             <ul className="space-y-1 mt-2">
               {bullets.map((b, i) => (
-                <li key={i} className="text-[11px] text-near-black/65 leading-snug flex items-start gap-1.5">
+                <li key={i} className="text-2xs text-near-black/65 leading-snug flex items-start gap-1.5">
                   <span className="text-[#b8197f] mt-1 flex-shrink-0">·</span>
                   <span>{b}</span>
                 </li>
@@ -182,7 +182,7 @@ export function ComingSoonCard({
 
 function SoonBadge() {
   return (
-    <span className="text-[8px] font-bold tracking-[0.14em] uppercase border border-[rgba(255,61,190,0.40)] bg-[rgba(255,61,190,0.10)] text-[#b8197f] px-1.5 py-0.5 inline-flex items-center gap-1">
+    <span className="text-eyebrow font-bold tracking-[0.14em] uppercase border border-[rgba(255,61,190,0.40)] bg-[rgba(255,61,190,0.10)] text-[#b8197f] px-1.5 py-0.5 inline-flex items-center gap-1">
       <Sparkles size={9} strokeWidth={2} /> Soon
     </span>
   )

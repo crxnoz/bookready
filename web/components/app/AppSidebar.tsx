@@ -92,7 +92,7 @@ export default function AppSidebar({ slug, drawerOpen, onClose }: Props) {
   return (
     <>
       {/* ── Desktop sidebar (md and above) ─────────────────────────────── */}
-      <aside className="hidden md:flex md:flex-col md:w-[220px] md:h-screen md:border-r md:border-[rgba(18,18,18,0.10)] md:bg-white md:flex-shrink-0 md:overflow-y-auto">
+      <aside className="hidden md:flex md:flex-col md:w-[220px] md:h-screen md:border-r md:border-hairline-soft md:bg-white md:flex-shrink-0 md:overflow-y-auto">
         <SidebarBrand slug={slug} />
         <SidebarNav navItems={navItems} variant="desktop" />
         <SidebarBottomActions slug={slug} onCopy={handleCopy} onSignOut={handleSignOut} variant="desktop" />
@@ -117,19 +117,19 @@ export default function AppSidebar({ slug, drawerOpen, onClose }: Props) {
         {/* Panel */}
         <aside
           className={cn(
-            'absolute left-0 top-0 bottom-0 w-[280px] max-w-[85%] bg-white border-r border-[rgba(18,18,18,0.10)]',
+            'absolute left-0 top-0 bottom-0 w-[280px] max-w-[85%] bg-white border-r border-hairline-soft',
             'flex flex-col overflow-y-auto transition-transform duration-200 ease-out',
             drawerOpen ? 'translate-x-0' : '-translate-x-full',
           )}
           aria-label="Main navigation"
         >
-          <div className="flex items-center justify-between border-b border-[rgba(18,18,18,0.08)] flex-shrink-0">
+          <div className="flex items-center justify-between border-b border-hairline-soft flex-shrink-0">
             <SidebarBrand slug={slug} dense />
             <button
               type="button"
               onClick={onClose}
               aria-label="Close menu"
-              className="m-2 mr-3 w-8 h-8 flex items-center justify-center text-muted-text hover:text-near-black border border-[rgba(18,18,18,0.10)] flex-shrink-0"
+              className="m-2 mr-3 w-8 h-8 flex items-center justify-center text-muted-text hover:text-near-black border border-hairline-soft flex-shrink-0"
             >
               <X size={14} />
             </button>
@@ -147,7 +147,7 @@ export default function AppSidebar({ slug, drawerOpen, onClose }: Props) {
 function SidebarBrand({ slug, dense = false }: { slug: string; dense?: boolean }) {
   return (
     <div className={cn(
-      'flex items-center gap-3 px-5 border-b border-[rgba(18,18,18,0.08)] flex-shrink-0',
+      'flex items-center gap-3 px-5 border-b border-hairline-soft flex-shrink-0',
       dense ? 'py-3 border-b-0' : 'py-4',
     )}>
       <div className="w-7 h-7 bg-near-black flex items-center justify-center flex-shrink-0">
@@ -157,7 +157,7 @@ function SidebarBrand({ slug, dense = false }: { slug: string; dense?: boolean }
       <div className="min-w-0">
         <p className="text-sm font-bold text-near-black tracking-tight">BookReady</p>
         {slug && (
-          <p className="text-[11px] text-muted-text truncate">{slug}.bkrdy.me</p>
+          <p className="text-2xs text-muted-text truncate">{slug}.bkrdy.me</p>
         )}
       </div>
     </div>
@@ -173,7 +173,7 @@ function SidebarNav({
 }) {
   return (
     <nav className="flex flex-col flex-1 py-3 gap-0.5 min-w-0">
-      <p className="px-4 pt-1 pb-1.5 text-[9px] font-bold tracking-[0.2em] uppercase text-muted-text">
+      <p className="px-4 pt-1 pb-1.5 text-eyebrow font-bold tracking-[0.2em] uppercase text-muted-text">
         Menu
       </p>
       {navItems.map(({ item, active, Icon }) => (
@@ -182,7 +182,7 @@ function SidebarNav({
           href={item.href}
           onClick={onItemClick}
           className={cn(
-            'flex items-center gap-3 px-4 py-2.5 text-[13px] font-medium transition-colors whitespace-nowrap',
+            'flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap',
             active
               ? 'bg-near-black text-white'
               : 'text-[rgba(18,18,18,0.7)] hover:bg-[rgba(18,18,18,0.04)] hover:text-near-black',
@@ -205,26 +205,26 @@ function SidebarBottomActions({
   variant:   'desktop' | 'drawer'
 }) {
   return (
-    <div className="border-t border-[rgba(18,18,18,0.08)] p-3 flex-shrink-0">
+    <div className="border-t border-hairline-soft p-3 flex-shrink-0">
       <a
         href={`https://${slug}.bkrdy.me`}
         target="_blank"
         rel="noopener noreferrer"
-        className="w-full flex items-center gap-3 px-3 py-2 text-[13px] font-medium text-muted-text hover:text-near-black hover:bg-[rgba(18,18,18,0.04)] transition-colors"
+        className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-muted-text hover:text-near-black hover:bg-[rgba(18,18,18,0.04)] transition-colors"
       >
         <Eye size={14} />
         View Site
       </a>
       <button
         onClick={onCopy}
-        className="w-full flex items-center gap-3 px-3 py-2 text-[13px] font-medium text-muted-text hover:text-near-black hover:bg-[rgba(18,18,18,0.04)] transition-colors text-left"
+        className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-muted-text hover:text-near-black hover:bg-[rgba(18,18,18,0.04)] transition-colors text-left"
       >
         <Copy size={14} />
         Copy Link
       </button>
       <button
         onClick={onSignOut}
-        className="w-full flex items-center gap-3 px-3 py-2 text-[13px] font-medium text-muted-text hover:text-near-black hover:bg-[rgba(18,18,18,0.04)] transition-colors text-left"
+        className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-muted-text hover:text-near-black hover:bg-[rgba(18,18,18,0.04)] transition-colors text-left"
       >
         <LogOut size={14} />
         Sign Out

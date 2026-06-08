@@ -24,7 +24,7 @@ export default function EditorInnerNav({
   return (
     // overflow-y-hidden kills the spurious vertical scrollbar that browsers
     // sometimes show when the strip's content height is exactly its container.
-    <div className="flex flex-row overflow-x-auto overflow-y-hidden border-b border-[rgba(18,18,18,0.10)] bg-white flex-shrink-0">
+    <div className="flex flex-row overflow-x-auto overflow-y-hidden border-b border-hairline-soft bg-white flex-shrink-0">
       <div className="flex flex-row px-2 gap-0 min-w-max">
         {section.innerNav.map(item => {
           const active = activeId === item.id
@@ -37,7 +37,7 @@ export default function EditorInnerNav({
               scroll={false}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'px-3 py-3 text-[11px] font-medium whitespace-nowrap flex-shrink-0',
+                'px-3 py-3 text-2xs font-medium whitespace-nowrap flex-shrink-0',
                 'inline-flex items-center gap-1.5',
                 'border-b-2 -mb-px transition-colors',
                 active
@@ -50,7 +50,7 @@ export default function EditorInnerNav({
               {Icon && <Icon size={12} strokeWidth={1.8} />}
               <span>{item.label}</span>
               {item.soon && (
-                <span className="ml-1 text-[8px] font-bold tracking-[0.06em] uppercase text-muted-text border border-[rgba(18,18,18,0.15)] bg-cream px-1 py-px align-middle">
+                <span className="ml-1 text-eyebrow font-bold tracking-[0.06em] uppercase text-muted-text border border-hairline-strong bg-cream px-1 py-px align-middle">
                   Soon
                 </span>
               )}

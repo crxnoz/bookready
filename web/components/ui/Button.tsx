@@ -19,15 +19,15 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           size === 'sm' && 'text-xs px-4 py-2',
           size === 'md' && 'text-sm px-5 py-2.5',
           size === 'lg' && 'text-sm px-7 py-3.5 tracking-[0.08em]',
-          // variant
+          // variant — token-driven, sharp (radius 0)
           variant === 'primary' &&
-            'bg-near-black text-white hover:bg-[#2a2a2a] active:bg-[#111]',
+            'bg-near-black text-white hover:opacity-90',
           variant === 'secondary' &&
-            'bg-cream text-near-black border border-[rgba(18,18,18,0.15)] hover:bg-[#f0ede8]',
+            'bg-white text-near-black border border-hairline-strong hover:bg-cream',
           variant === 'ghost' &&
-            'bg-transparent text-near-black hover:bg-[rgba(18,18,18,0.05)]',
+            'bg-transparent text-near-black hover:bg-cream',
           variant === 'destructive' &&
-            'bg-red-600 text-white hover:bg-red-700',
+            'bg-danger text-white hover:opacity-90',
           className,
         )}
         {...props}

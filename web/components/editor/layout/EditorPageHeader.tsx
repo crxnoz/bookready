@@ -25,7 +25,7 @@ export default function EditorPageHeader({
       {backHref && (
         <Link
           href={backHref}
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black hover:underline mb-1.5"
+          className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-tight text-near-black hover:underline mb-1.5"
         >
           <ArrowLeft size={12} /> Back to {backLabel ?? 'Overview'}
         </Link>
@@ -34,7 +34,7 @@ export default function EditorPageHeader({
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold text-near-black tracking-tight">{title}</h1>
           {subtitle && (
-            <p className="text-xs sm:text-[13px] text-muted-text mt-0.5 max-w-2xl">{subtitle}</p>
+            <p className="text-xs sm:text-sm text-muted-text mt-0.5 max-w-2xl">{subtitle}</p>
           )}
         </div>
         {actions && (

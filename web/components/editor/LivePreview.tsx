@@ -32,16 +32,16 @@ export default function LivePreview() {
   return (
     <div className="flex flex-col h-full bg-[#ECEAE4] w-full">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-[rgba(18,18,18,0.10)] flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-hairline-soft flex-shrink-0">
         {/* Browser chrome dots */}
         <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-[rgba(18,18,18,0.12)]" />
-          <div className="w-2.5 h-2.5 rounded-full bg-[rgba(18,18,18,0.12)]" />
-          <div className="w-2.5 h-2.5 rounded-full bg-[rgba(18,18,18,0.12)]" />
+          <div className="w-2.5 h-2.5  bg-[rgba(18,18,18,0.12)]" />
+          <div className="w-2.5 h-2.5  bg-[rgba(18,18,18,0.12)]" />
+          <div className="w-2.5 h-2.5  bg-[rgba(18,18,18,0.12)]" />
         </div>
 
         {/* URL display */}
-        <p className="text-[11px] text-muted-text font-medium tracking-wide truncate max-w-[180px]">
+        <p className="text-2xs text-muted-text font-medium tracking-wide truncate max-w-[180px]">
           {slug ? `${slug}.bkrdy.me` : 'your-site.bkrdy.me'}
         </p>
 

@@ -139,7 +139,7 @@ export default function BillingHub() {
   return (
     <div className="space-y-6">
       {/* ── Current subscription ──────────────────────────────────── */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-5">
+      <section className="bg-white border border-hairline-soft p-5">
         <header className="flex items-start justify-between gap-3 mb-3 flex-wrap">
           <div>
             <h1 className="text-xl font-bold text-near-black tracking-tight inline-flex items-center gap-2">
@@ -153,7 +153,7 @@ export default function BillingHub() {
             type="button"
             onClick={() => void refresh()}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-50"
           >
             {loading ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
             Refresh
@@ -161,7 +161,7 @@ export default function BillingHub() {
         </header>
 
         {err && (
-          <div className="bg-red-50 border border-red-200 p-3 text-xs text-red-700 flex items-center gap-2 mb-3">
+          <div className="bg-danger-bg border border-danger p-3 text-xs text-danger flex items-center gap-2 mb-3">
             <AlertCircle size={14} /> {err}
           </div>
         )}
@@ -174,31 +174,31 @@ export default function BillingHub() {
             <Stat label="Status" value="Active" tone="ok" />
           </div>
         ) : sub?.on_trial ? (
-          <div className="mt-2 p-4 bg-cream border border-[rgba(18,18,18,0.10)]">
-            <p className="text-[13px] text-near-black font-semibold">On trial</p>
-            <p className="text-[12px] text-muted-text mt-1">
+          <div className="mt-2 p-4 bg-cream border border-hairline-soft">
+            <p className="text-sm text-near-black font-semibold">On trial</p>
+            <p className="text-xs text-muted-text mt-1">
               {sub.trial_ends ? <>Trial ends {new Date(sub.trial_ends).toLocaleDateString()}.</> : 'Pick a plan below before your trial ends.'}
             </p>
           </div>
         ) : (
-          <div className="mt-2 p-4 bg-cream border border-[rgba(18,18,18,0.10)]">
-            <p className="text-[13px] text-near-black font-semibold">No active subscription</p>
-            <p className="text-[12px] text-muted-text mt-1">
+          <div className="mt-2 p-4 bg-cream border border-hairline-soft">
+            <p className="text-sm text-near-black font-semibold">No active subscription</p>
+            <p className="text-xs text-muted-text mt-1">
               Pick a plan below to start. You can switch or cancel any time from your billing portal.
             </p>
           </div>
         )}
 
         {sub?.subscribed && (
-          <div className="mt-4 pt-4 border-t border-[rgba(18,18,18,0.08)] flex items-center justify-between flex-wrap gap-2">
-            <p className="text-[11px] text-muted-text">
+          <div className="mt-4 pt-4 border-t border-hairline-soft flex items-center justify-between flex-wrap gap-2">
+            <p className="text-2xs text-muted-text">
               Manage your card, invoices, and cancellation in the billing portal.
             </p>
             <button
               type="button"
               onClick={() => void openPortal()}
               disabled={portalLoading}
-              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2 hover:border-near-black"
+              className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:border-near-black"
             >
               {portalLoading ? <Loader2 size={11} className="animate-spin" /> : <ExternalLink size={11} />}
               Open billing portal
@@ -208,7 +208,7 @@ export default function BillingHub() {
       </section>
 
       {/* ── Plan picker ───────────────────────────────────────────── */}
-      <section className="bg-white border border-[rgba(18,18,18,0.10)] p-5">
+      <section className="bg-white border border-hairline-soft p-5">
         <header className="mb-4">
           <h2 className="text-lg font-bold text-near-black tracking-tight">
             {sub?.subscribed ? 'Change plan' : 'Pick a plan'}
@@ -219,10 +219,10 @@ export default function BillingHub() {
         </header>
 
         {/* Cycle toggle */}
-        <div className="inline-flex border border-[rgba(18,18,18,0.15)] bg-cream mb-4">
+        <div className="inline-flex border border-hairline-strong bg-cream mb-4">
           <CycleBtn active={pickedCycle === 'monthly'} onClick={() => setPickedCycle('monthly')}>Monthly</CycleBtn>
           <CycleBtn active={pickedCycle === 'annual'} onClick={() => setPickedCycle('annual')}>
-            Annual <span className="ml-1 text-[9px] font-bold tracking-[0.06em] uppercase text-[#8a5a00]">2 mos free</span>
+            Annual <span className="ml-1 text-eyebrow font-bold tracking-[0.06em] uppercase text-warning">2 mos free</span>
           </CycleBtn>
         </div>
 
@@ -231,17 +231,17 @@ export default function BillingHub() {
             Salon +$15 for 2x). The per-card delta is shown on each plan
             card below; here we just show the bundle name. */}
         <div className="flex items-center gap-2 mb-4">
-          <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Text pack:</span>
+          <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Text pack:</span>
           {([1, 2, 3] as SmsMult[]).map(m => (
             <button
               key={m}
               type="button"
               onClick={() => setPickedMult(m)}
               className={cn(
-                'border px-2.5 py-1 text-[11px] font-semibold',
+                'border px-2.5 py-1 text-2xs font-semibold',
                 pickedMult === m
                   ? 'border-near-black bg-near-black text-white'
-                  : 'border-[rgba(18,18,18,0.15)] bg-white text-near-black hover:border-near-black',
+                  : 'border-hairline-strong bg-white text-near-black hover:border-near-black',
               )}
             >
               {m}× {m === 1 ? '(standard)' : `(more texts)`}
@@ -263,40 +263,40 @@ export default function BillingHub() {
                 disabled={isWaitlist}
                 className={cn(
                   'text-left p-4 border bg-white transition-colors',
-                  isPicked ? 'border-near-black ring-2 ring-near-black/10' : 'border-[rgba(18,18,18,0.15)]',
+                  isPicked ? 'border-near-black ring-2 ring-near-black/10' : 'border-hairline-strong',
                   isWaitlist ? 'opacity-50 cursor-not-allowed' : 'hover:border-near-black cursor-pointer',
                 )}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-[11px] font-bold tracking-[0.14em] uppercase text-near-black">{plan.label}</p>
+                  <p className="text-2xs font-bold tracking-[0.14em] uppercase text-near-black">{plan.label}</p>
                   {plan.featured && (
-                    <span className="text-[9px] font-bold tracking-[0.08em] uppercase text-[#8a5a00] bg-[rgba(255,200,0,0.10)] border border-[rgba(180,120,0,0.30)] px-1.5 py-0.5">
+                    <span className="text-eyebrow font-bold tracking-[0.08em] uppercase text-warning bg-[rgba(255,200,0,0.10)] border border-[rgba(180,120,0,0.30)] px-1.5 py-0.5">
                       Popular
                     </span>
                   )}
                   {isWaitlist && (
-                    <span className="text-[9px] font-bold tracking-[0.08em] uppercase text-muted-text bg-cream border border-[rgba(18,18,18,0.10)] px-1.5 py-0.5">
+                    <span className="text-eyebrow font-bold tracking-[0.08em] uppercase text-muted-text bg-cream border border-hairline-soft px-1.5 py-0.5">
                       Waitlist
                     </span>
                   )}
                 </div>
-                <p className="text-[24px] font-bold text-near-black leading-none mt-2">
+                <p className="text-2xl font-bold text-near-black leading-none mt-2">
                   ${(perMonthCents / 100).toFixed(0)}
-                  <span className="text-[12px] font-normal text-muted-text"> /mo</span>
+                  <span className="text-xs font-normal text-muted-text"> /mo</span>
                 </p>
-                <p className="text-[10px] text-muted-text mt-1">
+                <p className="text-eyebrow text-muted-text mt-1">
                   {pickedCycle === 'annual'
                     ? <>billed ${(totalCents / 100).toFixed(0)}/yr</>
                     : 'billed monthly'}
                 </p>
-                <p className="text-[12px] text-near-black mt-3 font-semibold">
+                <p className="text-xs text-near-black mt-3 font-semibold">
                   {smsIncluded.toLocaleString()} texts / month
                 </p>
-                <p className="text-[11px] text-muted-text mt-2 leading-relaxed">
+                <p className="text-2xs text-muted-text mt-2 leading-relaxed">
                   {plan.description}
                 </p>
                 {isCurrent && (
-                  <p className="text-[10px] text-[#1e7a3f] font-bold uppercase tracking-[0.12em] mt-3 inline-flex items-center gap-1">
+                  <p className="text-eyebrow text-success font-bold uppercase tracking-[0.12em] mt-3 inline-flex items-center gap-1">
                     <Check size={10} /> Current
                   </p>
                 )}
@@ -305,8 +305,8 @@ export default function BillingHub() {
           })}
         </div>
 
-        <div className="mt-5 pt-4 border-t border-[rgba(18,18,18,0.08)] flex items-center justify-between flex-wrap gap-3">
-          <div className="text-[11px] text-muted-text">
+        <div className="mt-5 pt-4 border-t border-hairline-soft flex items-center justify-between flex-wrap gap-3">
+          <div className="text-2xs text-muted-text">
             <p>
               Extra texts: ${((plans?.sms_overage_cents ?? 3) / 100).toFixed(3)} each over your monthly allowance (billed automatically).
             </p>
@@ -315,7 +315,7 @@ export default function BillingHub() {
             type="button"
             onClick={() => void startCheckout()}
             disabled={checkoutLoading || pickedPlan === 'salon'}
-            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white border border-near-black px-4 py-2.5 hover:bg-white hover:text-near-black disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase bg-near-black text-white border border-near-black px-4 py-2.5 hover:bg-white hover:text-near-black disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {checkoutLoading ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
             {sub?.subscribed ? `Switch to ${capitalize(pickedPlan)} ${pickedMult}× ${pickedCycle}` : `Start with ${capitalize(pickedPlan)} ${pickedMult}× ${pickedCycle}`}
@@ -335,16 +335,16 @@ function Stat({ label, value, hint, tone }: {
   tone?: 'ok' | 'warn'
 }) {
   return (
-    <div className="bg-cream border border-[rgba(18,18,18,0.10)] p-3">
-      <p className="text-[9px] font-bold tracking-[0.18em] uppercase text-muted-text">{label}</p>
+    <div className="bg-cream border border-hairline-soft p-3">
+      <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text">{label}</p>
       <p className={cn(
         'text-lg font-bold text-near-black leading-none mt-1.5',
-        tone === 'ok' && 'text-[#1e7a3f]',
-        tone === 'warn' && 'text-[#8a5a00]',
+        tone === 'ok' && 'text-success',
+        tone === 'warn' && 'text-warning',
       )}>
         {value}
       </p>
-      {hint && <p className="text-[10px] text-muted-text mt-1.5">{hint}</p>}
+      {hint && <p className="text-eyebrow text-muted-text mt-1.5">{hint}</p>}
     </div>
   )
 }
@@ -359,7 +359,7 @@ function CycleBtn({ active, onClick, children }: {
       type="button"
       onClick={onClick}
       className={cn(
-        'px-3 py-2 text-[11px] font-semibold tracking-[0.08em] uppercase',
+        'px-3 py-2 text-2xs font-semibold tracking-[0.08em] uppercase',
         active ? 'bg-near-black text-white' : 'text-near-black hover:bg-white',
       )}
     >

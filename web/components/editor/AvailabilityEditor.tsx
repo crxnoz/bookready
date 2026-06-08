@@ -10,6 +10,7 @@ import {
   deleteEditorBlockedDate,
 } from '@/lib/api'
 import Button from '@/components/ui/Button'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 import {
   Clock,
   Calendar,
@@ -86,7 +87,7 @@ function TimeInput({
   return (
     <div className="flex flex-col gap-1">
       {label && (
-        <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+        <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
           {label}
         </span>
       )}
@@ -94,7 +95,7 @@ function TimeInput({
         type="time"
         value={value ?? ''}
         onChange={e => onChange(e.target.value || null)}
-        className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black/30 transition-colors"
+        className="w-full bg-white border border-hairline-strong px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black/30 transition-colors"
       />
     </div>
   )
@@ -114,7 +115,7 @@ function SelectInput<T extends string | number>({
   return (
     <div className="flex flex-col gap-1">
       {label && (
-        <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+        <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
           {label}
         </span>
       )}
@@ -125,7 +126,7 @@ function SelectInput<T extends string | number>({
           const opt = options.find(o => String(o.value) === raw)
           if (opt !== undefined) onChange(opt.value)
         }}
-        className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black/30 transition-colors appearance-none"
+        className="w-full bg-white border border-hairline-strong px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black/30 transition-colors appearance-none"
       >
         {options.map(o => (
           <option key={String(o.value)} value={String(o.value)}>
@@ -148,7 +149,7 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-start gap-3 mb-5">
-      <div className="w-8 h-8 bg-cream border border-[rgba(18,18,18,0.10)] flex items-center justify-center flex-shrink-0 mt-0.5">
+      <div className="w-8 h-8 bg-cream border border-hairline-soft flex items-center justify-center flex-shrink-0 mt-0.5">
         <Icon size={15} className="text-muted-text" />
       </div>
       <div>
@@ -180,7 +181,7 @@ function DayCard({
   }
 
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)] overflow-hidden">
+    <div className="bg-white border border-hairline-soft overflow-hidden">
       {/* Day header */}
       <div className="flex items-center justify-between px-4 py-3">
         <span className="text-sm font-bold text-near-black w-28">{entry.day_name}</span>
@@ -194,14 +195,14 @@ function DayCard({
 
       {/* Open times */}
       {entry.is_open && (
-        <div className="px-4 pb-3 border-t border-[rgba(18,18,18,0.06)]">
+        <div className="px-4 pb-3 border-t border-hairline-soft">
           <div className="grid grid-cols-2 gap-3 pt-3">
             <TimeInput label="Opens" value={entry.open_time} onChange={v => set('open_time', v)} />
             <TimeInput label="Closes" value={entry.close_time} onChange={v => set('close_time', v)} />
           </div>
 
           {showBreak && (
-            <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-[rgba(18,18,18,0.06)]">
+            <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-hairline-soft">
               <TimeInput label="Break start" value={entry.break_start} onChange={v => set('break_start', v)} />
               <TimeInput label="Break end" value={entry.break_end} onChange={v => set('break_end', v)} />
             </div>
@@ -210,7 +211,7 @@ function DayCard({
           <button
             type="button"
             onClick={toggleBreak}
-            className="mt-3 text-[10px] font-bold tracking-[0.12em] uppercase text-muted-text hover:text-near-black transition-colors"
+            className="mt-3 text-eyebrow font-bold tracking-[0.12em] uppercase text-muted-text hover:text-near-black transition-colors"
           >
             {showBreak ? '− Remove break' : '+ Add break'}
           </button>
@@ -318,12 +319,12 @@ export default function AvailabilityEditor() {
   return (
     <div className="pb-8">
       {/* Page heading — section + title live in EditorShell */}
-      <div className="px-5 pt-5 pb-4 border-b border-[rgba(18,18,18,0.08)]">
+      <div className="px-5 pt-5 pb-4 border-b border-hairline-soft">
         <p className="text-xs text-muted-text">Set your weekly hours, breaks, and a daily booking limit.</p>
       </div>
 
       {error && saveState === 'error' && (
-        <div className="mx-5 mt-4 px-4 py-3 bg-red-50 border border-red-200 text-xs text-red-700">
+        <div className="mx-5 mt-4 px-4 py-3 bg-danger-bg border border-danger text-xs text-danger">
           {error}
         </div>
       )}
@@ -340,13 +341,13 @@ export default function AvailabilityEditor() {
         <div className="flex flex-wrap gap-2 mb-4">
           <button
             onClick={copyMondayToWeekdays}
-            className="text-[10px] font-bold tracking-[0.08em] uppercase px-3 py-1.5 border border-[rgba(18,18,18,0.12)] text-muted-text hover:text-near-black hover:border-near-black/30 transition-colors"
+            className="text-eyebrow font-bold tracking-[0.08em] uppercase px-3 py-1.5 border border-hairline text-muted-text hover:text-near-black hover:border-near-black/30 transition-colors"
           >
             Copy Mon → Weekdays
           </button>
           <button
             onClick={closeWeekend}
-            className="text-[10px] font-bold tracking-[0.08em] uppercase px-3 py-1.5 border border-[rgba(18,18,18,0.12)] text-muted-text hover:text-near-black hover:border-near-black/30 transition-colors"
+            className="text-eyebrow font-bold tracking-[0.08em] uppercase px-3 py-1.5 border border-hairline text-muted-text hover:text-near-black hover:border-near-black/30 transition-colors"
           >
             Close Weekend
           </button>
@@ -370,7 +371,7 @@ export default function AvailabilityEditor() {
         <div className="space-y-5">
           {/* Buffer before / after */}
           <div>
-            <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-3">
+            <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-3">
               Gaps between appointments
             </p>
             <p className="text-xs text-muted-text mb-3">
@@ -391,7 +392,7 @@ export default function AvailabilityEditor() {
               />
             </div>
             {(settings.buffer_before_minutes > 0 || settings.buffer_after_minutes > 0) && (
-              <p className="text-[11px] text-muted-text mt-2">
+              <p className="text-2xs text-muted-text mt-2">
                 A 45-min service blocks{' '}
                 <span className="font-semibold text-near-black">
                   {settings.buffer_before_minutes + 45 + settings.buffer_after_minutes} min
@@ -401,11 +402,11 @@ export default function AvailabilityEditor() {
             )}
           </div>
 
-          <hr className="border-[rgba(18,18,18,0.08)]" />
+          <hr className="border-hairline-soft" />
 
           {/* Max per day */}
           <div>
-            <label className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5 block">
+            <label className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5 block">
               Max appointments per day
             </label>
             <input
@@ -417,7 +418,7 @@ export default function AvailabilityEditor() {
                 'max_appointments_per_day',
                 e.target.value ? parseInt(e.target.value, 10) : null,
               )}
-              className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black/30 transition-colors"
+              className="w-full bg-white border border-hairline-strong px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black/30 transition-colors"
             />
             <p className="text-xs text-muted-text mt-1">Leave blank for no limit.</p>
           </div>
@@ -439,7 +440,7 @@ export default function AvailabilityEditor() {
           the existing sections so owners can see what is next without
           competing with live settings. */}
       <div className="px-5 pt-5">
-        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-2">
+        <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-2">
           Coming next for availability
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -484,13 +485,13 @@ export default function AvailabilityEditor() {
             {saveState === 'saving' ? 'Saving…' : 'Save Availability'}
           </Button>
           {saveState === 'saved' && (
-            <span className="flex items-center gap-1.5 text-xs text-green-600 font-semibold">
+            <span className="flex items-center gap-1.5 text-xs text-success font-semibold">
               <CheckCircle2 size={13} />
               Saved
             </span>
           )}
           {saveState === 'error' && error && (
-            <span className="text-xs text-red-500">{error}</span>
+            <span className="text-xs text-danger">{error}</span>
           )}
         </div>
       </div>
@@ -516,13 +517,13 @@ function CollapsibleSection({
   children: React.ReactNode
 }) {
   return (
-    <div className="border-b border-[rgba(18,18,18,0.08)]">
+    <div className="border-b border-hairline-soft">
       <button
         type="button"
         onClick={onToggle}
         className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-[rgba(18,18,18,0.02)] transition-colors"
       >
-        <div className="w-7 h-7 bg-cream border border-[rgba(18,18,18,0.10)] flex items-center justify-center flex-shrink-0">
+        <div className="w-7 h-7 bg-cream border border-hairline-soft flex items-center justify-center flex-shrink-0">
           <Icon size={13} className="text-muted-text" />
         </div>
         <div className="flex-1 min-w-0">
@@ -562,6 +563,7 @@ function BlockedDatesPanel() {
   const [reason,  setReason]  = useState('')
   const [adding,  setAdding]  = useState(false)
   const [addErr,  setAddErr]  = useState<string | null>(null)
+  const confirm = useConfirm()
 
   useEffect(() => {
     let cancelled = false
@@ -593,7 +595,8 @@ function BlockedDatesPanel() {
   }
 
   async function handleDelete(id: number) {
-    if (! confirm('Remove this blocked date?')) return
+    const ok = await confirm({ title: 'Remove this blocked date?', confirmLabel: 'Remove', tone: 'danger' })
+    if (! ok) return
     try {
       await deleteEditorBlockedDate(id)
       setRows(prev => (prev ?? []).filter(r => r.id !== id))
@@ -617,77 +620,77 @@ function BlockedDatesPanel() {
       </p>
 
       {/* Add row */}
-      <form onSubmit={handleAdd} className="flex items-end gap-2 flex-wrap bg-cream border border-[rgba(18,18,18,0.08)] p-3">
+      <form onSubmit={handleAdd} className="flex items-end gap-2 flex-wrap bg-cream border border-hairline-soft p-3">
         <div>
-          <label className="block text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text mb-0.5">From</label>
+          <label className="block text-eyebrow font-bold tracking-[0.10em] uppercase text-muted-text mb-0.5">From</label>
           <input
             type="date" required
             value={start}
             onChange={e => setStart(e.target.value)}
-            className="border border-[rgba(18,18,18,0.15)] bg-white px-2 py-1.5 text-[11px] text-near-black focus:outline-none focus:border-near-black"
+            className="border border-hairline-strong bg-white px-2 py-1.5 text-2xs text-near-black focus:outline-none focus:border-near-black"
           />
         </div>
         <div>
-          <label className="block text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text mb-0.5">To (optional)</label>
+          <label className="block text-eyebrow font-bold tracking-[0.10em] uppercase text-muted-text mb-0.5">To (optional)</label>
           <input
             type="date"
             value={end}
             min={start || undefined}
             onChange={e => setEnd(e.target.value)}
-            className="border border-[rgba(18,18,18,0.15)] bg-white px-2 py-1.5 text-[11px] text-near-black focus:outline-none focus:border-near-black"
+            className="border border-hairline-strong bg-white px-2 py-1.5 text-2xs text-near-black focus:outline-none focus:border-near-black"
           />
         </div>
         <div className="flex-1 min-w-[160px]">
-          <label className="block text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text mb-0.5">Reason</label>
+          <label className="block text-eyebrow font-bold tracking-[0.10em] uppercase text-muted-text mb-0.5">Reason</label>
           <input
             type="text"
             value={reason}
             onChange={e => setReason(e.target.value)}
             maxLength={200}
             placeholder="Holiday, vacation, private event…"
-            className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-2 py-1.5 text-[11px] text-near-black focus:outline-none focus:border-near-black"
+            className="w-full border border-hairline-strong bg-white px-2 py-1.5 text-2xs text-near-black focus:outline-none focus:border-near-black"
           />
         </div>
         <button
           type="submit"
           disabled={! start || adding}
-          className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.08em] uppercase bg-near-black text-white px-2.5 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1.5 text-eyebrow font-bold tracking-[0.08em] uppercase bg-near-black text-white px-2.5 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {adding ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} />} Block
         </button>
       </form>
 
       {addErr && (
-        <p className="text-[11px] text-red-700 flex items-center gap-1.5">
+        <p className="text-2xs text-danger flex items-center gap-1.5">
           <AlertCircle size={11} /> {addErr}
         </p>
       )}
       {loadErr && (
-        <p className="text-[11px] text-red-700 flex items-center gap-1.5">
+        <p className="text-2xs text-danger flex items-center gap-1.5">
           <AlertCircle size={11} /> {loadErr}
         </p>
       )}
 
-      {loading && <p className="text-[11px] text-muted-text">Loading…</p>}
+      {loading && <p className="text-2xs text-muted-text">Loading…</p>}
 
       {rows && rows.length === 0 && ! loading && (
-        <p className="text-[11px] text-muted-text italic">No blocked dates yet.</p>
+        <p className="text-2xs text-muted-text italic">No blocked dates yet.</p>
       )}
 
       {rows && rows.length > 0 && (
-        <div className="bg-white border border-[rgba(18,18,18,0.08)] divide-y divide-[rgba(18,18,18,0.06)]">
+        <div className="bg-white border border-hairline-soft divide-y divide-[rgba(18,18,18,0.06)]">
           {rows.map(r => (
             <div key={r.id} className="flex items-center justify-between gap-2 px-3 py-2">
               <div className="min-w-0">
-                <p className="text-[12px] font-semibold text-near-black">{rangeLabel(r)}</p>
+                <p className="text-xs font-semibold text-near-black">{rangeLabel(r)}</p>
                 {r.reason && (
-                  <p className="text-[10px] text-muted-text truncate">{r.reason}</p>
+                  <p className="text-eyebrow text-muted-text truncate">{r.reason}</p>
                 )}
               </div>
               <button
                 type="button"
                 onClick={() => handleDelete(r.id)}
-                className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600 flex-shrink-0"
+                className="w-7 h-7 inline-flex items-center justify-center border border-hairline-soft bg-white text-near-black hover:border-danger hover:text-danger flex-shrink-0"
                 title="Remove"
               >
                 <Trash2 size={11} />

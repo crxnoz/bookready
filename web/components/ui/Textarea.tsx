@@ -14,7 +14,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="text-xs font-semibold text-near-black tracking-wide uppercase"
+            className="text-eyebrow font-bold text-near-black uppercase tracking-eyebrow"
           >
             {label}
           </label>
@@ -23,18 +23,18 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            'w-full bg-white border px-4 py-2.5 text-sm text-near-black placeholder:text-[#b0a99f] resize-none',
+            'w-full bg-white border px-4 py-2.5 text-sm text-near-black placeholder:text-faint-text resize-none',
             'focus:outline-none focus:ring-2 focus:ring-near-black/10 focus:border-near-black/30',
             'transition-colors duration-150',
             error
-              ? 'border-red-400'
-              : 'border-[rgba(18,18,18,0.15)]',
+              ? 'border-danger'
+              : 'border-hairline-strong',
             className,
           )}
           rows={3}
           {...props}
         />
-        {error && <p className="text-xs text-red-500">{error}</p>}
+        {error && <p className="text-xs text-danger">{error}</p>}
       </div>
     )
   },

@@ -65,7 +65,7 @@ export default function WelcomeTour({
       onClick={dismiss}
     >
       <div
-        className="relative bg-white border border-[rgba(18,18,18,0.10)] w-full max-w-md shadow-xl"
+        className="relative bg-white border border-hairline-soft w-full max-w-md shadow-xl"
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -85,7 +85,7 @@ export default function WelcomeTour({
         <div className="flex items-center justify-center gap-1.5 pt-5 pb-1">
           {STEPS.map((_, i) => (
             <span key={i} className={cn(
-              'w-1.5 h-1.5 rounded-full transition-colors',
+              'w-1.5 h-1.5  transition-colors',
               i === step ? 'bg-near-black' : 'bg-[rgba(18,18,18,0.15)]',
             )} />
           ))}
@@ -93,17 +93,17 @@ export default function WelcomeTour({
 
         {/* Body */}
         <div className="px-6 pt-3 pb-5">
-          <div className="w-12 h-12 bg-cream border border-[rgba(18,18,18,0.10)] flex items-center justify-center mb-4">
+          <div className="w-12 h-12 bg-cream border border-hairline-soft flex items-center justify-center mb-4">
             <current.icon size={20} className="text-near-black" />
           </div>
 
-          <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-1.5">
+          <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text mb-1.5">
             {current.eyebrow}
           </p>
           <h2 id="welcome-tour-title" className="text-xl font-bold text-near-black tracking-tight leading-tight mb-2">
             {current.title({ firstName, subdomain })}
           </h2>
-          <p className="text-[13px] text-muted-text leading-relaxed">
+          <p className="text-sm text-muted-text leading-relaxed">
             {current.body({ firstName, subdomain })}
           </p>
 
@@ -111,8 +111,8 @@ export default function WelcomeTour({
           {current.bullets && (
             <ul className="mt-3 space-y-1.5">
               {current.bullets.map((b, i) => (
-                <li key={i} className="flex items-start gap-2 text-[12px] text-near-black">
-                  <Check size={12} className="text-[#0f6f3d] flex-shrink-0 mt-1" />
+                <li key={i} className="flex items-start gap-2 text-xs text-near-black">
+                  <Check size={12} className="text-success flex-shrink-0 mt-1" />
                   <span>{b}</span>
                 </li>
               ))}
@@ -121,12 +121,12 @@ export default function WelcomeTour({
         </div>
 
         {/* Footer / actions */}
-        <div className="border-t border-[rgba(18,18,18,0.08)] px-4 py-3 flex items-center justify-between">
+        <div className="border-t border-hairline-soft px-4 py-3 flex items-center justify-between">
           {step > 0 ? (
             <button
               type="button"
               onClick={() => setStep(s => Math.max(0, s - 1))}
-              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase text-muted-text hover:text-near-black px-2 py-2"
+              className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase text-muted-text hover:text-near-black px-2 py-2"
             >
               <ArrowLeft size={11} /> Back
             </button>
@@ -134,7 +134,7 @@ export default function WelcomeTour({
             <button
               type="button"
               onClick={dismiss}
-              className="text-[11px] font-semibold tracking-[0.06em] uppercase text-muted-text hover:text-near-black px-2 py-2"
+              className="text-2xs font-semibold tracking-[0.06em] uppercase text-muted-text hover:text-near-black px-2 py-2"
             >
               Skip tour
             </button>
@@ -143,7 +143,7 @@ export default function WelcomeTour({
           <button
             type="button"
             onClick={() => isLast ? dismiss() : setStep(s => Math.min(totalSteps - 1, s + 1))}
-            className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.08em] uppercase bg-near-black border border-near-black text-white px-3.5 py-2 hover:bg-[#2a2a2a]"
+            className="inline-flex items-center gap-1.5 text-2xs font-bold tracking-[0.08em] uppercase bg-near-black border border-near-black text-white px-3.5 py-2 hover:opacity-90"
           >
             {isLast ? <><Check size={11} /> Get started</> : <>Next <ArrowRight size={11} /></>}
           </button>
@@ -200,7 +200,7 @@ const STEPS: Step[] = [
         Share this URL with customers — they can book through it 24/7. You can
         also add a custom domain later in <strong className="text-near-black">Settings → Domain</strong>.
         {subdomain && (
-          <span className="block mt-2 text-[11px]">
+          <span className="block mt-2 text-2xs">
             Tip: open{' '}
             <a
               href={`https://${subdomain}.bkrdy.me`}

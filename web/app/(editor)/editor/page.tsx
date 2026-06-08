@@ -238,7 +238,7 @@ function DashboardBody() {
   if (loadErr) {
     return (
       <div className="w-full p-3 sm:p-5 md:p-6">
-        <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-[#b42828] flex items-center gap-2">
+        <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-danger flex items-center gap-2">
           <AlertCircle size={14} /> {loadErr}
         </div>
       </div>
@@ -253,16 +253,16 @@ function DashboardBody() {
       <header className="px-1">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="min-w-0">
-            <h1 className="text-[22px] sm:text-[28px] font-bold text-near-black tracking-tight leading-tight">
+            <h1 className="text-2xl sm:text-3xl font-bold text-near-black tracking-tight leading-tight">
               {greeting}{ownerFirstName ? <>, <span className="italic">{ownerFirstName}.</span></> : '.'}
             </h1>
-            <p className="text-[13px] text-muted-text mt-1.5">
+            <p className="text-sm text-muted-text mt-1.5">
               {fmtWeekday(todayStr)} · {todayCapacity != null ? (
                 // Capacity is configured for today: show booked / cap so the
                 // owner reads how full the day is at a glance. Numerator is the
                 // client count (matches the stat card below); denominator is
                 // the cap from the metrics endpoint.
-                <><span className={cn('font-semibold', todaysAppointments.length >= todayCapacity ? 'text-[#8a5a00]' : 'text-near-black')}>{todaysAppointments.length} / {todayCapacity}</span> appointments today</>
+                <><span className={cn('font-semibold', todaysAppointments.length >= todayCapacity ? 'text-warning' : 'text-near-black')}>{todaysAppointments.length} / {todayCapacity}</span> appointments today</>
               ) : (
                 <><span className="font-semibold text-near-black">{todaysAppointments.length}</span> appointment{todaysAppointments.length === 1 ? '' : 's'} today</>
               )}
@@ -271,9 +271,9 @@ function DashboardBody() {
           </div>
           <HeaderActions publicUrl={publicUrl} />
         </div>
-        <div className="mt-3 inline-flex items-center gap-2 text-[11px] text-near-black bg-cream border border-[rgba(18,18,18,0.10)] px-3 py-2">
-          <Lightbulb size={12} className="text-[#c98a14] flex-shrink-0" strokeWidth={2} />
-          <span className="leading-snug"><span className="font-bold uppercase tracking-[0.1em] text-[10px] text-muted-text">Today&rsquo;s tip · </span>{dailyTip}</span>
+        <div className="mt-3 inline-flex items-center gap-2 text-2xs text-near-black bg-cream border border-hairline-soft px-3 py-2">
+          <Lightbulb size={12} className="text-warning-icon flex-shrink-0" strokeWidth={2} />
+          <span className="leading-snug"><span className="font-bold uppercase tracking-[0.1em] text-eyebrow text-muted-text">Today&rsquo;s tip · </span>{dailyTip}</span>
         </div>
       </header>
 
@@ -307,10 +307,10 @@ function DashboardBody() {
         {todaysAppointments.length === 0 ? (
           <EmptyTile body="When someone books for today, they'll show up here." actionLabel="View calendar" actionHref="/editor/appointments" />
         ) : (
-          <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
+          <div className="bg-white border border-hairline-soft divide-y divide-[rgba(18,18,18,0.06)]">
             {todaysAppointments.slice(0, 8).map(a => <TodayApptRow key={a.id} a={a} />)}
             {todaysAppointments.length > 8 && (
-              <Link href="/editor/appointments" className="block px-3.5 py-2.5 text-[12px] font-semibold text-near-black hover:bg-cream/60">
+              <Link href="/editor/appointments" className="block px-3.5 py-2.5 text-xs font-semibold text-near-black hover:bg-cream/60">
                 + {todaysAppointments.length - 8} more today
               </Link>
             )}
@@ -327,10 +327,10 @@ function DashboardBody() {
         />
         {totalAttention === 0 ? (
           <div className="bg-white border border-[rgba(20,140,80,0.30)] p-4 flex items-center gap-3">
-            <CheckCircle2 size={18} className="text-[#0f6f3d] flex-shrink-0" />
+            <CheckCircle2 size={18} className="text-success flex-shrink-0" />
             <div>
-              <p className="text-[13px] font-bold text-near-black">You&rsquo;re all caught up</p>
-              <p className="text-[11px] text-muted-text mt-0.5">No requests, payment issues, waitlist signups, or unpaid balances right now.</p>
+              <p className="text-sm font-bold text-near-black">You&rsquo;re all caught up</p>
+              <p className="text-2xs text-muted-text mt-0.5">No requests, payment issues, waitlist signups, or unpaid balances right now.</p>
             </div>
           </div>
         ) : (
@@ -405,13 +405,13 @@ function DashboardBody() {
         {recentBookings.length === 0 ? (
           <EmptyTile body="Once bookings start coming in, you'll see the latest ones here." />
         ) : (
-          <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
+          <div className="bg-white border border-hairline-soft divide-y divide-[rgba(18,18,18,0.06)]">
             {recentBookings.map(a => <ActivityRow key={a.id} a={a} />)}
           </div>
         )}
       </section>
 
-      <div className="pt-2 pb-1 text-center text-[11px] text-muted-text">
+      <div className="pt-2 pb-1 text-center text-2xs text-muted-text">
         Need a hand?{' '}
         <Link href="/help" className="font-semibold text-near-black hover:underline">Visit the Help Center</Link>
         {' '}or email{' '}
@@ -434,14 +434,14 @@ function SectionHeader({
   // External CTA hrefs (announcements archive on marketing site, etc)
   // need to open in a new tab. Internal hrefs use Next Link.
   const isExternal = !! cta && /^https?:\/\//.test(cta.href)
-  const ctaClass = 'text-[11px] font-semibold tracking-[0.04em] text-near-black hover:underline whitespace-nowrap flex items-center gap-1'
+  const ctaClass = 'text-2xs font-semibold tracking-[0.04em] text-near-black hover:underline whitespace-nowrap flex items-center gap-1'
   return (
     <div className="flex items-end justify-between gap-3 mb-2.5 px-1">
       <div className="min-w-0">
-        <p className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+        <p className="inline-flex items-center gap-1.5 text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
           <Icon size={11} strokeWidth={1.8} /> {label}
         </p>
-        {subtitle && <p className="text-[13px] text-near-black mt-0.5">{subtitle}</p>}
+        {subtitle && <p className="text-sm text-near-black mt-0.5">{subtitle}</p>}
       </div>
       {cta && (
         isExternal ? (
@@ -465,12 +465,12 @@ function SectionHeader({
 
 function EmptyTile({ body, actionLabel, actionHref }: { body: string; actionLabel?: string; actionHref?: string }) {
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)] px-5 py-7 text-center">
-      <p className="text-[12px] text-muted-text">{body}</p>
+    <div className="bg-white border border-hairline-soft px-5 py-7 text-center">
+      <p className="text-xs text-muted-text">{body}</p>
       {actionLabel && actionHref && (
         <Link
           href={actionHref}
-          className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-1.5 hover:border-near-black"
+          className="mt-3 inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-1.5 hover:border-near-black"
         >
           {actionLabel}
         </Link>
@@ -486,11 +486,11 @@ function TodayApptRow({ a }: { a: Appointment }) {
       className="flex items-center gap-3 px-3.5 py-2.5 hover:bg-cream/60 transition-colors"
     >
       <div className="w-12 text-right flex-shrink-0">
-        <p className="text-[13px] font-bold text-near-black tabular-nums">{fmt12(a.start_time)}</p>
+        <p className="text-sm font-bold text-near-black tabular-nums">{fmt12(a.start_time)}</p>
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-semibold text-near-black truncate">{a.customer_name}</p>
-        <p className="text-[11px] text-muted-text truncate">{a.service_name}</p>
+        <p className="text-sm font-semibold text-near-black truncate">{a.customer_name}</p>
+        <p className="text-2xs text-muted-text truncate">{a.service_name}</p>
       </div>
       <StatusPill status={a.status} />
       <ChevronRight size={13} className="text-muted-text flex-shrink-0" />
@@ -506,12 +506,12 @@ function ActivityRow({ a }: { a: Appointment }) {
       className="flex items-center gap-3 px-3.5 py-2.5 hover:bg-cream/60 transition-colors"
     >
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] text-near-black truncate">
+        <p className="text-sm text-near-black truncate">
           <span className="font-semibold">{a.customer_name}</span>
           <span className="text-muted-text"> booked </span>
           <span className="font-semibold">{a.service_name}</span>
         </p>
-        <p className="text-[11px] text-muted-text">{fmtDate(a.appointment_date)} at {fmt12(a.start_time)} · {when}</p>
+        <p className="text-2xs text-muted-text">{fmtDate(a.appointment_date)} at {fmt12(a.start_time)} · {when}</p>
       </div>
       <StatusPill status={a.status} />
       <ChevronRight size={13} className="text-muted-text flex-shrink-0" />
@@ -521,15 +521,15 @@ function ActivityRow({ a }: { a: Appointment }) {
 
 function StatusPill({ status }: { status: string }) {
   const cls = {
-    confirmed: 'bg-[rgba(20,140,80,0.08)] border-[rgba(20,140,80,0.35)] text-[#0f6f3d]',
-    pending:   'bg-cream border-[rgba(180,120,0,0.30)] text-[#8a5a00]',
+    confirmed: 'bg-[rgba(20,140,80,0.08)] border-[rgba(20,140,80,0.35)] text-success',
+    pending:   'bg-cream border-[rgba(180,120,0,0.30)] text-warning',
     completed: 'bg-near-black border-near-black text-white',
-    cancelled: 'bg-white border-[rgba(180,40,40,0.30)] text-[#b42828]',
-    no_show:   'bg-white border-[rgba(180,40,40,0.30)] text-[#b42828]',
-  }[status] ?? 'bg-cream border-[rgba(18,18,18,0.15)] text-muted-text'
+    cancelled: 'bg-white border-[rgba(180,40,40,0.30)] text-danger',
+    no_show:   'bg-white border-[rgba(180,40,40,0.30)] text-danger',
+  }[status] ?? 'bg-cream border-hairline-strong text-muted-text'
   return (
     <span className={cn(
-      'text-[9px] font-bold tracking-[0.06em] uppercase border px-1.5 py-0.5 whitespace-nowrap flex-shrink-0',
+      'text-eyebrow font-bold tracking-[0.06em] uppercase border px-1.5 py-0.5 whitespace-nowrap flex-shrink-0',
       cls,
     )}>
       {status.replace('_', ' ')}
@@ -558,7 +558,7 @@ function AnnouncementsBlock({ items }: { items: PlatformAnnouncement[] }) {
     setDismissed(true)
   }
   return (
-    <article className="bg-white border border-[rgba(18,18,18,0.10)] p-4 relative">
+    <article className="bg-white border border-hairline-soft p-4 relative">
       <button
         type="button"
         onClick={close}
@@ -570,19 +570,19 @@ function AnnouncementsBlock({ items }: { items: PlatformAnnouncement[] }) {
       <div className="flex items-start gap-2.5 mb-2 pr-6">
         <Sparkles size={14} className="text-near-black mt-0.5 flex-shrink-0" />
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">From the BookReady team</p>
-          <p className="text-[14px] font-bold text-near-black leading-tight mt-0.5">{a.title}</p>
-          {when && <p className="text-[10px] text-muted-text mt-0.5">{fmtDate(when.slice(0, 10))}</p>}
+          <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">From the BookReady team</p>
+          <p className="text-sm font-bold text-near-black leading-tight mt-0.5">{a.title}</p>
+          {when && <p className="text-eyebrow text-muted-text mt-0.5">{fmtDate(when.slice(0, 10))}</p>}
         </div>
       </div>
-      <p className="text-[13px] text-near-black/80 leading-snug whitespace-pre-line">{a.body}</p>
+      <p className="text-sm text-near-black/80 leading-snug whitespace-pre-line">{a.body}</p>
       {a.cta_label && a.cta_href && (
         isInternal ? (
-          <Link href={a.cta_href} className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-near-black hover:underline self-start">
+          <Link href={a.cta_href} className="mt-3 inline-flex items-center gap-1 text-2xs font-semibold text-near-black hover:underline self-start">
             {a.cta_label} <ArrowUpRight size={11} />
           </Link>
         ) : (
-          <a href={a.cta_href} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-near-black hover:underline self-start">
+          <a href={a.cta_href} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-2xs font-semibold text-near-black hover:underline self-start">
             {a.cta_label} <ArrowUpRight size={11} />
           </a>
         )
@@ -607,12 +607,12 @@ function SetupChecklist({
           ? 'All set. Your site is fully configured.'
           : `${doneCount} of ${items.length} complete (${pct}%).`}
       />
-      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-3.5">
+      <div className="bg-white border border-hairline-soft p-3.5">
         {/* progress bar */}
-        <div className="h-1.5 bg-cream rounded-full overflow-hidden mb-3">
+        <div className="h-1.5 bg-cream  overflow-hidden mb-3">
           <div
             className={cn('h-full transition-all duration-500',
-              pct === 100 ? 'bg-[#0f6f3d]' : 'bg-near-black')}
+              pct === 100 ? 'bg-success' : 'bg-near-black')}
             style={{ width: `${pct}%` }}
           />
         </div>
@@ -624,12 +624,12 @@ function SetupChecklist({
                 className="flex items-center gap-2.5 py-2 hover:bg-cream/60 -mx-1 px-1 transition-colors"
               >
                 {it.done
-                  ? <CheckCircle2 size={14} className="text-[#0f6f3d] flex-shrink-0" />
+                  ? <CheckCircle2 size={14} className="text-success flex-shrink-0" />
                   : <Circle size={14} className="text-[rgba(18,18,18,0.25)] flex-shrink-0" />}
-                <span className={cn('text-[12px] flex-1', it.done ? 'text-near-black' : 'font-semibold text-near-black')}>
+                <span className={cn('text-xs flex-1', it.done ? 'text-near-black' : 'font-semibold text-near-black')}>
                   {it.label}
                 </span>
-                {it.detail && <span className="text-[11px] text-muted-text">{it.detail}</span>}
+                {it.detail && <span className="text-2xs text-muted-text">{it.detail}</span>}
                 <ChevronRight size={12} className="text-muted-text flex-shrink-0" />
               </Link>
             </li>
@@ -649,7 +649,7 @@ function MoneySnapshot({ buckets }: { buckets: MoneyBuckets }) {
         subtitle={`${money(buckets.weekCollected, buckets.currency)} collected this week.`}
         cta={{ label: 'Open Payments', href: '/editor/payments' }}
       />
-      <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
+      <div className="bg-white border border-hairline-soft divide-y divide-[rgba(18,18,18,0.06)]">
         <MoneyRow label="This week"        value={money(buckets.weekCollected,    buckets.currency)} />
         <MoneyRow label="This month"       value={money(buckets.monthCollected,   buckets.currency)} />
         <MoneyRow label="Outstanding balance"
@@ -674,14 +674,14 @@ function MoneyRow({
   return (
     <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
       <div className="min-w-0">
-        <p className="text-[11px] text-muted-text">{label}</p>
-        {hint && <p className="text-[10px] text-muted-text/80 mt-0.5">{hint}</p>}
+        <p className="text-2xs text-muted-text">{label}</p>
+        {hint && <p className="text-eyebrow text-muted-text/80 mt-0.5">{hint}</p>}
       </div>
       <p className={cn(
-        'text-[14px] font-bold tabular-nums whitespace-nowrap',
+        'text-sm font-bold tabular-nums whitespace-nowrap',
         muted ? 'text-muted-text' : 'text-near-black',
       )}>
-        {value}{suffix && <span className="text-[10px] text-muted-text font-normal ml-1">{suffix}</span>}
+        {value}{suffix && <span className="text-eyebrow text-muted-text font-normal ml-1">{suffix}</span>}
       </p>
     </div>
   )
@@ -868,23 +868,23 @@ function NextApptHero({ appt }: { appt: Appointment }) {
     >
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-white/60 mb-1.5">
+          <p className="text-eyebrow font-bold tracking-[0.22em] uppercase text-white/60 mb-1.5">
             Next up
           </p>
-          <p className="text-[18px] sm:text-[22px] font-bold leading-tight">
+          <p className="text-lg sm:text-2xl font-bold leading-tight">
             <span className="text-white">{appt.customer_name}</span>
             <span className="text-white/60"> · </span>
             <span className="text-white">{appt.service_name}</span>
-            {price && <span className="text-white/60 text-[16px] font-semibold"> · {price}</span>}
+            {price && <span className="text-white/60 text-base font-semibold"> · {price}</span>}
           </p>
-          <p className="text-[12px] text-white/70 mt-2">
+          <p className="text-xs text-white/70 mt-2">
             {fmtDate(appt.appointment_date)} at {fmt12(appt.start_time)}
             {appt.staff_name && <> · with {appt.staff_name}</>}
           </p>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-white/60">In</p>
-          <p className="text-[24px] sm:text-[32px] font-bold tabular-nums leading-tight">
+          <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-white/60">In</p>
+          <p className="text-2xl sm:text-3xl font-bold tabular-nums leading-tight">
             {timeLabel}
           </p>
         </div>
@@ -916,7 +916,7 @@ function WeekStrip({ days }: { days: WeekStripDay[] }) {
         subtitle="Next seven days at a glance."
         cta={{ label: 'Open calendar', href: '/editor/appointments' }}
       />
-      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-3 sm:p-4">
+      <div className="bg-white border border-hairline-soft p-3 sm:p-4">
         <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
           {days.map(d => (
             <Link
@@ -925,22 +925,22 @@ function WeekStrip({ days }: { days: WeekStripDay[] }) {
               className={cn(
                 'border px-1 sm:px-2 py-2.5 sm:py-3 text-center transition-colors',
                 d.isToday ? 'border-near-black bg-near-black text-white'
-                  : 'border-[rgba(18,18,18,0.10)] bg-cream text-near-black hover:border-near-black',
+                  : 'border-hairline-soft bg-cream text-near-black hover:border-near-black',
               )}
             >
               <p className={cn(
-                'text-[9px] font-bold tracking-[0.10em] uppercase',
+                'text-eyebrow font-bold tracking-[0.10em] uppercase',
                 d.isToday ? 'text-white/70' : 'text-muted-text',
               )}>{d.label}</p>
               <p className={cn(
-                'text-[16px] sm:text-[18px] font-bold mt-0.5 leading-none',
+                'text-base sm:text-lg font-bold mt-0.5 leading-none',
                 d.isToday ? 'text-white' : 'text-near-black',
               )}>{d.num}</p>
               <div className="mt-2 flex justify-center">
                 <DensityDots count={d.count} status={d.status} onDark={d.isToday} />
               </div>
               <p className={cn(
-                'text-[10px] mt-1',
+                'text-eyebrow mt-1',
                 d.isToday ? 'text-white/70' : 'text-muted-text',
               )}>{d.count === 0 ? 'Open' : d.count}</p>
             </Link>
@@ -958,7 +958,7 @@ function DensityDots({ count, status, onDark }: { count: number; status: WeekStr
       {[0, 1, 2].map(i => (
         <span
           key={i}
-          className="block w-1.5 h-1.5 rounded-full"
+          className="block w-1.5 h-1.5 "
           style={{
             backgroundColor: i < dots
               ? (onDark ? 'rgba(255,255,255,0.95)' : (status === 'heavy' ? '#0f6f3d' : status === 'medium' ? '#5d8a1c' : '#c98a14'))
@@ -984,17 +984,17 @@ function PendingRequestsTile({ count }: { count: number }) {
     >
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 bg-white border border-[rgba(180,120,0,0.30)] flex items-center justify-center flex-shrink-0">
-          <Inbox size={16} className="text-[#8a5a00]" />
+          <Inbox size={16} className="text-warning" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-bold text-[#8a5a00]">
+          <p className="text-sm font-bold text-warning">
             {count} booking {count === 1 ? 'request' : 'requests'} waiting on you
           </p>
-          <p className="text-[11px] text-[#8a5a00]/80 mt-0.5">
+          <p className="text-2xs text-warning/80 mt-0.5">
             Review and confirm to lock them into your calendar.
           </p>
         </div>
-        <ArrowUpRight size={13} className="text-[#8a5a00] flex-shrink-0" />
+        <ArrowUpRight size={13} className="text-warning flex-shrink-0" />
       </div>
     </Link>
   )
@@ -1099,19 +1099,19 @@ function RevenueChart({ appts, currency, metrics }: {
 
   return (
     <section>
-      <div className="bg-white border border-[rgba(18,18,18,0.10)] rounded-2xl overflow-hidden">
+      <div className="bg-white border border-hairline-soft  overflow-hidden">
         {/* Header: headline + period toggle */}
         <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">
+            <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text">
               Revenue {periodWord}
             </p>
-            <p className="mt-1.5 text-[28px] font-bold leading-none text-near-black tabular-nums">
+            <p className="mt-1.5 text-3xl font-bold leading-none text-near-black tabular-nums">
               {headlineMoney}
             </p>
             {deltaCopy && (
               <p className={cn(
-                'mt-1.5 text-[12px] font-medium',
+                'mt-1.5 text-xs font-medium',
                 deltaTone === 'up'   && 'text-near-black',
                 deltaTone === 'down' && 'text-[#9b3535]',
                 deltaTone === 'flat' && 'text-muted-text font-normal',
@@ -1140,7 +1140,7 @@ function RevenueChart({ appts, currency, metrics }: {
 
         {/* Footer line: appointments · avg ticket · % full (when capacity is set) */}
         {hasEverHadRevenue && (
-          <div className="px-5 pb-4 text-[12px] text-muted-text">
+          <div className="px-5 pb-4 text-xs text-muted-text">
             {totalAppts === 0 ? (
               `No appointments ${period === 'today' ? 'yet today' : periodWord}.`
             ) : (
@@ -1190,7 +1190,7 @@ function RevenueChart({ appts, currency, metrics }: {
 function EmptyRevenue() {
   return (
     <div className="px-2 py-10 text-center">
-      <p className="text-[12px] text-muted-text max-w-[40ch] mx-auto leading-relaxed">
+      <p className="text-xs text-muted-text max-w-[40ch] mx-auto leading-relaxed">
         No revenue yet. Once customers book and pay, your trend will show up here.
       </p>
     </div>
@@ -1366,7 +1366,7 @@ function AreaChart({
           <>
             <div
               aria-hidden
-              className="absolute w-4 h-4 rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2"
+              className="absolute w-4 h-4  pointer-events-none -translate-x-1/2 -translate-y-1/2"
               style={{
                 left: `${(coords[drawableIdx].x / VW) * 100}%`,
                 top:  `${(coords[drawableIdx].y / VH) * 100}%`,
@@ -1375,7 +1375,7 @@ function AreaChart({
             />
             <div
               aria-hidden
-              className="absolute w-2 h-2 rounded-full bg-near-black pointer-events-none -translate-x-1/2 -translate-y-1/2"
+              className="absolute w-2 h-2  bg-near-black pointer-events-none -translate-x-1/2 -translate-y-1/2"
               style={{
                 left: `${(coords[drawableIdx].x / VW) * 100}%`,
                 top:  `${(coords[drawableIdx].y / VH) * 100}%`,
@@ -1388,7 +1388,7 @@ function AreaChart({
         {hover != null && hover >= 0 && (
           <div
             aria-hidden
-            className="absolute w-2.5 h-2.5 rounded-full border border-near-black pointer-events-none -translate-x-1/2 -translate-y-1/2"
+            className="absolute w-2.5 h-2.5  border border-near-black pointer-events-none -translate-x-1/2 -translate-y-1/2"
             style={{
               left: `${(coords[hover].x / VW) * 100}%`,
               top:  `${(coords[hover].y / VH) * 100}%`,
@@ -1400,7 +1400,7 @@ function AreaChart({
         {/* NOW label outside SVG (positioned by % so it scales with the chart) */}
         {currentIdx >= 0 && currentIdx < n - 1 && (
           <div
-            className="absolute top-0.5 px-1.5 py-0.5 text-[8px] font-bold tracking-[0.18em] uppercase text-near-black bg-cream border border-[rgba(18,18,18,0.12)] -translate-x-1/2 pointer-events-none"
+            className="absolute top-0.5 px-1.5 py-0.5 text-eyebrow font-bold tracking-[0.18em] uppercase text-near-black bg-cream border border-hairline -translate-x-1/2 pointer-events-none"
             style={{ left: `${(coords[currentIdx].x / VW) * 100}%` }}
           >
             Now
@@ -1423,7 +1423,7 @@ function AreaChart({
         {points.map((p, i) => p.showLabel ? (
           <span
             key={p.key}
-            className="absolute top-0 text-[10px] tracking-[0.04em] text-muted-text -translate-x-1/2 whitespace-nowrap"
+            className="absolute top-0 text-eyebrow tracking-[0.04em] text-muted-text -translate-x-1/2 whitespace-nowrap"
             style={{ left: `${(coords[i].x / VW) * 100}%` }}
           >
             {p.label}
@@ -1459,7 +1459,7 @@ function PeriodToggle({ value, onChange }: { value: ChartPeriod; onChange: (v: C
     { id: 'year',  label: 'Y', sr: 'This year' },
   ]
   return (
-    <div className="inline-flex border border-[rgba(18,18,18,0.12)] rounded-md overflow-hidden flex-shrink-0" role="tablist">
+    <div className="inline-flex border border-hairline  overflow-hidden flex-shrink-0" role="tablist">
       {options.map(o => (
         <button
           key={o.id}
@@ -1469,7 +1469,7 @@ function PeriodToggle({ value, onChange }: { value: ChartPeriod; onChange: (v: C
           aria-label={o.sr}
           onClick={() => onChange(o.id)}
           className={cn(
-            'px-2.5 py-1 text-[10px] font-bold tracking-[0.12em] uppercase transition-colors',
+            'px-2.5 py-1 text-eyebrow font-bold tracking-[0.12em] uppercase transition-colors',
             value === o.id
               ? 'bg-near-black text-white'
               : 'bg-white text-muted-text hover:text-near-black',
@@ -1495,11 +1495,11 @@ function ChartDetailPanel({
   overflowCount: number
 }) {
   return (
-    <div className="border-t border-[rgba(18,18,18,0.08)] bg-cream/50 animate-[onbPanelIn_220ms_ease-out]">
+    <div className="border-t border-hairline-soft bg-cream/50 animate-[onbPanelIn_220ms_ease-out]">
       <div className="flex items-center justify-between px-4 py-2.5">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">{label}</p>
-          <p className="text-[14px] font-bold text-near-black leading-tight">{valueLabel}</p>
+          <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text">{label}</p>
+          <p className="text-sm font-bold text-near-black leading-tight">{valueLabel}</p>
         </div>
         <button
           type="button"
@@ -1511,22 +1511,22 @@ function ChartDetailPanel({
         </button>
       </div>
       {empty ? (
-        <p className="px-4 pb-3 text-[12px] text-muted-text">{empty}</p>
+        <p className="px-4 pb-3 text-xs text-muted-text">{empty}</p>
       ) : (
         <ul className="divide-y divide-[rgba(18,18,18,0.06)]">
           {rows.map(r => (
             <li key={r.key} className="flex items-center gap-3 px-4 py-2">
               <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-semibold text-near-black truncate">{r.primary}</p>
-                <p className="text-[11px] text-muted-text truncate">{r.secondary}</p>
+                <p className="text-xs font-semibold text-near-black truncate">{r.primary}</p>
+                <p className="text-2xs text-muted-text truncate">{r.secondary}</p>
               </div>
-              <p className="text-[12px] font-bold tabular-nums text-near-black whitespace-nowrap flex-shrink-0">
+              <p className="text-xs font-bold tabular-nums text-near-black whitespace-nowrap flex-shrink-0">
                 {r.right}
               </p>
             </li>
           ))}
           {overflowCount > 0 && (
-            <li className="px-4 py-2 text-[11px] text-muted-text">
+            <li className="px-4 py-2 text-2xs text-muted-text">
               + {overflowCount} more in this period
             </li>
           )}
@@ -1564,7 +1564,7 @@ function ChartTooltip({
       className="absolute -top-2 -translate-x-1/2 -translate-y-full pointer-events-none z-10"
       style={{ left: `${left}%` }}
     >
-      <div className="bg-near-black text-white px-2.5 py-1.5 text-[10px] tracking-tight whitespace-nowrap shadow-md rounded">
+      <div className="bg-near-black text-white px-2.5 py-1.5 text-eyebrow tracking-tight whitespace-nowrap shadow-md">
         <p className="font-semibold leading-tight">{primary}</p>
         <p className="text-white/80 leading-tight mt-0.5">{secondary}</p>
         {tertiary && (
@@ -1589,26 +1589,26 @@ function NewCustomersCard({ customers }: { customers: NewCustomer[] }) {
           ? 'No new customers in the last 7 days.'
           : `${customers.length} new this week`}
       />
-      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
+      <div className="bg-white border border-hairline-soft p-4">
         {customers.length === 0 ? (
-          <p className="text-[12px] text-muted-text">
+          <p className="text-xs text-muted-text">
             Once new customers start booking, you&apos;ll see them here.
           </p>
         ) : (
           <ul className="space-y-2">
             {customers.slice(0, 4).map((c, i) => (
               <li key={i} className="flex items-center gap-2.5">
-                <div className="w-7 h-7 bg-cream border border-[rgba(18,18,18,0.10)] flex items-center justify-center flex-shrink-0">
-                  <span className="text-[10px] font-bold text-near-black">{initials(c.name)}</span>
+                <div className="w-7 h-7 bg-cream border border-hairline-soft flex items-center justify-center flex-shrink-0">
+                  <span className="text-eyebrow font-bold text-near-black">{initials(c.name)}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-semibold text-near-black truncate">{c.name}</p>
-                  <p className="text-[10px] text-muted-text">First booked {fmtDate(c.firstAppointmentDate)}</p>
+                  <p className="text-xs font-semibold text-near-black truncate">{c.name}</p>
+                  <p className="text-eyebrow text-muted-text">First booked {fmtDate(c.firstAppointmentDate)}</p>
                 </div>
               </li>
             ))}
             {customers.length > 4 && (
-              <li className="text-[11px] text-muted-text pt-1">+ {customers.length - 4} more</li>
+              <li className="text-2xs text-muted-text pt-1">+ {customers.length - 4} more</li>
             )}
           </ul>
         )}
@@ -1627,9 +1627,9 @@ function TopSpendersCard({ spenders, currency }: { spenders: TopSpender[]; curre
         label="Top spenders · this month"
         subtitle={spenders.length === 0 ? 'No payments yet this month.' : 'Your top three.'}
       />
-      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
+      <div className="bg-white border border-hairline-soft p-4">
         {spenders.length === 0 ? (
-          <p className="text-[12px] text-muted-text">
+          <p className="text-xs text-muted-text">
             Once payments start landing, your top customers show up here.
           </p>
         ) : (
@@ -1637,13 +1637,13 @@ function TopSpendersCard({ spenders, currency }: { spenders: TopSpender[]; curre
             {spenders.slice(0, 3).map((s, i) => (
               <li key={i} className="flex items-center gap-3">
                 <span className={cn(
-                  'w-5 h-5 flex items-center justify-center text-[10px] font-bold flex-shrink-0',
-                  i === 0 ? 'bg-near-black text-white' : 'bg-cream border border-[rgba(18,18,18,0.10)] text-near-black',
+                  'w-5 h-5 flex items-center justify-center text-eyebrow font-bold flex-shrink-0',
+                  i === 0 ? 'bg-near-black text-white' : 'bg-cream border border-hairline-soft text-near-black',
                 )}>
                   {i + 1}
                 </span>
-                <p className="text-[12px] font-semibold text-near-black truncate flex-1">{s.name}</p>
-                <p className="text-[13px] font-bold tabular-nums text-near-black">{money(s.total, currency)}</p>
+                <p className="text-xs font-semibold text-near-black truncate flex-1">{s.name}</p>
+                <p className="text-sm font-bold tabular-nums text-near-black">{money(s.total, currency)}</p>
               </li>
             ))}
           </ol>
@@ -2030,16 +2030,16 @@ function HeaderActions({ publicUrl }: { publicUrl: string | null }) {
     <div className="flex flex-wrap items-center gap-2">
       {publicUrl && (
         <a href={publicUrl} target="_blank" rel="noopener noreferrer"
-           className="inline-flex items-center gap-1.5 bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-[12px] font-semibold text-near-black hover:border-near-black transition-colors">
+           className="inline-flex items-center gap-1.5 bg-white border border-hairline-strong px-3 py-2 text-xs font-semibold text-near-black hover:border-near-black transition-colors">
           <ExternalLink size={13} /> View website
         </a>
       )}
       <Link href="/editor/appointments"
-            className="inline-flex items-center gap-1.5 bg-near-black text-white border border-near-black px-3 py-2 text-[12px] font-semibold hover:bg-white hover:text-near-black transition-colors">
+            className="inline-flex items-center gap-1.5 bg-near-black text-white border border-near-black px-3 py-2 text-xs font-semibold hover:bg-white hover:text-near-black transition-colors">
         <Plus size={13} /> Create appointment
       </Link>
       <Link href="/editor/customers"
-            className="inline-flex items-center gap-1.5 bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-[12px] font-semibold text-near-black hover:border-near-black transition-colors">
+            className="inline-flex items-center gap-1.5 bg-white border border-hairline-strong px-3 py-2 text-xs font-semibold text-near-black hover:border-near-black transition-colors">
         <UserPlus size={13} /> Add customer
       </Link>
     </div>
@@ -2053,13 +2053,13 @@ function SummaryStatCard({ label, value, sub, href, icon: Icon, tone = 'default'
   return (
     <Link href={href}
           className={cn('block bg-white border p-3.5 hover:border-near-black transition-colors',
-            warn ? 'border-[rgba(180,120,0,0.40)]' : 'border-[rgba(18,18,18,0.10)]')}>
+            warn ? 'border-[rgba(180,120,0,0.40)]' : 'border-hairline-soft')}>
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold tracking-[0.12em] uppercase text-muted-text truncate">{label}</p>
-        <Icon size={13} className={warn ? 'text-[#8a5a00]' : 'text-muted-text'} strokeWidth={1.8} />
+        <p className="text-eyebrow font-bold tracking-[0.12em] uppercase text-muted-text truncate">{label}</p>
+        <Icon size={13} className={warn ? 'text-warning' : 'text-muted-text'} strokeWidth={1.8} />
       </div>
-      <p className={cn('text-[24px] sm:text-[26px] font-bold tabular-nums leading-tight mt-1', warn ? 'text-[#8a5a00]' : 'text-near-black')}>{value}</p>
-      {sub && <p className="text-[11px] text-muted-text mt-0.5">{sub}</p>}
+      <p className={cn('text-2xl sm:text-3xl font-bold tabular-nums leading-tight mt-1', warn ? 'text-warning' : 'text-near-black')}>{value}</p>
+      {sub && <p className="text-2xs text-muted-text mt-0.5">{sub}</p>}
     </Link>
   )
 }
@@ -2070,13 +2070,13 @@ function PaymentIssuesTile({ count }: { count: number }) {
           className="block bg-[rgba(180,40,40,0.05)] border border-[rgba(180,40,40,0.30)] p-4 hover:bg-[rgba(180,40,40,0.09)] transition-colors">
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 bg-white border border-[rgba(180,40,40,0.30)] flex items-center justify-center flex-shrink-0">
-          <AlertTriangle size={16} className="text-[#b42828]" />
+          <AlertTriangle size={16} className="text-danger" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-bold text-[#b42828]">{count} payment {count === 1 ? 'issue' : 'issues'} to review</p>
-          <p className="text-[11px] text-[#b42828]/80 mt-0.5">Failed charges, disputes, or unpaid balances.</p>
+          <p className="text-sm font-bold text-danger">{count} payment {count === 1 ? 'issue' : 'issues'} to review</p>
+          <p className="text-2xs text-danger/80 mt-0.5">Failed charges, disputes, or unpaid balances.</p>
         </div>
-        <ArrowUpRight size={13} className="text-[#b42828] flex-shrink-0" />
+        <ArrowUpRight size={13} className="text-danger flex-shrink-0" />
       </div>
     </Link>
   )
@@ -2098,10 +2098,10 @@ function AvailabilityRequestsTile({ count }: { count: number }) {
           <Calendar size={16} className="text-[#6b4d8a]" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-bold text-[#6b4d8a]">
+          <p className="text-sm font-bold text-[#6b4d8a]">
             {count} availability {count === 1 ? 'request' : 'requests'} to answer
           </p>
-          <p className="text-[11px] text-[#6b4d8a]/80 mt-0.5">
+          <p className="text-2xs text-[#6b4d8a]/80 mt-0.5">
             Customers asking about times that aren&rsquo;t open yet.
           </p>
         </div>
@@ -2127,10 +2127,10 @@ function WaitlistTile({ count }: { count: number }) {
           <Clock size={16} className="text-[#4f7517]" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-bold text-[#4f7517]">
+          <p className="text-sm font-bold text-[#4f7517]">
             {count} {count === 1 ? 'customer' : 'customers'} on the waitlist
           </p>
-          <p className="text-[11px] text-[#4f7517]/80 mt-0.5">
+          <p className="text-2xs text-[#4f7517]/80 mt-0.5">
             Ready to grab a slot the moment one opens.
           </p>
         </div>
@@ -2154,7 +2154,7 @@ function QuickActions() {
         const Icon = act.icon
         return (
           <Link key={act.label} href={act.href}
-                className="inline-flex items-center gap-1.5 bg-white border border-[rgba(18,18,18,0.12)] px-3 py-2 text-[12px] font-semibold text-near-black hover:border-near-black transition-colors">
+                className="inline-flex items-center gap-1.5 bg-white border border-hairline px-3 py-2 text-xs font-semibold text-near-black hover:border-near-black transition-colors">
             <Icon size={13} strokeWidth={1.9} /> {act.label}
           </Link>
         )
@@ -2177,14 +2177,14 @@ function BookingSnapshotCard({ snap }: { snap: BookingSnap }) {
       <SectionHeader icon={BarChart3} label="Booking snapshot"
         subtitle={total === 0 ? 'No bookings yet.' : 'Your recent bookings by status.'}
         cta={{ label: 'Open bookings', href: '/editor/appointments' }} />
-      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4 space-y-2.5">
+      <div className="bg-white border border-hairline-soft p-4 space-y-2.5">
         {rows.map(r => (
           <div key={r.label} className="flex items-center gap-3">
-            <span className="w-32 text-[11px] text-muted-text flex-shrink-0">{r.label}</span>
+            <span className="w-32 text-2xs text-muted-text flex-shrink-0">{r.label}</span>
             <div className="flex-1 h-2 bg-cream overflow-hidden">
               <div className="h-full" style={{ width: `${(r.value / max) * 100}%`, backgroundColor: r.color }} />
             </div>
-            <span className="w-8 text-right text-[13px] font-bold tabular-nums text-near-black">{r.value}</span>
+            <span className="w-8 text-right text-sm font-bold tabular-nums text-near-black">{r.value}</span>
           </div>
         ))}
       </div>
@@ -2197,7 +2197,7 @@ function UpcomingCard({ tomorrow, weekend }: { tomorrow: Appointment[]; weekend:
     <section>
       <SectionHeader icon={Calendar} label="Upcoming" subtitle="Tomorrow and this weekend."
         cta={{ label: 'View all', href: '/editor/appointments' }} />
-      <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
+      <div className="bg-white border border-hairline-soft divide-y divide-[rgba(18,18,18,0.06)]">
         <UpcomingRow label="Tomorrow" count={tomorrow.length} />
         <UpcomingRow label="This weekend" count={weekend.length} />
       </div>
@@ -2208,9 +2208,9 @@ function UpcomingCard({ tomorrow, weekend }: { tomorrow: Appointment[]; weekend:
 function UpcomingRow({ label, count }: { label: string; count: number }) {
   return (
     <Link href="/editor/appointments" className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-cream/60 transition-colors">
-      <p className="text-[13px] font-semibold text-near-black">{label}</p>
+      <p className="text-sm font-semibold text-near-black">{label}</p>
       <div className="flex items-center gap-2">
-        <span className="text-[13px] font-bold tabular-nums text-near-black">{count === 0 ? 'Open' : `${count} booked`}</span>
+        <span className="text-sm font-bold tabular-nums text-near-black">{count === 0 ? 'Open' : `${count} booked`}</span>
         <ChevronRight size={14} className="text-muted-text" />
       </div>
     </Link>
@@ -2219,13 +2219,13 @@ function UpcomingRow({ label, count }: { label: string; count: number }) {
 
 function HealthMetricCard({ label, value, sub, icon: Icon }: { label: string; value: string; sub: string; icon: React.ElementType }) {
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
+    <div className="bg-white border border-hairline-soft p-4">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold tracking-[0.12em] uppercase text-muted-text">{label}</p>
+        <p className="text-eyebrow font-bold tracking-[0.12em] uppercase text-muted-text">{label}</p>
         <Icon size={13} className="text-muted-text" strokeWidth={1.8} />
       </div>
-      <p className="text-[24px] font-bold tabular-nums text-near-black leading-tight mt-1">{value}</p>
-      <p className="text-[11px] text-muted-text mt-0.5">{sub}</p>
+      <p className="text-2xl font-bold tabular-nums text-near-black leading-tight mt-1">{value}</p>
+      <p className="text-2xs text-muted-text mt-0.5">{sub}</p>
     </div>
   )
 }
@@ -2235,14 +2235,14 @@ function GrowthOpportunitiesCard({ items }: { items: GrowthOpp[] }) {
   return (
     <section>
       <SectionHeader icon={Zap} label="Growth opportunities" subtitle="Small moves that could add bookings." />
-      <div className="bg-white border border-[rgba(18,18,18,0.10)] divide-y divide-[rgba(18,18,18,0.06)]">
+      <div className="bg-white border border-hairline-soft divide-y divide-[rgba(18,18,18,0.06)]">
         {items.map((it, i) => (
           <Link key={i} href={it.href} className="flex items-start gap-3 px-4 py-3 hover:bg-cream/60 transition-colors">
-            <span className="w-6 h-6 bg-cream border border-[rgba(18,18,18,0.10)] flex items-center justify-center flex-shrink-0 mt-0.5">
-              <Sparkles size={12} className="text-[#c98a14]" />
+            <span className="w-6 h-6 bg-cream border border-hairline-soft flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Sparkles size={12} className="text-warning-icon" />
             </span>
-            <p className="flex-1 text-[13px] text-near-black leading-snug">{it.text}</p>
-            <span className="flex items-center gap-1 text-[11px] font-semibold text-near-black whitespace-nowrap mt-0.5">{it.cta} <ArrowRight size={12} /></span>
+            <p className="flex-1 text-sm text-near-black leading-snug">{it.text}</p>
+            <span className="flex items-center gap-1 text-2xs font-semibold text-near-black whitespace-nowrap mt-0.5">{it.cta} <ArrowRight size={12} /></span>
           </Link>
         ))}
       </div>

@@ -42,7 +42,7 @@ function TimeInput({
       value={value ?? ''}
       placeholder={placeholder}
       onChange={e => onChange(e.target.value || null)}
-      className="text-sm bg-cream border border-[rgba(18,18,18,0.12)] px-2 py-1.5 text-near-black focus:outline-none focus:border-near-black/30 w-28"
+      className="text-sm bg-cream border border-hairline px-2 py-1.5 text-near-black focus:outline-none focus:border-near-black/30 w-28"
     />
   )
 }
@@ -63,7 +63,7 @@ function DayRow({
   }
 
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)]">
+    <div className="bg-white border border-hairline-soft">
       {/* Main row */}
       <div className="flex items-center gap-3 px-4 py-3">
         <span className="w-24 text-sm font-semibold text-near-black flex-shrink-0">
@@ -86,7 +86,7 @@ function DayRow({
                 }
                 setShowBreak(b => !b)
               }}
-              className="ml-1 text-[10px] font-bold tracking-[0.12em] uppercase text-muted-text hover:text-near-black transition-colors"
+              className="ml-1 text-eyebrow font-bold tracking-[0.12em] uppercase text-muted-text hover:text-near-black transition-colors"
             >
               {showBreak ? '− Break' : '+ Break'}
             </button>
@@ -99,7 +99,7 @@ function DayRow({
       {/* Break row */}
       {entry.is_open && showBreak && (
         <div className="flex items-center gap-2 px-4 pb-3 pl-[7.5rem]">
-          <span className="text-[10px] font-bold tracking-[0.12em] uppercase text-muted-text w-14">
+          <span className="text-eyebrow font-bold tracking-[0.12em] uppercase text-muted-text w-14">
             Break
           </span>
           <TimeInput
@@ -177,7 +177,7 @@ export default function HoursEditor() {
       </div>
 
       {status === 'error' && errorMsg && (
-        <div className="bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
+        <div className="bg-danger-bg border border-danger px-4 py-3 text-xs text-danger">
           {errorMsg}
         </div>
       )}
@@ -193,7 +193,7 @@ export default function HoursEditor() {
           {status === 'saving' ? 'Saving…' : 'Save Hours'}
         </Button>
         {status === 'saved' && (
-          <span className="text-xs text-green-600 font-semibold">Saved ✓</span>
+          <span className="text-xs text-success font-semibold">Saved ✓</span>
         )}
       </div>
     </div>

@@ -312,7 +312,7 @@ export default function WebsiteHub() {
   if (loadError || !settings) {
     return (
       <div className="p-6 bg-cream min-h-full">
-        <div className="bg-white border border-[rgba(18,18,18,0.10)] p-5 text-sm text-red-700">
+        <div className="bg-white border border-hairline-soft p-5 text-sm text-danger">
           {loadError ?? 'Could not load website settings.'}
         </div>
       </div>
@@ -334,7 +334,7 @@ export default function WebsiteHub() {
                 href={publicUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black border border-[rgba(18,18,18,0.15)] bg-white px-2.5 py-1.5 hover:border-near-black"
+                className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-tight text-near-black border border-hairline-strong bg-white px-2.5 py-1.5 hover:border-near-black"
               >
                 <ExternalLink size={12} /> View Site
               </a>
@@ -420,7 +420,7 @@ function CopyLinkButton({ url }: { url: string }) {
   return (
     <button
       onClick={copy}
-      className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-tight text-near-black border border-[rgba(18,18,18,0.15)] bg-white px-2.5 py-1.5 hover:border-near-black"
+      className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-tight text-near-black border border-hairline-strong bg-white px-2.5 py-1.5 hover:border-near-black"
     >
       {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? 'Copied' : 'Copy Link'}
     </button>
@@ -429,7 +429,7 @@ function CopyLinkButton({ url }: { url: string }) {
 
 function Panel({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-5 space-y-4">
+    <div className="bg-white border border-hairline-soft p-5 space-y-4">
       <div>
         <h2 className="text-base font-bold text-near-black">{title}</h2>
         {subtitle && <p className="text-xs text-muted-text mt-0.5">{subtitle}</p>}
@@ -456,7 +456,7 @@ function CollapsibleSection({
 }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)]">
+    <div className="bg-white border border-hairline-soft">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
@@ -464,7 +464,7 @@ function CollapsibleSection({
         className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-cream/50 transition-colors"
       >
         {Icon && (
-          <div className="w-8 h-8 flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-cream flex-shrink-0">
+          <div className="w-8 h-8 flex items-center justify-center border border-hairline-soft bg-cream flex-shrink-0">
             <Icon size={14} className="text-near-black" strokeWidth={1.7} />
           </div>
         )}
@@ -484,7 +484,7 @@ function CollapsibleSection({
         />
       </button>
       {open && (
-        <div className="px-5 pb-5 pt-1 space-y-4 border-t border-[rgba(18,18,18,0.06)]">
+        <div className="px-5 pb-5 pt-1 space-y-4 border-t border-hairline-soft">
           {children}
         </div>
       )}
@@ -498,8 +498,8 @@ function StatusBadge({ children, tone = 'neutral' }: {
 }) {
   return (
     <span className={cn(
-      'inline-flex items-center gap-1 text-[9px] font-bold tracking-[0.06em] uppercase px-1.5 py-0.5 border',
-      tone === 'neutral' && 'border-[rgba(18,18,18,0.15)] bg-cream text-[rgba(18,18,18,0.7)]',
+      'inline-flex items-center gap-1 text-eyebrow font-bold tracking-[0.06em] uppercase px-1.5 py-0.5 border',
+      tone === 'neutral' && 'border-hairline-strong bg-cream text-[rgba(18,18,18,0.7)]',
       tone === 'muted'   && 'border-transparent bg-lavender text-[rgba(18,18,18,0.55)]',
       tone === 'accent'  && 'border-transparent bg-blush text-[rgba(18,18,18,0.7)]',
     )}>
@@ -511,8 +511,8 @@ function StatusBadge({ children, tone = 'neutral' }: {
 function FieldLabel({ children, hint }: { children: React.ReactNode; hint?: string }) {
   return (
     <div className="flex items-baseline justify-between gap-2">
-      <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">{children}</span>
-      {hint && <span className="text-[10px] text-muted-text">{hint}</span>}
+      <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">{children}</span>
+      {hint && <span className="text-eyebrow text-muted-text">{hint}</span>}
     </div>
   )
 }
@@ -542,12 +542,12 @@ function TextField({
         className={cn(
           'mt-1.5 w-full bg-white border px-3 py-2 text-sm text-near-black focus:outline-none',
           disabled
-            ? 'border-[rgba(18,18,18,0.08)] bg-cream text-muted-text cursor-not-allowed'
-            : 'border-[rgba(18,18,18,0.15)] focus:border-near-black',
+            ? 'border-hairline-soft bg-cream text-muted-text cursor-not-allowed'
+            : 'border-hairline-strong focus:border-near-black',
         )}
       />
       {disabledHint && (
-        <p className="text-[10px] text-muted-text mt-1 flex items-center gap-1">
+        <p className="text-eyebrow text-muted-text mt-1 flex items-center gap-1">
           <AlertCircle size={10} /> {disabledHint}
         </p>
       )}
@@ -574,7 +574,7 @@ function TextareaField({
         placeholder={placeholder}
         rows={rows}
         maxLength={maxLength}
-        className="mt-1.5 w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black resize-y"
+        className="mt-1.5 w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black resize-y"
       />
     </label>
   )
@@ -590,12 +590,12 @@ function ToggleRow({
   hint?: string
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 border border-[rgba(18,18,18,0.08)] px-3 py-2.5">
+    <div className="flex items-center justify-between gap-3 border border-hairline-soft px-3 py-2.5">
       <div className="flex items-center gap-2 min-w-0">
         {Icon && <Icon size={14} className="text-near-black flex-shrink-0" strokeWidth={1.8} />}
         <div className="min-w-0">
           <span className="text-sm text-near-black block">{label}</span>
-          {hint && <span className="text-[11px] text-muted-text">{hint}</span>}
+          {hint && <span className="text-2xs text-muted-text">{hint}</span>}
         </div>
       </div>
       <button
@@ -605,11 +605,11 @@ function ToggleRow({
         onClick={onToggle}
         className={cn(
           'relative inline-flex items-center w-10 h-5 transition-colors border flex-shrink-0',
-          on ? 'bg-near-black border-near-black' : 'bg-white border-[rgba(18,18,18,0.25)]',
+          on ? 'bg-near-black border-near-black' : 'bg-white border-hairline-strong',
         )}
       >
         <span className={cn(
-          'absolute top-0.5 w-3.5 h-3.5 bg-white border border-[rgba(18,18,18,0.15)] transition-all',
+          'absolute top-0.5 w-3.5 h-3.5 bg-white border border-hairline-strong transition-all',
           on ? 'left-[22px]' : 'left-0.5',
         )} />
       </button>
@@ -629,7 +629,7 @@ function HeaderButtonRow({
   placeholder?: string
 }) {
   return (
-    <div className="border border-[rgba(18,18,18,0.08)] bg-white">
+    <div className="border border-hairline-soft bg-white">
       <div className="flex items-center justify-between gap-3 px-3 py-2.5">
         <div className="flex items-center gap-2 min-w-0">
           <Icon size={14} className="text-near-black flex-shrink-0" strokeWidth={1.8} />
@@ -642,18 +642,18 @@ function HeaderButtonRow({
           onClick={onToggle}
           className={cn(
             'relative inline-flex items-center w-10 h-5 transition-colors border flex-shrink-0',
-            on ? 'bg-near-black border-near-black' : 'bg-white border-[rgba(18,18,18,0.25)]',
+            on ? 'bg-near-black border-near-black' : 'bg-white border-hairline-strong',
           )}
         >
           <span className={cn(
-            'absolute top-0.5 w-3.5 h-3.5 bg-white border border-[rgba(18,18,18,0.15)] transition-all',
+            'absolute top-0.5 w-3.5 h-3.5 bg-white border border-hairline-strong transition-all',
             on ? 'left-[22px]' : 'left-0.5',
           )} />
         </button>
       </div>
       {on && (
         <div className="px-3 pb-2.5 -mt-0.5">
-          <div className="flex items-center gap-2 border border-[rgba(18,18,18,0.15)] px-2 focus-within:border-near-black">
+          <div className="flex items-center gap-2 border border-hairline-strong px-2 focus-within:border-near-black">
             <LinkIcon size={12} className="text-muted-text flex-shrink-0" />
             <input
               type="text"
@@ -679,11 +679,11 @@ function SaveBar({
   onSave: () => void
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+    <div className="flex items-center justify-between gap-3 pt-2 border-t border-hairline-soft">
       <div className="text-xs flex items-center gap-2">
-        {error && <span className="text-red-700">{error}</span>}
+        {error && <span className="text-danger">{error}</span>}
         {!error && saved && !saving && (
-          <span className="text-green-700 inline-flex items-center gap-1">
+          <span className="text-success inline-flex items-center gap-1">
             <Check size={12} /> Saved
           </span>
         )}
@@ -695,10 +695,10 @@ function SaveBar({
         onClick={onSave}
         disabled={!dirty || saving}
         className={cn(
-          'inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase px-3 py-2',
+          'inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase px-3 py-2',
           dirty && !saving
             ? 'bg-near-black text-white'
-            : 'bg-cream text-muted-text border border-[rgba(18,18,18,0.12)] cursor-not-allowed',
+            : 'bg-cream text-muted-text border border-hairline cursor-not-allowed',
         )}
       >
         {saving && <Loader2 size={11} className="animate-spin" />}
@@ -838,10 +838,10 @@ function OverviewPanel({
         subtitle="Current template"
       >
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-transparent bg-blush text-[rgba(18,18,18,0.7)] px-1.5 py-0.5">
+          <span className="text-eyebrow font-bold tracking-[0.06em] uppercase border border-transparent bg-blush text-[rgba(18,18,18,0.7)] px-1.5 py-0.5">
             Active
           </span>
-          <span className="text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.12)] bg-white text-near-black px-1.5 py-0.5">
+          <span className="text-eyebrow font-bold tracking-[0.06em] uppercase border border-hairline bg-white text-near-black px-1.5 py-0.5">
             {enabledCount} sections visible
           </span>
         </div>
@@ -866,15 +866,15 @@ function OverviewPanel({
             }}
           />
         ) : (
-          <div className="space-y-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+          <div className="space-y-2 pt-2 border-t border-hairline-soft">
             {(() => {
               const { title, hint } = colorPickerLabels(manifest)
               return (
                 <div className="flex items-baseline justify-between gap-2">
-                  <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+                  <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
                     {title}
                   </p>
-                  <p className="text-[10px] text-muted-text">{hint}</p>
+                  <p className="text-eyebrow text-muted-text">{hint}</p>
                 </div>
               )
             })()}
@@ -897,7 +897,7 @@ function OverviewPanel({
                       'relative w-8 h-8 border transition-shadow disabled:opacity-50',
                       isActive
                         ? 'border-near-black ring-2 ring-offset-2 ring-near-black/20'
-                        : 'border-[rgba(18,18,18,0.18)] hover:border-near-black',
+                        : 'border-hairline-strong hover:border-near-black',
                     )}
                     style={{ background: hex }}
                   >
@@ -919,7 +919,7 @@ function OverviewPanel({
               })}
             </div>
             {accentError && (
-              <p className="text-[11px] text-red-700 flex items-center gap-1.5">
+              <p className="text-2xs text-danger flex items-center gap-1.5">
                 <AlertCircle size={12} /> {accentError}
               </p>
             )}
@@ -928,7 +928,7 @@ function OverviewPanel({
 
         {/* Phase 18 — Seasonal themes teaser. Sits right under accent color
             because both are "site-wide flavor" choices in the owner's head. */}
-        <div className="space-y-2 pt-3 border-t border-[rgba(18,18,18,0.08)]">
+        <div className="space-y-2 pt-3 border-t border-hairline-soft">
           <SeasonalThemesTeaser />
         </div>
 
@@ -942,15 +942,15 @@ function OverviewPanel({
             key={tab}
             href={hrefFor(tab)}
             scroll={false}
-            className="text-left bg-white border border-[rgba(18,18,18,0.10)] p-4 hover:border-near-black transition-colors flex items-start justify-between gap-3"
+            className="text-left bg-white border border-hairline-soft p-4 hover:border-near-black transition-colors flex items-start justify-between gap-3"
           >
             <div className="flex items-start gap-3 min-w-0">
-              <div className="w-8 h-8 flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-cream flex-shrink-0">
+              <div className="w-8 h-8 flex items-center justify-center border border-hairline-soft bg-cream flex-shrink-0">
                 <Icon size={14} className="text-near-black" strokeWidth={1.7} />
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-near-black">{label}</p>
-                <p className="text-[11px] text-muted-text mt-0.5">{hint}</p>
+                <p className="text-2xs text-muted-text mt-0.5">{hint}</p>
               </div>
             </div>
             <ChevronRight size={14} className="text-muted-text flex-shrink-0 mt-1" />
@@ -980,15 +980,15 @@ function OverviewPanel({
                 className={cn(
                   'flex items-center justify-between gap-3 border px-3 py-2.5',
                   s.is_enabled
-                    ? 'border-[rgba(18,18,18,0.10)] bg-white'
-                    : 'border-[rgba(18,18,18,0.06)] bg-white opacity-70',
+                    ? 'border-hairline-soft bg-white'
+                    : 'border-hairline-soft bg-white opacity-70',
                 )}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Icon size={14} className="text-near-black flex-shrink-0" strokeWidth={1.7} />
                   <span className="text-sm text-near-black truncate">{label}</span>
                   {s.is_locked && (
-                    <span className="inline-flex items-center gap-1 text-[9px] font-bold tracking-[0.06em] uppercase border border-[rgba(18,18,18,0.15)] bg-cream text-[rgba(18,18,18,0.7)] px-1.5 py-0.5 flex-shrink-0">
+                    <span className="inline-flex items-center gap-1 text-eyebrow font-bold tracking-[0.06em] uppercase border border-hairline-strong bg-cream text-[rgba(18,18,18,0.7)] px-1.5 py-0.5 flex-shrink-0">
                       <Lock size={9} /> Always on
                     </span>
                   )}
@@ -1006,7 +1006,7 @@ function OverviewPanel({
                         disabled={busy || movableIds.indexOf(s.id) === 0}
                         title="Move up"
                         aria-label={`Move ${label} up`}
-                        className="p-1.5 border border-[rgba(18,18,18,0.10)] bg-white text-muted-text hover:text-near-black hover:border-near-black transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="p-1.5 border border-hairline-soft bg-white text-muted-text hover:text-near-black hover:border-near-black transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <ArrowUp size={11} />
                       </button>
@@ -1016,7 +1016,7 @@ function OverviewPanel({
                         disabled={busy || movableIds.indexOf(s.id) === movableIds.length - 1}
                         title="Move down"
                         aria-label={`Move ${label} down`}
-                        className="p-1.5 border border-l-0 border-[rgba(18,18,18,0.10)] bg-white text-muted-text hover:text-near-black hover:border-near-black transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="p-1.5 border border-l-0 border-hairline-soft bg-white text-muted-text hover:text-near-black hover:border-near-black transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <ArrowDown size={11} />
                       </button>
@@ -1029,22 +1029,22 @@ function OverviewPanel({
                       scroll={false}
                       title={`Edit ${label}`}
                       aria-label={`Edit ${label}`}
-                      className="p-1.5 border border-[rgba(18,18,18,0.10)] bg-white text-muted-text hover:text-near-black hover:border-near-black transition-colors"
+                      className="p-1.5 border border-hairline-soft bg-white text-muted-text hover:text-near-black hover:border-near-black transition-colors"
                     >
                       <Edit2 size={11} />
                     </Link>
                   )}
                   {s.is_locked ? (
-                    <span className="text-[10px] uppercase tracking-[0.08em] text-muted-text font-semibold pl-1">Always on</span>
+                    <span className="text-eyebrow uppercase tracking-[0.08em] text-muted-text font-semibold pl-1">Always on</span>
                   ) : (
                     <button
                       type="button"
                       onClick={() => toggle(s)}
                       disabled={busy}
                       className={cn(
-                        'inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.06em] uppercase border px-2 py-1.5',
+                        'inline-flex items-center gap-1.5 text-eyebrow font-semibold tracking-[0.06em] uppercase border px-2 py-1.5',
                         s.is_enabled
-                          ? 'bg-white border-[rgba(18,18,18,0.15)] text-near-black hover:border-near-black'
+                          ? 'bg-white border-hairline-strong text-near-black hover:border-near-black'
                           : 'bg-near-black border-near-black text-white',
                       )}
                     >
@@ -1082,11 +1082,11 @@ function CoreLink({ href, label, hint }: { href: string; label: string; hint: st
   return (
     <Link
       href={href}
-      className="bg-white border border-[rgba(18,18,18,0.10)] p-3 hover:border-near-black flex items-center justify-between gap-2"
+      className="bg-white border border-hairline-soft p-3 hover:border-near-black flex items-center justify-between gap-2"
     >
       <div className="min-w-0">
         <p className="text-sm font-semibold text-near-black truncate">{label}</p>
-        <p className="text-[11px] text-muted-text">{hint}</p>
+        <p className="text-2xs text-muted-text">{hint}</p>
       </div>
       <ChevronRight size={14} className="text-muted-text flex-shrink-0" />
     </Link>
@@ -1136,7 +1136,7 @@ function HeaderPanel({
 
       {/* Images */}
       <div className={cn(
-        'grid gap-4 pt-2 border-t border-[rgba(18,18,18,0.08)]',
+        'grid gap-4 pt-2 border-t border-hairline-soft',
         showAvatar ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1',
       )}>
         <div className="max-w-[260px]">
@@ -1164,10 +1164,10 @@ function HeaderPanel({
       </div>
 
       {/* Identity note */}
-      <div className="pt-2 border-t border-[rgba(18,18,18,0.08)]">
-        <div className="bg-cream border border-[rgba(18,18,18,0.08)] px-3 py-2.5 flex items-start gap-2">
+      <div className="pt-2 border-t border-hairline-soft">
+        <div className="bg-cream border border-hairline-soft px-3 py-2.5 flex items-start gap-2">
           <Info size={13} className="text-muted-text flex-shrink-0 mt-0.5" />
-          <p className="text-[11px] text-muted-text leading-relaxed">
+          <p className="text-2xs text-muted-text leading-relaxed">
             Business name and tagline come from your{' '}
             <Link href="/editor/settings?tab=business" className="text-near-black font-semibold underline">Business Profile</Link>.
           </p>
@@ -1175,12 +1175,12 @@ function HeaderPanel({
       </div>
 
       {/* Header buttons */}
-      <div className="space-y-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+      <div className="space-y-2 pt-2 border-t border-hairline-soft">
         <div>
-          <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+          <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
             Header buttons
           </p>
-          <p className="text-[11px] text-muted-text mt-0.5">
+          <p className="text-2xs text-muted-text mt-0.5">
             Toggle visibility and (optionally) override the link each button opens. Leave a URL blank to use the default from your Business Profile.
           </p>
         </div>
@@ -1355,14 +1355,14 @@ function ContentTabsPanel({
             const visible = section ? section.is_enabled : true
             const busy    = section && busyId === section.id
             return (
-              <div key={String(key)} className="border border-[rgba(18,18,18,0.08)] p-2 bg-white">
+              <div key={String(key)} className="border border-hairline-soft p-2 bg-white">
                 <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <span className="text-[9px] font-bold tracking-[0.12em] uppercase text-muted-text truncate">
+                  <span className="text-eyebrow font-bold tracking-[0.12em] uppercase text-muted-text truncate">
                     {label}
                   </span>
                   {locked ? (
                     <span
-                      className="inline-flex items-center text-[9px] text-muted-text/80 flex-shrink-0"
+                      className="inline-flex items-center text-eyebrow text-muted-text/80 flex-shrink-0"
                       title="Always on"
                     >
                       <Lock size={9} />
@@ -1376,7 +1376,7 @@ function ContentTabsPanel({
                       className={cn(
                         'inline-flex items-center justify-center w-6 h-6 border flex-shrink-0',
                         visible
-                          ? 'bg-white border-[rgba(18,18,18,0.15)] text-near-black hover:border-near-black'
+                          ? 'bg-white border-hairline-strong text-near-black hover:border-near-black'
                           : 'bg-near-black border-near-black text-white',
                       )}
                     >
@@ -1389,7 +1389,7 @@ function ContentTabsPanel({
                   value={form.value[key] ?? ''}
                   onChange={e => form.patch({ [key]: e.target.value } as Partial<TemplateSettings['tabs']>)}
                   maxLength={40}
-                  className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-2 py-1.5 text-xs text-near-black focus:outline-none focus:border-near-black"
+                  className="w-full bg-white border border-hairline-strong px-2 py-1.5 text-xs text-near-black focus:outline-none focus:border-near-black"
                 />
               </div>
             )
@@ -1438,8 +1438,8 @@ function ContentTabsPanel({
 
 function SeoComingSoonPanel() {
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-6 sm:p-8 text-center">
-      <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text mb-2">
+    <div className="bg-white border border-hairline-soft p-6 sm:p-8 text-center">
+      <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-2">
         Coming Soon
       </p>
       <h2 className="text-base font-bold text-near-black mb-1">Get found on Google</h2>
@@ -1547,7 +1547,7 @@ function InstructionsEditorPanel({
 
       <div className="space-y-2.5">
         {value.items.length === 0 && (
-          <div className="bg-cream border border-[rgba(18,18,18,0.08)] px-4 py-5 text-center">
+          <div className="bg-cream border border-hairline-soft px-4 py-5 text-center">
             <ListChecks size={18} className="mx-auto mb-1.5 text-muted-text" strokeWidth={1.5} />
             <p className="text-xs text-muted-text">{emptyText}</p>
           </div>
@@ -1561,11 +1561,11 @@ function InstructionsEditorPanel({
               key={i}
               className={cn(
                 'bg-white border p-3 space-y-2',
-                invalid ? 'border-red-300' : 'border-[rgba(18,18,18,0.10)]',
+                invalid ? 'border-danger' : 'border-hairline-soft',
               )}
             >
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+                <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
                   {itemLabel} {i + 1}
                 </span>
                 <div className="flex items-center gap-1 ml-auto flex-shrink-0">
@@ -1573,7 +1573,7 @@ function InstructionsEditorPanel({
                     type="button"
                     onClick={() => move(i, 'up')}
                     disabled={i === 0}
-                    className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black disabled:opacity-30"
+                    className="w-7 h-7 inline-flex items-center justify-center border border-hairline-soft bg-white text-near-black hover:border-near-black disabled:opacity-30"
                     title="Move up"
                   >
                     <ArrowUp size={11} />
@@ -1582,7 +1582,7 @@ function InstructionsEditorPanel({
                     type="button"
                     onClick={() => move(i, 'down')}
                     disabled={isLast}
-                    className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-near-black disabled:opacity-30"
+                    className="w-7 h-7 inline-flex items-center justify-center border border-hairline-soft bg-white text-near-black hover:border-near-black disabled:opacity-30"
                     title="Move down"
                   >
                     <ArrowDown size={11} />
@@ -1591,7 +1591,7 @@ function InstructionsEditorPanel({
                     type="button"
                     onClick={() => removeItem(i)}
                     disabled={value.items.length <= 1}
-                    className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600 disabled:opacity-30"
+                    className="w-7 h-7 inline-flex items-center justify-center border border-hairline-soft bg-white text-near-black hover:border-danger hover:text-danger disabled:opacity-30"
                     title={value.items.length <= 1 ? 'At least one step is required' : 'Delete'}
                   >
                     <Trash2 size={11} />
@@ -1605,7 +1605,7 @@ function InstructionsEditorPanel({
                 onChange={e => updateItem(i, { title: e.target.value })}
                 placeholder="Title"
                 maxLength={120}
-                className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+                className="w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
               />
               <textarea
                 value={item.body}
@@ -1613,11 +1613,11 @@ function InstructionsEditorPanel({
                 placeholder="Body: what should happen at this step?"
                 rows={2}
                 maxLength={500}
-                className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black resize-y"
+                className="w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black resize-y"
               />
 
               {invalid && (
-                <p className="text-[11px] text-red-700 flex items-center gap-1.5">
+                <p className="text-2xs text-danger flex items-center gap-1.5">
                   <AlertCircle size={11} /> Title and body are required.
                 </p>
               )}
@@ -1629,7 +1629,7 @@ function InstructionsEditorPanel({
           type="button"
           onClick={addItem}
           disabled={value.items.length >= INSTRUCTIONS_MAX_ITEMS}
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus size={12} /> {addLabel}
           {value.items.length >= INSTRUCTIONS_MAX_ITEMS && ` (max ${INSTRUCTIONS_MAX_ITEMS})`}
@@ -1765,16 +1765,16 @@ function AboutEditorPanel({
       />
 
       {showHighlights && (
-      <div className="space-y-2.5 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+      <div className="space-y-2.5 pt-2 border-t border-hairline-soft">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+          <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
             Highlights ({highlights.length}/{ABOUT_MAX_HIGHLIGHTS})
           </p>
           <button
             type="button"
             onClick={addHighlight}
             disabled={highlights.length >= ABOUT_MAX_HIGHLIGHTS}
-            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-1.5 hover:border-near-black disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-1.5 hover:border-near-black disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={12} /> Add Highlight
           </button>
@@ -1783,15 +1783,15 @@ function AboutEditorPanel({
           <p className="text-xs text-muted-text">Optional: add small highlight cards under your About copy.</p>
         )}
         {highlights.map((h, i) => (
-          <div key={i} className="bg-white border border-[rgba(18,18,18,0.10)] p-3 space-y-2">
+          <div key={i} className="bg-white border border-hairline-soft p-3 space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+              <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
                 Highlight {i + 1}
               </span>
               <button
                 type="button"
                 onClick={() => removeHighlight(i)}
-                className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600"
+                className="w-7 h-7 inline-flex items-center justify-center border border-hairline-soft bg-white text-near-black hover:border-danger hover:text-danger"
                 title="Delete"
               >
                 <Trash2 size={11} />
@@ -1803,7 +1803,7 @@ function AboutEditorPanel({
               onChange={e => updateHighlight(i, { title: e.target.value })}
               placeholder="Title"
               maxLength={120}
-              className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+              className="w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
             />
             <textarea
               value={h.body}
@@ -1811,7 +1811,7 @@ function AboutEditorPanel({
               placeholder="Body"
               rows={2}
               maxLength={400}
-              className="w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black resize-y"
+              className="w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black resize-y"
             />
           </div>
         ))}
@@ -1843,7 +1843,7 @@ function PoliciesHeadingInline({ settings, onSaveSettings }: {
     async (next) => { await onSaveSettings({ policy: { heading: next.heading || null } }) },
   )
   return (
-    <div className="space-y-2 pb-3 border-b border-[rgba(18,18,18,0.06)]">
+    <div className="space-y-2 pb-3 border-b border-hairline-soft">
       <TextField
         label="Section heading (the big title above your policies)"
         value={form.value.heading}
@@ -1945,10 +1945,10 @@ function PoliciesEditorPanel({ settings, onSaveSettings }: {
     >
       <PoliciesHeadingInline settings={settings} onSaveSettings={onSaveSettings} />
       {loading && <p className="text-xs text-muted-text">Loading…</p>}
-      {!loading && !policies && error && <p className="text-xs text-red-700">{error}</p>}
+      {!loading && !policies && error && <p className="text-xs text-danger">{error}</p>}
       {policies && (
         <>
-          <p className="text-[11px] text-muted-text bg-cream border border-[rgba(18,18,18,0.08)] px-3 py-2">
+          <p className="text-2xs text-muted-text bg-cream border border-hairline-soft px-3 py-2">
             Edit your cancellation, late, no-show, deposit, and reschedule policies here. They appear on your public site under the Policy tab.
           </p>
           {POLICY_FIELDS.map(({ key, label, placeholder }) => (
@@ -2113,16 +2113,16 @@ function AdditionalsPanel({
           maxLength={80}
         />
 
-        <div className="space-y-2.5 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+        <div className="space-y-2.5 pt-2 border-t border-hairline-soft">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+            <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
               Questions ({(faq.items ?? []).length}/{FAQ_MAX_ITEMS})
             </p>
             <button
               type="button"
               onClick={addFaqItem}
               disabled={(faq.items ?? []).length >= FAQ_MAX_ITEMS}
-              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-1.5 hover:border-near-black disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-1.5 hover:border-near-black disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus size={12} /> Add question
             </button>
@@ -2131,15 +2131,15 @@ function AdditionalsPanel({
             <p className="text-xs text-muted-text">No questions yet. Add up to {FAQ_MAX_ITEMS}.</p>
           )}
           {(faq.items ?? []).map((it, i) => (
-            <div key={i} className="bg-white border border-[rgba(18,18,18,0.10)] p-3 space-y-2">
+            <div key={i} className="bg-white border border-hairline-soft p-3 space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+                <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
                   Question {i + 1}
                 </span>
                 <button
                   type="button"
                   onClick={() => removeFaqItem(i)}
-                  className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600"
+                  className="w-7 h-7 inline-flex items-center justify-center border border-hairline-soft bg-white text-near-black hover:border-danger hover:text-danger"
                   title="Delete"
                 >
                   <Trash2 size={12} />
@@ -2184,15 +2184,15 @@ function AdditionalsPanel({
           maxLength={80}
         />
 
-        <div className="space-y-2.5 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+        <div className="space-y-2.5 pt-2 border-t border-hairline-soft">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+            <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
               Testimonials ({(reviews.items ?? []).length})
             </p>
             <button
               type="button"
               onClick={addReview}
-              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-1.5 hover:border-near-black"
+              className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-1.5 hover:border-near-black"
             >
               <Plus size={12} /> Add review
             </button>
@@ -2201,15 +2201,15 @@ function AdditionalsPanel({
             <p className="text-xs text-muted-text">No reviews yet. Add a few of your favorites.</p>
           )}
           {(reviews.items ?? []).map((r, i) => (
-            <div key={i} className="bg-white border border-[rgba(18,18,18,0.10)] p-3 space-y-2">
+            <div key={i} className="bg-white border border-hairline-soft p-3 space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+                <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
                   Review {i + 1}
                 </span>
                 <button
                   type="button"
                   onClick={() => removeReview(i)}
-                  className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600"
+                  className="w-7 h-7 inline-flex items-center justify-center border border-hairline-soft bg-white text-near-black hover:border-danger hover:text-danger"
                   title="Delete"
                 >
                   <Trash2 size={12} />
@@ -2243,7 +2243,7 @@ function AdditionalsPanel({
                   <select
                     value={String(r.rating ?? 5)}
                     onChange={e => updateReview(i, { rating: Number(e.target.value) })}
-                    className="w-full mt-1.5 bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+                    className="w-full mt-1.5 bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
                   >
                     {[5, 4, 3, 2, 1].map(n => (
                       <option key={n} value={n}>{'★'.repeat(n) + '☆'.repeat(5 - n)}</option>
@@ -2301,9 +2301,9 @@ function FooterPanel({
       title="Footer"
       subtitle="The bottom of your public site: name, links, hours, and the BookReady badge."
     >
-      <div className="bg-cream border border-[rgba(18,18,18,0.08)] px-3 py-2.5 flex items-start gap-2">
+      <div className="bg-cream border border-hairline-soft px-3 py-2.5 flex items-start gap-2">
         <Info size={13} className="text-muted-text flex-shrink-0 mt-0.5" />
-        <p className="text-[11px] text-muted-text leading-relaxed">
+        <p className="text-2xs text-muted-text leading-relaxed">
           Hours come from your{' '}
           <Link href="/editor/availability" className="text-near-black font-semibold underline">Availability</Link>
           {' '}schedule. Toggle below to choose what shows in the footer.
@@ -2339,7 +2339,7 @@ function FooterPanel({
         />
       )}
 
-      <div className="space-y-1.5 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+      <div className="space-y-1.5 pt-2 border-t border-hairline-soft">
         {showContactLinks && (
           <ToggleRow label="Show contact links" on={form.value.show_contact_links ?? true} onToggle={() => form.patch({ show_contact_links: !(form.value.show_contact_links ?? true) })} />
         )}
@@ -2381,7 +2381,7 @@ function PreviewPanel({ url, refreshKey }: { url: string; refreshKey: number }) 
 
   if (!url) {
     return (
-      <div className="bg-white border border-[rgba(18,18,18,0.10)] p-4">
+      <div className="bg-white border border-hairline-soft p-4">
         <p className="text-sm text-muted-text">Sign in to preview your site.</p>
       </div>
     )
@@ -2390,14 +2390,14 @@ function PreviewPanel({ url, refreshKey }: { url: string; refreshKey: number }) 
   const desktopScale = PREVIEW_FRAME_W / PREVIEW_DESKTOP_W
 
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-3 space-y-3">
+    <div className="bg-white border border-hairline-soft p-3 space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text">Preview</p>
+        <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text">Preview</p>
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => setManualBump(n => n + 1)}
-            className="inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.08em] uppercase px-2 py-1 border bg-white text-near-black border-[rgba(18,18,18,0.15)] hover:border-near-black"
+            className="inline-flex items-center gap-1 text-eyebrow font-semibold tracking-[0.08em] uppercase px-2 py-1 border bg-white text-near-black border-hairline-strong hover:border-near-black"
             title="Refresh preview"
           >
             <RefreshCw size={11} />
@@ -2405,8 +2405,8 @@ function PreviewPanel({ url, refreshKey }: { url: string; refreshKey: number }) 
           <button
             onClick={() => setMode('mobile')}
             className={cn(
-              'inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.08em] uppercase px-2 py-1 border',
-              mode === 'mobile' ? 'bg-near-black text-white border-near-black' : 'bg-white text-near-black border-[rgba(18,18,18,0.15)]',
+              'inline-flex items-center gap-1 text-eyebrow font-semibold tracking-[0.08em] uppercase px-2 py-1 border',
+              mode === 'mobile' ? 'bg-near-black text-white border-near-black' : 'bg-white text-near-black border-hairline-strong',
             )}
           >
             <Smartphone size={11} /> Mobile
@@ -2414,8 +2414,8 @@ function PreviewPanel({ url, refreshKey }: { url: string; refreshKey: number }) 
           <button
             onClick={() => setMode('desktop')}
             className={cn(
-              'inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.08em] uppercase px-2 py-1 border',
-              mode === 'desktop' ? 'bg-near-black text-white border-near-black' : 'bg-white text-near-black border-[rgba(18,18,18,0.15)]',
+              'inline-flex items-center gap-1 text-eyebrow font-semibold tracking-[0.08em] uppercase px-2 py-1 border',
+              mode === 'desktop' ? 'bg-near-black text-white border-near-black' : 'bg-white text-near-black border-hairline-strong',
             )}
           >
             <Monitor size={11} /> Desktop
@@ -2423,7 +2423,7 @@ function PreviewPanel({ url, refreshKey }: { url: string; refreshKey: number }) 
         </div>
       </div>
 
-      <div className="flex justify-center items-start bg-cream p-2 border border-[rgba(18,18,18,0.06)] overflow-hidden">
+      <div className="flex justify-center items-start bg-cream p-2 border border-hairline-soft overflow-hidden">
         {mode === 'mobile' ? (
           <iframe
             key={`mob-${cacheKey}`}
@@ -2464,7 +2464,7 @@ function PreviewPanel({ url, refreshKey }: { url: string; refreshKey: number }) 
         )}
       </div>
 
-      <p className="text-[10px] text-muted-text text-center">
+      <p className="text-eyebrow text-muted-text text-center">
         {mode === 'mobile'
           ? `Live preview at ${PREVIEW_MOBILE_W}px`
           : `Scaled from ${PREVIEW_DESKTOP_W}px desktop view`}
@@ -2491,7 +2491,7 @@ function GalleryHeadingInline({ settings, onSaveSettings }: {
     async (next) => { await onSaveSettings({ gallery: { heading: next.heading || null } }) },
   )
   return (
-    <div className="space-y-2 pb-3 border-b border-[rgba(18,18,18,0.06)]">
+    <div className="space-y-2 pb-3 border-b border-hairline-soft">
       <TextField
         label="Section heading (the big title above your gallery)"
         value={form.value.heading}
@@ -2637,20 +2637,20 @@ function GalleryManagerPanel({ settings, onSaveSettings }: {
         <button
           onClick={() => setAddingGroup(true)}
           disabled={(groups?.length ?? 0) >= GALLERY_MAX_GROUPS}
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Plus size={12} /> Add Collection
         </button>
       </div>
 
       {error && (
-        <div className="bg-white border border-red-200 text-red-700 text-xs p-3 flex items-center gap-2">
+        <div className="bg-white border border-danger text-danger text-xs p-3 flex items-center gap-2">
           <AlertCircle size={13} /> {error}
         </div>
       )}
 
       {!loading && sortedGroups.length === 0 && ungrouped.length === 0 && (
-        <div className="bg-cream border border-[rgba(18,18,18,0.08)] px-4 py-6 text-center">
+        <div className="bg-cream border border-hairline-soft px-4 py-6 text-center">
           <ImageIcon size={20} className="mx-auto mb-2 text-muted-text" strokeWidth={1.5} />
           <p className="text-sm text-near-black font-semibold">No collections yet</p>
           <p className="text-xs text-muted-text mt-0.5">Add your first collection to start showing your work.</p>
@@ -2744,7 +2744,7 @@ function GalleryGroupBlock({
   }
 
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-3 space-y-3">
+    <div className="bg-white border border-hairline-soft p-3 space-y-3">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-0">
           {isUngrouped ? (
@@ -2758,7 +2758,7 @@ function GalleryGroupBlock({
               onKeyDown={(e) => { if (e.key === 'Enter') commitRename() }}
               disabled={savingRename}
               maxLength={80}
-              className="text-sm font-bold bg-cream border border-[rgba(18,18,18,0.15)] px-2 py-1 text-near-black min-w-0"
+              className="text-sm font-bold bg-cream border border-hairline-strong px-2 py-1 text-near-black min-w-0"
             />
           ) : (
             <button
@@ -2770,7 +2770,7 @@ function GalleryGroupBlock({
               {group!.heading}
             </button>
           )}
-          <span className="text-[10px] font-bold tracking-[0.06em] uppercase text-muted-text">
+          <span className="text-eyebrow font-bold tracking-[0.06em] uppercase text-muted-text">
             {items.length}/{GALLERY_MAX_ITEMS_PER_GROUP}
           </span>
         </div>
@@ -2779,7 +2779,7 @@ function GalleryGroupBlock({
             type="button"
             onClick={onAddImage}
             disabled={atCap}
-            className="inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1 text-eyebrow font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-2 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Plus size={11} /> Add image
           </button>
@@ -2787,7 +2787,7 @@ function GalleryGroupBlock({
             <button
               type="button"
               onClick={onDelete}
-              className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600"
+              className="w-7 h-7 inline-flex items-center justify-center border border-hairline-soft bg-white text-near-black hover:border-danger hover:text-danger"
               title="Delete collection"
             >
               <Trash2 size={12} />
@@ -2797,7 +2797,7 @@ function GalleryGroupBlock({
       </div>
 
       {items.length === 0 ? (
-        <p className="text-[11px] text-muted-text italic">No images in this collection yet.</p>
+        <p className="text-2xs text-muted-text italic">No images in this collection yet.</p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {items.map(item => {
@@ -2807,7 +2807,7 @@ function GalleryGroupBlock({
                 key={item.id}
                 className={cn(
                   'relative aspect-square bg-cream border overflow-hidden group',
-                  item.is_active ? 'border-[rgba(18,18,18,0.10)]' : 'border-[rgba(18,18,18,0.06)] opacity-70',
+                  item.is_active ? 'border-hairline-soft' : 'border-hairline-soft opacity-70',
                 )}
               >
                 {item.image_url
@@ -2816,7 +2816,7 @@ function GalleryGroupBlock({
                   : <div className="w-full h-full flex items-center justify-center text-muted-text"><ImageIcon size={18} /></div>
                 }
                 {!item.is_active && (
-                  <span className="absolute top-1 left-1 text-[9px] font-bold tracking-[0.06em] uppercase bg-black/55 text-white px-1.5 py-0.5">
+                  <span className="absolute top-1 left-1 text-eyebrow font-bold tracking-[0.06em] uppercase bg-black/55 text-white px-1.5 py-0.5">
                     Hidden
                   </span>
                 )}
@@ -2885,8 +2885,8 @@ function GalleryGroupDialog({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-sm border border-[rgba(18,18,18,0.15)]">
-        <div className="flex items-center justify-between border-b border-[rgba(18,18,18,0.10)] px-4 py-3">
+      <div className="bg-white w-full max-w-sm border border-hairline-strong">
+        <div className="flex items-center justify-between border-b border-hairline-soft px-4 py-3">
           <h3 className="text-sm font-bold text-near-black">{group ? 'Rename collection' : 'New collection'}</h3>
           <button onClick={onClose} className="text-muted-text hover:text-near-black"><X size={16} /></button>
         </div>
@@ -2899,18 +2899,18 @@ function GalleryGroupDialog({
             maxLength={80}
           />
           {error && (
-            <p className="text-xs text-red-700 flex items-center gap-1.5">
+            <p className="text-xs text-danger flex items-center gap-1.5">
               <AlertCircle size={12} /> {error}
             </p>
           )}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-hairline-soft">
             <button
               type="button" onClick={onClose}
-              className="text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2"
+              className="text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2"
             >Cancel</button>
             <button
               type="submit" disabled={saving}
-              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 disabled:opacity-60"
             >
               {saving
                 ? <><Loader2 size={11} className="animate-spin" /> Saving</>
@@ -2966,8 +2966,8 @@ function GalleryItemDialog({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-lg border border-[rgba(18,18,18,0.15)] max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between border-b border-[rgba(18,18,18,0.10)] px-4 py-3 sticky top-0 bg-white">
+      <div className="bg-white w-full max-w-lg border border-hairline-strong max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-hairline-soft px-4 py-3 sticky top-0 bg-white">
           <h3 className="text-sm font-bold text-near-black">{item ? 'Edit image' : 'Add image'}</h3>
           <button onClick={onClose} className="text-muted-text hover:text-near-black">
             <X size={16} />
@@ -2985,11 +2985,11 @@ function GalleryItemDialog({
 
           {groups.length > 0 && (
             <label className="flex flex-col gap-1.5">
-              <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Collection</span>
+              <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Collection</span>
               <select
                 value={groupId ?? ''}
                 onChange={e => setGroupId(e.target.value === '' ? null : Number(e.target.value))}
-                className="bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+                className="bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
               >
                 <option value="">Ungrouped</option>
                 {groups.map(g => (
@@ -3038,19 +3038,19 @@ function GalleryItemDialog({
           />
 
           {error && (
-            <p className="text-xs text-red-700 flex items-center gap-1.5">
+            <p className="text-xs text-danger flex items-center gap-1.5">
               <AlertCircle size={12} /> {error}
             </p>
           )}
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-hairline-soft">
             <button
               type="button" onClick={onClose}
-              className="text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2"
+              className="text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2"
             >Cancel</button>
             <button
               type="submit" disabled={saving}
-              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 disabled:opacity-60"
             >
               {saving
                 ? <><Loader2 size={11} className="animate-spin" /> Saving</>
@@ -3078,7 +3078,7 @@ function ResultsHeadingInline({ settings, onSaveSettings }: {
     async (next) => { await onSaveSettings({ results: { heading: next.heading || null } }) },
   )
   return (
-    <div className="space-y-2 pb-3 border-b border-[rgba(18,18,18,0.06)]">
+    <div className="space-y-2 pb-3 border-b border-hairline-soft">
       <TextField
         label="Section heading (the big title above your before & after photos)"
         value={form.value.heading}
@@ -3221,20 +3221,20 @@ function ResultsManagerPanel({ settings, onSaveSettings }: {
         <button
           onClick={() => setAddingGroup(true)}
           disabled={(groups?.length ?? 0) >= BA_MAX_GROUPS}
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Plus size={12} /> Add Collection
         </button>
       </div>
 
       {error && (
-        <div className="bg-white border border-red-200 text-red-700 text-xs p-3 flex items-center gap-2">
+        <div className="bg-white border border-danger text-danger text-xs p-3 flex items-center gap-2">
           <AlertCircle size={13} /> {error}
         </div>
       )}
 
       {!loading && sortedGroups.length === 0 && ungrouped.length === 0 && (
-        <div className="bg-cream border border-[rgba(18,18,18,0.08)] px-4 py-6 text-center">
+        <div className="bg-cream border border-hairline-soft px-4 py-6 text-center">
           <Sparkles size={20} className="mx-auto mb-2 text-muted-text" strokeWidth={1.5} />
           <p className="text-sm text-near-black font-semibold">No before/after collections yet</p>
           <p className="text-xs text-muted-text mt-0.5">Add a collection and start uploading your transformations.</p>
@@ -3326,7 +3326,7 @@ function ResultsGroupBlock({
   }
 
   return (
-    <div className="bg-white border border-[rgba(18,18,18,0.10)] p-3 space-y-3">
+    <div className="bg-white border border-hairline-soft p-3 space-y-3">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-0">
           {isUngrouped ? (
@@ -3340,7 +3340,7 @@ function ResultsGroupBlock({
               onKeyDown={(e) => { if (e.key === 'Enter') commitRename() }}
               disabled={savingRename}
               maxLength={80}
-              className="text-sm font-bold bg-cream border border-[rgba(18,18,18,0.15)] px-2 py-1 text-near-black min-w-0"
+              className="text-sm font-bold bg-cream border border-hairline-strong px-2 py-1 text-near-black min-w-0"
             />
           ) : (
             <button
@@ -3352,7 +3352,7 @@ function ResultsGroupBlock({
               {group!.heading}
             </button>
           )}
-          <span className="text-[10px] font-bold tracking-[0.06em] uppercase text-muted-text">
+          <span className="text-eyebrow font-bold tracking-[0.06em] uppercase text-muted-text">
             {items.length}/{BA_MAX_ITEMS_PER_GROUP}
           </span>
         </div>
@@ -3361,7 +3361,7 @@ function ResultsGroupBlock({
             type="button"
             onClick={onAddPair}
             disabled={atCap}
-            className="inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1 text-eyebrow font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-2 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Plus size={11} /> Add pair
           </button>
@@ -3369,7 +3369,7 @@ function ResultsGroupBlock({
             <button
               type="button"
               onClick={onDelete}
-              className="w-7 h-7 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600"
+              className="w-7 h-7 inline-flex items-center justify-center border border-hairline-soft bg-white text-near-black hover:border-danger hover:text-danger"
               title="Delete collection"
             >
               <Trash2 size={12} />
@@ -3379,7 +3379,7 @@ function ResultsGroupBlock({
       </div>
 
       {items.length === 0 ? (
-        <p className="text-[11px] text-muted-text italic">No pairs in this collection yet.</p>
+        <p className="text-2xs text-muted-text italic">No pairs in this collection yet.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {items.map(item => {
@@ -3389,7 +3389,7 @@ function ResultsGroupBlock({
                 key={item.id}
                 className={cn(
                   'relative bg-cream border overflow-hidden group',
-                  item.is_active ? 'border-[rgba(18,18,18,0.10)]' : 'border-[rgba(18,18,18,0.06)] opacity-70',
+                  item.is_active ? 'border-hairline-soft' : 'border-hairline-soft opacity-70',
                 )}
               >
                 <div className="grid grid-cols-2">
@@ -3397,7 +3397,7 @@ function ResultsGroupBlock({
                   <BAThumbLarge url={item.after_image_url}  alt={item.after_alt_text}  label="A" />
                 </div>
                 {!item.is_active && (
-                  <span className="absolute top-1 left-1 text-[9px] font-bold tracking-[0.06em] uppercase bg-black/55 text-white px-1.5 py-0.5">
+                  <span className="absolute top-1 left-1 text-eyebrow font-bold tracking-[0.06em] uppercase bg-black/55 text-white px-1.5 py-0.5">
                     Hidden
                   </span>
                 )}
@@ -3447,7 +3447,7 @@ function BAThumbLarge({ url, alt, label }: { url: string; alt: string | null; la
         ? <img src={url} alt={alt ?? ''} className="w-full h-full object-cover" />
         : <div className="w-full h-full flex items-center justify-center text-muted-text"><ImageIcon size={18} /></div>
       }
-      <span className="absolute bottom-0 left-0 right-0 text-[9px] font-bold tracking-[0.18em] uppercase text-white bg-black/55 text-center py-[1px]">
+      <span className="absolute bottom-0 left-0 right-0 text-eyebrow font-bold tracking-[0.18em] uppercase text-white bg-black/55 text-center py-[1px]">
         {label}
       </span>
     </div>
@@ -3501,8 +3501,8 @@ function ResultsItemDialog({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-lg border border-[rgba(18,18,18,0.15)] max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between border-b border-[rgba(18,18,18,0.10)] px-4 py-3 sticky top-0 bg-white">
+      <div className="bg-white w-full max-w-lg border border-hairline-strong max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-hairline-soft px-4 py-3 sticky top-0 bg-white">
           <h3 className="text-sm font-bold text-near-black">{item ? 'Edit pair' : 'Add before/after pair'}</h3>
           <button onClick={onClose} className="text-muted-text hover:text-near-black">
             <X size={16} />
@@ -3529,11 +3529,11 @@ function ResultsItemDialog({
 
           {groups.length > 0 && (
             <label className="flex flex-col gap-1.5">
-              <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">Collection</span>
+              <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Collection</span>
               <select
                 value={groupId ?? ''}
                 onChange={e => setGroupId(e.target.value === '' ? null : Number(e.target.value))}
-                className="bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+                className="bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
               >
                 <option value="">Ungrouped</option>
                 {groups.map(g => (
@@ -3576,19 +3576,19 @@ function ResultsItemDialog({
           />
 
           {error && (
-            <p className="text-xs text-red-700 flex items-center gap-1.5">
+            <p className="text-xs text-danger flex items-center gap-1.5">
               <AlertCircle size={12} /> {error}
             </p>
           )}
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-hairline-soft">
             <button
               type="button" onClick={onClose}
-              className="text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2"
+              className="text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2"
             >Cancel</button>
             <button
               type="submit" disabled={saving}
-              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-2 disabled:opacity-60"
             >
               {saving
                 ? <><Loader2 size={11} className="animate-spin" /> Saving</>
@@ -3662,23 +3662,23 @@ function WebsiteCustomPolicyGroupsEditor({
   }
 
   return (
-    <div className="bg-cream border border-[rgba(18,18,18,0.08)] p-3 space-y-3">
+    <div className="bg-cream border border-hairline-soft p-3 space-y-3">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <p className="text-[11px] font-bold tracking-[0.14em] uppercase text-near-black">Custom sections</p>
-          <p className="text-[10px] text-muted-text mt-0.5">
+          <p className="text-2xs font-bold tracking-[0.14em] uppercase text-near-black">Custom sections</p>
+          <p className="text-eyebrow text-muted-text mt-0.5">
             Up to {WEBSITE_POLICY_MAX_GROUPS} sections × {WEBSITE_POLICY_MAX_ITEMS_PER_GROUP} items, shown below the named policies on your public site.
           </p>
         </div>
         <div className="flex items-center gap-2 whitespace-nowrap">
-          <span className="text-[10px] font-bold tracking-[0.06em] uppercase text-muted-text">
+          <span className="text-eyebrow font-bold tracking-[0.06em] uppercase text-muted-text">
             {groups.length}/{WEBSITE_POLICY_MAX_GROUPS}
           </span>
           <button
             type="button"
             onClick={addGroup}
             disabled={groups.length >= WEBSITE_POLICY_MAX_GROUPS}
-            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2.5 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-2.5 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Plus size={12} /> Add section
           </button>
@@ -3686,7 +3686,7 @@ function WebsiteCustomPolicyGroupsEditor({
       </div>
 
       {groups.map((g, gi) => (
-        <div key={gi} className="bg-white border border-[rgba(18,18,18,0.08)] p-3 space-y-2.5">
+        <div key={gi} className="bg-white border border-hairline-soft p-3 space-y-2.5">
           <div className="flex items-end gap-2">
             <div className="flex-1">
               <TextField
@@ -3700,24 +3700,24 @@ function WebsiteCustomPolicyGroupsEditor({
             <button
               type="button"
               onClick={() => removeGroup(gi)}
-              className="w-9 h-9 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600"
+              className="w-9 h-9 inline-flex items-center justify-center border border-hairline-soft bg-white text-near-black hover:border-danger hover:text-danger"
               title="Delete section"
             >
               <Trash2 size={12} />
             </button>
           </div>
 
-          <div className="space-y-2 pl-2 border-l-2 border-[rgba(18,18,18,0.08)]">
+          <div className="space-y-2 pl-2 border-l-2 border-hairline-soft">
             {g.items.map((it, ii) => (
-              <div key={ii} className="bg-cream border border-[rgba(18,18,18,0.08)] p-2.5 space-y-2">
+              <div key={ii} className="bg-cream border border-hairline-soft p-2.5 space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+                  <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
                     Item {ii + 1}
                   </span>
                   <button
                     type="button"
                     onClick={() => removeItem(gi, ii)}
-                    className="w-6 h-6 inline-flex items-center justify-center border border-[rgba(18,18,18,0.10)] bg-white text-near-black hover:border-red-600 hover:text-red-600"
+                    className="w-6 h-6 inline-flex items-center justify-center border border-hairline-soft bg-white text-near-black hover:border-danger hover:text-danger"
                     title="Delete item"
                   >
                     <X size={11} />
@@ -3741,14 +3741,14 @@ function WebsiteCustomPolicyGroupsEditor({
               </div>
             ))}
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold tracking-[0.06em] uppercase text-muted-text">
+              <span className="text-eyebrow font-bold tracking-[0.06em] uppercase text-muted-text">
                 {g.items.length}/{WEBSITE_POLICY_MAX_ITEMS_PER_GROUP}
               </span>
               <button
                 type="button"
                 onClick={() => addItem(gi)}
                 disabled={g.items.length >= WEBSITE_POLICY_MAX_ITEMS_PER_GROUP}
-                className="inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-2 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 text-eyebrow font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-2 py-1.5 hover:border-near-black disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Plus size={11} /> Add item
               </button>
@@ -3794,12 +3794,12 @@ function PatternPickerBlock({
   }
 
   return (
-    <div className="space-y-2 pt-2 border-t border-[rgba(18,18,18,0.08)]">
+    <div className="space-y-2 pt-2 border-t border-hairline-soft">
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+        <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
           Pattern
         </p>
-        <p className="text-[10px] text-muted-text">
+        <p className="text-eyebrow text-muted-text">
           Backdrop behind every section
         </p>
       </div>
@@ -3820,7 +3820,7 @@ function PatternPickerBlock({
                 'relative w-12 h-12 border bg-cover bg-center transition-shadow disabled:opacity-50 overflow-hidden',
                 isActive
                   ? 'border-near-black ring-2 ring-offset-2 ring-near-black/20'
-                  : 'border-[rgba(18,18,18,0.18)] hover:border-near-black',
+                  : 'border-hairline-strong hover:border-near-black',
               )}
               style={{ backgroundImage: `url('${opt.url}')`, backgroundSize: '120px auto' }}
             >
@@ -3839,7 +3839,7 @@ function PatternPickerBlock({
         })}
       </div>
       {error && (
-        <p className="text-[11px] text-red-700 flex items-center gap-1.5">
+        <p className="text-2xs text-danger flex items-center gap-1.5">
           <AlertCircle size={12} /> {error}
         </p>
       )}
@@ -3889,7 +3889,7 @@ function ChangeTemplateBlock({ currentSlug }: { currentSlug: string }) {
       <button
         type="button"
         onClick={() => { setOpen(true); setPicked(null); setError(null) }}
-        className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.18)] bg-white text-near-black px-3 py-2 hover:bg-cream hover:border-near-black transition-colors"
+        className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:bg-cream hover:border-near-black transition-colors"
       >
         Change Template
       </button>
@@ -3897,13 +3897,13 @@ function ChangeTemplateBlock({ currentSlug }: { currentSlug: string }) {
   }
 
   return (
-    <div className="space-y-3 border border-[rgba(18,18,18,0.12)] bg-white p-3.5">
+    <div className="space-y-3 border border-hairline bg-white p-3.5">
       <div className="flex items-baseline justify-between gap-3">
         <div>
-          <p className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+          <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
             Change Template
           </p>
-          <p className="text-[11px] text-muted-text mt-0.5">
+          <p className="text-2xs text-muted-text mt-0.5">
             Currently <span className="font-semibold text-near-black">{currentLabel}</span>
           </p>
         </div>
@@ -3911,13 +3911,13 @@ function ChangeTemplateBlock({ currentSlug }: { currentSlug: string }) {
           type="button"
           onClick={() => { setOpen(false); setPicked(null); setError(null) }}
           disabled={saving}
-          className="text-[10px] font-semibold tracking-[0.06em] uppercase text-muted-text hover:text-near-black disabled:opacity-50"
+          className="text-eyebrow font-semibold tracking-[0.06em] uppercase text-muted-text hover:text-near-black disabled:opacity-50"
         >
           Cancel
         </button>
       </div>
 
-      <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1.5 leading-snug">
+      <p className="text-2xs text-amber-800 bg-warning-bg border border-amber-200 px-2.5 py-1.5 leading-snug">
         Heads up: changing template <span className="font-semibold">resets template-specific settings</span> (colors, tab labels, section order, about/advice copy). Your business data (services, hours, gallery, customers, bookings) is preserved.
       </p>
 
@@ -3934,27 +3934,27 @@ function ChangeTemplateBlock({ currentSlug }: { currentSlug: string }) {
               disabled={saving}
               className={`w-full text-left flex items-center gap-3 px-3 py-2.5 border transition-colors disabled:cursor-not-allowed ${
                 isCurrent
-                  ? 'border-[rgba(18,18,18,0.10)] bg-cream cursor-default'
+                  ? 'border-hairline-soft bg-cream cursor-default'
                   : isPicked
                     ? 'border-near-black bg-white'
-                    : 'border-[rgba(18,18,18,0.12)] bg-white hover:bg-cream'
+                    : 'border-hairline bg-white hover:bg-cream'
               }`}
             >
               <span
-                className="w-6 h-6 flex-shrink-0 border border-[rgba(18,18,18,0.10)]"
+                className="w-6 h-6 flex-shrink-0 border border-hairline-soft"
                 style={{ background: t.color }}
               />
               <span className="flex-1 min-w-0">
                 <span className="block text-sm font-semibold text-near-black leading-tight">{t.label}</span>
-                <span className="block text-[11px] text-muted-text truncate">{t.desc}</span>
+                <span className="block text-2xs text-muted-text truncate">{t.desc}</span>
               </span>
               {isCurrent && (
-                <span className="text-[9px] font-bold tracking-[0.06em] uppercase bg-blush text-[rgba(18,18,18,0.7)] px-1.5 py-0.5 flex-shrink-0">
+                <span className="text-eyebrow font-bold tracking-[0.06em] uppercase bg-blush text-[rgba(18,18,18,0.7)] px-1.5 py-0.5 flex-shrink-0">
                   Active
                 </span>
               )}
               {!isCurrent && isPicked && !isSaving && (
-                <span className="text-[9px] font-bold tracking-[0.06em] uppercase bg-near-black text-white px-1.5 py-0.5 flex-shrink-0">
+                <span className="text-eyebrow font-bold tracking-[0.06em] uppercase bg-near-black text-white px-1.5 py-0.5 flex-shrink-0">
                   Selected
                 </span>
               )}
@@ -3967,7 +3967,7 @@ function ChangeTemplateBlock({ currentSlug }: { currentSlug: string }) {
       </div>
 
       {error && (
-        <p className="text-[11px] text-red-700 flex items-center gap-1.5">
+        <p className="text-2xs text-danger flex items-center gap-1.5">
           <AlertCircle size={12} /> {error}
         </p>
       )}
@@ -3977,11 +3977,11 @@ function ChangeTemplateBlock({ currentSlug }: { currentSlug: string }) {
           type="button"
           onClick={() => picked && confirm(picked)}
           disabled={!picked || saving}
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-near-black bg-near-black text-white px-3.5 py-2 hover:bg-[#222] disabled:bg-cream disabled:text-muted-text disabled:border-[rgba(18,18,18,0.12)] disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-near-black bg-near-black text-white px-3.5 py-2 hover:bg-[#222] disabled:bg-cream disabled:text-muted-text disabled:border-hairline disabled:cursor-not-allowed"
         >
           {saving ? <><Loader2 size={12} className="animate-spin" /> Switching…</> : 'Switch to this template'}
         </button>
-        <p className="text-[10px] text-muted-text">
+        <p className="text-eyebrow text-muted-text">
           {picked
             ? <>Switching to <span className="font-semibold text-near-black">{SITE_TEMPLATES.find(t => t.slug === picked)?.label}</span></>
             : 'Pick a template above'}
@@ -4007,13 +4007,13 @@ function SeasonalThemesTeaser() {
   return (
     <>
       <div className="flex items-baseline justify-between gap-2">
-        <p className="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+        <p className="inline-flex items-center gap-1.5 text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
           Seasonal themes
-          <span className="text-[8px] font-bold tracking-[0.14em] uppercase border border-[rgba(255,61,190,0.40)] bg-[rgba(255,61,190,0.10)] text-[#b8197f] px-1 py-px">
+          <span className="text-eyebrow font-bold tracking-[0.14em] uppercase border border-[rgba(255,61,190,0.40)] bg-[rgba(255,61,190,0.10)] text-[#b8197f] px-1 py-px">
             Soon
           </span>
         </p>
-        <p className="text-[10px] text-muted-text">Swaps floating hearts for snowflakes, confetti, and more</p>
+        <p className="text-eyebrow text-muted-text">Swaps floating hearts for snowflakes, confetti, and more</p>
       </div>
       <div className="flex items-center gap-1.5 flex-wrap">
         {themes.map(t => {
@@ -4024,7 +4024,7 @@ function SeasonalThemesTeaser() {
               type="button"
               disabled
               title={`${t.label} (coming soon)`}
-              className="relative inline-flex items-center gap-1.5 border border-[rgba(18,18,18,0.12)] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-near-black opacity-60 cursor-not-allowed"
+              className="relative inline-flex items-center gap-1.5 border border-hairline bg-white px-2.5 py-1.5 text-2xs font-semibold text-near-black opacity-60 cursor-not-allowed"
             >
               <span
                 className="w-4 h-4 inline-flex items-center justify-center"
@@ -4037,7 +4037,7 @@ function SeasonalThemesTeaser() {
           )
         })}
       </div>
-      <p className="text-[10px] text-muted-text italic">
+      <p className="text-eyebrow text-muted-text italic">
         Activate a seasonal theme to instantly refresh the floating decorations on your public site for holidays + promos.
       </p>
     </>

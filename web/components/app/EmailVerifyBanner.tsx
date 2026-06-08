@@ -51,8 +51,8 @@ export default function EmailVerifyBanner() {
 
   return (
     <div className="bg-[#fff8e6] border-b border-[#f1d486] px-4 py-2.5 flex items-center gap-3">
-      <AlertTriangle size={14} className="text-[#7a5c00] flex-shrink-0" />
-      <p className="text-[12px] text-[#5a4500] leading-snug flex-1 min-w-0">
+      <AlertTriangle size={14} className="text-warning flex-shrink-0" />
+      <p className="text-xs text-[#5a4500] leading-snug flex-1 min-w-0">
         <strong className="font-bold">Verify your email</strong>.{' '}
         We sent a link when you signed up.{' '}
         {sent
@@ -66,7 +66,7 @@ export default function EmailVerifyBanner() {
           type="button"
           onClick={handleResend}
           disabled={busy}
-          className="text-[11px] font-bold tracking-[0.10em] uppercase text-[#5a4500] underline underline-offset-2 disabled:opacity-50 flex-shrink-0"
+          className="text-2xs font-bold tracking-[0.10em] uppercase text-[#5a4500] underline underline-offset-2 disabled:opacity-50 flex-shrink-0"
         >
           {busy ? 'Sending…' : 'Resend'}
         </button>

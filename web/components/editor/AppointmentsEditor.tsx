@@ -49,6 +49,9 @@ import type {
 import { cn } from '@/lib/cn'
 import { safeHref } from '@/lib/safeHref'
 import { PaymentPill, PaymentSummary } from '@/components/editor/AppointmentPaymentStatus'
+import StatusBadge from '@/components/ui/StatusBadge'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { useToast } from '@/components/ui/Toast'
 import RefundDialog from '@/components/editor/RefundDialog'
 import MarkPaidDialog from '@/components/editor/MarkPaidDialog'
 import ChargeBalanceDialog from '@/components/editor/ChargeBalanceDialog'
@@ -175,29 +178,13 @@ function currentWeekBounds(): [string, string] {
 function apptStatusChipCls(status: string): string {
   if (status === 'confirmed') return 'bg-lavender border-transparent text-near-black'
   if (status === 'completed') return 'bg-near-black border-near-black text-white'
-  if (status === 'no_show')   return 'bg-white border-[rgba(18,18,18,0.12)] text-near-black'
-  if (status === 'cancelled') return 'bg-white border-[rgba(18,18,18,0.12)] text-muted-text'
+  if (status === 'no_show')   return 'bg-white border-hairline text-near-black'
+  if (status === 'cancelled') return 'bg-white border-hairline text-muted-text'
   return 'bg-blush border-transparent text-near-black' // pending
 }
 
-// ── Status badge ─────────────────────────────────────────────────────────────
-
-const STATUS_CFG: Record<string, { label: string; cls: string }> = {
-  pending:   { label: 'Pending',   cls: 'bg-blush border-transparent text-near-black' },
-  confirmed: { label: 'Confirmed', cls: 'bg-lavender border-transparent text-near-black' },
-  completed: { label: 'Completed', cls: 'bg-near-black border-near-black text-white' },
-  cancelled: { label: 'Cancelled', cls: 'bg-white border-[rgba(18,18,18,0.20)] text-muted-text' },
-  no_show:   { label: 'No-show',   cls: 'bg-white border-[rgba(18,18,18,0.20)] text-near-black' },
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CFG[status] ?? { label: status, cls: 'bg-white border-[rgba(18,18,18,0.12)] text-near-black' }
-  return (
-    <span className={cn('text-[9px] font-bold tracking-[0.06em] uppercase border px-2 py-0.5 flex-shrink-0', cfg.cls)}>
-      {cfg.label}
-    </span>
-  )
-}
+// Status badges use the shared registry-driven <StatusBadge domain="appointment">.
+// (apptStatusChipCls above still styles the compact week/month calendar chips.)
 
 // ── Form state ────────────────────────────────────────────────────────────────
 
@@ -308,6 +295,8 @@ export default function AppointmentsEditor() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
+  const confirm = useConfirm()
+  const toast = useToast()
   const [refundTarget, setRefundTarget]         = useState<Appointment | null>(null)
   const [markPaidTarget, setMarkPaidTarget]     = useState<Appointment | null>(null)
   const [chargeBalanceTarget, setChargeBalanceTarget] = useState<Appointment | null>(null)
@@ -543,7 +532,8 @@ export default function AppointmentsEditor() {
   }
 
   async function handleCancel(id: number) {
-    if (!confirm('Cancel this appointment?')) return
+    const ok = await confirm({ title: 'Cancel this appointment?', confirmLabel: 'Cancel appointment', tone: 'danger' })
+    if (! ok) return
     setActionLoading(id)
     try {
       await deleteEditorAppointment(id)
@@ -574,13 +564,14 @@ export default function AppointmentsEditor() {
   async function handleRequestTip(id: number) {
     const appt = appointments.find(a => a.id === id)
     const who  = appt?.customer_email ?? 'the customer'
-    if (! confirm(`Send a tip request email to ${who}?`)) return
+    const ok = await confirm({ title: 'Send a tip request?', message: `We'll email ${who} a tip link.`, confirmLabel: 'Send request' })
+    if (! ok) return
     setActionLoading(id)
     try {
       const res = await requestEditorAppointmentTip(id)
-      alert(res.message)
+      toast.success(res.message)
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Could not send tip request.')
+      toast.error(e instanceof Error ? e.message : 'Could not send tip request.')
     } finally {
       setActionLoading(null)
     }
@@ -592,17 +583,19 @@ export default function AppointmentsEditor() {
       : paymentSettings?.late_cancel_fee_amount
     const label = type === 'no_show' ? 'no-show fee' : 'late-cancellation fee'
     if (! fee || fee <= 0) {
-      alert(`Set a ${label} amount in Payment Settings first.`)
+      toast.error(`Set a ${label} amount in Payment Settings first.`)
       return
     }
     const sym = (paymentSettings?.currency ?? 'USD') === 'USD' ? '$' : ''
-    if (! confirm(`Charge ${sym}${fee.toFixed(2)} ${label} to the saved card?`)) return
+    const ok = await confirm({ title: `Charge ${label}?`, message: `${sym}${fee.toFixed(2)} will be charged to the saved card.`, confirmLabel: 'Charge', tone: 'danger' })
+    if (! ok) return
     setActionLoading(id)
     try {
       const res = await chargeEditorAppointmentLateFee(id, { type })
       setAppointments(prev => prev.map(a => a.id === id ? res.appointment : a))
+      toast.success('Fee charged')
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Could not charge the fee.')
+      toast.error(e instanceof Error ? e.message : 'Could not charge the fee.')
     } finally {
       setActionLoading(null)
     }
@@ -620,7 +613,7 @@ export default function AppointmentsEditor() {
         <div className="flex items-center justify-end">
           <button
             onClick={openCreate}
-            className="flex items-center gap-1.5 bg-near-black text-white px-3 py-1.5 text-[10px] font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors"
+            className="flex items-center gap-1.5 bg-near-black text-white px-3 py-1.5 text-eyebrow font-bold tracking-[0.08em] uppercase hover:opacity-90 transition-colors"
           >
             <Plus size={11} /> New Appointment
           </button>
@@ -631,8 +624,8 @@ export default function AppointmentsEditor() {
             scoped, with a one-click clear. The list-filter chips still
             work *within* this scope. */}
         {filterCustomerId != null && (
-          <div className="flex items-center justify-between gap-3 bg-lavender px-4 py-3 border border-[rgba(18,18,18,0.08)]">
-            <p className="text-[12px] font-semibold text-near-black truncate">
+          <div className="flex items-center justify-between gap-3 bg-lavender px-4 py-3 border border-hairline-soft">
+            <p className="text-xs font-semibold text-near-black truncate">
               Showing appointments for{' '}
               <span className="font-bold">
                 {filterCustomerName ?? `customer #${filterCustomerId}`}
@@ -649,7 +642,7 @@ export default function AppointmentsEditor() {
                   window.history.replaceState({}, '', url.toString())
                 }
               }}
-              className="text-[10px] font-bold text-near-black underline underline-offset-2 flex-shrink-0 whitespace-nowrap"
+              className="text-eyebrow font-bold text-near-black underline underline-offset-2 flex-shrink-0 whitespace-nowrap"
             >
               Clear filter
             </button>
@@ -658,7 +651,7 @@ export default function AppointmentsEditor() {
 
         {/* Stats strip — each cell switches the filter below to that view.
             Today resets the day offset so we always land on actual today. */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 border border-[rgba(18,18,18,0.10)] divide-y sm:divide-y-0 sm:divide-x divide-[rgba(18,18,18,0.10)] overflow-hidden">
+        <div className="grid grid-cols-2 sm:grid-cols-4 border border-hairline-soft divide-y sm:divide-y-0 sm:divide-x divide-[rgba(18,18,18,0.10)] overflow-hidden">
           {([
             { label: 'Today',     value: stats.today,     icon: Calendar,    filter: 'today'    as Filter },
             { label: 'Pending',   value: stats.pending,   icon: Clock,       filter: 'pending'  as Filter },
@@ -682,10 +675,10 @@ export default function AppointmentsEditor() {
               >
                 <div className="flex items-center gap-1 mb-1.5 min-w-0">
                   <Icon size={10} className="text-muted-text flex-shrink-0" />
-                  <p className="text-[8px] font-bold tracking-[0.10em] uppercase text-muted-text truncate">{label}</p>
+                  <p className="text-eyebrow font-bold tracking-[0.10em] uppercase text-muted-text truncate">{label}</p>
                 </div>
-                <p className="text-2xl font-bold text-near-black tabular-nums">{loading ? 'None' : value}</p>
-                <p className="text-[9px] font-semibold text-muted-text group-hover:text-near-black mt-0.5 inline-flex items-center gap-0.5">
+                <p className="text-2xl font-bold text-near-black tabular-nums">{loading ? '—' : value}</p>
+                <p className="text-eyebrow font-semibold text-muted-text group-hover:text-near-black mt-0.5 inline-flex items-center gap-0.5">
                   {isActive ? 'Viewing' : 'View'} <ChevronRight size={10} />
                 </p>
               </button>
@@ -695,13 +688,13 @@ export default function AppointmentsEditor() {
 
         {/* Pending callout */}
         {!loading && stats.pending > 0 && filter !== 'pending' && (
-          <div className="flex items-center justify-between gap-3 bg-blush px-4 py-3 border border-[rgba(18,18,18,0.08)]">
-            <p className="text-[12px] font-semibold text-near-black">
+          <div className="flex items-center justify-between gap-3 bg-blush px-4 py-3 border border-hairline-soft">
+            <p className="text-xs font-semibold text-near-black">
               {stats.pending} pending booking request{stats.pending !== 1 ? 's' : ''} need your response.
             </p>
             <button
               onClick={() => setFilter('pending')}
-              className="text-[10px] font-bold text-near-black underline underline-offset-2 flex-shrink-0 whitespace-nowrap"
+              className="text-eyebrow font-bold text-near-black underline underline-offset-2 flex-shrink-0 whitespace-nowrap"
             >
               Review
             </button>
@@ -710,8 +703,8 @@ export default function AppointmentsEditor() {
 
         {/* Create / edit form */}
         {showForm && (
-          <div className="bg-white border border-[rgba(18,18,18,0.12)]">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(18,18,18,0.08)]">
+          <div className="bg-white border border-hairline">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-hairline-soft">
               <h2 className="text-sm font-bold text-near-black tracking-tight">
                 {editId !== null ? 'Edit Appointment' : 'New Appointment'}
               </h2>
@@ -721,30 +714,30 @@ export default function AppointmentsEditor() {
             </div>
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
               {formError && (
-                <p className="text-xs text-red-600 bg-red-50 border border-red-200 px-3 py-2">{formError}</p>
+                <p className="text-xs text-danger bg-danger-bg border border-danger px-3 py-2">{formError}</p>
               )}
               <div className="space-y-3">
-                <p className="text-[9px] font-bold tracking-[0.16em] uppercase text-muted-text">Client</p>
+                <p className="text-eyebrow font-bold tracking-[0.16em] uppercase text-muted-text">Client</p>
                 <input
                   type="text" placeholder="Full name *" required
                   value={form.customer_name} onChange={e => setField('customer_name', e.target.value)}
-                  className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
+                  className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <input
                     type="email" placeholder="Email"
                     value={form.customer_email} onChange={e => setField('customer_email', e.target.value)}
-                    className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
+                    className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
                   />
                   <input
                     type="tel" placeholder="Phone"
                     value={form.customer_phone} onChange={e => setField('customer_phone', e.target.value)}
-                    className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
+                    className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
                   />
                 </div>
               </div>
               <div className="space-y-3">
-                <p className="text-[9px] font-bold tracking-[0.16em] uppercase text-muted-text">Service</p>
+                <p className="text-eyebrow font-bold tracking-[0.16em] uppercase text-muted-text">Service</p>
                 <select
                   required
                   value={form.service_id}
@@ -775,7 +768,7 @@ export default function AppointmentsEditor() {
                       return next
                     })
                   }}
-                  className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black appearance-none"
+                  className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black appearance-none"
                 >
                   <option value="">Select a service *</option>
                   {services.map(s => (
@@ -809,8 +802,8 @@ export default function AppointmentsEditor() {
                   disabled so owners can't accidentally drop them. */}
               {selectedService && (selectedService.linked_addons ?? []).length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-[9px] font-bold tracking-[0.16em] uppercase text-muted-text">Add-ons</p>
-                  <div className="border border-[rgba(18,18,18,0.12)] bg-white divide-y divide-[rgba(18,18,18,0.06)]">
+                  <p className="text-eyebrow font-bold tracking-[0.16em] uppercase text-muted-text">Add-ons</p>
+                  <div className="border border-hairline bg-white divide-y divide-[rgba(18,18,18,0.06)]">
                     {(selectedService.linked_addons ?? []).map(link => {
                       const addon = addons.find(a => a.id === link.addon_id)
                       if (!addon) return null
@@ -841,12 +834,12 @@ export default function AppointmentsEditor() {
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <p className="text-xs font-semibold text-near-black truncate">{addon.name}</p>
                               {link.is_required && (
-                                <span className="text-[8px] font-bold tracking-[0.08em] uppercase bg-blush text-near-black px-1.5 py-0.5">
+                                <span className="text-eyebrow font-bold tracking-[0.08em] uppercase bg-blush text-near-black px-1.5 py-0.5">
                                   Required
                                 </span>
                               )}
                             </div>
-                            <p className="text-[11px] text-muted-text mt-0.5">
+                            <p className="text-2xs text-muted-text mt-0.5">
                               +${addon.extra_price.toFixed(2)}
                               {addon.extra_duration_minutes > 0 && ` · +${addon.extra_duration_minutes} min`}
                             </p>
@@ -869,11 +862,11 @@ export default function AppointmentsEditor() {
                 if (options.length === 0) return null
                 return (
                   <div className="space-y-2">
-                    <p className="text-[9px] font-bold tracking-[0.16em] uppercase text-muted-text">Staff</p>
+                    <p className="text-eyebrow font-bold tracking-[0.16em] uppercase text-muted-text">Staff</p>
                     <select
                       value={form.staff_id}
                       onChange={e => setField('staff_id', e.target.value)}
-                      className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black appearance-none"
+                      className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black appearance-none"
                     >
                       <option value="">Any staff</option>
                       {options.map(s => (
@@ -883,7 +876,7 @@ export default function AppointmentsEditor() {
                       ))}
                     </select>
                     {assigned.length > 0 && (
-                      <p className="text-[10px] text-muted-text">
+                      <p className="text-eyebrow text-muted-text">
                         Filtered to staff trained on this service.
                       </p>
                     )}
@@ -891,32 +884,32 @@ export default function AppointmentsEditor() {
                 )
               })()}
               <div className="space-y-3">
-                <p className="text-[9px] font-bold tracking-[0.16em] uppercase text-muted-text">Date &amp; Time</p>
+                <p className="text-eyebrow font-bold tracking-[0.16em] uppercase text-muted-text">Date &amp; Time</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] text-muted-text mb-1">Date *</label>
+                    <label className="block text-eyebrow text-muted-text mb-1">Date *</label>
                     <input
                       type="date" required
                       value={form.appointment_date} onChange={e => setField('appointment_date', e.target.value)}
-                      className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black"
+                      className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-muted-text mb-1">Start time *</label>
+                    <label className="block text-eyebrow text-muted-text mb-1">Start time *</label>
                     <input
                       type="time" required
                       value={form.start_time} onChange={e => setField('start_time', e.target.value)}
-                      className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black"
+                      className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black"
                     />
                   </div>
                 </div>
               </div>
               {editId !== null && (
                 <div className="space-y-2">
-                  <p className="text-[9px] font-bold tracking-[0.16em] uppercase text-muted-text">Status</p>
+                  <p className="text-eyebrow font-bold tracking-[0.16em] uppercase text-muted-text">Status</p>
                   <select
                     value={form.status} onChange={e => setField('status', e.target.value as AppointmentStatus)}
-                    className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black"
+                    className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black"
                   >
                     <option value="pending">Pending</option>
                     <option value="confirmed">Confirmed</option>
@@ -927,24 +920,24 @@ export default function AppointmentsEditor() {
                 </div>
               )}
               <div className="space-y-2">
-                <p className="text-[9px] font-bold tracking-[0.16em] uppercase text-muted-text">Notes</p>
+                <p className="text-eyebrow font-bold tracking-[0.16em] uppercase text-muted-text">Notes</p>
                 <textarea
                   placeholder="Optional note for this appointment"
                   value={form.notes} onChange={e => setField('notes', e.target.value)}
                   rows={3}
-                  className="w-full border border-[rgba(18,18,18,0.15)] bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black resize-none"
+                  className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black resize-none"
                 />
               </div>
               <div className="flex gap-3 pt-1">
                 <button
                   type="submit" disabled={saving}
-                  className="flex-1 bg-near-black text-white py-2.5 text-xs font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors disabled:opacity-50"
+                  className="flex-1 bg-near-black text-white py-2.5 text-xs font-bold tracking-[0.08em] uppercase hover:opacity-90 transition-colors disabled:opacity-50"
                 >
                   {saving ? 'Saving…' : editId !== null ? 'Save Changes' : 'Create Appointment'}
                 </button>
                 <button
                   type="button" onClick={closeForm}
-                  className="border border-[rgba(18,18,18,0.15)] bg-white px-4 py-2.5 text-xs font-semibold text-near-black hover:bg-cream transition-colors"
+                  className="border border-hairline-strong bg-white px-4 py-2.5 text-xs font-semibold text-near-black hover:bg-cream transition-colors"
                 >
                   Cancel
                 </button>
@@ -967,10 +960,10 @@ export default function AppointmentsEditor() {
               key={key}
               onClick={() => setFilter(key)}
               className={cn(
-                'px-3 py-1.5 text-[10px] font-semibold border transition-colors',
+                'px-3 py-1.5 text-eyebrow font-semibold border transition-colors',
                 filter === key
                   ? 'bg-near-black text-white border-near-black'
-                  : 'bg-white text-muted-text border-[rgba(18,18,18,0.12)] hover:text-near-black'
+                  : 'bg-white text-muted-text border-hairline hover:text-near-black'
               )}
             >
               {label}
@@ -984,7 +977,7 @@ export default function AppointmentsEditor() {
           <div className="flex items-center gap-2">
             <button
               onClick={navPrev}
-              className="border border-[rgba(18,18,18,0.12)] bg-white p-2 hover:bg-cream transition-colors flex-shrink-0"
+              className="border border-hairline bg-white p-2 hover:bg-cream transition-colors flex-shrink-0"
               aria-label="Previous"
             >
               <ChevronLeft size={14} />
@@ -1000,7 +993,7 @@ export default function AppointmentsEditor() {
                   if (!e.target.value) return
                   setDayOffset(offsetFromDate(e.target.value))
                 }}
-                className="border border-[rgba(18,18,18,0.12)] bg-white px-2 py-2 text-[11px] font-semibold text-near-black focus:outline-none focus:border-near-black flex-shrink-0"
+                className="border border-hairline bg-white px-2 py-2 text-2xs font-semibold text-near-black focus:outline-none focus:border-near-black flex-shrink-0"
                 aria-label="Pick a date"
               />
             )}
@@ -1011,13 +1004,13 @@ export default function AppointmentsEditor() {
                 (filter === 'week'  && weekOffset === 0) ||
                 (filter === 'month' && monthOffset === 0)
               }
-              className="border border-[rgba(18,18,18,0.12)] bg-white px-3 py-2 text-[10px] font-bold text-near-black hover:bg-cream transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="border border-hairline bg-white px-3 py-2 text-eyebrow font-bold text-near-black hover:bg-cream transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Today
             </button>
             <button
               onClick={navNext}
-              className="border border-[rgba(18,18,18,0.12)] bg-white p-2 hover:bg-cream transition-colors flex-shrink-0"
+              className="border border-hairline bg-white p-2 hover:bg-cream transition-colors flex-shrink-0"
               aria-label="Next"
             >
               <ChevronRight size={14} />
@@ -1027,11 +1020,11 @@ export default function AppointmentsEditor() {
 
         {/* Content */}
         {loading ? (
-          <div className="bg-white border border-[rgba(18,18,18,0.10)] px-5 py-12 text-center text-sm text-muted-text">
+          <div className="bg-white border border-hairline-soft px-5 py-12 text-center text-sm text-muted-text">
             Loading appointments…
           </div>
         ) : error ? (
-          <div className="bg-white border border-[rgba(18,18,18,0.10)] px-5 py-8 text-center text-sm text-red-500">
+          <div className="bg-white border border-hairline-soft px-5 py-8 text-center text-sm text-danger">
             {error}
           </div>
         ) : filter === 'week' ? (
@@ -1049,7 +1042,7 @@ export default function AppointmentsEditor() {
             onJumpToDay={jumpToDay}
           />
         ) : filtered.length === 0 ? (
-          <div className="bg-white border border-[rgba(18,18,18,0.10)] px-5 py-12 text-center">
+          <div className="bg-white border border-hairline-soft px-5 py-12 text-center">
             <Calendar size={24} className="text-muted-text mx-auto mb-3" />
             <p className="text-sm font-semibold text-near-black mb-1">No appointments</p>
             <p className="text-xs text-muted-text">
@@ -1062,7 +1055,7 @@ export default function AppointmentsEditor() {
             {filter === 'upcoming' && (
               <button
                 onClick={openCreate}
-                className="mt-4 inline-flex items-center gap-1.5 bg-near-black text-white px-4 py-2 text-xs font-bold tracking-[0.08em] uppercase hover:bg-[#2a2a2a] transition-colors"
+                className="mt-4 inline-flex items-center gap-1.5 bg-near-black text-white px-4 py-2 text-xs font-bold tracking-[0.08em] uppercase hover:opacity-90 transition-colors"
               >
                 <Plus size={11} /> New Appointment
               </button>
@@ -1137,7 +1130,7 @@ function WeekGridView({
   return (
     <>
       {/* Desktop: 7-column grid */}
-      <div className="hidden sm:grid grid-cols-7 border border-[rgba(18,18,18,0.10)] overflow-hidden">
+      <div className="hidden sm:grid grid-cols-7 border border-hairline-soft overflow-hidden">
         {weekDays.map((date, i) => {
           const dayAppts = appointments
             .filter(a => a.appointment_date === date)
@@ -1147,8 +1140,8 @@ function WeekGridView({
             <div
               key={date}
               className={cn(
-                'border-r last:border-r-0 border-[rgba(18,18,18,0.08)] flex flex-col',
-                isToday ? 'bg-[#F8F6F2]' : 'bg-white',
+                'border-r last:border-r-0 border-hairline-soft flex flex-col',
+                isToday ? 'bg-cream' : 'bg-white',
               )}
             >
               {/* Day header — clickable so empty days are reachable too.
@@ -1158,12 +1151,12 @@ function WeekGridView({
                 type="button"
                 onClick={() => onJumpToDay(date)}
                 className={cn(
-                  'py-2.5 w-full text-center border-b border-[rgba(18,18,18,0.06)] flex-shrink-0 transition-colors cursor-pointer',
-                  isToday ? 'bg-near-black hover:bg-[#2a2a2a]' : 'hover:bg-cream',
+                  'py-2.5 w-full text-center border-b border-hairline-soft flex-shrink-0 transition-colors cursor-pointer',
+                  isToday ? 'bg-near-black hover:opacity-90' : 'hover:bg-cream',
                 )}
                 aria-label={`Open ${date} in Today view`}
               >
-                <p className={cn('text-[8px] font-bold tracking-[0.10em] uppercase', isToday ? 'text-white/60' : 'text-muted-text')}>
+                <p className={cn('text-eyebrow font-bold tracking-[0.10em] uppercase', isToday ? 'text-white/60' : 'text-muted-text')}>
                   {DAY_ABBR[i]}
                 </p>
                 <p className={cn('text-sm font-bold leading-none mt-0.5', isToday ? 'text-white' : 'text-near-black')}>
@@ -1176,7 +1169,7 @@ function WeekGridView({
                   <button
                     type="button"
                     onClick={() => onJumpToDay(date)}
-                    className="text-[8px] text-muted-text text-center py-4 w-full h-full hover:text-near-black transition-colors cursor-pointer"
+                    className="text-eyebrow text-muted-text text-center py-4 w-full h-full hover:text-near-black transition-colors cursor-pointer"
                     aria-label={`Open ${date} in Today view`}
                   >
                     None
@@ -1187,7 +1180,7 @@ function WeekGridView({
                     key={a.id}
                     onClick={() => onJumpToDay(date)}
                     className={cn(
-                      'w-full text-left px-1 py-1 text-[8px] leading-tight border overflow-hidden cursor-pointer hover:brightness-105 transition',
+                      'w-full text-left px-1 py-1 text-eyebrow leading-tight border overflow-hidden cursor-pointer hover:brightness-105 transition',
                       apptStatusChipCls(a.status),
                     )}
                     title={`${fmt12(a.start_time)} · ${a.customer_name} · ${a.service_name}`}
@@ -1214,23 +1207,23 @@ function WeekGridView({
           return (
             <div
               key={date}
-              className={cn('border overflow-hidden', isToday ? 'border-near-black' : 'border-[rgba(18,18,18,0.10)]')}
+              className={cn('border overflow-hidden', isToday ? 'border-near-black' : 'border-hairline-soft')}
             >
               <button
                 type="button"
                 onClick={() => onJumpToDay(date)}
                 className={cn(
                   'w-full px-4 py-3 flex items-center justify-between transition-colors',
-                  isToday ? 'bg-near-black hover:bg-[#2a2a2a]' : 'bg-white border-b border-[rgba(18,18,18,0.06)] hover:bg-cream',
+                  isToday ? 'bg-near-black hover:opacity-90' : 'bg-white border-b border-hairline-soft hover:bg-cream',
                 )}
                 aria-label={`Open ${date} in Today view`}
               >
                 <p className={cn('text-xs font-bold', isToday ? 'text-white' : 'text-near-black')}>
                   {DAY_ABBR[i]} · {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </p>
-                {isToday && <span className="text-[9px] text-white/60 font-bold uppercase tracking-wider">Today</span>}
+                {isToday && <span className="text-eyebrow text-white/60 font-bold uppercase tracking-wider">Today</span>}
                 {!isToday && (
-                  <span className="text-[10px] text-muted-text">
+                  <span className="text-eyebrow text-muted-text">
                     {dayAppts.length === 0 ? 'Free' : `${dayAppts.length} appt${dayAppts.length > 1 ? 's' : ''}`}
                   </span>
                 )}
@@ -1241,7 +1234,7 @@ function WeekGridView({
                   onClick={() => onJumpToDay(date)}
                   className="w-full bg-white px-4 py-3 text-left hover:bg-cream transition-colors"
                 >
-                  <p className="text-[11px] text-muted-text">No appointments</p>
+                  <p className="text-2xs text-muted-text">No appointments</p>
                 </button>
               ) : (
                 <div className="bg-white divide-y divide-[rgba(18,18,18,0.06)]">
@@ -1254,8 +1247,8 @@ function WeekGridView({
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[11px] font-bold text-near-black whitespace-nowrap">{fmt12(a.start_time)}</span>
-                          <StatusBadge status={a.status} />
+                          <span className="text-2xs font-bold text-near-black whitespace-nowrap">{fmt12(a.start_time)}</span>
+                          <StatusBadge domain="appointment" status={a.status} />
                           <PaymentPill appt={a} />
                         </div>
                         <p className="text-xs text-muted-text truncate mt-0.5">
@@ -1292,13 +1285,13 @@ function MonthCalendarView({
   return (
     <>
       {/* Desktop + tablet: calendar grid */}
-      <div className="hidden sm:block bg-white border border-[rgba(18,18,18,0.10)] overflow-hidden">
+      <div className="hidden sm:block bg-white border border-hairline-soft overflow-hidden">
         {/* Day-of-week headers */}
-        <div className="grid grid-cols-7 border-b border-[rgba(18,18,18,0.08)]">
+        <div className="grid grid-cols-7 border-b border-hairline-soft">
           {DAY_ABBR.map(d => (
             <div
               key={d}
-              className="text-center py-2 text-[9px] font-bold tracking-[0.10em] uppercase text-muted-text border-r last:border-r-0 border-[rgba(18,18,18,0.06)]"
+              className="text-center py-2 text-eyebrow font-bold tracking-[0.10em] uppercase text-muted-text border-r last:border-r-0 border-hairline-soft"
             >
               {d}
             </div>
@@ -1306,13 +1299,13 @@ function MonthCalendarView({
         </div>
         {/* Calendar rows */}
         {monthGrid.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 border-b border-[rgba(18,18,18,0.06)] last:border-b-0">
+          <div key={wi} className="grid grid-cols-7 border-b border-hairline-soft last:border-b-0">
             {week.map((cell, di) => {
               if (!cell) {
                 return (
                   <div
                     key={di}
-                    className="border-r last:border-r-0 border-[rgba(18,18,18,0.06)] min-h-[80px] bg-[rgba(18,18,18,0.015)]"
+                    className="border-r last:border-r-0 border-hairline-soft min-h-[80px] bg-[rgba(18,18,18,0.015)]"
                   />
                 )
               }
@@ -1334,25 +1327,25 @@ function MonthCalendarView({
                   key={date}
                   onClick={() => onJumpToDay(date)}
                   className={cn(
-                    'border-r last:border-r-0 border-[rgba(18,18,18,0.06)] min-h-[80px] p-1.5 flex flex-col gap-0.5 text-left transition-colors',
-                    isToday ? 'bg-near-black hover:bg-[#2a2a2a]' : 'bg-white hover:bg-cream',
+                    'border-r last:border-r-0 border-hairline-soft min-h-[80px] p-1.5 flex flex-col gap-0.5 text-left transition-colors',
+                    isToday ? 'bg-near-black hover:opacity-90' : 'bg-white hover:bg-cream',
                   )}
                   aria-label={`Open ${date} in Today view`}
                 >
-                  <span className={cn('text-[11px] font-bold leading-none mb-0.5', isToday ? 'text-white' : 'text-near-black')}>
+                  <span className={cn('text-2xs font-bold leading-none mb-0.5', isToday ? 'text-white' : 'text-near-black')}>
                     {new Date(date + 'T00:00:00').getDate()}
                   </span>
                   {shown.map(a => (
                     <div
                       key={a.id}
-                      className={cn('px-1 py-0.5 text-[8px] leading-tight truncate border', apptStatusChipCls(a.status))}
+                      className={cn('px-1 py-0.5 text-eyebrow leading-tight truncate border', apptStatusChipCls(a.status))}
                       title={`${fmt12(a.start_time)} · ${a.customer_name} · ${a.service_name}`}
                     >
                       {a.start_time.slice(0, 5)} {a.customer_name.split(' ')[0]}
                     </div>
                   ))}
                   {extra > 0 && (
-                    <span className={cn('text-[8px] font-bold px-0.5', isToday ? 'text-white/60' : 'text-muted-text')}>
+                    <span className={cn('text-eyebrow font-bold px-0.5', isToday ? 'text-white/60' : 'text-muted-text')}>
                       +{extra} more
                     </span>
                   )}
@@ -1379,7 +1372,7 @@ function MonthCalendarView({
 
           if (daysWithAppts.length === 0) {
             return (
-              <div className="bg-white border border-[rgba(18,18,18,0.10)] px-4 py-10 text-center">
+              <div className="bg-white border border-hairline-soft px-4 py-10 text-center">
                 <p className="text-sm font-semibold text-near-black mb-1">No appointments this month</p>
                 <p className="text-xs text-muted-text">Use the navigation above to browse other months.</p>
               </div>
@@ -1391,21 +1384,21 @@ function MonthCalendarView({
             return (
               <div
                 key={date}
-                className={cn('border overflow-hidden', isToday ? 'border-near-black' : 'border-[rgba(18,18,18,0.10)]')}
+                className={cn('border overflow-hidden', isToday ? 'border-near-black' : 'border-hairline-soft')}
               >
                 <button
                   type="button"
                   onClick={() => onJumpToDay(date)}
                   className={cn(
                     'w-full px-4 py-2.5 flex items-center justify-between transition-colors',
-                    isToday ? 'bg-near-black hover:bg-[#2a2a2a]' : 'bg-white border-b border-[rgba(18,18,18,0.06)] hover:bg-cream',
+                    isToday ? 'bg-near-black hover:opacity-90' : 'bg-white border-b border-hairline-soft hover:bg-cream',
                   )}
                   aria-label={`Open ${date} in Today view`}
                 >
                   <p className={cn('text-xs font-bold', isToday ? 'text-white' : 'text-near-black')}>
                     {fmtDate(date)}
                   </p>
-                  {isToday && <span className="text-[9px] text-white/60 font-bold uppercase tracking-wider">Today</span>}
+                  {isToday && <span className="text-eyebrow text-white/60 font-bold uppercase tracking-wider">Today</span>}
                 </button>
                 <div className="bg-white divide-y divide-[rgba(18,18,18,0.06)]">
                   {appts.map(a => (
@@ -1417,8 +1410,8 @@ function MonthCalendarView({
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[11px] font-bold text-near-black whitespace-nowrap">{fmt12(a.start_time)}</span>
-                          <StatusBadge status={a.status} />
+                          <span className="text-2xs font-bold text-near-black whitespace-nowrap">{fmt12(a.start_time)}</span>
+                          <StatusBadge domain="appointment" status={a.status} />
                           <PaymentPill appt={a} />
                         </div>
                         <p className="text-xs text-muted-text truncate mt-0.5">
@@ -1540,11 +1533,11 @@ function AppointmentCard({
       onClick={handleCardClick}
       className={cn(
         'bg-white border transition-colors cursor-pointer hover:border-near-black',
-        isToday ? 'border-near-black' : 'border-[rgba(18,18,18,0.10)]',
+        isToday ? 'border-near-black' : 'border-hairline-soft',
       )}
     >
       {isToday && (
-        <div className="bg-near-black text-white text-[9px] font-bold tracking-[0.12em] uppercase px-4 py-1">
+        <div className="bg-near-black text-white text-eyebrow font-bold tracking-[0.12em] uppercase px-4 py-1">
           Today
         </div>
       )}
@@ -1553,11 +1546,11 @@ function AppointmentCard({
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-sm font-bold text-near-black truncate">{appt.customer_name}</p>
-              <StatusBadge status={appt.status} />
+              <StatusBadge domain="appointment" status={appt.status} />
               <PaymentPill appt={appt} />
             </div>
             {(appt.customer_email || appt.customer_phone) && (
-              <p className="text-[11px] text-muted-text mt-0.5 truncate">
+              <p className="text-2xs text-muted-text mt-0.5 truncate">
                 {appt.customer_email || appt.customer_phone}
               </p>
             )}
@@ -1565,7 +1558,7 @@ function AppointmentCard({
           </div>
           <button
             onClick={onEdit}
-            className="flex-shrink-0 border border-[rgba(18,18,18,0.12)] px-2.5 py-1 text-[10px] font-semibold text-near-black hover:bg-cream transition-colors"
+            className="flex-shrink-0 border border-hairline px-2.5 py-1 text-eyebrow font-semibold text-near-black hover:bg-cream transition-colors"
           >
             Edit
           </button>
@@ -1576,7 +1569,7 @@ function AppointmentCard({
             <div className="min-w-0">
               <p className="text-xs font-semibold text-near-black truncate">{appt.service_name}</p>
               {appt.service_price !== null && (
-                <p className="text-[11px] text-muted-text">
+                <p className="text-2xs text-muted-text">
                   ${appt.service_price.toFixed(0)}
                   {appt.service_duration_minutes ? ` · ${appt.service_duration_minutes} min` : ''}
                 </p>
@@ -1585,10 +1578,10 @@ function AppointmentCard({
                   what's attached before opening the appointment. */}
               {appt.addons && appt.addons.length > 0 && (
                 <p
-                  className="text-[11px] text-near-black mt-0.5 truncate"
+                  className="text-2xs text-near-black mt-0.5 truncate"
                   title={appt.addons.map(a => a.name).join(' · ')}
                 >
-                  <span className="font-semibold uppercase tracking-[0.06em] text-[10px] text-muted-text mr-1">
+                  <span className="font-semibold uppercase tracking-[0.06em] text-eyebrow text-muted-text mr-1">
                     Add-ons:
                   </span>
                   {appt.addons.map(a => a.name).join(' · ')}
@@ -1602,21 +1595,21 @@ function AppointmentCard({
               <p className="text-xs font-semibold text-near-black">{fmtDate(appt.appointment_date)}</p>
               <div className="flex items-center gap-1">
                 <Clock size={10} className="text-muted-text" />
-                <p className="text-[11px] text-muted-text">{fmt12(appt.start_time)} – {fmt12(appt.end_time)}</p>
+                <p className="text-2xs text-muted-text">{fmt12(appt.start_time)} – {fmt12(appt.end_time)}</p>
               </div>
             </div>
           </div>
         </div>
         {appt.notes && (
-          <p className="text-[11px] text-muted-text border-l-2 border-[rgba(18,18,18,0.12)] pl-2.5 mb-3 italic">
+          <p className="text-2xs text-muted-text border-l-2 border-hairline pl-2.5 mb-3 italic">
             {appt.notes}
           </p>
         )}
         {appt.question_answers && appt.question_answers.length > 0 && (
-          <div className="mb-3 bg-cream/60 border border-[rgba(18,18,18,0.08)] p-2.5 space-y-1.5">
-            <p className="text-[9px] font-bold tracking-[0.14em] uppercase text-muted-text">Form answers</p>
+          <div className="mb-3 bg-cream/60 border border-hairline-soft p-2.5 space-y-1.5">
+            <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Form answers</p>
             {appt.question_answers.map((qa, idx) => (
-              <div key={idx} className="text-[11px] text-near-black leading-snug">
+              <div key={idx} className="text-2xs text-near-black leading-snug">
                 <span className="font-semibold">{qa.label_snapshot}:</span>{' '}
                 {(() => {
                   // Phase S5++ — defense in depth. The server-side sanitizer
@@ -1643,9 +1636,9 @@ function AppointmentCard({
           </div>
         )}
         {activeDispute && (
-          <div className="mb-3 px-3 py-2 bg-[#fff3f3] border border-[rgba(180,40,40,0.30)] flex items-start gap-2">
-            <AlertTriangle size={13} className="text-[#b42828] flex-shrink-0 mt-0.5" />
-            <div className="text-[11px] text-[#7a1f1f] leading-snug">
+          <div className="mb-3 px-3 py-2 bg-danger-bg border border-danger flex items-start gap-2">
+            <AlertTriangle size={13} className="text-danger flex-shrink-0 mt-0.5" />
+            <div className="text-2xs text-danger leading-snug">
               <strong className="font-bold">Payment disputed.</strong>{' '}
               Respond in your{' '}
               <a href="https://dashboard.stripe.com/disputes" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:opacity-80">
@@ -1661,7 +1654,7 @@ function AppointmentCard({
           </div>
         )}
         {(!terminal || isRefundable || showRequestTip || showNoShowFee || showLateCancelFee) && (
-          <div className="flex flex-wrap gap-1.5 pt-1 border-t border-[rgba(18,18,18,0.06)]">
+          <div className="flex flex-wrap gap-1.5 pt-1 border-t border-hairline-soft">
             {!terminal && appt.status === 'pending' && isFuture && (
               <ActionBtn onClick={() => onStatus('confirmed')} disabled={busy} icon={<CheckCircle size={11} />} label="Confirm" primary />
             )}
@@ -1719,10 +1712,10 @@ function ActionBtn({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        'flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-semibold border transition-colors disabled:opacity-50',
-        primary ? 'bg-near-black text-white border-near-black hover:bg-[#2a2a2a]' :
-        danger  ? 'bg-white text-[rgba(18,18,18,0.5)] border-[rgba(18,18,18,0.12)] hover:text-near-black' :
-                  'bg-white text-near-black border-[rgba(18,18,18,0.12)] hover:bg-cream',
+        'flex items-center gap-1 px-2.5 py-1.5 text-eyebrow font-semibold border transition-colors disabled:opacity-50',
+        primary ? 'bg-near-black text-white border-near-black hover:opacity-90' :
+        danger  ? 'bg-white text-muted-text border-hairline hover:text-near-black' :
+                  'bg-white text-near-black border-hairline hover:bg-cream',
       )}
     >
       {icon} {label}

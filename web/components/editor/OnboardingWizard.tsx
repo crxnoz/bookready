@@ -340,13 +340,13 @@ export default function OnboardingWizard() {
     <div className="min-h-screen bg-cream flex flex-col">
       {/* Top bar — A10: skip moved to the footer so it doesn't undermine
           the flow. Sign out stays here as a low-noise utility. */}
-      <header className="border-b border-[rgba(18,18,18,0.10)] bg-white">
+      <header className="border-b border-hairline-soft bg-white">
         <div className="max-w-3xl mx-auto px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-near-black flex items-center justify-center">
               <Sparkles size={12} className="text-white" />
             </div>
-            <span className="text-[11px] font-bold tracking-[0.18em] uppercase text-near-black">
+            <span className="text-2xs font-bold tracking-[0.18em] uppercase text-near-black">
               {firstName ? `Hi ${firstName}` : 'Welcome'} &middot; Setting up {bizName}
             </span>
           </div>
@@ -354,7 +354,7 @@ export default function OnboardingWizard() {
             <button
               type="button"
               onClick={signOut}
-              className="text-[11px] font-semibold text-muted-text hover:text-near-black"
+              className="text-2xs font-semibold text-muted-text hover:text-near-black"
             >
               Sign out
             </button>
@@ -363,7 +363,7 @@ export default function OnboardingWizard() {
       </header>
 
       {/* Progress rail */}
-      <div className="bg-white border-b border-[rgba(18,18,18,0.08)]">
+      <div className="bg-white border-b border-hairline-soft">
         <div className="max-w-3xl mx-auto px-5 py-3 flex items-center gap-1.5">
           {STEPS.map((s, i) => {
             const Icon = s.icon
@@ -374,11 +374,11 @@ export default function OnboardingWizard() {
                 <div className={cn(
                   'flex items-center gap-2 px-2.5 py-1.5 border',
                   active ? 'border-near-black bg-near-black text-white'
-                    : done ? 'border-[rgba(18,18,18,0.15)] bg-white text-near-black'
-                    : 'border-[rgba(18,18,18,0.10)] bg-cream text-muted-text',
+                    : done ? 'border-hairline-strong bg-white text-near-black'
+                    : 'border-hairline-soft bg-cream text-muted-text',
                 )}>
                   {done ? <Check size={12} /> : <Icon size={12} />}
-                  <span className="text-[10px] font-bold tracking-[0.10em] uppercase hidden sm:inline">{s.label}</span>
+                  <span className="text-eyebrow font-bold tracking-[0.10em] uppercase hidden sm:inline">{s.label}</span>
                 </div>
                 {i < STEPS.length - 1 && (
                   <div className={cn('h-px flex-1 hidden sm:block', done ? 'bg-near-black/30' : 'bg-[rgba(18,18,18,0.10)]')} />
@@ -393,7 +393,7 @@ export default function OnboardingWizard() {
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-5 py-8">
           {error && (
-            <div className="mb-5 px-4 py-3 bg-red-50 border border-red-200 text-xs text-red-700">
+            <div className="mb-5 px-4 py-3 bg-danger-bg border border-danger text-xs text-danger">
               {error}
             </div>
           )}
@@ -450,13 +450,13 @@ export default function OnboardingWizard() {
       {/* Footer nav. A10 — "I'll do this later" lives here now (not the
           top bar) so users have to consciously dismiss the flow, not
           stumble into a Skip link first. */}
-      <footer className="border-t border-[rgba(18,18,18,0.10)] bg-white">
+      <footer className="border-t border-hairline-soft bg-white">
         <div className="max-w-3xl mx-auto px-5 py-3 flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={goBack}
             disabled={stepIndex === 0 || saving}
-            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase text-near-black disabled:opacity-30"
+            className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase text-near-black disabled:opacity-30"
           >
             <ArrowLeft size={12} /> Back
           </button>
@@ -465,7 +465,7 @@ export default function OnboardingWizard() {
             type="button"
             onClick={skipAll}
             disabled={saving}
-            className="text-[10px] font-semibold text-muted-text hover:text-near-black disabled:opacity-40 whitespace-nowrap"
+            className="text-eyebrow font-semibold text-muted-text hover:text-near-black disabled:opacity-40 whitespace-nowrap"
           >
             I&rsquo;ll do this later
           </button>
@@ -476,7 +476,7 @@ export default function OnboardingWizard() {
               type="button"
               onClick={goNext}
               disabled={saving}
-              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white border border-near-black px-4 py-2.5 hover:bg-white hover:text-near-black disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase bg-near-black text-white border border-near-black px-4 py-2.5 hover:bg-white hover:text-near-black disabled:opacity-50"
             >
               {saving ? <Loader2 size={12} className="animate-spin" /> : <>Continue <ArrowRight size={12} /></>}
             </button>
@@ -566,7 +566,7 @@ function ServicesStep({ services, onChange, bizName, estimate, why }: {
     >
       <div className="space-y-3">
         {visible.map((s, i) => (
-          <div key={i} className="bg-white border border-[rgba(18,18,18,0.12)] p-3 flex flex-wrap items-end gap-3">
+          <div key={i} className="bg-white border border-hairline p-3 flex flex-wrap items-end gap-3">
             <div className="flex-1 min-w-[160px]">
               <label className={labelCls}>Service name</label>
               <input className={inputCls} value={s.name} onChange={e => update(i, { name: e.target.value })} placeholder="Signature Service" />
@@ -583,20 +583,20 @@ function ServicesStep({ services, onChange, bizName, estimate, why }: {
               type="button"
               onClick={() => remove(i)}
               title="Remove service"
-              className="w-9 h-9 inline-flex items-center justify-center border border-[rgba(18,18,18,0.12)] bg-white text-muted-text hover:border-red-500 hover:text-red-600"
+              className="w-9 h-9 inline-flex items-center justify-center border border-hairline bg-white text-muted-text hover:border-danger hover:text-danger"
             >
               <Trash2 size={13} />
             </button>
           </div>
         ))}
         {visible.length === 0 && (
-          <p className="text-[12px] text-muted-text py-2">No services yet. Add at least one so clients can book.</p>
+          <p className="text-xs text-muted-text py-2">No services yet. Add at least one so clients can book.</p>
         )}
       </div>
       <button
         type="button"
         onClick={add}
-        className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase border border-[rgba(18,18,18,0.15)] bg-white text-near-black px-3 py-2 hover:border-near-black"
+        className="mt-3 inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:border-near-black"
       >
         <Plus size={12} /> Add service
       </button>
@@ -624,7 +624,7 @@ function HoursStep({ hours, onChange, bizName, estimate, why }: {
     >
       <div className="space-y-2">
         {hours.map((h, i) => (
-          <div key={h.day_of_week} className="bg-white border border-[rgba(18,18,18,0.12)] p-3 flex items-center gap-3 flex-wrap">
+          <div key={h.day_of_week} className="bg-white border border-hairline p-3 flex items-center gap-3 flex-wrap">
             <label className="flex items-center gap-2 w-32 cursor-pointer">
               <input
                 type="checkbox"
@@ -632,7 +632,7 @@ function HoursStep({ hours, onChange, bizName, estimate, why }: {
                 onChange={e => setDay(i, { is_open: e.target.checked })}
                 className="h-4 w-4 accent-near-black"
               />
-              <span className="text-[13px] font-semibold text-near-black">{h.day_name ?? DAY_NAMES[h.day_of_week]}</span>
+              <span className="text-sm font-semibold text-near-black">{h.day_name ?? DAY_NAMES[h.day_of_week]}</span>
             </label>
             {h.is_open ? (
               <div className="flex items-center gap-2">
@@ -641,7 +641,7 @@ function HoursStep({ hours, onChange, bizName, estimate, why }: {
                 <input type="time" className={cn(inputCls, 'w-32')} value={h.close_time ?? '18:00'} onChange={e => setDay(i, { close_time: e.target.value })} />
               </div>
             ) : (
-              <span className="text-[12px] text-muted-text">Closed</span>
+              <span className="text-xs text-muted-text">Closed</span>
             )}
           </div>
         ))}
@@ -700,19 +700,19 @@ function StripeStep({ connected, saving, bizName, estimate, why, onConnect, onSk
       estimate={estimate}
     >
       {connected ? (
-        <div className="bg-white border border-[rgba(18,18,18,0.12)] p-5 flex items-center gap-3">
-          <div className="w-9 h-9 bg-[#1e7a3f]/10 flex items-center justify-center">
-            <Check size={16} className="text-[#1e7a3f]" />
+        <div className="bg-white border border-hairline p-5 flex items-center gap-3">
+          <div className="w-9 h-9 bg-success/10 flex items-center justify-center">
+            <Check size={16} className="text-success" />
           </div>
           <div>
-            <p className="text-[13px] font-semibold text-near-black">Stripe is connected</p>
-            <p className="text-[11px] text-muted-text">You're ready to accept deposits and payments.</p>
+            <p className="text-sm font-semibold text-near-black">Stripe is connected</p>
+            <p className="text-2xs text-muted-text">You're ready to accept deposits and payments.</p>
           </div>
         </div>
       ) : (
-        <div className="bg-white border border-[rgba(18,18,18,0.12)] p-5">
-          <p className="text-[13px] text-near-black mb-1 font-semibold">Connect your Stripe account</p>
-          <p className="text-[12px] text-muted-text mb-4">
+        <div className="bg-white border border-hairline p-5">
+          <p className="text-sm text-near-black mb-1 font-semibold">Connect your Stripe account</p>
+          <p className="text-xs text-muted-text mb-4">
             BookReady uses Stripe to securely process payments straight to your bank.
             It takes about 2 minutes. We never see your card data.
           </p>
@@ -720,7 +720,7 @@ function StripeStep({ connected, saving, bizName, estimate, why, onConnect, onSk
             type="button"
             onClick={onConnect}
             disabled={saving}
-            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white border border-near-black px-4 py-2.5 hover:bg-white hover:text-near-black disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase bg-near-black text-white border border-near-black px-4 py-2.5 hover:bg-white hover:text-near-black disabled:opacity-50"
           >
             {saving ? <Loader2 size={12} className="animate-spin" /> : <><CreditCard size={12} /> Connect Stripe</>}
             {! saving && <ExternalLink size={11} className="opacity-60" />}
@@ -733,7 +733,7 @@ function StripeStep({ connected, saving, bizName, estimate, why, onConnect, onSk
           type="button"
           onClick={onSkip}
           disabled={saving}
-          className="text-[11px] font-semibold text-muted-text hover:text-near-black disabled:opacity-50"
+          className="text-2xs font-semibold text-muted-text hover:text-near-black disabled:opacity-50"
         >
           {connected ? 'Finish' : 'Skip for now, finish setup'}
         </button>
@@ -742,7 +742,7 @@ function StripeStep({ connected, saving, bizName, estimate, why, onConnect, onSk
             type="button"
             onClick={onSkip}
             disabled={saving}
-            className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-near-black text-white border border-near-black px-4 py-2.5 hover:bg-white hover:text-near-black disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase bg-near-black text-white border border-near-black px-4 py-2.5 hover:bg-white hover:text-near-black disabled:opacity-50"
           >
             {saving ? <Loader2 size={12} className="animate-spin" /> : <>Go to dashboard <ArrowRight size={12} /></>}
           </button>
@@ -763,16 +763,16 @@ function StepFrame({ title, subtitle, estimate, footnote, children }: {
   return (
     <div>
       {estimate && (
-        <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-2">
+        <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text mb-2">
           {estimate}
         </p>
       )}
-      <h1 className="text-[24px] sm:text-[28px] font-bold text-near-black tracking-tight leading-tight">
+      <h1 className="text-2xl sm:text-3xl font-bold text-near-black tracking-tight leading-tight">
         {title}
       </h1>
-      <p className="text-[14px] text-muted-text mt-2 max-w-xl leading-relaxed">{subtitle}</p>
+      <p className="text-sm text-muted-text mt-2 max-w-xl leading-relaxed">{subtitle}</p>
       {footnote && (
-        <p className="text-[12px] text-muted-text mt-2 max-w-xl italic">{footnote}</p>
+        <p className="text-xs text-muted-text mt-2 max-w-xl italic">{footnote}</p>
       )}
       <div className="space-y-4 mt-7">{children}</div>
     </div>
@@ -788,14 +788,14 @@ function Field({ label, hint, children }: {
     <div>
       <label className={labelCls}>{label}</label>
       {children}
-      {hint && <p className="mt-1 text-[11px] text-muted-text">{hint}</p>}
+      {hint && <p className="mt-1 text-2xs text-muted-text">{hint}</p>}
     </div>
   )
 }
 
-const labelCls = 'block text-[10px] font-bold tracking-[0.16em] uppercase text-muted-text mb-1.5'
-const inputCls = 'w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black transition-colors'
-const textareaCls = 'w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black transition-colors resize-y leading-relaxed'
+const labelCls = 'block text-eyebrow font-bold tracking-[0.16em] uppercase text-muted-text mb-1.5'
+const inputCls = 'w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black transition-colors'
+const textareaCls = 'w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black placeholder:text-[#c4bcb6] focus:outline-none focus:border-near-black transition-colors resize-y leading-relaxed'
 
 // ── A10: Welcome scene ─────────────────────────────────────────────────
 function WelcomeScene({ firstName, businessName, onStart, onSignOut }: {
@@ -806,20 +806,20 @@ function WelcomeScene({ firstName, businessName, onStart, onSignOut }: {
 }) {
   return (
     <div className="min-h-screen bg-cream flex flex-col">
-      <header className="border-b border-[rgba(18,18,18,0.10)] bg-white">
+      <header className="border-b border-hairline-soft bg-white">
         <div className="max-w-3xl mx-auto px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-near-black flex items-center justify-center">
               <Sparkles size={12} className="text-white" />
             </div>
-            <span className="text-[11px] font-bold tracking-[0.18em] uppercase text-near-black">
+            <span className="text-2xs font-bold tracking-[0.18em] uppercase text-near-black">
               BookReady
             </span>
           </div>
           <button
             type="button"
             onClick={onSignOut}
-            className="text-[11px] font-semibold text-muted-text hover:text-near-black"
+            className="text-2xs font-semibold text-muted-text hover:text-near-black"
           >
             Sign out
           </button>
@@ -830,20 +830,20 @@ function WelcomeScene({ firstName, businessName, onStart, onSignOut }: {
         <div className="max-w-xl w-full">
           <div className="mb-7">
             <Sparkles size={22} strokeWidth={1.5} className="text-near-black mb-4" />
-            <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-muted-text mb-3">
+            <p className="text-eyebrow font-bold tracking-[0.22em] uppercase text-muted-text mb-3">
               Welcome to BookReady
             </p>
-            <h1 className="text-[36px] sm:text-[44px] font-bold text-near-black tracking-tight leading-[1.04] mb-3">
+            <h1 className="text-3xl sm:text-3xl font-bold text-near-black tracking-tight leading-[1.04] mb-3">
               {firstName ? <>Welcome, <span className="italic">{firstName}.</span></> : <>You&rsquo;re in.</>}
             </h1>
-            <p className="text-[16px] text-muted-text leading-relaxed max-w-md">
+            <p className="text-base text-muted-text leading-relaxed max-w-md">
               Let&rsquo;s get {businessName} ready for bookings. Five quick steps,
               about three minutes. You can change everything later.
             </p>
           </div>
 
-          <div className="bg-white border border-[rgba(18,18,18,0.10)] p-5 mb-7">
-            <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-4">
+          <div className="bg-white border border-hairline-soft p-5 mb-7">
+            <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text mb-4">
               What we&rsquo;ll cover
             </p>
             <ol className="space-y-2.5">
@@ -851,17 +851,17 @@ function WelcomeScene({ firstName, businessName, onStart, onSignOut }: {
                 const Icon = s.icon
                 return (
                   <li key={s.id} className="flex items-start gap-3">
-                    <span className="w-5 h-5 bg-cream border border-[rgba(18,18,18,0.12)] flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-near-black mt-px">
+                    <span className="w-5 h-5 bg-cream border border-hairline flex items-center justify-center flex-shrink-0 text-eyebrow font-bold text-near-black mt-px">
                       {i + 1}
                     </span>
                     <div className="flex-1">
                       <div className="flex items-baseline gap-2 flex-wrap">
-                        <span className="text-[14px] font-semibold text-near-black">{s.label}</span>
-                        <span className="text-[10px] tracking-[0.12em] uppercase text-muted-text">
+                        <span className="text-sm font-semibold text-near-black">{s.label}</span>
+                        <span className="text-eyebrow tracking-[0.12em] uppercase text-muted-text">
                           {s.estimate}
                         </span>
                       </div>
-                      <p className="text-[12px] text-muted-text leading-relaxed mt-0.5">{s.why}</p>
+                      <p className="text-xs text-muted-text leading-relaxed mt-0.5">{s.why}</p>
                     </div>
                     <Icon size={14} className="text-muted-text mt-1 flex-shrink-0" strokeWidth={1.5} />
                   </li>
@@ -873,11 +873,11 @@ function WelcomeScene({ firstName, businessName, onStart, onSignOut }: {
           <button
             type="button"
             onClick={onStart}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-[12px] font-bold tracking-[0.14em] uppercase bg-near-black text-white border border-near-black px-6 py-3.5 hover:bg-[#2a2a2a] transition-colors"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 text-xs font-bold tracking-[0.14em] uppercase bg-near-black text-white border border-near-black px-6 py-3.5 hover:opacity-90 transition-colors"
           >
             Let&rsquo;s go <ArrowRight size={13} />
           </button>
-          <p className="text-[11px] text-muted-text mt-3 max-w-md leading-relaxed">
+          <p className="text-2xs text-muted-text mt-3 max-w-md leading-relaxed">
             Your site is already live at a starter address.
             These next minutes make it actually yours.
           </p>
@@ -920,13 +920,13 @@ function FinaleScene({ firstName, businessName, tenantId, stripeConnected, onCon
       {/* Confetti */}
       <Confetti />
 
-      <header className="border-b border-[rgba(18,18,18,0.10)] bg-white relative z-10">
+      <header className="border-b border-hairline-soft bg-white relative z-10">
         <div className="max-w-3xl mx-auto px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-near-black flex items-center justify-center">
               <Check size={12} className="text-white" />
             </div>
-            <span className="text-[11px] font-bold tracking-[0.18em] uppercase text-near-black">
+            <span className="text-2xs font-bold tracking-[0.18em] uppercase text-near-black">
               You&rsquo;re live
             </span>
           </div>
@@ -937,13 +937,13 @@ function FinaleScene({ firstName, businessName, tenantId, stripeConnected, onCon
         <div className="max-w-3xl mx-auto">
           <div className="mb-8 text-center">
             <Sparkles size={28} strokeWidth={1.5} className="text-near-black mx-auto mb-4" />
-            <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-muted-text mb-3">
+            <p className="text-eyebrow font-bold tracking-[0.22em] uppercase text-muted-text mb-3">
               {firstName ? `Nicely done, ${firstName}` : 'Nicely done'}
             </p>
-            <h1 className="text-[36px] sm:text-[44px] font-bold text-near-black tracking-tight leading-[1.05] mb-3">
+            <h1 className="text-3xl sm:text-3xl font-bold text-near-black tracking-tight leading-[1.05] mb-3">
               {businessName} is <span className="italic">ready.</span>
             </h1>
-            <p className="text-[15px] text-muted-text leading-relaxed max-w-md mx-auto">
+            <p className="text-sm text-muted-text leading-relaxed max-w-md mx-auto">
               Your booking site is live. Share the link with clients,
               or jump into the dashboard to keep customizing.
             </p>
@@ -951,28 +951,28 @@ function FinaleScene({ firstName, businessName, tenantId, stripeConnected, onCon
 
           {/* Share link */}
           {siteUrl && (
-            <section className="bg-white border border-[rgba(18,18,18,0.10)] p-5 mb-6 max-w-2xl mx-auto">
-              <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-3">
+            <section className="bg-white border border-hairline-soft p-5 mb-6 max-w-2xl mx-auto">
+              <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text mb-3">
                 Your site
               </p>
               <div className="flex items-center gap-2 flex-wrap">
-                <code className="text-[15px] sm:text-[17px] font-bold text-near-black tracking-tight flex-1 min-w-0 break-all">
+                <code className="text-sm sm:text-base font-bold text-near-black tracking-tight flex-1 min-w-0 break-all">
                   {siteUrl}
                 </code>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <button
                     type="button"
                     onClick={copyLink}
-                    className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.10em] uppercase bg-white border border-[rgba(18,18,18,0.15)] text-near-black px-3 py-2 hover:border-near-black transition-colors"
+                    className="inline-flex items-center gap-1.5 text-2xs font-bold tracking-[0.10em] uppercase bg-white border border-hairline-strong text-near-black px-3 py-2 hover:border-near-black transition-colors"
                   >
-                    {copied ? <Check size={11} className="text-[#1e7a3f]" /> : <Copy size={11} />}
+                    {copied ? <Check size={11} className="text-success" /> : <Copy size={11} />}
                     {copied ? 'Copied' : 'Copy'}
                   </button>
                   <a
                     href={siteUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-[0.10em] uppercase bg-near-black text-white border border-near-black px-3 py-2 hover:bg-[#2a2a2a] transition-colors"
+                    className="inline-flex items-center gap-1.5 text-2xs font-bold tracking-[0.10em] uppercase bg-near-black text-white border border-near-black px-3 py-2 hover:opacity-90 transition-colors"
                   >
                     <Eye size={11} /> Visit
                   </a>
@@ -983,7 +983,7 @@ function FinaleScene({ firstName, businessName, tenantId, stripeConnected, onCon
 
           {/* What's next */}
           <section className="mb-7 max-w-2xl mx-auto">
-            <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-text mb-3">
+            <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text mb-3">
               What&rsquo;s next
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -993,14 +993,14 @@ function FinaleScene({ firstName, businessName, tenantId, stripeConnected, onCon
                   <a
                     key={item.href}
                     href={item.href}
-                    className="bg-white border border-[rgba(18,18,18,0.10)] px-4 py-3 hover:border-near-black transition-colors flex items-center gap-3 group"
+                    className="bg-white border border-hairline-soft px-4 py-3 hover:border-near-black transition-colors flex items-center gap-3 group"
                   >
-                    <div className="w-8 h-8 bg-cream border border-[rgba(18,18,18,0.10)] flex items-center justify-center flex-shrink-0">
+                    <div className="w-8 h-8 bg-cream border border-hairline-soft flex items-center justify-center flex-shrink-0">
                       <Icon size={14} strokeWidth={1.5} className="text-near-black" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-near-black">{item.label}</p>
-                      <p className="text-[11px] text-muted-text truncate">{item.sub}</p>
+                      <p className="text-sm font-semibold text-near-black">{item.label}</p>
+                      <p className="text-2xs text-muted-text truncate">{item.sub}</p>
                     </div>
                     <ArrowRight size={12} className="text-muted-text group-hover:text-near-black flex-shrink-0" />
                   </a>
@@ -1013,13 +1013,13 @@ function FinaleScene({ firstName, businessName, tenantId, stripeConnected, onCon
             <button
               type="button"
               onClick={onContinue}
-              className="inline-flex items-center justify-center gap-2 text-[12px] font-bold tracking-[0.14em] uppercase bg-near-black text-white border border-near-black px-6 py-3.5 hover:bg-[#2a2a2a] transition-colors"
+              className="inline-flex items-center justify-center gap-2 text-xs font-bold tracking-[0.14em] uppercase bg-near-black text-white border border-near-black px-6 py-3.5 hover:opacity-90 transition-colors"
             >
               Go to dashboard <ArrowRight size={13} />
             </button>
             {/* #131 — point new owners at the Help Center right when they
                 land, while motivation is high. */}
-            <p className="text-[11px] text-muted-text mt-3">
+            <p className="text-2xs text-muted-text mt-3">
               New to all this?{' '}
               <a href="/help/getting-started" className="font-semibold text-near-black hover:underline">
                 Read the 10-minute starter guide

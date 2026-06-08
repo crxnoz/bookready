@@ -52,14 +52,14 @@ export default function ImageUploadField({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-muted-text">
+        <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
           {label}
         </span>
         {value && (
           <button
             type="button"
             onClick={() => { onChange(null); setUrlDraft('') }}
-            className="text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-text hover:text-near-black inline-flex items-center gap-1"
+            className="text-eyebrow font-semibold uppercase tracking-[0.06em] text-muted-text hover:text-near-black inline-flex items-center gap-1"
           >
             <X size={11} /> Remove
           </button>
@@ -70,7 +70,7 @@ export default function ImageUploadField({
         onDragOver={e => e.preventDefault()}
         onDrop={onDrop}
         className={cn(
-          'relative w-full bg-cream border border-dashed border-[rgba(18,18,18,0.20)] overflow-hidden',
+          'relative w-full bg-cream border border-dashed border-hairline-strong overflow-hidden',
           aspectClass,
         )}
       >
@@ -80,7 +80,7 @@ export default function ImageUploadField({
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-text gap-1.5 p-4 text-center">
             <ImagePlus size={20} strokeWidth={1.6} />
-            <p className="text-[11px]">Drag an image here, or use the button below.</p>
+            <p className="text-2xs">Drag an image here, or use the button below.</p>
           </div>
         )}
         {busy && (
@@ -103,7 +103,7 @@ export default function ImageUploadField({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={busy}
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] border border-near-black bg-near-black text-white px-3 py-1.5 hover:bg-white hover:text-near-black disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-[0.06em] border border-near-black bg-near-black text-white px-3 py-1.5 hover:bg-white hover:text-near-black disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Upload size={12} />
           {value ? 'Replace' : 'Upload'}
@@ -111,7 +111,7 @@ export default function ImageUploadField({
         <button
           type="button"
           onClick={() => setShowUrl(s => !s)}
-          className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-text hover:text-near-black inline-flex items-center gap-1"
+          className="text-2xs font-semibold uppercase tracking-[0.06em] text-muted-text hover:text-near-black inline-flex items-center gap-1"
         >
           <LinkIcon size={11} />
           {showUrl ? 'Hide URL' : 'Use URL instead'}
@@ -119,7 +119,7 @@ export default function ImageUploadField({
       </div>
 
       {showUrl && (
-        <div className="flex items-center gap-2 border border-[rgba(18,18,18,0.15)] bg-white px-2 focus-within:border-near-black">
+        <div className="flex items-center gap-2 border border-hairline-strong bg-white px-2 focus-within:border-near-black">
           <LinkIcon size={12} className="text-muted-text flex-shrink-0" />
           <input
             type="text"
@@ -137,10 +137,10 @@ export default function ImageUploadField({
       )}
 
       {hint && !error && (
-        <p className="text-[10px] text-muted-text">{hint}</p>
+        <p className="text-eyebrow text-muted-text">{hint}</p>
       )}
       {error && (
-        <p className="text-[10px] text-red-600 flex items-center gap-1">
+        <p className="text-eyebrow text-danger flex items-center gap-1">
           <AlertCircle size={10} /> {error}
         </p>
       )}

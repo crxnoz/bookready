@@ -51,7 +51,7 @@ export default function EditorGuard({ children }: { children: React.ReactNode })
   if (!slug) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
-        <span className="text-[10px] font-bold tracking-[0.22em] uppercase text-muted-text">
+        <span className="text-eyebrow font-bold tracking-[0.22em] uppercase text-muted-text">
           Loading…
         </span>
       </div>
