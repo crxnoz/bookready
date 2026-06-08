@@ -38,6 +38,10 @@ class PublicAvailabilityController extends Controller
             // Phase 7: optional. When set, conflicts + blocks are filtered
             // to that staff member's calendar.
             'staff_id'   => 'sometimes|nullable|integer',
+            // Av2.0 P4: optional customer email. When a logged-in customer
+            // is booking, we use it to unlock after-hours slots gated to
+            // existing / VIP customers. Anonymous → 'everyone' tier only.
+            'email'      => 'sometimes|nullable|email',
         ]);
 
         $serviceId = (int) $validated['service_id'];
@@ -204,6 +208,12 @@ class PublicAvailabilityController extends Controller
                 'duration_minutes' => (int)   $service->duration,
                 'price'            => (float) $service->price,
             ];
+
+            // Av2.0 P6 — a fully-booked day is exactly when squeeze-ins
+            // apply. Tell the widget whether to offer one (enabled + access
+            // tier + under the daily limit).
+            $squeezeIn = $this->squeezeInOffer($date, $validated['email'] ?? null);
+
             tenancy()->end();
             return response()->json([
                 'date'    => $date,
@@ -212,7 +222,49 @@ class PublicAvailabilityController extends Controller
                 'message' => $capacity['source'] === 'staff'
                     ? 'This stylist is fully booked for the day. Try another date or stylist.'
                     : 'This day is fully booked. Please choose another date.',
+                'squeeze_in' => $squeezeIn,
             ]);
+        }
+
+        // Av2.0 P4 — after-hours. If enabled + the customer's access tier
+        // qualifies + we're under the after-hours daily cap, extend the
+        // hours row's close so SlotGenerator produces premium slots too.
+        // We remember the regular close to tag + price those slots after.
+        $afterHoursRegularClose = null;
+        $afterHoursFeeCents     = 0;
+        if (\Illuminate\Support\Facades\Schema::hasTable('after_hours_config') && $hoursRow && ! empty($hoursRow->close_time)) {
+            $ahConfig = DB::table('after_hours_config')->first();
+            $window   = \App\Services\AfterHoursResolver::extendedClose($hoursRow->close_time, $ahConfig);
+            if ($window) {
+                // Access tier check (anonymous → 'everyone' only).
+                $client = null;
+                $email  = $validated['email'] ?? null;
+                if ($email && \Illuminate\Support\Facades\Schema::hasTable('clients')) {
+                    $client = DB::table('clients')->where('email', $email)->first();
+                }
+                $allowed = \App\Services\AfterHoursResolver::accessAllowed(
+                    (string) ($ahConfig->access_tier ?? 'everyone'), $client,
+                );
+
+                // Separate after-hours capacity cap.
+                $capOk = true;
+                if ($allowed && $ahConfig->daily_capacity !== null
+                    && \Illuminate\Support\Facades\Schema::hasColumn('appointments', 'is_after_hours')) {
+                    $ahCount = (int) DB::table('appointments')
+                        ->where('appointment_date', $date)
+                        ->where('is_after_hours', true)
+                        ->whereNotIn('status', ['cancelled'])
+                        ->count();
+                    $capOk = $ahCount < (int) $ahConfig->daily_capacity;
+                }
+
+                if ($allowed && $capOk) {
+                    $afterHoursRegularClose = $window['regular_close'];
+                    $afterHoursFeeCents     = $window['fee_cents'];
+                    // Extend the close so SlotGenerator emits premium slots.
+                    $hoursRow->close_time   = $window['extended_close'];
+                }
+            }
         }
 
         // Snapshot service data before ending tenancy
@@ -237,11 +289,60 @@ class PublicAvailabilityController extends Controller
             releasedUntil: $releasedUntil,
         );
 
+        // Av2.0 P4 — tag the premium slots (start >= regular close) with a
+        // tier + price delta so the booking widget can render a "+$X" badge.
+        $slots = $result['slots'];
+        if ($afterHoursRegularClose !== null) {
+            $feeDollars = round($afterHoursFeeCents / 100, 2);
+            $slots = array_map(function ($slot) use ($afterHoursRegularClose, $feeDollars) {
+                if (\App\Services\AfterHoursResolver::isAfterHours($slot['start_time'], $afterHoursRegularClose)) {
+                    $slot['tier']        = 'after_hours';
+                    $slot['price_delta'] = $feeDollars;
+                }
+                return $slot;
+            }, $slots);
+        }
+
         return response()->json([
             'date'    => $date,
             'service' => $serviceData,
-            'slots'   => $result['slots'],
+            'slots'   => $slots,
             'message' => $result['message'],
         ]);
+    }
+
+    /**
+     * Av2.0 P6 — squeeze-in offer for a full day. Returns null when not
+     * applicable; otherwise {available:true, fee:float}. Assumes tenancy
+     * is initialized (called before tenancy()->end()).
+     */
+    private function squeezeInOffer(string $date, ?string $email): ?array
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('squeeze_in_config')) return null;
+        $config = DB::table('squeeze_in_config')->first();
+        if (! $config || ! $config->enabled) return null;
+
+        // Access tier.
+        $client = ($email && \Illuminate\Support\Facades\Schema::hasTable('clients'))
+            ? DB::table('clients')->where('email', $email)->first()
+            : null;
+        if (! \App\Services\AfterHoursResolver::accessAllowed((string) ($config->access_tier ?? 'existing'), $client)) {
+            return null;
+        }
+
+        // Daily limit.
+        if ($config->daily_limit !== null && \Illuminate\Support\Facades\Schema::hasTable('availability_requests')) {
+            $used = (int) DB::table('availability_requests')
+                ->where('kind', 'squeeze_in')
+                ->where('preferred_date', $date)
+                ->whereIn('status', ['pending', 'suggested', 'approved', 'accepted'])
+                ->count();
+            if ($used >= (int) $config->daily_limit) return null;
+        }
+
+        return [
+            'available' => true,
+            'fee'       => round((int) ($config->fee_cents ?? 0) / 100, 2),
+        ];
     }
 }

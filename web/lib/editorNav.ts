@@ -102,7 +102,7 @@ export const EDITOR_SECTIONS: EditorSectionConfig[] = [
       { id: 'appointments',  label: 'Appointments',  href: '/editor/appointments' },
       { id: 'staff',         label: 'Staff',         href: '/editor/staff' },
       { id: 'booking-form',  label: 'Booking Form',  href: '/editor/booking-form' },
-      { id: 'waitlist',      label: 'Waitlist',      href: '/editor/waitlist', soon: true },
+      { id: 'waitlist',      label: 'Waitlist',      href: '/editor/waitlist' },
     ],
     defaultTitle:    'Bookings',
     defaultSubtitle: 'Services, availability, appointments, staff, and booking rules.',

@@ -850,6 +850,12 @@ export const LUSH_CSS = `
   background:var(--lush-pink);
   color:var(--lush-on-pink);
 }
+/* Av2.0 P4 — after-hours (premium) slots carry a fee badge + dashed edge. */
+.brk-booking-time.is-after-hours { border-style:dashed; }
+.brk-booking-time-fee {
+  display:block; margin-top:2px; font-size:10px; font-weight:700;
+  letter-spacing:.04em; opacity:.75;
+}
 .lush-slot-msg { font-size:13px; color:var(--lush-muted); padding:16px 0; }
 .lush-slot-error { color:#B91C1C; }
 

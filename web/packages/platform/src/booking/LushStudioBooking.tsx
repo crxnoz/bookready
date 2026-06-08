@@ -5,7 +5,7 @@ import {
   ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight,
   Clock, Heart, CalendarCheck, Image as ImageIcon, Loader2, X,
 } from 'lucide-react'
-import { getPublicAvailability, createPublicAppointment, uploadBookingAnswerImage, joinPublicWaitlist } from '@/lib/api'
+import { getPublicAvailability, createPublicAppointment, uploadBookingAnswerImage, joinPublicWaitlist, submitPublicAvailabilityRequest, submitPublicSqueezeIn } from '@/lib/api'
 import type {
   AvailableSlot, PaymentChoice, PublicBookingPayload, Service,
   AvailabilityData, PublicPaymentSettings,
@@ -68,7 +68,7 @@ type Step = 1 | 2 | 3 | 4 | 5
 type SlotState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; slots: AvailableSlot[]; message: string | null }
+  | { status: 'loaded'; slots: AvailableSlot[]; message: string | null; squeezeIn?: { available: boolean; fee: number } | null }
   | { status: 'error'; message: string }
 
 // Phase 8 — Add-ons is its own step now. When the chosen service has no
@@ -153,6 +153,18 @@ export default function LushStudioBooking({
   const [waitlistEarliest, setWaitlistEarliest] = useState('')
   const [waitlistLatest,   setWaitlistLatest]   = useState('')
   const [waitlistNotes,    setWaitlistNotes]    = useState('')
+  // Av2.0 P5 — availability request modal (active "fit me in" ask, distinct
+  // from the passive waitlist). preferred_date defaults to the chosen day.
+  const [requestOpen,    setRequestOpen]    = useState(false)
+  const [requestBusy,    setRequestBusy]    = useState(false)
+  const [requestMessage, setRequestMessage] = useState<string | null>(null)
+  const [requestError,   setRequestError]   = useState<string | null>(null)
+  const [requestDate,    setRequestDate]    = useState('')
+  const [requestTime,    setRequestTime]    = useState('')
+  const [requestNotes,   setRequestNotes]   = useState('')
+  // Av2.0 P6 — same modal serves squeeze-ins; this flips copy + endpoint.
+  const [requestIsSqueeze, setRequestIsSqueeze] = useState(false)
+  const [requestFee,       setRequestFee]       = useState(0)
   // Customer-account awareness. Shared with the header widget via the
   // LushCustomerAuthProvider mounted at the template root — one /auth/me
   // probe per page load, not one per consumer. When the visitor signs
@@ -417,16 +429,18 @@ export default function LushStudioBooking({
     setSlotState({ status: 'loading' })
     setSelectedSlot('')
 
-    getPublicAvailability(slug, serviceId, date, effectiveStaffId)
+    // Av2.0 P4 — pass the logged-in customer's email so after-hours slots
+    // gated to existing / VIP customers unlock for them.
+    getPublicAvailability(slug, serviceId, date, effectiveStaffId, authedUser?.email ?? null)
       .then(res => {
         if (id !== fetchRef.current) return
-        setSlotState({ status: 'loaded', slots: res.slots, message: res.message })
+        setSlotState({ status: 'loaded', slots: res.slots, message: res.message, squeezeIn: res.squeeze_in })
       })
       .catch(err => {
         if (id !== fetchRef.current) return
         setSlotState({ status: 'error', message: err instanceof Error ? err.message : 'Failed to load times.' })
       })
-  }, [serviceId, date, slug, effectiveStaffId])
+  }, [serviceId, date, slug, effectiveStaffId, authedUser?.email])
 
   // Reset add-on + staff picks whenever the chosen service changes — the
   // available set depends on the service's links/assignment list and we
@@ -1270,40 +1284,83 @@ export default function LushStudioBooking({
                 <div>
                   <p className="lush-slot-msg">{slotState.message ?? 'No times available. Try another day.'}</p>
                   {selectedService && date && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // Default a 14-day window starting from the chosen day —
-                        // the customer can tighten before submitting.
-                        const startIso = date
-                        const endDate = new Date(date + 'T00:00:00')
-                        endDate.setDate(endDate.getDate() + 14)
-                        const endIso = dateKey(endDate)
-                        setWaitlistEarliest(startIso)
-                        setWaitlistLatest(endIso)
-                        setWaitlistMessage(null)
-                        setWaitlistError(null)
-                        setWaitlistOpen(true)
-                      }}
-                      className="brk-booking-next"
-                      style={{ marginTop: 8 }}
-                    >
-                      Join the waitlist for this day <Heart size={12} />
-                    </button>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Default a 14-day window starting from the chosen day —
+                          // the customer can tighten before submitting.
+                          const startIso = date
+                          const endDate = new Date(date + 'T00:00:00')
+                          endDate.setDate(endDate.getDate() + 14)
+                          const endIso = dateKey(endDate)
+                          setWaitlistEarliest(startIso)
+                          setWaitlistLatest(endIso)
+                          setWaitlistMessage(null)
+                          setWaitlistError(null)
+                          setWaitlistOpen(true)
+                        }}
+                        className="brk-booking-next"
+                      >
+                        Join the waitlist <Heart size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRequestDate(date)
+                          setRequestTime('')
+                          setRequestNotes('')
+                          setRequestIsSqueeze(false)
+                          setRequestFee(0)
+                          setRequestMessage(null)
+                          setRequestError(null)
+                          setRequestOpen(true)
+                        }}
+                        className="brk-booking-back"
+                        style={{ borderColor: 'var(--lush-ink, #1a1a1a)' }}
+                      >
+                        Request this day <CalendarCheck size={12} />
+                      </button>
+                      {slotState.status === 'loaded' && slotState.squeezeIn?.available && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRequestDate(date)
+                            setRequestTime('')
+                            setRequestNotes('')
+                            setRequestIsSqueeze(true)
+                            setRequestFee(slotState.squeezeIn?.fee ?? 0)
+                            setRequestMessage(null)
+                            setRequestError(null)
+                            setRequestOpen(true)
+                          }}
+                          className="brk-booking-next"
+                        >
+                          Request a squeeze-in{slotState.squeezeIn.fee ? ` +$${slotState.squeezeIn.fee}` : ''} <Heart size={12} />
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
               {slotState.status === 'loaded' && slotState.slots.length > 0 && (
                 <div className="brk-booking-times">
-                  {slotState.slots.map(slot => (
-                    <button
-                      key={slot.start_time}
-                      className={`brk-booking-time${selectedSlot === slot.start_time ? ' is-selected' : ''}`}
-                      onClick={() => setSelectedSlot(slot.start_time)}
-                    >
-                      {slot.label}
-                    </button>
-                  ))}
+                  {slotState.slots.map(slot => {
+                    const isAfterHours = slot.tier === 'after_hours'
+                    return (
+                      <button
+                        key={slot.start_time}
+                        className={`brk-booking-time${selectedSlot === slot.start_time ? ' is-selected' : ''}${isAfterHours ? ' is-after-hours' : ''}`}
+                        onClick={() => setSelectedSlot(slot.start_time)}
+                        title={isAfterHours ? 'After-hours slot — a premium fee applies' : undefined}
+                      >
+                        {slot.label}
+                        {isAfterHours && slot.price_delta ? (
+                          <span className="brk-booking-time-fee">+${slot.price_delta}</span>
+                        ) : null}
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -1928,6 +1985,142 @@ export default function LushStudioBooking({
                     }}
                   >
                     {waitlistBusy ? <><Loader2 size={14} className="lush-spin" /> Joining…</> : <>Join waitlist <Check size={14} strokeWidth={3} /></>}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Av2.0 P5 — Request this day modal. Active "fit me in" ask:
+            the owner reviews and approves / suggests / declines. */}
+        {requestOpen && selectedService && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            onClick={() => !requestBusy && setRequestOpen(false)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 1000,
+              background: 'rgba(20,20,20,0.55)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 16,
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: 'var(--lush-cream, #faf6f1)',
+                color: 'var(--lush-ink, #1a1a1a)',
+                borderRadius: 20,
+                padding: '22px 22px 20px',
+                maxWidth: 440,
+                width: '100%',
+                boxShadow: '0 18px 60px rgba(0,0,0,0.25)',
+                position: 'relative',
+              }}
+            >
+              <button
+                onClick={() => setRequestOpen(false)}
+                disabled={requestBusy}
+                aria-label="Close"
+                style={{
+                  position: 'absolute', top: 12, right: 12,
+                  border: 0, background: 'transparent', cursor: 'pointer',
+                  padding: 6, borderRadius: 999, color: 'currentColor',
+                }}
+              >
+                <X size={18} />
+              </button>
+
+              {requestMessage ? (
+                <div>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8 }}>
+                    <Check size={20} />
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Request sent</h3>
+                  </div>
+                  <p style={{ margin: '4px 0 16px', fontSize: 14, lineHeight: 1.5 }}>{requestMessage}</p>
+                  <button type="button" className="brk-booking-next" onClick={() => setRequestOpen(false)} style={{ width: '100%' }}>
+                    Done
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 6 }}>
+                    <CalendarCheck size={20} />
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
+                      {requestIsSqueeze ? 'Request a squeeze-in' : 'Request an appointment'}
+                    </h3>
+                  </div>
+                  <p style={{ margin: '0 0 14px', fontSize: 13, opacity: 0.8, lineHeight: 1.5 }}>
+                    {requestIsSqueeze
+                      ? <>This day is full, but ask {displayName} to squeeze you in for {selectedService.name}{requestFee ? <> — a <strong>${requestFee}</strong> fee applies if approved</> : ''}. They&rsquo;ll email you to confirm.</>
+                      : <>Ask {displayName} to fit you in for {selectedService.name}. They&rsquo;ll email you to confirm, suggest another time, or let you know if they can&rsquo;t.</>}
+                  </p>
+
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    <label className="brk-booking-field">
+                      <span>Your Name *</span>
+                      <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Your name" />
+                    </label>
+                    <label className="brk-booking-field">
+                      <span>Email *</span>
+                      <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" />
+                    </label>
+                    <label className="brk-booking-field">
+                      <span>Phone (optional)</span>
+                      <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="(555) 555-5555" />
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <label className="brk-booking-field">
+                        <span>Preferred date *</span>
+                        <input type="date" value={requestDate} onChange={e => setRequestDate(e.target.value)} />
+                      </label>
+                      <label className="brk-booking-field">
+                        <span>Preferred time</span>
+                        <input type="time" value={requestTime} onChange={e => setRequestTime(e.target.value)} />
+                      </label>
+                    </div>
+                    <label className="brk-booking-field">
+                      <span>Notes (optional)</span>
+                      <textarea value={requestNotes} onChange={e => setRequestNotes(e.target.value)} placeholder="Anything that helps us fit you in?" rows={2} />
+                    </label>
+                  </div>
+
+                  {requestError && (
+                    <p style={{ marginTop: 10, fontSize: 13, color: '#a4252b', background: 'rgba(164,37,43,0.08)', padding: '8px 10px', borderRadius: 10 }}>{requestError}</p>
+                  )}
+
+                  <button
+                    type="button"
+                    className="brk-booking-next"
+                    style={{ width: '100%', marginTop: 14 }}
+                    disabled={requestBusy || !name.trim() || !email.trim() || !requestDate}
+                    onClick={async () => {
+                      setRequestBusy(true)
+                      setRequestError(null)
+                      try {
+                        const payload = {
+                          customer_name:  name.trim(),
+                          customer_email: email.trim(),
+                          customer_phone: phone.trim() || undefined,
+                          service_id:     selectedService.id,
+                          staff_id:       effectiveStaffId ?? undefined,
+                          preferred_date: requestDate,
+                          preferred_time: requestTime || undefined,
+                          notes:          requestNotes.trim() || undefined,
+                        }
+                        const res = requestIsSqueeze
+                          ? await submitPublicSqueezeIn(slug, payload)
+                          : await submitPublicAvailabilityRequest(slug, payload)
+                        setRequestMessage(res.message)
+                      } catch (e) {
+                        setRequestError(e instanceof Error ? e.message : 'Could not send your request.')
+                      } finally {
+                        setRequestBusy(false)
+                      }
+                    }}
+                  >
+                    {requestBusy ? <><Loader2 size={14} className="lush-spin" /> Sending…</> : <>Send request <Check size={14} strokeWidth={3} /></>}
                   </button>
                 </>
               )}

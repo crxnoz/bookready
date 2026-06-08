@@ -1,6 +1,22 @@
 # BookReady Availability 2.0
 
-> **Status: SPEC — not yet built. Post-launch v2 roadmap.**
+> **Status: SHIPPED (all 8 phases) — 2026-06-08.**
+>
+> Build order followed the engineering sequence below. Phases 1, 2, 3, 7
+> shipped first; then §8 (hub consolidation), §5 (Availability Requests),
+> §4 (After Hours), §6 (Squeeze-Ins). All availability surfaces now live
+> under the `/editor/availability` hub (Smart Calendar / Date Drops /
+> Capacity / After Hours / Squeeze-Ins / Waitlist / Requests / Advanced).
+>
+> Resolved known-gaps at build time:
+>   - **VIP** → gated on the existing `clients.is_vip` flag (no new feature).
+>   - **Request payment timing** → pay-after for v1: requests + squeeze-ins
+>     create NO payment at request time; on owner approval the appointment
+>     is created `confirmed`/`unpaid` and the owner collects via existing
+>     deposit/Connect tools. After-hours + squeeze-in fees fold into the
+>     appointment total the same way add-ons do (so deposit/full + Stripe
+>     treat them uniformly). SlotGenerator stayed pure — after-hours is a
+>     close-time extension applied in the caller, then tagged post-generate.
 >
 > Decided 2026-06-08:
 > 1. Launch ships on the existing weekly scheduling system.

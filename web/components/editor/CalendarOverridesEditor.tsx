@@ -13,7 +13,6 @@ import {
   type CalendarOverride, type ReleaseState, type CalendarCount, type CalendarCountsResponse,
 } from '@/lib/api'
 import type { HoursEntry, Service, ApiStaffMember } from '@/lib/types'
-import ReleaseStrategyPanel from './ReleaseStrategyPanel'
 import { cn } from '@/lib/cn'
 
 /**
@@ -53,12 +52,10 @@ export default function CalendarOverridesEditor() {
   const [error,       setError]       = useState<string | null>(null)
   const [editingDate, setEditingDate] = useState<string | null>(null)
 
-  // Av2.0 P2: re-fetch release state whenever the strategy panel saves.
-  // The calendar uses it to tint un-released cells.
-  async function refreshReleaseState() {
-    try { setReleaseState(await getEditorReleaseState()) }
-    catch { /* swallow — non-critical UI hint */ }
-  }
+  // Av2.0 §8: Release strategy moved to its own "Date Drops" tab. The
+  // calendar still reads release state (below) to tint un-released cells;
+  // it re-fetches on mount, so switching back from the Date Drops tab
+  // (which remounts this component) reflects any strategy change.
 
   // Bootstrap — weekly schedule + staff + services load once, overrides
   // re-fetch when the month changes.
@@ -210,10 +207,6 @@ export default function CalendarOverridesEditor() {
           <AlertCircle size={14} /> {error}
         </div>
       )}
-
-      {/* Release strategy — sits ABOVE the grid because it controls
-          which cells render as un-released. */}
-      <ReleaseStrategyPanel onChange={refreshReleaseState} />
 
       {/* Day-of-week row */}
       <div className="grid grid-cols-7 mb-1.5">

@@ -320,12 +320,16 @@ export async function getPublicAvailability(
   serviceId: number,
   date: string,
   staffId?: number | null,
+  email?: string | null,
 ): Promise<PublicAvailabilityResponse> {
   const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
   // Phase 7 — when staffId is set, conflicts + per-staff blocked dates
   // get filtered to that staff member's calendar on the server.
   const params: Record<string, string> = { service_id: String(serviceId), date }
   if (staffId != null) params.staff_id = String(staffId)
+  // Av2.0 P4 — pass the logged-in customer email so after-hours slots
+  // gated to existing / VIP customers unlock for them.
+  if (email) params.email = email
   const unlock = currentUnlockToken()
   if (unlock) params.unlock = unlock
   const qs   = new URLSearchParams(params).toString()
@@ -859,6 +863,33 @@ export async function deleteEditorSlotReleaseDrop(id: number): Promise<{ id: num
   return request(`/editor/slot-release-drops/${id}`, { method: 'DELETE' })
 }
 
+// ── Availability 2.0 · Phase 3 / §8 · Capacity ────────────────────────────
+
+export interface StaffCapacity {
+  id:                     number
+  name:                   string
+  default_daily_capacity: number | null
+}
+
+export interface CapacitySettings {
+  default_capacity: number | null
+  staff:            StaffCapacity[]
+}
+
+export async function getEditorCapacity(): Promise<CapacitySettings> {
+  return request<CapacitySettings>('/editor/capacity')
+}
+
+export async function updateEditorCapacity(payload: {
+  default_capacity?: number | null
+  staff_caps?:       Record<number, number | null>
+}): Promise<CapacitySettings> {
+  return request<CapacitySettings>('/editor/capacity', {
+    method: 'PATCH',
+    body:   JSON.stringify(payload),
+  })
+}
+
 // ── Availability 2.0 · Phase 7 · Waitlist ─────────────────────────────────
 
 export type WaitlistStatus = 'pending' | 'notified' | 'claimed' | 'expired' | 'removed'
@@ -940,6 +971,176 @@ export async function claimPublicWaitlist(
   })
   const body = await res.json().catch(() => ({} as Record<string, unknown>))
   if (! res.ok) throw Object.assign(new Error((body as { message?: string }).message || 'Could not claim spot'), { status: res.status })
+  return body as { appointment_id: number; appointment_date: string; start_time: string; message: string }
+}
+
+// ── Availability 2.0 · Phase 6 · Squeeze-Ins ──────────────────────────────
+
+export interface SqueezeInConfig {
+  enabled:     boolean
+  fee:         number
+  daily_limit: number
+  access_tier: AfterHoursAccessTier
+}
+
+export async function getEditorSqueezeIns(): Promise<SqueezeInConfig> {
+  return request<SqueezeInConfig>('/editor/squeeze-ins')
+}
+
+export async function updateEditorSqueezeIns(payload: Partial<SqueezeInConfig>): Promise<SqueezeInConfig> {
+  return request<SqueezeInConfig>('/editor/squeeze-ins', {
+    method: 'PATCH', body: JSON.stringify(payload),
+  })
+}
+
+// Public — customer requests a squeeze-in when a day is fully booked.
+export async function submitPublicSqueezeIn(
+  slug: string, payload: PublicAvailabilityRequestPayload,
+): Promise<{ id: number; message: string }> {
+  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.bkrdy.me') + '/v1'
+  const res = await fetch(`${baseUrl}/public/sites/${slug}/squeeze-ins`, {
+    method: 'POST',
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const body = await res.json().catch(() => ({} as Record<string, unknown>))
+  if (! res.ok) throw Object.assign(new Error((body as { message?: string }).message || 'Could not request a squeeze-in'), { status: res.status })
+  return body as { id: number; message: string }
+}
+
+// ── Availability 2.0 · Phase 4 · After Hours ──────────────────────────────
+
+export type AfterHoursAccessTier = 'everyone' | 'existing' | 'vip'
+
+export interface AfterHoursConfig {
+  enabled:               boolean
+  fee:                   number          // dollars
+  max_extension_minutes: number
+  latest_booking_time:   string | null   // HH:MM
+  access_tier:           AfterHoursAccessTier
+  daily_capacity:        number | null
+}
+
+export async function getEditorAfterHours(): Promise<AfterHoursConfig> {
+  return request<AfterHoursConfig>('/editor/after-hours')
+}
+
+export async function updateEditorAfterHours(payload: Partial<AfterHoursConfig>): Promise<AfterHoursConfig> {
+  return request<AfterHoursConfig>('/editor/after-hours', {
+    method: 'PATCH', body: JSON.stringify(payload),
+  })
+}
+
+// ── Availability 2.0 · Phase 5 · Availability Requests ────────────────────
+
+export type AvailabilityRequestStatus =
+  | 'pending' | 'approved' | 'suggested' | 'declined' | 'accepted' | 'cancelled'
+
+export interface AvailabilityRequest {
+  id:             number
+  kind:           'standard' | 'squeeze_in'
+  fee:            number
+  customer_name:  string
+  customer_email: string
+  customer_phone: string | null
+  service_id:     number
+  service_name:   string | null
+  staff_id:       number | null
+  staff_name:     string | null
+  preferred_date: string
+  preferred_time: string | null
+  notes:          string | null
+  status:         AvailabilityRequestStatus
+  owner_note:     string | null
+  suggested_date: string | null
+  suggested_time: string | null
+  created_at:     string | null
+}
+
+export async function getEditorAvailabilityRequests(
+  kind: 'standard' | 'squeeze_in' = 'standard',
+): Promise<{ data: AvailabilityRequest[] }> {
+  return request<{ data: AvailabilityRequest[] }>(`/editor/availability-requests?kind=${kind}`)
+}
+
+export async function approveAvailabilityRequest(id: number, time: string): Promise<{ ok: boolean; appointment_id: number }> {
+  return request(`/editor/availability-requests/${id}/approve`, {
+    method: 'POST', body: JSON.stringify({ time }),
+  })
+}
+
+export async function suggestAvailabilityRequest(
+  id: number, payload: { date: string; time: string; note?: string },
+): Promise<{ ok: boolean }> {
+  return request(`/editor/availability-requests/${id}/suggest`, {
+    method: 'POST', body: JSON.stringify(payload),
+  })
+}
+
+export async function declineAvailabilityRequest(id: number, note?: string): Promise<{ ok: boolean }> {
+  return request(`/editor/availability-requests/${id}/decline`, {
+    method: 'POST', body: JSON.stringify({ note }),
+  })
+}
+
+// Public — customer submits / views / accepts.
+export interface PublicAvailabilityRequestPayload {
+  customer_name:  string
+  customer_email: string
+  customer_phone?: string
+  service_id:     number
+  staff_id?:      number
+  preferred_date: string
+  preferred_time?: string
+  notes?:         string
+}
+
+export async function submitPublicAvailabilityRequest(
+  slug: string, payload: PublicAvailabilityRequestPayload,
+): Promise<{ id: number; message: string; duplicate?: boolean }> {
+  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.bkrdy.me') + '/v1'
+  const res = await fetch(`${baseUrl}/public/sites/${slug}/availability-requests`, {
+    method: 'POST',
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const body = await res.json().catch(() => ({} as Record<string, unknown>))
+  if (! res.ok) throw Object.assign(new Error((body as { message?: string }).message || 'Failed to send request'), { status: res.status })
+  return body as { id: number; message: string; duplicate?: boolean }
+}
+
+export interface PublicAvailabilityRequestView {
+  status:         AvailabilityRequestStatus
+  customer_name:  string
+  service_name:   string
+  preferred_date: string
+  preferred_time: string | null
+  suggested_date: string | null
+  suggested_time: string | null
+  owner_note:     string | null
+}
+
+export async function getPublicAvailabilityRequest(slug: string, token: string): Promise<PublicAvailabilityRequestView> {
+  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.bkrdy.me') + '/v1'
+  const res = await fetch(`${baseUrl}/public/sites/${slug}/availability-requests/${token}`, {
+    headers: { 'Accept': 'application/json' },
+    cache: 'no-store',
+  })
+  const body = await res.json().catch(() => ({} as Record<string, unknown>))
+  if (! res.ok) throw Object.assign(new Error((body as { message?: string }).message || 'Request not found'), { status: res.status })
+  return body as PublicAvailabilityRequestView
+}
+
+export async function acceptPublicAvailabilityRequest(
+  slug: string, token: string,
+): Promise<{ appointment_id: number; appointment_date: string; start_time: string; message: string }> {
+  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.bkrdy.me') + '/v1'
+  const res = await fetch(`${baseUrl}/public/sites/${slug}/availability-requests/${token}/accept`, {
+    method: 'POST',
+    headers: { 'Accept': 'application/json' },
+  })
+  const body = await res.json().catch(() => ({} as Record<string, unknown>))
+  if (! res.ok) throw Object.assign(new Error((body as { message?: string }).message || 'Could not accept'), { status: res.status })
   return body as { appointment_id: number; appointment_date: string; start_time: string; message: string }
 }
 

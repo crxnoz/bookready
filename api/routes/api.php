@@ -37,6 +37,10 @@ use App\Http\Controllers\Api\Editor\HoursController;
 use App\Http\Controllers\Api\Editor\BookingSettingsController;
 use App\Http\Controllers\Api\Editor\SlotReleaseDropsController;
 use App\Http\Controllers\Api\Editor\WaitlistController;
+use App\Http\Controllers\Api\Editor\CapacityController;
+use App\Http\Controllers\Api\Editor\AvailabilityRequestsController;
+use App\Http\Controllers\Api\Editor\AfterHoursController;
+use App\Http\Controllers\Api\Editor\SqueezeInController;
 use App\Http\Controllers\Api\Editor\NotificationSettingsController;
 use App\Http\Controllers\Api\Editor\PaymentSettingsController;
 use App\Http\Controllers\Api\Editor\StripeConnectController;
@@ -145,6 +149,22 @@ Route::prefix('v1')->group(function () {
     Route::post('public/sites/{slug}/waitlist/claim/{token}',
         [\App\Http\Controllers\Api\PublicWaitlistController::class, 'claim'])
         ->middleware('throttle:10,1');
+
+    // ── Public availability requests (Availability 2.0 Phase 5) ───────────
+    // Submit a request for an unavailable date; token-gated view + accept.
+    Route::post('public/sites/{slug}/availability-requests',
+        [\App\Http\Controllers\Api\PublicAvailabilityRequestController::class, 'submit'])
+        ->middleware('throttle:5,1');
+    Route::get('public/sites/{slug}/availability-requests/{token}',
+        [\App\Http\Controllers\Api\PublicAvailabilityRequestController::class, 'show'])
+        ->middleware('throttle:30,1');
+    Route::post('public/sites/{slug}/availability-requests/{token}/accept',
+        [\App\Http\Controllers\Api\PublicAvailabilityRequestController::class, 'accept'])
+        ->middleware('throttle:10,1');
+    // Av2.0 P6 — squeeze-in request (shown when a day is fully booked).
+    Route::post('public/sites/{slug}/squeeze-ins',
+        [\App\Http\Controllers\Api\PublicAvailabilityRequestController::class, 'submitSqueezeIn'])
+        ->middleware('throttle:5,1');
 
     // ── Public tip flow (token-gated) ────────────────────────────────────
     // Phase S5+ — same reasoning as manage routes above.
@@ -385,9 +405,27 @@ Route::prefix('v1')->group(function () {
         Route::patch ('slot-release-drops/{id}',      [SlotReleaseDropsController::class, 'update'])->where('id', '\d+');
         Route::delete('slot-release-drops/{id}',      [SlotReleaseDropsController::class, 'destroy'])->where('id', '\d+');
 
+        // Av2.0 P3/§8 — capacity (tenant default + per-staff caps).
+        Route::get   ('capacity',                     [CapacityController::class, 'show']);
+        Route::patch ('capacity',                     [CapacityController::class, 'update']);
+
         // Av2.0 P7 — owner's waitlist view.
         Route::get   ('waitlist',                     [WaitlistController::class, 'index']);
         Route::patch ('waitlist/{id}',                [WaitlistController::class, 'update'])->where('id', '\d+');
+
+        // Av2.0 P5 — availability requests inbox.
+        Route::get ('availability-requests',                 [AvailabilityRequestsController::class, 'index']);
+        Route::post('availability-requests/{id}/approve',    [AvailabilityRequestsController::class, 'approve'])->where('id', '\d+');
+        Route::post('availability-requests/{id}/suggest',    [AvailabilityRequestsController::class, 'suggest'])->where('id', '\d+');
+        Route::post('availability-requests/{id}/decline',    [AvailabilityRequestsController::class, 'decline'])->where('id', '\d+');
+
+        // Av2.0 P4 — after-hours config.
+        Route::get  ('after-hours', [AfterHoursController::class, 'show']);
+        Route::patch('after-hours', [AfterHoursController::class, 'update']);
+
+        // Av2.0 P6 — squeeze-in config (queue served by availability-requests?kind=squeeze_in).
+        Route::get  ('squeeze-ins', [SqueezeInController::class, 'show']);
+        Route::patch('squeeze-ins', [SqueezeInController::class, 'update']);
 
         Route::get('settings/notifications',          [NotificationSettingsController::class, 'show']);
         Route::patch('settings/notifications',        [NotificationSettingsController::class, 'update']);

@@ -1137,6 +1137,9 @@ export interface AvailableSlot {
   start_time: string   // "HH:MM"
   end_time: string     // "HH:MM"
   label: string        // "10:00 AM"
+  // Av2.0 P4 — present on after-hours (premium) slots.
+  tier?: 'after_hours'
+  price_delta?: number // dollars added for booking this slot
 }
 
 export interface PublicAvailabilityResponse {
@@ -1149,6 +1152,8 @@ export interface PublicAvailabilityResponse {
   }
   slots: AvailableSlot[]
   message: string | null
+  // Av2.0 P6 — present on fully-booked days when squeeze-ins are offered.
+  squeeze_in?: { available: boolean; fee: number } | null
 }
 
 // Public booking

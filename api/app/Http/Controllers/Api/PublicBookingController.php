@@ -294,6 +294,49 @@ class PublicBookingController extends Controller
         }
         $hoursRow = $override['hoursRow'];
 
+        // Av2.0 P4 — after-hours. If the chosen time is past regular close,
+        // validate the after-hours config + access tier + daily cap here
+        // (never trust the client), then extend the hours row's close so
+        // the slot re-verify below accepts the premium slot. The fee is
+        // added to the charged price further down.
+        $isAfterHoursBooking = false;
+        $afterHoursFeeCents  = 0;
+        if (\Illuminate\Support\Facades\Schema::hasTable('after_hours_config') && $hoursRow && ! empty($hoursRow->close_time)) {
+            $regularClose = substr((string) $hoursRow->close_time, 0, 5);
+            if (\App\Services\AfterHoursResolver::isAfterHours($startTime, $regularClose)) {
+                $ahConfig = DB::table('after_hours_config')->first();
+                $window   = \App\Services\AfterHoursResolver::extendedClose($hoursRow->close_time, $ahConfig);
+                if (! $window) {
+                    tenancy()->end();
+                    return response()->json(['message' => 'This time is not available.'], 422);
+                }
+                // Access tier (anonymous → only 'everyone' passes).
+                $ahClient = null;
+                if (! empty($validated['customer_email']) && Schema::hasTable('clients')) {
+                    $ahClient = DB::table('clients')->where('email', $validated['customer_email'])->first();
+                }
+                if (! \App\Services\AfterHoursResolver::accessAllowed((string) ($ahConfig->access_tier ?? 'everyone'), $ahClient)) {
+                    tenancy()->end();
+                    return response()->json(['message' => 'This time slot is only available to select customers.'], 422);
+                }
+                // Separate after-hours daily cap.
+                if ($ahConfig->daily_capacity !== null && Schema::hasColumn('appointments', 'is_after_hours')) {
+                    $ahCount = (int) DB::table('appointments')
+                        ->where('appointment_date', $date)
+                        ->where('is_after_hours', true)
+                        ->whereNotIn('status', ['cancelled'])
+                        ->count();
+                    if ($ahCount >= (int) $ahConfig->daily_capacity) {
+                        tenancy()->end();
+                        return response()->json(['message' => 'After-hours availability is full for this day.'], 422);
+                    }
+                }
+                $isAfterHoursBooking = true;
+                $afterHoursFeeCents  = (int) $window['fee_cents'];
+                $hoursRow->close_time = $window['extended_close'];
+            }
+        }
+
         // Av2.0 P2 — re-validate release window on booking submit.
         $drops = [];
         if (\Illuminate\Support\Facades\Schema::hasTable('slot_release_drops')) {
@@ -467,8 +510,10 @@ class PublicBookingController extends Controller
         // charged for (deposit + full both use this combined total). The
         // original service price is preserved on the appointment for the
         // receipt line; addons_subtotal lives in its own column.
+        // Av2.0 P4 — fold the after-hours fee into the charged price exactly
+        // like an add-on, so deposit/full + Stripe all treat it uniformly.
         $servicePrice = $service->price !== null
-            ? (float) $service->price + ($addonsSubtotalCents / 100)
+            ? (float) $service->price + ($addonsSubtotalCents / 100) + ($afterHoursFeeCents / 100)
             : null;
 
         $depositAmount = AppointmentPaymentService::calculateDeposit($payment, $servicePrice);
@@ -628,6 +673,14 @@ class PublicBookingController extends Controller
         }
         if ($questionAnswersJson !== null && Schema::hasColumn('appointments', 'question_answers')) {
             $insertData['question_answers'] = $questionAnswersJson;
+        }
+
+        // Av2.0 P4 — stamp after-hours so Payments + the owner can see the
+        // premium booking and its surcharge.
+        if ($isAfterHoursBooking && Schema::hasColumn('appointments', 'is_after_hours')) {
+            $insertData['is_after_hours']   = true;
+            $insertData['surcharge_cents']  = $afterHoursFeeCents;
+            $insertData['surcharge_reason'] = 'after_hours';
         }
 
         // TCR-compliant SMS consent capture. Only stamp when the
