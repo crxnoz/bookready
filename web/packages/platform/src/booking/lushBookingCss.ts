@@ -850,8 +850,18 @@ export const LUSH_CSS = `
   background:var(--lush-pink);
   color:var(--lush-on-pink);
 }
-/* Av2.0 P4 — after-hours (premium) slots carry a fee badge + dashed edge. */
-.brk-booking-time.is-after-hours { border-style:dashed; }
+/* Av2.0 P4 — after-hours (premium) slots: dark fill + dashed edge so they
+   visibly read as "after hours / premium" against the regular pills. */
+.brk-booking-time.is-after-hours {
+  border-style:dashed;
+  background:var(--lush-ink, #16131a);
+  border-color:var(--lush-ink, #16131a);
+  color:#fff;
+}
+.brk-booking-time.is-after-hours:hover { border-color:var(--lush-pink); }
+.brk-booking-time.is-after-hours.is-selected {
+  background:var(--lush-pink); border-color:var(--lush-pink); color:var(--lush-on-pink);
+}
 .brk-booking-time-fee {
   display:block; margin-top:2px; font-size:10px; font-weight:700;
   letter-spacing:.04em; opacity:.75;

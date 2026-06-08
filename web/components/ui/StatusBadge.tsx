@@ -30,11 +30,17 @@ interface StatusBadgeProps {
 
 export default function StatusBadge({ domain, status, label, className }: StatusBadgeProps) {
   const def = statusDef(domain, status)
+  // VIP is the one sanctioned gradient in editor chrome — a soft
+  // pink→lavender "premium" pill for the top customer tier (reuses the
+  // reserved soon-from/soon-to gradient stops).
+  const isVip = domain === 'customer' && status === 'vip'
   return (
     <span
       className={cn(
         'inline-flex items-center border px-2 py-0.5 text-2xs font-semibold whitespace-nowrap',
-        TONE[def.tone],
+        isVip
+          ? 'border-transparent bg-gradient-to-r from-soon-from to-soon-to text-near-black'
+          : TONE[def.tone],
         className,
       )}
     >

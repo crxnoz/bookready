@@ -5,8 +5,8 @@ import EditorShell from '@/components/editor/EditorShell'
 import CustomersEditor from '@/components/editor/CustomersEditor'
 import { ComingSoonPanel } from '@/components/editor/ComingSoonPanel'
 import {
-  Gift, Star, UserCircle2, Sparkles, MessageSquare, Award, Crown,
-  Filter, Mail as MailIcon, Eye,
+  Gift, Star, Sparkles, MessageSquare, Award, Crown,
+  Mail as MailIcon,
 } from 'lucide-react'
 
 /**
@@ -19,7 +19,6 @@ export default function CustomersPage() {
   const tab = sp?.get('tab') ?? 'overview'
 
   if (tab === 'loyalty')  return <Shell><LoyaltyPanel /></Shell>
-  if (tab === 'accounts') return <Shell><AccountsPanel /></Shell>
   if (tab === 'reviews')  return <Shell><ReviewsPanel /></Shell>
 
   return <Shell><CustomersEditor /></Shell>
@@ -76,61 +75,6 @@ function LoyaltyPanel() {
               'Auto-send a one-day promo code via email',
               'Configurable discount %, free add-on, or upgrade',
               'Skips customers who already have an open booking',
-            ],
-          },
-        ]}
-      />
-    </div>
-  )
-}
-
-function AccountsPanel() {
-  return (
-    <div className="w-full p-3 sm:p-5 md:p-6">
-      <ComingSoonPanel
-        eyebrow="Coming Soon"
-        title="Customer Accounts"
-        intro={'Give customers a logged-in space on your booking site. They keep their info, payment methods, and history in one place, and you get fewer "what was my appointment time?" emails.'}
-        features={[
-          {
-            icon:        UserCircle2,
-            tone:        'accent',
-            title:       'Saved profiles',
-            description: 'Customers sign in once and never re-enter their name, phone, or notes again.',
-            bullets: [
-              'Sign in with an email link, no password to remember',
-              'Optional Google sign-in for one-tap booking',
-              'Profile photo + preferred name shown to your team',
-            ],
-          },
-          {
-            icon:        Eye,
-            title:       'Booking history',
-            description: 'A timeline of every past + upcoming appointment, with one-click rebook on favorites.',
-            bullets: [
-              '"Book it again" copies the last appointment',
-              'Filter by service, staff, or date range',
-              'Download receipts as PDFs',
-            ],
-          },
-          {
-            icon:        Filter,
-            title:       'Saved preferences',
-            description: 'Allergies, preferred staff, favorite add-ons: saved once, surfaced every booking.',
-            bullets: [
-              'Auto-fills the new Booking Form questions',
-              'Owner sees the preference card on every appointment',
-              'Customer can update from their account at any time',
-            ],
-          },
-          {
-            icon:        Crown,
-            title:       'Saved payment methods',
-            description: 'Customers save a card on file for faster checkout, deposits, and late fees.',
-            bullets: [
-              'Secured by Stripe, you never see the number',
-              'Owner can charge no-show / late fees with one click',
-              'Customers can remove cards anytime from their profile',
             ],
           },
         ]}
