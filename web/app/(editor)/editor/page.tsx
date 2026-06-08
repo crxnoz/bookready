@@ -1132,7 +1132,7 @@ function AreaChart({
   const drawableIdx = currentIdx >= 0 ? currentIdx : lastPastIdx
 
   // Path for [0..drawableIdx]
-  const linePath = drawableIdx >= 0 ? smoothSplinePath(coords.slice(0, drawableIdx + 1)) : ''
+  const linePath = drawableIdx >= 0 ? polylinePath(coords.slice(0, drawableIdx + 1)) : ''
   const areaPath = drawableIdx >= 0
     ? `${linePath} L${coords[drawableIdx].x} ${BOT} L${coords[0].x} ${BOT} Z`
     : ''
@@ -1167,8 +1167,8 @@ function AreaChart({
         >
           <defs>
             <linearGradient id="onb-rev-fill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"  stopColor="#FFC8C1" stopOpacity="0.32" />
-              <stop offset="95%" stopColor="#FFC8C1" stopOpacity="0" />
+              <stop offset="0%"  stopColor="#C8E6C9" stopOpacity="0.42" />
+              <stop offset="95%" stopColor="#C8E6C9" stopOpacity="0" />
             </linearGradient>
           </defs>
 
@@ -1217,15 +1217,9 @@ function AreaChart({
             />
           )}
 
-          {/* Latest-point halo + dot */}
-          {drawableIdx >= 0 && (
-            <g pointerEvents="none">
-              <circle cx={coords[drawableIdx].x} cy={coords[drawableIdx].y}
-                r="8" fill="#FFC8C1" fillOpacity="0.4" />
-              <circle cx={coords[drawableIdx].x} cy={coords[drawableIdx].y}
-                r="4" fill="#121212" />
-            </g>
-          )}
+          {/* Latest-point halo + dot live in the HTML overlay below so
+              they render as perfect circles regardless of the SVG's
+              non-uniform stretch on wide cards. */}
 
           {/* Invisible hit-areas */}
           {points.map((p, i) => {
@@ -1246,21 +1240,55 @@ function AreaChart({
             )
           })}
 
-          {/* Hover guide line + dot */}
+          {/* Hover guide line (dot moves to HTML overlay below) */}
           {hover != null && hover >= 0 && (
-            <g pointerEvents="none">
-              <line
-                x1={coords[hover].x} y1={TOP}
-                x2={coords[hover].x} y2={BOT}
-                stroke="rgba(18,18,18,0.20)" strokeWidth="0.5" strokeDasharray="2 2"
-                vectorEffect="non-scaling-stroke"
-              />
-              <circle cx={coords[hover].x} cy={coords[hover].y} r="5"
-                fill="#FFC8C1" stroke="#121212" strokeWidth="1"
-                vectorEffect="non-scaling-stroke" />
-            </g>
+            <line
+              x1={coords[hover].x} y1={TOP}
+              x2={coords[hover].x} y2={BOT}
+              stroke="rgba(18,18,18,0.20)" strokeWidth="0.5" strokeDasharray="2 2"
+              vectorEffect="non-scaling-stroke"
+              pointerEvents="none"
+            />
           )}
         </svg>
+
+        {/* Latest-point halo + dot in HTML overlay. Positioning by % of
+            the SVG's stretched viewBox keeps them tracked to the data
+            point while the divs themselves stay perfectly circular. */}
+        {drawableIdx >= 0 && (
+          <>
+            <div
+              aria-hidden
+              className="absolute w-4 h-4 rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2"
+              style={{
+                left: `${(coords[drawableIdx].x / VW) * 100}%`,
+                top:  `${(coords[drawableIdx].y / VH) * 100}%`,
+                backgroundColor: 'rgba(200,230,201,0.55)',
+              }}
+            />
+            <div
+              aria-hidden
+              className="absolute w-2 h-2 rounded-full bg-near-black pointer-events-none -translate-x-1/2 -translate-y-1/2"
+              style={{
+                left: `${(coords[drawableIdx].x / VW) * 100}%`,
+                top:  `${(coords[drawableIdx].y / VH) * 100}%`,
+              }}
+            />
+          </>
+        )}
+
+        {/* Hover dot in HTML overlay (perfect circle, sage fill). */}
+        {hover != null && hover >= 0 && (
+          <div
+            aria-hidden
+            className="absolute w-2.5 h-2.5 rounded-full border border-near-black pointer-events-none -translate-x-1/2 -translate-y-1/2"
+            style={{
+              left: `${(coords[hover].x / VW) * 100}%`,
+              top:  `${(coords[hover].y / VH) * 100}%`,
+              backgroundColor: '#C8E6C9',
+            }}
+          />
+        )}
 
         {/* NOW label outside SVG (positioned by % so it scales with the chart) */}
         {currentIdx >= 0 && currentIdx < n - 1 && (
@@ -1300,28 +1328,15 @@ function AreaChart({
 }
 
 /**
- * Convert a polyline through `pts` into a smoothed cubic-Bezier path
- * using the Catmull-Rom → Bezier formula. Tension is fixed at the
- * standard 1.0 (so the spline passes through every point with a soft
- * curve at the joins). Boundary tangents are reflected.
+ * Build a straight-line polyline path through `pts`. We dropped the
+ * smoothed spline so the chart reads as fact rather than estimate:
+ * appointment counts are discrete events and curve smoothing implied
+ * an intra-day shape that doesn't exist.
  */
-function smoothSplinePath(pts: { x: number; y: number }[]): string {
+function polylinePath(pts: { x: number; y: number }[]): string {
   if (pts.length === 0) return ''
-  if (pts.length === 1) return `M${pts[0].x} ${pts[0].y}`
-  if (pts.length === 2) return `M${pts[0].x} ${pts[0].y} L${pts[1].x} ${pts[1].y}`
-
   let d = `M${pts[0].x} ${pts[0].y}`
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] ?? pts[i]
-    const p1 = pts[i]
-    const p2 = pts[i + 1]
-    const p3 = pts[i + 2] ?? pts[i + 1]
-    const cp1x = p1.x + (p2.x - p0.x) / 6
-    const cp1y = p1.y + (p2.y - p0.y) / 6
-    const cp2x = p2.x - (p3.x - p1.x) / 6
-    const cp2y = p2.y - (p3.y - p1.y) / 6
-    d += ` C${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`
-  }
+  for (let i = 1; i < pts.length; i++) d += ` L${pts[i].x} ${pts[i].y}`
   return d
 }
 
