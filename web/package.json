@@ -10,6 +10,8 @@
     "check:ui": "node scripts/ui-guardrails.mjs"
   },
   "dependencies": {
+    "@stripe/react-stripe-js": "^2.9.0",
+    "@stripe/stripe-js": "^4.10.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.446.0",
     "next": "14.2.29",

@@ -1236,6 +1236,35 @@ export const LUSH_CSS = `
 .brk-booking-success-dot { color:var(--lush-pink); }
 .brk-booking-success-note { font-size:12px; color:var(--lush-muted); margin:0; }
 
+/* ── Embedded Stripe Checkout ── Mounted on-page after the booking POST
+   returns a client secret. The Stripe component renders its own iframe
+   (Stripe-branded); we only style the surrounding chrome so the header +
+   cancel link read in each template's vocabulary. */
+.brk-booking-checkout {
+  max-width:560px; margin:0 auto; padding:24px 16px 48px;
+  display:flex; flex-direction:column; gap:18px;
+}
+.brk-booking-checkout-head { text-align:center; display:flex; flex-direction:column; gap:6px; }
+.brk-booking-checkout-head h3 {
+  font-family:var(--lush-serif); font-size:clamp(24px,4vw,34px);
+  font-weight:400; letter-spacing:-0.02em; margin:0; color:var(--lush-text);
+}
+.brk-booking-checkout-sub { font-size:13px; color:var(--lush-muted); margin:0; }
+.brk-booking-checkout-frame {
+  background:var(--lush-card); border:1px solid var(--lush-dark-border);
+  border-radius:8px; padding:8px;
+}
+.brk-booking-checkout-cancel {
+  align-self:center; background:none; border:none; cursor:pointer;
+  font-family:var(--lush-ui); font-size:13px; color:var(--lush-muted);
+  text-decoration:underline; padding:4px 8px;
+}
+.brk-booking-checkout-cancel:hover { color:var(--lush-text); }
+.brk-booking-checkout-errmsg {
+  margin:0; padding:20px 16px; text-align:center;
+  font-family:var(--lush-ui); font-size:14px; line-height:1.55; color:var(--lush-text);
+}
+
 /* ── Gallery ── */
 /* ── Shared tab header ── Every Lush tab opens with the same eyebrow +
    Cookie script section title pair so the tabs read as a consistent

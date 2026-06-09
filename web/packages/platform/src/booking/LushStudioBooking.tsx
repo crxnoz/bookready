@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import {
   ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight,
   Clock, Heart, CalendarCheck, Image as ImageIcon, Loader2, X,
 } from 'lucide-react'
+import { loadStripe } from '@stripe/stripe-js'
+import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js'
 import { getPublicAvailability, createPublicAppointment, uploadBookingAnswerImage, joinPublicWaitlist, submitPublicSqueezeIn } from '@/lib/api'
 import type {
   AvailableSlot, PaymentChoice, PublicBookingPayload, Service,
@@ -207,6 +209,32 @@ export default function LushStudioBooking({
   // row for this booking — drives the post-success verify-email card
   // and the "go to dashboard" CTA.
   const [customerAccountCreated, setCustomerAccountCreated] = useState(false)
+
+  // Embedded Stripe Checkout. When the booking POST returns a client
+  // secret (payment required), we mount Stripe's Checkout component
+  // on-page instead of redirecting to a hosted page. The publishable
+  // key is returned alongside so the embedded form always matches the
+  // backend's Stripe mode (test/live). loadStripe is memoized per key
+  // so a re-render doesn't re-initialize the SDK.
+  const [checkoutSecret, setCheckoutSecret] = useState<string | null>(null)
+  const [checkoutPubKey, setCheckoutPubKey] = useState<string | null>(null)
+  // Flips true when Stripe.js fails to load (ad/script blocker, firewall,
+  // offline, or a malformed key). loadStripe rejects in those cases and
+  // EmbeddedCheckout would otherwise render a silent blank box. We watch
+  // the promise and surface a recoverable error instead.
+  const [checkoutError, setCheckoutError] = useState(false)
+  const stripePromise = useMemo(
+    () => (checkoutPubKey ? loadStripe(checkoutPubKey) : null),
+    [checkoutPubKey],
+  )
+  useEffect(() => {
+    if (! stripePromise) return
+    let cancelled = false
+    stripePromise
+      .then(s => { if (! cancelled && ! s) setCheckoutError(true) })
+      .catch(() => { if (! cancelled) setCheckoutError(true) })
+    return () => { cancelled = true }
+  }, [stripePromise])
 
   // Stripe-redirect-return banner. Two flavors:
   //   - "account=new" — booking ALSO created a customer account; show
@@ -584,12 +612,26 @@ export default function LushStudioBooking({
       if (res.customer_account_created) {
         setCustomerAccountCreated(true)
       }
+      if (res.checkout_client_secret && res.stripe_publishable_key) {
+        // Embedded Checkout — mount Stripe's payment component on-page.
+        // The webhook (checkout.session.completed) finalizes the booking;
+        // on completion Stripe redirects to return_url (the &booking=success
+        // banner, including &account=new when an account was also created).
+        setCheckoutError(false)
+        setCheckoutPubKey(res.stripe_publishable_key)
+        setCheckoutSecret(res.checkout_client_secret)
+        return
+      }
       if (res.checkout_url) {
-        // Hand control off to Stripe — webhook will finalize the booking
-        // once payment completes. The success_url includes &account=new
-        // when the booking also created an account, so the post-redirect
-        // banner picks up from there.
+        // Legacy hosted-redirect fallback — hand control off to Stripe.
         window.location.href = res.checkout_url
+        return
+      }
+      if (res.payment_required) {
+        // Payment was required but the backend returned no way to collect it.
+        // NEVER show the "you're booked" screen for an unpaid appointment —
+        // surface a recoverable error instead.
+        setSubmitError('We couldn’t start payment. Please try again, or contact the business.')
         return
       }
       setSuccess(true)
@@ -628,6 +670,44 @@ export default function LushStudioBooking({
     const firstOfNext = new Date(viewYear, viewMonth + 1, 1)
     return firstOfNext > maxDate
   })()
+
+  // ── Embedded payment ────────────────────────────────────────────────────────
+  // Shown after a payment-required booking POST. Stripe's Checkout iframe
+  // collects the deposit/full payment inline; on success Stripe redirects
+  // to return_url and the webhook finalizes the appointment. Cancelling
+  // just unmounts — the held slot frees when the session expires.
+  if (checkoutSecret && stripePromise) {
+    return (
+      <div className="brk-booking-checkout">
+        <div className="brk-booking-checkout-head">
+          <p className="brk-booking-eyebrow">Secure payment</p>
+          <h3>Complete your {effectiveChoice === 'full' ? 'payment' : 'deposit'}</h3>
+          <p className="brk-booking-checkout-sub">
+            Your time is held while you pay. Payments are processed securely by Stripe.
+          </p>
+        </div>
+        <div className="brk-booking-checkout-frame">
+          {checkoutError ? (
+            <p className="brk-booking-checkout-errmsg">
+              We couldn’t load secure payment. Turn off any ad or content blocker and
+              try again, or contact the business to pay another way.
+            </p>
+          ) : (
+            <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret: checkoutSecret }}>
+              <EmbeddedCheckout />
+            </EmbeddedCheckoutProvider>
+          )}
+        </div>
+        <button
+          type="button"
+          className="brk-booking-checkout-cancel"
+          onClick={() => { setCheckoutSecret(null); setCheckoutPubKey(null); setCheckoutError(false) }}
+        >
+          Cancel and go back
+        </button>
+      </div>
+    )
+  }
 
   // ── Success ────────────────────────────────────────────────────────────────
 
@@ -1741,9 +1821,10 @@ export default function LushStudioBooking({
                   )}
                 </dl>
                 <p style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
-                  You&apos;ll be sent to a secure Stripe page to pay
-                  {effectiveChoice === 'full' ? ' in full' : ' your deposit'}.
-                  Your booking is reserved once the payment clears.
+                  You&apos;ll pay
+                  {effectiveChoice === 'full' ? ' in full' : ' your deposit'} securely
+                  with Stripe on the next step. Your booking is reserved once the
+                  payment clears.
                 </p>
               </div>
             )}
@@ -1784,7 +1865,7 @@ export default function LushStudioBooking({
                 onClick={handleSubmit}
               >
                 {submitting
-                  ? (paymentRequired ? 'Redirecting to payment…' : 'Sending…')
+                  ? (paymentRequired ? 'Starting secure payment…' : 'Sending…')
                   : paymentRequired
                     ? (effectiveChoice === 'full'
                         ? <>Pay Full & Book <Check size={14} strokeWidth={3} /></>

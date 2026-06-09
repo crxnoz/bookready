@@ -794,7 +794,14 @@ class PublicBookingController extends Controller
         $notify       = NotificationSettingsService::load();
 
         // ── Payment-required path: create Stripe Checkout session ────────
-        $checkoutUrl = null;
+        // Embedded mode — Checkout mounts inside the booking page instead of
+        // redirecting to Stripe's hosted page. The webhook flow is identical
+        // (checkout.session.completed finalizes the appointment); only the
+        // presentation changes. `checkout_url` stays null and the frontend
+        // mounts the embedded component from `checkout_client_secret`.
+        $checkoutUrl          = null;
+        $checkoutClientSecret = null;
+        $checkoutPublishableKey = null;
         if ($paymentRequired && $appointmentsHasPaymentCols) {
             try {
                 $session = AppointmentPaymentService::createCheckoutSession([
@@ -811,14 +818,14 @@ class PublicBookingController extends Controller
                     'allow_split_pay'           => (bool) ($payment['allow_split_pay']      ?? false),
                     'collect_tax'               => (bool) ($payment['collect_tax']          ?? false),
                     'save_cards_for_reuse'      => (bool) ($payment['save_cards_for_reuse'] ?? false),
-                    'success_url'    => sprintf(
+                    'ui_mode'        => 'embedded',
+                    // Embedded Checkout redirects here once payment completes.
+                    // The webhook is the source of truth — this is just the
+                    // landing page (the existing &booking=success banner).
+                    'return_url'     => sprintf(
                         'https://%s.bkrdy.me/?booking=success&appointment=%d&session_id={CHECKOUT_SESSION_ID}%s',
                         $tenant->id, $appt['id'],
                         $customerAccountCreated ? '&account=new' : '',
-                    ),
-                    'cancel_url'     => sprintf(
-                        'https://%s.bkrdy.me/?booking=cancelled&appointment=%d',
-                        $tenant->id, $appt['id'],
                     ),
                 ]);
 
@@ -827,7 +834,34 @@ class PublicBookingController extends Controller
                     'updated_at'                 => now(),
                 ]);
 
-                $checkoutUrl = $session['url'];
+                $checkoutUrl            = $session['url']           ?? null;
+                $checkoutClientSecret   = $session['client_secret'] ?? null;
+                $checkoutPublishableKey = config('cashier.key') ?: env('STRIPE_KEY');
+
+                // Embedded mode must yield BOTH a client secret and a
+                // publishable key, or the frontend cannot present payment.
+                // (Asymmetric Stripe config — secret set, publishable key
+                // empty — would otherwise return a 201 that the frontend
+                // can't act on, falling through to a false "booked" screen
+                // for an unpaid appointment.) Treat it as a hard failure:
+                // cancel the held slot and 502 like the other payment errors.
+                if (! $checkoutClientSecret || ! $checkoutPublishableKey) {
+                    DB::table('appointments')->where('id', $id)->update([
+                        'status'         => 'cancelled',
+                        'payment_status' => 'failed',
+                        'updated_at'     => now(),
+                    ]);
+                    Log::error('Embedded checkout missing client_secret or publishable key', [
+                        'tenant'             => $tenant->id,
+                        'appointment_id'     => $appt['id'],
+                        'has_client_secret'  => (bool) $checkoutClientSecret,
+                        'has_publishable_key'=> (bool) $checkoutPublishableKey,
+                    ]);
+                    tenancy()->end();
+                    return response()->json([
+                        'message' => 'Could not start payment. Please try again in a moment.',
+                    ], 502);
+                }
             } catch (StripeConnectNotReadyException $e) {
                 // Connect went away between our precheck and the create call.
                 DB::table('appointments')->where('id', $id)->delete();
@@ -929,7 +963,12 @@ class PublicBookingController extends Controller
             // Back-compat field — older frontends look for deposit_amount.
             $response['deposit_amount']   = (float) $chargeAmount;
             $response['currency']         = $payment['currency'] ?? 'USD';
-            $response['checkout_url']     = $checkoutUrl;
+            // Embedded Checkout — frontend mounts <EmbeddedCheckout> from the
+            // client secret + publishable key. `checkout_url` stays for the
+            // legacy hosted-redirect fallback (null in embedded mode).
+            $response['checkout_url']           = $checkoutUrl;
+            $response['checkout_client_secret'] = $checkoutClientSecret;
+            $response['stripe_publishable_key'] = $checkoutPublishableKey;
         }
 
         if ($customerAccountCreated) {

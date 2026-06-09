@@ -1206,14 +1206,20 @@ export interface PublicBookingResponse {
     customer_name: string
   }
   // Present when the tenant requires a payment and a Stripe Checkout
-  // session was created — frontend should redirect to checkout_url.
+  // session was created.
   payment_required?: boolean
   payment_type?:     PaymentChoice
   amount?:           number
   /** @deprecated — use `amount`. Kept for back-compat with older frontends. */
   deposit_amount?:   number
   currency?:         string
-  checkout_url?:     string
+  /** Embedded Checkout — mount <EmbeddedCheckout> from these two. The
+   *  publishable key is returned so the embedded form always matches the
+   *  backend's Stripe mode (test/live) without a frontend env var. */
+  checkout_client_secret?: string | null
+  stripe_publishable_key?: string | null
+  /** Legacy hosted-redirect fallback. Null in embedded mode. */
+  checkout_url?:     string | null
   /** True when the booking POST also created a customer_users row
    *  (the visitor ticked the "Create a BookReady account" checkbox).
    *  The frontend uses this to show the verify-email prompt + dashboard

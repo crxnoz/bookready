@@ -82,6 +82,16 @@ class AppointmentPaymentService
      * payment. `payment_type` controls the line-item label and the
      * metadata so the webhook can finalize state correctly.
      *
+     * Two presentation modes via `ui_mode`:
+     *   - 'hosted'   (default) — Stripe-hosted Checkout page. Requires
+     *                            success_url + cancel_url. Returns `url`;
+     *                            caller redirects the browser.
+     *   - 'embedded'           — Stripe Embedded Checkout mounted on the
+     *                            tenant's own booking page. Requires a
+     *                            single return_url (no success/cancel).
+     *                            Returns `client_secret` for the JS SDK;
+     *                            `url` is null.
+     *
      * @param array $context [
      *   'tenant_id'                 => string,
      *   'tenant_slug'               => string,
@@ -91,14 +101,16 @@ class AppointmentPaymentService
      *   'amount'                    => float,                // major units
      *   'currency'                  => 'USD',
      *   'customer_email'            => ?string,
-     *   'success_url'               => string,
-     *   'cancel_url'                => string,
+     *   'ui_mode'                   => 'hosted'|'embedded',  // default hosted
+     *   'success_url'               => string,               // hosted only
+     *   'cancel_url'                => string,               // hosted only
+     *   'return_url'                => string,               // embedded only
      *   'stripe_connect_account_id' => ?string,
      *   'stripe_connect_ready'      => bool,
      * ]
      *
      * @throws StripeConnectNotReadyException
-     * @return array{id:string,url:string}
+     * @return array{id:string,url:?string,client_secret:?string}
      */
     public static function createCheckoutSession(array $context): array
     {
@@ -151,11 +163,11 @@ class AppointmentPaymentService
             $paymentMethodTypes = ['card', 'klarna', 'afterpay_clearpay', 'affirm'];
         }
 
+        $embedded = ($context['ui_mode'] ?? 'hosted') === 'embedded';
+
         $sessionParams = [
             'mode'                 => 'payment',
             'payment_method_types' => $paymentMethodTypes,
-            'success_url'          => $context['success_url'],
-            'cancel_url'           => $context['cancel_url'],
             'line_items'           => [[
                 'quantity'   => 1,
                 'price_data' => [
@@ -178,6 +190,25 @@ class AppointmentPaymentService
                 ],
             ],
         ];
+
+        // Presentation mode. Embedded mounts Checkout inside the tenant's
+        // booking page (single return_url, returns a client_secret for the
+        // JS SDK); hosted redirects the browser to Stripe's page (success +
+        // cancel URLs, returns a url). The webhook (checkout.session.completed)
+        // is identical for both — it never inspects ui_mode.
+        if ($embedded) {
+            $sessionParams['ui_mode']    = 'embedded';
+            $sessionParams['return_url'] = $context['return_url'];
+            // Cap the held-slot window. An abandoned embedded checkout
+            // otherwise holds the appointment's slot until Stripe's 24h
+            // default expiry (the appointment row stays pending until the
+            // checkout.session.expired webhook frees it). 30 minutes is the
+            // Stripe minimum and is ample for entering card details.
+            $sessionParams['expires_at'] = time() + (30 * 60);
+        } else {
+            $sessionParams['success_url'] = $context['success_url'];
+            $sessionParams['cancel_url']  = $context['cancel_url'];
+        }
 
         // Stripe Tax — requires the connected account to have Stripe Tax
         // enabled in their dashboard. If they haven't, Checkout returns a
@@ -213,8 +244,9 @@ class AppointmentPaymentService
         $session = Session::create($sessionParams);
 
         return [
-            'id'  => $session->id,
-            'url' => $session->url,
+            'id'            => $session->id,
+            'url'           => $session->url ?? null,            // hosted only
+            'client_secret' => $session->client_secret ?? null,  // embedded only
         ];
     }
 
