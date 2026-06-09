@@ -445,7 +445,49 @@ class PublicBookingController extends Controller
             $availableSlots = \App\Services\AvailabilityOverrideResolver::filterToWindows($availableSlots, $override['slot_windows']);
         }
 
-        if (! SlotGenerator::containsSlot($availableSlots, $startTime)) {
+        // Av2.0 follow-up — owner-announced squeeze-ins. If the regular
+        // slot list doesn't contain the requested time, check whether
+        // any squeeze-in announcement covers it. Match rules:
+        //   - announcement.date === $date
+        //   - $startTime matches the start of any window in slot_windows
+        //   - service is in announcement.service_ids (or service_ids null)
+        // On match: set the fee for total calculation below; the regular
+        // capacity check is bypassed (squeeze-ins ARE the extra capacity).
+        $squeezeInFeeCents = 0;
+        if (! SlotGenerator::containsSlot($availableSlots, $startTime)
+            && \Illuminate\Support\Facades\Schema::hasTable('squeeze_in_announcements')) {
+            $announcements = DB::table('squeeze_in_announcements')->where('date', $date)->get();
+            $defaultFee = 0;
+            if (\Illuminate\Support\Facades\Schema::hasTable('squeeze_in_config')) {
+                $cfg = DB::table('squeeze_in_config')->first();
+                if ($cfg) $defaultFee = (int) ($cfg->fee_cents ?? 0);
+            }
+            foreach ($announcements as $ann) {
+                $allowedServices = $ann->service_ids ? json_decode((string) $ann->service_ids, true) : null;
+                if (is_array($allowedServices) && ! in_array((int) $service->id, $allowedServices, true)) {
+                    continue;
+                }
+                $windows = json_decode((string) ($ann->slot_windows ?? ''), true) ?? [];
+                foreach ($windows as $w) {
+                    if (($w['start'] ?? null) === $startTime) {
+                        $squeezeInFeeCents = $ann->fee_cents !== null
+                            ? (int) $ann->fee_cents
+                            : $defaultFee;
+                        break 2;
+                    }
+                }
+            }
+            if ($squeezeInFeeCents === 0 && empty($announcements)) {
+                // No squeeze-in matched and no regular slot — original error.
+                tenancy()->end();
+                return response()->json(['message' => 'This time is no longer available.'], 422);
+            }
+            if ($squeezeInFeeCents === 0) {
+                // Announcements existed but none covered this time — also 422.
+                tenancy()->end();
+                return response()->json(['message' => 'This time is no longer available.'], 422);
+            }
+        } elseif (! SlotGenerator::containsSlot($availableSlots, $startTime)) {
             tenancy()->end();
             return response()->json(['message' => 'This time is no longer available.'], 422);
         }
@@ -573,8 +615,10 @@ class PublicBookingController extends Controller
         // receipt line; addons_subtotal lives in its own column.
         // Av2.0 P4 — fold the after-hours fee into the charged price exactly
         // like an add-on, so deposit/full + Stripe all treat it uniformly.
+        // The squeeze-in fee (Av2.0 follow-up — owner-announced squeeze-ins)
+        // folds in the same way.
         $servicePrice = $service->price !== null
-            ? (float) $service->price + ($addonsSubtotalCents / 100) + ($afterHoursFeeCents / 100)
+            ? (float) $service->price + ($addonsSubtotalCents / 100) + ($afterHoursFeeCents / 100) + ($squeezeInFeeCents / 100)
             : null;
 
         $depositAmount = AppointmentPaymentService::calculateDeposit($payment, $servicePrice);
@@ -774,6 +818,16 @@ class PublicBookingController extends Controller
             $insertData['is_after_hours']   = true;
             $insertData['surcharge_cents']  = $afterHoursFeeCents;
             $insertData['surcharge_reason'] = 'after_hours';
+        }
+
+        // Av2.0 follow-up — stamp squeeze-in fee on the appointment row
+        // so the owner sees the premium charge on the booking. Uses the
+        // same surcharge_cents/surcharge_reason columns as after-hours
+        // (mutually exclusive — a slot can't be both since after-hours
+        // is past close and squeeze-ins are inside regular hours).
+        if ($squeezeInFeeCents > 0 && Schema::hasColumn('appointments', 'surcharge_cents')) {
+            $insertData['surcharge_cents']  = $squeezeInFeeCents;
+            $insertData['surcharge_reason'] = 'squeeze_in';
         }
 
         // TCR-compliant SMS consent capture. Only stamp when the

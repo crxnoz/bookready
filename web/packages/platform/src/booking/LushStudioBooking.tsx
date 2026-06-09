@@ -69,21 +69,24 @@ export default function LushStudioBooking({
   const [serviceId,    setServiceId]    = useState<number | null>(null)
   const [date,         setDate]         = useState('')
   const [slotState,    setSlotState]    = useState<SlotState>({ status: 'idle' })
-  // Group loaded slots by tier so Step 3 can render regular times under
-  // "Available Times" and after-hours times under their own "After hours
-  // +$FEE" section — instead of stamping +$FEE on every after-hours pill.
-  // The fee is tenant-wide (from after_hours_config), so reading
-  // price_delta off the first after-hours slot is sufficient.
+  // Group loaded slots by tier so Step 3 can render each tier under its
+  // own section: regular times under "Available Times", after-hours under
+  // "After hours +$FEE", owner-announced squeeze-ins under "Squeeze-in
+  // +$FEE". Fees are tenant-wide (after_hours_config / squeeze_in_config),
+  // so reading price_delta off the first slot of each tier is sufficient.
   const slotGroups = useMemo(() => {
     if (slotState.status !== 'loaded') {
-      return { regular: [], afterHours: [], afterHoursFee: 0 }
+      return { regular: [], afterHours: [], afterHoursFee: 0, squeezeIns: [], squeezeInFee: 0 }
     }
-    const regular = slotState.slots.filter(s => s.tier !== 'after_hours')
+    const regular    = slotState.slots.filter(s => !s.tier)
     const afterHours = slotState.slots.filter(s => s.tier === 'after_hours')
+    const squeezeIns = slotState.slots.filter(s => s.tier === 'squeeze_in')
     return {
       regular,
       afterHours,
       afterHoursFee: afterHours[0]?.price_delta ?? 0,
+      squeezeIns,
+      squeezeInFee:  squeezeIns[0]?.price_delta ?? 0,
     }
   }, [slotState])
   const [selectedSlot, setSelectedSlot] = useState('')
@@ -1551,6 +1554,29 @@ export default function LushStudioBooking({
                     <button
                       key={slot.start_time}
                       className={`brk-booking-time is-after-hours${selectedSlot === slot.start_time ? ' is-selected' : ''}`}
+                      onClick={() => setSelectedSlot(slot.start_time)}
+                    >
+                      {slot.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Owner-announced squeeze-ins — extra premium capacity the
+                owner published proactively (vs after-hours which is the
+                config-driven extension past regular close). Section
+                header carries the fee; pills are uniform. */}
+            {slotState.status === 'loaded' && slotGroups.squeezeIns.length > 0 && (
+              <div className="brk-booking-block">
+                <span className="brk-booking-block-label">
+                  Squeeze-in{slotGroups.squeezeInFee ? ` +$${slotGroups.squeezeInFee}` : ''}
+                </span>
+                <div className="brk-booking-times">
+                  {slotGroups.squeezeIns.map(slot => (
+                    <button
+                      key={`si-${slot.start_time}`}
+                      className={`brk-booking-time is-squeeze-in${selectedSlot === slot.start_time ? ' is-selected' : ''}`}
                       onClick={() => setSelectedSlot(slot.start_time)}
                     >
                       {slot.label}

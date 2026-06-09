@@ -905,6 +905,49 @@ export async function deleteEditorCalendarOverride(date: string): Promise<{ date
   return request(`/editor/calendar-overrides/${date}`, { method: 'DELETE' })
 }
 
+// ── Owner-announced squeeze-ins ──────────────────────────────────────────
+// Distinct from the customer-requested queue. The owner publishes
+// "I have time on this date for these services" and the customer
+// books it directly with the squeeze-in fee folded in.
+export interface SqueezeInAnnouncement {
+  id:            number
+  date:          string                  // YYYY-MM-DD
+  slot_windows:  SlotWindow[]
+  service_ids:   number[] | null         // null = all services
+  fee_cents:     number | null           // null = use squeeze_in_config default
+  notes:         string | null
+}
+
+export interface SqueezeInAnnouncementPayload {
+  date:         string
+  slot_windows: SlotWindow[]
+  service_ids?: number[] | null
+  fee?:         number | null            // dollars; converted to cents server-side
+  notes?:       string | null
+}
+
+export async function getEditorSqueezeInAnnouncements(
+  from: string, to: string,
+): Promise<{ announcements: SqueezeInAnnouncement[]; from: string; to: string }> {
+  const qs = new URLSearchParams({ from, to }).toString()
+  return request(`/editor/squeeze-in-announcements?${qs}`)
+}
+
+export async function createEditorSqueezeInAnnouncement(
+  payload: SqueezeInAnnouncementPayload,
+): Promise<SqueezeInAnnouncement> {
+  return request<SqueezeInAnnouncement>('/editor/squeeze-in-announcements', {
+    method: 'POST',
+    body:   JSON.stringify(payload),
+  })
+}
+
+export async function deleteEditorSqueezeInAnnouncement(
+  id: number,
+): Promise<{ id: number; cleared: boolean }> {
+  return request(`/editor/squeeze-in-announcements/${id}`, { method: 'DELETE' })
+}
+
 // ── Availability 2.0 · Phase 2 · Release strategy + custom drops ───────────
 
 export type ReleaseMode = 'always_open' | 'weekly' | 'biweekly' | 'monthly' | 'custom'

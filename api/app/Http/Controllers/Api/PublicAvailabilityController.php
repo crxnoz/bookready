@@ -267,6 +267,25 @@ class PublicAvailabilityController extends Controller
             }
         }
 
+        // Av2.0 follow-up — owner-announced squeeze-ins. Load BEFORE
+        // tenancy()->end() so we can append them to the slot list as a
+        // third tier (alongside regular + after_hours). Each announcement
+        // row's windows produce one bookable slot at window.start; the
+        // customer-side renderer groups them under their own section
+        // ("Squeeze-in +$FEE") below the after-hours section.
+        $squeezeInAnnouncements = [];
+        $squeezeInDefaultFeeCents = 0;
+        if (\Illuminate\Support\Facades\Schema::hasTable('squeeze_in_announcements')) {
+            $squeezeInAnnouncements = DB::table('squeeze_in_announcements')
+                ->where('date', $date)
+                ->get()
+                ->all();
+        }
+        if (\Illuminate\Support\Facades\Schema::hasTable('squeeze_in_config')) {
+            $siCfg = DB::table('squeeze_in_config')->first();
+            if ($siCfg) $squeezeInDefaultFeeCents = (int) ($siCfg->fee_cents ?? 0);
+        }
+
         // Snapshot service data before ending tenancy
         $serviceData = [
             'id'               => (int)   $service->id,
@@ -310,6 +329,52 @@ class PublicAvailabilityController extends Controller
                 }
                 return $slot;
             }, $slots);
+        }
+
+        // Av2.0 follow-up — append owner-announced squeeze-in slots as a
+        // third tier. Each announcement's windows contribute one slot per
+        // window at window.start. We dedup against existing slot times so
+        // a time that's already regularly available doesn't ALSO show up
+        // under "Squeeze-in" (owners only announce when regular capacity
+        // is exhausted, but be defensive).
+        if (! empty($squeezeInAnnouncements)) {
+            $existingTimes = array_flip(array_column($slots, 'start_time'));
+            foreach ($squeezeInAnnouncements as $announcement) {
+                // Service filter — null service_ids means "all services".
+                $allowedServices = $announcement->service_ids
+                    ? json_decode((string) $announcement->service_ids, true)
+                    : null;
+                if (is_array($allowedServices) && ! in_array((int) $service->id, $allowedServices, true)) {
+                    continue;
+                }
+                $windows = json_decode((string) ($announcement->slot_windows ?? ''), true) ?? [];
+                $feeCents = $announcement->fee_cents !== null
+                    ? (int) $announcement->fee_cents
+                    : $squeezeInDefaultFeeCents;
+                $feeDollars = round($feeCents / 100, 2);
+
+                foreach ($windows as $w) {
+                    if (! isset($w['start'], $w['end'])) continue;
+                    $startTime = (string) $w['start'];
+                    // Dedup: skip if a regular slot already exists at this time.
+                    if (isset($existingTimes[$startTime])) continue;
+
+                    // Build a slot row matching the shape SlotGenerator emits.
+                    // Convert HH:MM → minutes for SlotGenerator::formatLabel.
+                    [$h, $m] = array_map('intval', explode(':', $startTime, 2));
+                    $minutes = $h * 60 + $m;
+                    $slots[] = [
+                        'start_time'  => $startTime,
+                        'end_time'    => (string) $w['end'],
+                        'label'       => \App\Services\SlotGenerator::formatLabel($minutes),
+                        'tier'        => 'squeeze_in',
+                        'price_delta' => $feeDollars,
+                    ];
+                    $existingTimes[$startTime] = true;
+                }
+            }
+            // Re-sort by start_time so the slot list reads chronologically.
+            usort($slots, fn ($a, $b) => strcmp($a['start_time'], $b['start_time']));
         }
 
         return response()->json([

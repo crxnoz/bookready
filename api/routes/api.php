@@ -42,6 +42,7 @@ use App\Http\Controllers\Api\Editor\CapacityController;
 use App\Http\Controllers\Api\Editor\AvailabilityRequestsController;
 use App\Http\Controllers\Api\Editor\AfterHoursController;
 use App\Http\Controllers\Api\Editor\SqueezeInController;
+use App\Http\Controllers\Api\Editor\SqueezeInAnnouncementsController;
 use App\Http\Controllers\Api\Editor\NotificationSettingsController;
 use App\Http\Controllers\Api\Editor\PaymentSettingsController;
 use App\Http\Controllers\Api\Editor\StripeConnectController;
@@ -510,6 +511,14 @@ Route::prefix('v1')->group(function () {
         // Av2.0 P6 — squeeze-in config (queue served by availability-requests?kind=squeeze_in).
         Route::get  ('squeeze-ins', [SqueezeInController::class, 'show']);
         Route::patch('squeeze-ins', [SqueezeInController::class, 'update']);
+
+        // Av2.0 follow-up — owner-announced squeeze-ins. Distinct from the
+        // customer-requested queue: owner publishes "I have time on this
+        // date" and the customer books it directly with the squeeze-in
+        // fee folded in.
+        Route::get   ('squeeze-in-announcements',       [SqueezeInAnnouncementsController::class, 'index']);
+        Route::post  ('squeeze-in-announcements',       [SqueezeInAnnouncementsController::class, 'store']);
+        Route::delete('squeeze-in-announcements/{id}',  [SqueezeInAnnouncementsController::class, 'destroy']);
 
         Route::get('settings/notifications',          [NotificationSettingsController::class, 'show']);
         Route::patch('settings/notifications',        [NotificationSettingsController::class, 'update']);

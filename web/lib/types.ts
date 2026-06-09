@@ -1145,7 +1145,7 @@ export interface AvailableSlot {
   end_time: string     // "HH:MM"
   label: string        // "10:00 AM"
   // Av2.0 P4 — present on after-hours (premium) slots.
-  tier?: 'after_hours'
+  tier?: 'after_hours' | 'squeeze_in'
   price_delta?: number // dollars added for booking this slot
 }
 
