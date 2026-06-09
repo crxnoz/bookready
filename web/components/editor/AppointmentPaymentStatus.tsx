@@ -50,7 +50,7 @@ export function PaymentSummary({ appt }: { appt: Appointment }) {
   if (balPaid != null && balPaid > 0) {
     parts.push(`balance paid ${sym}${balPaid.toFixed(2)}`)
   } else if (due != null && due > 0) {
-    parts.push(`balance ${sym}${due.toFixed(2)}${appt.balance_checkout_session_id ? ' · link sent' : ''}`)
+    parts.push(`balance ${sym}${due.toFixed(2)}${appt.balance_checkout_session_id ? ' · pay link sent' : ''}`)
   }
   if (tip != null && tip > 0) parts.push(`tip ${sym}${tip.toFixed(2)}`)
   if (lateFee != null && lateFee > 0) {

@@ -114,9 +114,9 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: 'regular',      label: 'Regular' },
   { key: 'vip',          label: 'VIP' },
   { key: 'inactive',     label: 'Inactive' },
-  { key: 'balance_due',  label: 'Balance Due' },
+  { key: 'balance_due',  label: 'Balance due' },
   { key: 'upcoming',     label: 'Upcoming' },
-  { key: 'no_show_risk', label: 'No-Show Risk' },
+  { key: 'no_show_risk', label: 'No-show risk' },
 ]
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -157,7 +157,7 @@ export default function CustomersEditor() {
         setServices(svcs.filter(s => s.is_active))
         setStaff(stf.filter(s => s.is_active))
       })
-      .catch(() => setError('Failed to load customers.'))
+      .catch(() => setError("Couldn’t load your customers. Refresh the page to try again."))
       .finally(() => setLoading(false))
   }, [])
 
@@ -202,7 +202,7 @@ export default function CustomersEditor() {
       const d = await getEditorCustomer(id)
       setDetail(d)
     } catch {
-      setError('Failed to load customer detail.')
+      setError("Couldn’t load this customer’s details. Try again in a minute.")
       setDrawerId(null)
     } finally {
       setDetailLoading(false)
@@ -233,13 +233,13 @@ export default function CustomersEditor() {
             onClick={() => setShowTagsModal(true)}
             className="flex items-center gap-1.5 bg-white border border-hairline-strong text-near-black px-3 py-1.5 text-eyebrow font-bold tracking-[0.08em] uppercase hover:bg-cream transition-colors"
           >
-            <TagIcon size={11} /> Manage Tags
+            <TagIcon size={11} /> Manage tags
           </button>
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-1.5 bg-near-black text-white px-3 py-1.5 text-eyebrow font-bold tracking-[0.08em] uppercase hover:opacity-90 transition-colors"
           >
-            <Plus size={11} /> Add Customer
+            <Plus size={11} /> Add customer
           </button>
         </div>
 
@@ -266,7 +266,7 @@ export default function CustomersEditor() {
                   <Icon size={10} className="text-muted-text flex-shrink-0" />
                   <p className="text-eyebrow font-bold tracking-[0.10em] uppercase text-muted-text truncate">{label}</p>
                 </div>
-                <p className="text-2xl font-bold text-near-black tabular-nums">{loading ? 'None' : value}</p>
+                <p className="text-2xl font-bold text-near-black tabular-nums">{loading ? '—' : value}</p>
                 <p className="text-eyebrow font-semibold text-muted-text group-hover:text-near-black mt-0.5 inline-flex items-center gap-0.5">
                   {isActive ? 'Viewing' : 'View'} <ChevronRight size={10} />
                 </p>
@@ -314,8 +314,8 @@ export default function CustomersEditor() {
         ) : filtered.length === 0 ? (
           <EmptyMessage>
             {customers.length === 0
-              ? 'No customers yet. Add one with the button above, or wait for your first public booking.'
-              : 'No customers match those filters.'}
+              ? 'No customers yet. Add one with the Add customer button above, or your list will fill in as bookings come in.'
+              : 'No customers match your search or filters. Try clearing them.'}
           </EmptyMessage>
         ) : (
           <div className="space-y-2">
@@ -433,7 +433,7 @@ function CustomerRow({ customer: c, onOpen }: { customer: Customer; onOpen: () =
           {c.no_show_risk && (
             <span
               className="inline-flex items-center gap-1 text-eyebrow font-bold tracking-[0.06em] uppercase border border-danger bg-danger-bg text-danger px-2 py-0.5"
-              title="2+ no-shows in last 5 visits or ≥30% no-show rate"
+              title="Flagged because they’ve missed 2 or more of their last 5 visits, or no-show on 30% or more of bookings."
             >
               <AlertTriangle size={9} /> No-show risk
             </span>
@@ -441,7 +441,7 @@ function CustomerRow({ customer: c, onOpen }: { customer: Customer; onOpen: () =
           {c.is_account_holder && (
             <span
               className="inline-flex items-center gap-1 text-eyebrow font-bold tracking-[0.06em] uppercase border border-hairline-strong bg-lavender text-near-black px-2 py-0.5"
-              title="This customer has a BookReady account: verified email, stable identity, can self-manage bookings."
+              title="This customer has a BookReady account, so their email is verified and they can manage their own bookings."
             >
               Account
             </span>
@@ -591,7 +591,7 @@ function DrawerContent({
       // Hide the saved chip after a bit so it feels live.
       setTimeout(() => setNotesSaved(false), 2200)
     } catch {
-      toast.error('Could not save note')
+      toast.error("Couldn’t save note — try again in a moment.")
     } finally {
       setNotesSaving(false)
     }
@@ -602,9 +602,9 @@ function DrawerContent({
     try {
       const updated = await toggleEditorCustomerVip(c.id, ! c.is_vip)
       onApply(updated)
-      toast.success(updated.is_vip ? 'Marked VIP' : 'VIP removed')
+      toast.success(updated.is_vip ? 'Marked as VIP' : 'No longer VIP')
     } catch {
-      toast.error('Could not update VIP')
+      toast.error("Couldn’t update VIP status — try again in a moment.")
     } finally {
       setVipBusy(false)
     }
@@ -641,8 +641,8 @@ function DrawerContent({
       <div className="p-5 space-y-5">
         {/* Quick actions */}
         <div className="grid grid-cols-2 gap-2">
-          <DrawerAction icon={<Plus size={12} />} label="Create appt" href={createApptHref} primary />
-          <DrawerAction icon={<Calendar size={12} />} label="View appts" href={viewApptsHref} />
+          <DrawerAction icon={<Plus size={12} />} label="New appointment" href={createApptHref} primary />
+          <DrawerAction icon={<Calendar size={12} />} label="View appointments" href={viewApptsHref} />
           <DrawerAction
             icon={<Star size={12} fill={c.is_vip ? 'currentColor' : 'none'} />}
             label={c.is_vip ? 'Remove VIP' : 'Mark VIP'}
@@ -662,7 +662,7 @@ function DrawerContent({
         </div>
 
         {/* Tags (Phase 14) */}
-        <DrawerSection title="Tags" subtitle="Quick labels for techs and segmentation.">
+        <DrawerSection title="Tags" subtitle="Quick labels to organize and find customers later.">
           <TagsPicker
             customerId={c.id}
             assigned={c.tags}
@@ -694,7 +694,7 @@ function DrawerContent({
         {/* Preferences (Phase 14) */}
         <DrawerSection
           title="Preferences"
-          subtitle="What they like, to drive smarter pre-fills in future bookings."
+          subtitle="What they like, so future bookings come pre-filled with the right service and stylist."
         >
           <PreferencesForm
             customer={c}
@@ -736,7 +736,7 @@ function DrawerContent({
         {/* Private notes */}
         <DrawerSection
           title="Private notes"
-          subtitle="Only visible to your team, never shared with the customer."
+          subtitle="Only your team sees these. Never shared with the customer."
           badge={notesSaved ? <span className="text-eyebrow font-bold tracking-[0.08em] uppercase text-success">Saved</span> : null}
         >
           <textarea
@@ -754,7 +754,7 @@ function DrawerContent({
               disabled={! notesDirty || notesSaving}
               className="px-3 py-1.5 text-eyebrow font-bold tracking-[0.08em] uppercase bg-near-black text-white hover:opacity-90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {notesSaving ? 'Saving…' : 'Save note'}
+              {notesSaving ? 'Saving…' : 'Save notes'}
             </button>
           </div>
         </DrawerSection>
@@ -826,7 +826,7 @@ function ContactRow({ icon, label, value }: { icon: React.ReactNode; label: stri
       <span className="text-muted-text flex-shrink-0">{icon}</span>
       <div className="min-w-0 flex-1">
         <p className="text-eyebrow font-bold tracking-[0.10em] uppercase text-muted-text">{label}</p>
-        <p className="text-xs text-near-black truncate">{value || 'None'}</p>
+        <p className="text-xs text-near-black truncate">{value || 'Not on file'}</p>
       </div>
     </div>
   )
@@ -945,7 +945,7 @@ function CreateCustomerDialog({
       const created = await createEditorCustomer(payload)
       onCreated(created)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save. Please try again.')
+      setError(err instanceof Error ? err.message : "Couldn’t save this customer. Try again in a moment.")
     } finally {
       setSaving(false)
     }
@@ -961,7 +961,7 @@ function CreateCustomerDialog({
       />
       <div className="relative bg-white w-full max-w-md border border-hairline max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-hairline-soft">
-          <h2 className="text-sm font-bold text-near-black tracking-tight">New Customer</h2>
+          <h2 className="text-sm font-bold text-near-black tracking-tight">New customer</h2>
           <button onClick={onClose} className="text-muted-text hover:text-near-black transition-colors">
             <X size={16} />
           </button>
@@ -971,7 +971,7 @@ function CreateCustomerDialog({
             <p className="text-xs text-danger bg-danger-bg border border-danger px-3 py-2">{error}</p>
           )}
           <input
-            type="text" placeholder="Full name *" required
+            type="text" placeholder="Full name (required)" required
             value={form.name} onChange={e => set('name', e.target.value)}
             className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
           />
@@ -986,7 +986,7 @@ function CreateCustomerDialog({
             className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"
           />
           <textarea
-            placeholder="Private notes (optional)"
+            placeholder="Private notes — allergies, preferences, anything to remember (optional)"
             value={form.notes} onChange={e => set('notes', e.target.value)}
             rows={3}
             className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black resize-none"
@@ -1149,8 +1149,8 @@ function TagsPicker({
                 {filtered.length === 0 ? (
                   <p className="text-2xs text-muted-text px-1.5 py-2">
                     {available.length === 0
-                      ? 'No tags yet. Create one below.'
-                      : 'No matching tags.'}
+                      ? 'No tags yet. Create your first one below.'
+                      : 'No tags match your search.'}
                   </p>
                 ) : filtered.map(t => (
                   <button
@@ -1169,7 +1169,7 @@ function TagsPicker({
                 onClick={() => { setCreating(true); setNewName(query) }}
                 className="mt-2 w-full flex items-center justify-center gap-1 text-eyebrow font-bold tracking-[0.08em] uppercase bg-near-black text-white py-1.5 hover:opacity-90 transition-colors"
               >
-                <Plus size={10} /> Create new tag
+                <Plus size={10} /> New tag
               </button>
             </>
           )}
@@ -1303,7 +1303,7 @@ function PreferencesForm({
       setSaved(true)
       setTimeout(() => setSaved(false), 2200)
     } catch {
-      toast.error('Could not save preferences')
+      toast.error("Couldn’t save preferences — try again in a moment.")
     } finally {
       setSaving(false)
     }
@@ -1359,7 +1359,7 @@ function PreferencesForm({
           Service preferences
         </p>
         <p className="text-eyebrow text-muted-text mb-2">
-          Hair / skin / nails / lashes specifics, allergies, formulas they hate, etc.
+          Hair / skin / nails / lashes specifics, allergies, formulas they hate, and so on.
         </p>
         <textarea
           value={form.preferences_notes}
@@ -1448,7 +1448,7 @@ function ManageTagsModal({
   async function remove(id: number) {
     const ok = await confirm({
       title: 'Delete this tag?',
-      message: 'It will be removed from every customer.',
+      message: "This tag will be removed from every customer who has it. This can’t be undone.",
       confirmLabel: 'Delete',
       tone: 'danger',
     })
@@ -1468,7 +1468,7 @@ function ManageTagsModal({
       <div className="relative bg-white w-full max-w-md border border-hairline max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-hairline-soft">
           <h2 className="text-sm font-bold text-near-black tracking-tight inline-flex items-center gap-2">
-            <TagIcon size={14} /> Manage Tags
+            <TagIcon size={14} /> Manage tags
           </h2>
           <button onClick={onClose} className="text-muted-text hover:text-near-black transition-colors">
             <X size={16} />
@@ -1540,7 +1540,7 @@ function ManageTagsModal({
               <p className="text-eyebrow font-bold tracking-[0.10em] uppercase text-muted-text">New tag</p>
               <input
                 type="text"
-                placeholder="Tag name (e.g. Allergy: latex)"
+                placeholder="Tag name, e.g. Allergy: latex"
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') submitNew() }}

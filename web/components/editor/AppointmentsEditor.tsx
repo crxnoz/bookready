@@ -332,7 +332,7 @@ export default function AppointmentsEditor() {
         setStaff(stf.filter(s => s.is_active))
         setAddons(ads.filter(a => a.is_active))
       })
-      .catch(() => setError('Failed to load appointments.'))
+      .catch(() => setError("Couldn't load your appointments. Refresh the page to try again."))
       .finally(() => setLoading(false))
   }, [])
 
@@ -471,7 +471,7 @@ export default function AppointmentsEditor() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.customer_name.trim() || !form.service_id || !form.appointment_date || !form.start_time) {
-      setFormError('Please fill in all required fields.')
+      setFormError('Add the client name, service, date, and time to continue.')
       return
     }
     setSaving(true)
@@ -515,7 +515,7 @@ export default function AppointmentsEditor() {
       }
       closeForm()
     } catch {
-      setFormError('Failed to save appointment. Please try again.')
+      setFormError("Couldn't save this appointment. Try again, or check your connection.")
     } finally {
       setSaving(false)
     }
@@ -532,7 +532,7 @@ export default function AppointmentsEditor() {
   }
 
   async function handleCancel(id: number) {
-    const ok = await confirm({ title: 'Cancel this appointment?', confirmLabel: 'Cancel appointment', tone: 'danger' })
+    const ok = await confirm({ title: 'Cancel this appointment?', message: "The customer will be emailed a cancellation notice.", confirmLabel: 'Cancel appointment', tone: 'danger' })
     if (! ok) return
     setActionLoading(id)
     try {
@@ -571,7 +571,7 @@ export default function AppointmentsEditor() {
       const res = await requestEditorAppointmentTip(id)
       toast.success(res.message)
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not send tip request.')
+      toast.error(e instanceof Error ? e.message : "Couldn't send the tip request. Try again in a moment.")
     } finally {
       setActionLoading(null)
     }
@@ -583,11 +583,11 @@ export default function AppointmentsEditor() {
       : paymentSettings?.late_cancel_fee_amount
     const label = type === 'no_show' ? 'no-show fee' : 'late-cancellation fee'
     if (! fee || fee <= 0) {
-      toast.error(`Set a ${label} amount in Payment Settings first.`)
+      toast.error(`Set a ${label} amount under Settings > Payments first.`)
       return
     }
     const sym = (paymentSettings?.currency ?? 'USD') === 'USD' ? '$' : ''
-    const ok = await confirm({ title: `Charge ${label}?`, message: `${sym}${fee.toFixed(2)} will be charged to the saved card.`, confirmLabel: 'Charge', tone: 'danger' })
+    const ok = await confirm({ title: `Charge ${label}?`, message: `We'll charge ${sym}${fee.toFixed(2)} to the customer's saved card.`, confirmLabel: 'Charge', tone: 'danger' })
     if (! ok) return
     setActionLoading(id)
     try {
@@ -595,7 +595,7 @@ export default function AppointmentsEditor() {
       setAppointments(prev => prev.map(a => a.id === id ? res.appointment : a))
       toast.success('Fee charged')
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not charge the fee.')
+      toast.error(e instanceof Error ? e.message : "Couldn't charge the fee. Try again in a moment.")
     } finally {
       setActionLoading(null)
     }
@@ -615,7 +615,7 @@ export default function AppointmentsEditor() {
             onClick={openCreate}
             className="flex items-center gap-1.5 bg-near-black text-white px-3 py-1.5 text-eyebrow font-bold tracking-[0.08em] uppercase hover:opacity-90 transition-colors"
           >
-            <Plus size={11} /> New Appointment
+            <Plus size={11} /> New appointment
           </button>
         </div>
 
@@ -690,7 +690,7 @@ export default function AppointmentsEditor() {
         {!loading && stats.pending > 0 && filter !== 'pending' && (
           <div className="flex items-center justify-between gap-3 bg-blush px-4 py-3 border border-hairline-soft">
             <p className="text-xs font-semibold text-near-black">
-              {stats.pending} pending booking request{stats.pending !== 1 ? 's' : ''} need your response.
+              {stats.pending} booking request{stats.pending !== 1 ? 's' : ''} waiting on your response.
             </p>
             <button
               onClick={() => setFilter('pending')}
@@ -706,7 +706,7 @@ export default function AppointmentsEditor() {
           <div className="bg-white border border-hairline">
             <div className="flex items-center justify-between px-5 py-4 border-b border-hairline-soft">
               <h2 className="text-sm font-bold text-near-black tracking-tight">
-                {editId !== null ? 'Edit Appointment' : 'New Appointment'}
+                {editId !== null ? 'Edit appointment' : 'New appointment'}
               </h2>
               <button onClick={closeForm} className="text-muted-text hover:text-near-black transition-colors">
                 <X size={16} />
@@ -884,7 +884,7 @@ export default function AppointmentsEditor() {
                 )
               })()}
               <div className="space-y-3">
-                <p className="text-eyebrow font-bold tracking-[0.16em] uppercase text-muted-text">Date &amp; Time</p>
+                <p className="text-eyebrow font-bold tracking-[0.16em] uppercase text-muted-text">Date &amp; time</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-eyebrow text-muted-text mb-1">Date *</label>
@@ -922,7 +922,7 @@ export default function AppointmentsEditor() {
               <div className="space-y-2">
                 <p className="text-eyebrow font-bold tracking-[0.16em] uppercase text-muted-text">Notes</p>
                 <textarea
-                  placeholder="Optional note for this appointment"
+                  placeholder="e.g. Bringing reference photos, wants a buzz on the sides"
                   value={form.notes} onChange={e => setField('notes', e.target.value)}
                   rows={3}
                   className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black resize-none"
@@ -933,7 +933,7 @@ export default function AppointmentsEditor() {
                   type="submit" disabled={saving}
                   className="flex-1 bg-near-black text-white py-2.5 text-xs font-bold tracking-[0.08em] uppercase hover:opacity-90 transition-colors disabled:opacity-50"
                 >
-                  {saving ? 'Saving…' : editId !== null ? 'Save Changes' : 'Create Appointment'}
+                  {saving ? 'Saving…' : editId !== null ? 'Save changes' : 'Create appointment'}
                 </button>
                 <button
                   type="button" onClick={closeForm}
@@ -950,8 +950,8 @@ export default function AppointmentsEditor() {
         <div className="flex gap-1 flex-wrap">
           {([
             { key: 'today',    label: 'Today' },
-            { key: 'week',     label: 'This Week' },
-            { key: 'month',    label: 'This Month' },
+            { key: 'week',     label: 'This week' },
+            { key: 'month',    label: 'This month' },
             { key: 'pending',  label: 'Pending' },
             { key: 'upcoming', label: 'Upcoming' },
             { key: 'all',      label: 'All' },
@@ -1050,14 +1050,14 @@ export default function AppointmentsEditor() {
                 ? 'No upcoming appointments. Create one to get started.'
                 : filter === 'today'
                 ? `Nothing scheduled for ${dayNavLabel(selectedDay).split(' · ').pop()}.`
-                : `No ${filter} appointments found.`}
+                : `No ${filter} appointments yet.`}
             </p>
             {filter === 'upcoming' && (
               <button
                 onClick={openCreate}
                 className="mt-4 inline-flex items-center gap-1.5 bg-near-black text-white px-4 py-2 text-xs font-bold tracking-[0.08em] uppercase hover:opacity-90 transition-colors"
               >
-                <Plus size={11} /> New Appointment
+                <Plus size={11} /> New appointment
               </button>
             )}
           </div>
@@ -1172,7 +1172,7 @@ function WeekGridView({
                     className="text-eyebrow text-muted-text text-center py-4 w-full h-full hover:text-near-black transition-colors cursor-pointer"
                     aria-label={`Open ${date} in Today view`}
                   >
-                    None
+                    Free
                   </button>
                 ) : dayAppts.map(a => (
                   <button
@@ -1224,7 +1224,7 @@ function WeekGridView({
                 {isToday && <span className="text-eyebrow text-white/60 font-bold uppercase tracking-wider">Today</span>}
                 {!isToday && (
                   <span className="text-eyebrow text-muted-text">
-                    {dayAppts.length === 0 ? 'Free' : `${dayAppts.length} appt${dayAppts.length > 1 ? 's' : ''}`}
+                    {dayAppts.length === 0 ? 'Free' : `${dayAppts.length} booking${dayAppts.length > 1 ? 's' : ''}`}
                   </span>
                 )}
               </button>
@@ -1374,7 +1374,7 @@ function MonthCalendarView({
             return (
               <div className="bg-white border border-hairline-soft px-4 py-10 text-center">
                 <p className="text-sm font-semibold text-near-black mb-1">No appointments this month</p>
-                <p className="text-xs text-muted-text">Use the navigation above to browse other months.</p>
+                <p className="text-xs text-muted-text">Step forward or back to browse other months.</p>
               </div>
             )
           }

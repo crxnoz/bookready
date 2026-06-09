@@ -34,7 +34,7 @@ function LoyaltyPanel() {
       <ComingSoonPanel
         eyebrow="Coming Soon"
         title="Loyalty Rewards"
-        intro="Turn one-time bookings into repeat visits. Reward customers for showing up, referring friends, and trying new services, all on autopilot."
+        intro="Turn one-time bookings into repeat visits. Reward customers for showing up, referring friends, and trying new services — all on autopilot."
         features={[
           {
             icon:        Award,
@@ -44,7 +44,7 @@ function LoyaltyPanel() {
             bullets: [
               'Set your own threshold: every 5 visits, every 10, etc.',
               'Customers see their progress on the booking page',
-              'Reward unlocks the moment it is earned, no manual tracking',
+              'Reward unlocks the moment it\'s earned — no manual tracking',
             ],
           },
           {
@@ -70,7 +70,7 @@ function LoyaltyPanel() {
           {
             icon:        Gift,
             title:       'Birthday + anniversary gifts',
-            description: 'Automatic special offers on a customer\'s birthday or one year after their first booking with you.',
+            description: 'Automatic offers on a customer\'s birthday or one year after their first booking with you.',
             bullets: [
               'Auto-send a one-day promo code via email',
               'Configurable discount %, free add-on, or upgrade',
@@ -89,13 +89,13 @@ function ReviewsPanel() {
       <ComingSoonPanel
         eyebrow="Coming Soon"
         title="Reviews"
-        intro="Collect honest reviews from real customers, automatically, after every appointment. Show the best ones on your public site. Catch the unhappy ones before they hit Google."
+        intro="Collect honest reviews from real customers automatically after every appointment. Show the best ones on your public site, and catch the unhappy ones before they hit Google."
         features={[
           {
             icon:        Star,
             tone:        'accent',
             title:       'Auto-request after every visit',
-            description: 'A short, branded email goes out 24 hours after a completed appointment asking for a 1-5 star rating + a sentence.',
+            description: 'A short, branded email goes out 24 hours after a completed appointment, asking for a 1-5 star rating and a sentence.',
             bullets: [
               'Configurable delay (12 hours → 7 days)',
               'Skip customers who already left a review',
@@ -107,7 +107,7 @@ function ReviewsPanel() {
             title:       'Featured reviews on your site',
             description: 'Pick which reviews to feature in the Reviews block on your public booking page.',
             bullets: [
-              'Auto-suggests 4 and 5-star reviews',
+              'Auto-suggests 4- and 5-star reviews',
               'Hide a review at any time without deleting it',
               'Replaces the static placeholder reviews in Additionals',
             ],
@@ -115,7 +115,7 @@ function ReviewsPanel() {
           {
             icon:        MailIcon,
             title:       'Smart routing',
-            description: 'High ratings get gently asked to leave a Google review. Low ratings get routed to you privately first.',
+            description: 'Happy customers get gently nudged to leave a Google review. Unhappy ones come straight to you first, in private.',
             bullets: [
               'Catch service issues before they go public',
               'Direct link to your Google Business profile',

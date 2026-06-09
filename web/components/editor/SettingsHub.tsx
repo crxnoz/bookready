@@ -81,12 +81,12 @@ interface GroupDef {
 }
 
 const GROUPS: GroupDef[] = [
-  { tab: 'business',      label: 'Business Profile',   hint: 'Name, contact, address, socials, time & format', icon: Building2,    status: 'ready' },
-  { tab: 'booking',       label: 'Booking Settings',   hint: 'Booking window, notice, auto-confirm, rules',    icon: Calendar,     status: 'ready' },
-  { tab: 'payments',      label: 'Payment Settings',   hint: 'Customer payments, deposits, currency',          icon: CreditCard,   status: 'ready' },
+  { tab: 'business',      label: 'Business profile',   hint: 'Name, contact, address, socials, time and format', icon: Building2,    status: 'ready' },
+  { tab: 'booking',       label: 'Booking settings',   hint: 'Booking window, notice, auto-confirm, rules',    icon: Calendar,     status: 'ready' },
+  { tab: 'payments',      label: 'Payment settings',   hint: 'Customer payments, deposits, currency',          icon: CreditCard,   status: 'ready' },
   { tab: 'notifications', label: 'Notifications',      hint: 'Toggle booking emails, reply address, sent-from name', icon: Bell,         status: 'ready' },
   { tab: 'account',       label: 'Account',            hint: 'Owner profile, password, sign-out everywhere',   icon: UserCircle,   status: 'ready' },
-  { tab: 'subscription',  label: 'Subscription & Plan', hint: 'Plan, billing cycle, card on file, delete account', icon: CreditCard,   status: 'ready' },
+  { tab: 'subscription',  label: 'Subscription and plan', hint: 'Plan, billing cycle, card on file, delete account', icon: CreditCard,   status: 'ready' },
 ]
 
 function hrefFor(tab: SettingsTab): string {
@@ -135,7 +135,7 @@ function OverviewPanel() {
       <header className="px-1">
         <h1 className="text-base font-bold text-near-black">Settings</h1>
         <p className="text-xs text-muted-text mt-0.5">
-          Business-wide settings, payments, notifications, integrations, and account controls.
+          Everything that runs across your business: payments, notifications, integrations, and your account.
         </p>
       </header>
 
@@ -208,7 +208,7 @@ function PlaceholderPanel({ tab }: { tab: SettingsTab }) {
           <h2 className="text-sm font-bold text-near-black">{group?.label ?? 'Settings'}</h2>
           <p className="text-xs text-muted-text mt-1">{group?.hint}</p>
           <p className="text-2xs text-muted-text mt-3">
-            This section isn&apos;t live yet. Check back soon.
+            This section isn&apos;t ready yet. More coming soon.
           </p>
         </div>
       </div>
@@ -300,7 +300,7 @@ function PaymentSettingsPanel() {
   if (loadErr || !draft) {
     return (
       <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-danger flex items-center gap-2">
-        <AlertCircle size={14} /> {loadErr ?? 'Could not load payment settings'}
+        <AlertCircle size={14} /> {loadErr ?? "We couldn't load payment settings. Refresh the page or try again in a minute."}
       </div>
     )
   }
@@ -319,7 +319,7 @@ function PaymentSettingsPanel() {
       </Link>
 
       <header className="px-1">
-        <h1 className="text-base font-bold text-near-black">Payment Settings</h1>
+        <h1 className="text-base font-bold text-near-black">Payment settings</h1>
         <p className="text-xs text-muted-text mt-0.5">
           Decide whether customers pay a deposit when they book, and choose how much.
         </p>
@@ -330,9 +330,9 @@ function PaymentSettingsPanel() {
         <div className="bg-cream border border-hairline-soft p-3 flex items-start gap-2 text-2xs text-muted-text">
           <CreditCard size={13} className="text-near-black mt-0.5 flex-shrink-0" />
           <span>
-            Connect Stripe to start accepting payments —{' '}
+            Connect Stripe to start accepting payments.{' '}
             <Link href="/editor/integrations" className="font-semibold text-near-black hover:underline">
-              set it up in Integrations
+              Set it up in Integrations.
             </Link>.
           </span>
         </div>
@@ -342,15 +342,14 @@ function PaymentSettingsPanel() {
       <section className="bg-white border border-hairline-soft p-3.5 space-y-2">
         <Toggle
           label="Enable customer payments"
-          hint="Turn this off and customers book without paying."
+          hint="When this is off, customers book without paying anything up front."
           on={draft.payments_enabled}
           onToggle={() => patch({ payments_enabled: !draft.payments_enabled })}
         />
         {draft.payments_enabled && draft.stripe_connect_status !== 'active' && (
           <p className="text-2xs text-warning inline-flex items-start gap-1.5 mt-1">
             <AlertCircle size={11} className="mt-0.5 flex-shrink-0" />
-            Finish your Stripe setup above so customers can actually pay.
-            Until then, bookings that require payment will be blocked.
+            Finish your Stripe setup above so customers can actually pay. Until then, any booking that needs payment will be blocked.
           </p>
         )}
       </section>
@@ -364,7 +363,7 @@ function PaymentSettingsPanel() {
       )}>
         <Toggle
           label="Require a deposit"
-          hint={paymentsOff ? 'Turn on customer payments first to use deposits.' : 'Ask for an upfront amount when a customer books.'}
+          hint={paymentsOff ? 'Turn on customer payments above first.' : 'Charge a set amount up front when a customer books.'}
           on={draft.deposits_enabled && !depositsLocked}
           onToggle={() => patch({ deposits_enabled: !draft.deposits_enabled })}
           disabled={depositsLocked}
@@ -449,7 +448,7 @@ function PaymentSettingsPanel() {
 
         <Toggle
           label="Buy Now, Pay Later (Klarna, Afterpay, Affirm)"
-          hint="Show Buy Now, Pay Later options next to the card field at checkout. Stripe decides eligibility based on the customer's region and amount."
+          hint="Show Buy Now, Pay Later options next to the card field at checkout. Stripe decides who qualifies based on the customer's region and order amount."
           icon={Check}
           on={(draft.allow_split_pay ?? false) && !paymentsOff}
           onToggle={() => patch({ allow_split_pay: !(draft.allow_split_pay ?? false) })}
@@ -458,7 +457,7 @@ function PaymentSettingsPanel() {
 
         <Toggle
           label="Collect sales tax"
-          hint="Adds sales tax to every payment. You also need to turn on Tax inside your Stripe dashboard."
+          hint="Adds sales tax to every payment. You also need to turn Tax on in your Stripe dashboard."
           icon={Check}
           on={(draft.collect_tax ?? false) && !paymentsOff}
           onToggle={() => patch({ collect_tax: !(draft.collect_tax ?? false) })}
@@ -483,8 +482,8 @@ function PaymentSettingsPanel() {
             <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-1">Late fees</p>
             <p className="text-2xs text-muted-text">
               {draft.save_cards_for_reuse
-                ? 'Manually charge the saved card when a customer no-shows or cancels too late.'
-                : 'Turn on “Save cards for repeat customers” to enable late fees.'}
+                ? 'Charge the saved card yourself when a customer no-shows or cancels too late.'
+                : 'Turn on “Save cards for repeat customers” above to use late fees.'}
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -504,7 +503,7 @@ function PaymentSettingsPanel() {
             />
           </div>
           <div className="flex items-center gap-2 text-2xs text-muted-text">
-            <span>Cancellation is &ldquo;late&rdquo; within</span>
+            <span>Counts as a late cancel if it happens within</span>
             <input
               type="number"
               min={0}
@@ -521,7 +520,7 @@ function PaymentSettingsPanel() {
         <div className="flex items-center justify-between gap-3 border-t border-hairline-soft pt-3">
           <div>
             <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Currency</p>
-            <p className="text-2xs text-muted-text mt-0.5">Multi-currency support is coming soon.</p>
+            <p className="text-2xs text-muted-text mt-0.5">More currencies are coming soon.</p>
           </div>
           <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-near-black border border-hairline-strong bg-cream px-3 py-1.5">
             {draft.currency}
@@ -695,7 +694,7 @@ function BookingSettingsPanel() {
   if (loadErr || !draft) {
     return (
       <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-danger flex items-center gap-2">
-        <AlertCircle size={14} /> {loadErr ?? 'Could not load booking settings'}
+        <AlertCircle size={14} /> {loadErr ?? "We couldn't load booking settings. Refresh the page or try again in a minute."}
       </div>
     )
   }
@@ -710,9 +709,9 @@ function BookingSettingsPanel() {
       </Link>
 
       <header className="px-1">
-        <h1 className="text-base font-bold text-near-black">Booking Settings</h1>
+        <h1 className="text-base font-bold text-near-black">Booking settings</h1>
         <p className="text-xs text-muted-text mt-0.5">
-          Business-wide rules for how customers book with you.
+          Rules that apply to every booking on your site.
         </p>
       </header>
 
@@ -733,14 +732,14 @@ function BookingSettingsPanel() {
       <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
         <Toggle
           label="Auto-confirm bookings"
-          hint="Newly booked appointments are marked confirmed immediately (or right after the deposit clears) instead of pending review."
+          hint="New bookings are confirmed right away (or as soon as the deposit clears) instead of waiting for your review."
           on={draft.auto_confirm_bookings}
           onToggle={() => patch({ auto_confirm_bookings: !draft.auto_confirm_bookings })}
         />
         <div className="border-t border-hairline-soft pt-3">
           <Toggle
             label="Prevent duplicate customer bookings"
-            hint="Reject a booking when the same customer (by email or phone) already holds the same service at the same time."
+            hint="Blocks a booking if the same customer (matched by email or phone) already has the same service at the same time."
             on={draft.prevent_duplicate_client_bookings}
             onToggle={() => patch({ prevent_duplicate_client_bookings: !draft.prevent_duplicate_client_bookings })}
           />
@@ -753,7 +752,7 @@ function BookingSettingsPanel() {
             max={20}
             value={draft.max_appointments_per_customer_per_day ?? 1}
             onChange={v => patch({ max_appointments_per_customer_per_day: v })}
-            hint="How many appointments a single customer can hold on the same day. 1 is the typical default; raise it if your customers commonly book back-to-back services."
+            hint="How many appointments a single customer can book on the same day. 1 is typical; raise it if your customers often book back-to-back services."
           />
         </div>
         <div className="border-t border-hairline-soft pt-3">
@@ -762,7 +761,7 @@ function BookingSettingsPanel() {
             value={String(draft.slot_interval_minutes)}
             onChange={v => patch({ slot_interval_minutes: Number(v) })}
             options={SLOT_INTERVALS.map(n => ({ value: String(n), label: `${n} minutes` }))}
-            hint="Spacing between available start times."
+            hint="How far apart your bookable start times are. Shorter spacing means more slots; longer spacing means fewer."
           />
         </div>
       </section>
@@ -777,7 +776,7 @@ function BookingSettingsPanel() {
             max={720}
             value={draft.cancellation_window_hours}
             onChange={v => patch({ cancellation_window_hours: v })}
-            hint="Minimum notice required for customers to cancel."
+            hint="How far ahead customers must cancel. Anything closer goes through you."
           />
           <NumberField
             label="Reschedule window"
@@ -786,7 +785,7 @@ function BookingSettingsPanel() {
             max={720}
             value={draft.reschedule_window_hours}
             onChange={v => patch({ reschedule_window_hours: v })}
-            hint="Minimum notice required for customers to reschedule."
+            hint="How far ahead customers must reschedule. Anything closer goes through you."
           />
         </div>
       </section>
@@ -796,11 +795,11 @@ function BookingSettingsPanel() {
           in Website → Policies. */}
       {policyDraft && (
         <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
-          <SectionTitle icon={ShieldCheck} label="Enforcement rules" hint="Real rules. BookReady enforces these automatically." />
+          <SectionTitle icon={ShieldCheck} label="Enforcement rules" hint="BookReady acts on these automatically. The wording your customers see lives in Website → Policies." />
 
           <Toggle
             label="Require customers to agree to your policies"
-            hint="Adds a checkbox to the booking form. Bookings are rejected without it."
+            hint="Adds a checkbox to the booking form. Customers can't book without ticking it."
             on={policyDraft.require_policy_agreement}
             onToggle={() => patchPolicy({ require_policy_agreement: !policyDraft.require_policy_agreement })}
           />
@@ -808,7 +807,7 @@ function BookingSettingsPanel() {
           <div className="border-t border-hairline-soft pt-3">
             <Toggle
               label="Forfeit deposit on late cancellation"
-              hint="When a customer cancels within the cancellation window, their deposit becomes non-refundable. You can still refund manually."
+              hint="When a customer cancels inside the cancellation window, their deposit becomes non-refundable. You can still refund it yourself if you change your mind."
               on={policyDraft.forfeit_deposit_on_late_cancel}
               onToggle={() => patchPolicy({ forfeit_deposit_on_late_cancel: !policyDraft.forfeit_deposit_on_late_cancel })}
             />
@@ -822,7 +821,7 @@ function BookingSettingsPanel() {
               min={0}
               max={50}
               suffix="0 = unlimited"
-              hint="Cap how many times a customer can reschedule a single appointment via the manage link."
+              hint="Cap how many times a customer can reschedule a single appointment using their manage-booking link."
             />
             <NumberField
               label="Late grace period"
@@ -903,14 +902,14 @@ function SmsUsageTile() {
     return (
       <div className="bg-white border border-hairline px-4 py-3 flex items-center gap-2 text-xs text-muted-text">
         <MessageSquare size={14} className="text-muted-text" />
-        SMS usage unavailable.
+        We couldn't load your SMS usage right now. Try refreshing.
       </div>
     )
   }
   if (!snap) {
     return (
       <div className="bg-white border border-hairline px-4 py-3 flex items-center gap-2 text-xs text-muted-text">
-        <Loader2 size={14} className="animate-spin" /> Loading SMS usage...
+        <Loader2 size={14} className="animate-spin" /> Loading SMS usage…
       </div>
     )
   }
@@ -980,14 +979,13 @@ function SmsUsageTile() {
 
       {isOver && (
         <div className="bg-danger-bg border-l-2 border-danger px-3 py-2 text-2xs text-near-black">
-          You have used your full SMS allowance for this billing period.
-          Upgrade your plan or add an SMS bundle in <a href="/editor/billing" className="font-semibold underline">Billing</a> to keep sending.
+          You've used your full SMS allowance for this billing period. Upgrade your plan or add an SMS bundle in <a href="/editor/billing" className="font-semibold underline">Billing</a> to keep sending.
         </div>
       )}
       {isHot && ! isOver && (
         <div className="bg-warning-bg border-l-2 border-warning-icon px-3 py-2 text-2xs text-near-black">
-          You are at {Math.round(snap.percent * 100)}% of your monthly SMS allowance. Add an SMS bundle
-          in <a href="/editor/billing" className="font-semibold underline">Billing</a> if you expect a busy week.
+          You're at {Math.round(snap.percent * 100)}% of your monthly SMS allowance. Add an SMS bundle
+          in <a href="/editor/billing" className="font-semibold underline">Billing</a> if you're expecting a busy week.
         </div>
       )}
     </div>
@@ -1060,7 +1058,7 @@ function NotificationSettingsPanel() {
   if (loadErr || !draft) {
     return (
       <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-danger flex items-center gap-2">
-        <AlertCircle size={14} /> {loadErr ?? 'Could not load notification settings'}
+        <AlertCircle size={14} /> {loadErr ?? "We couldn't load notification settings. Refresh the page or try again in a minute."}
       </div>
     )
   }
@@ -1077,7 +1075,7 @@ function NotificationSettingsPanel() {
       <header className="px-1">
         <h1 className="text-base font-bold text-near-black">Notifications</h1>
         <p className="text-xs text-muted-text mt-0.5">
-          Choose which emails your business and your customers receive when a booking happens.
+          Pick which emails you and your customers get when a booking happens.
         </p>
       </header>
 
@@ -1094,14 +1092,14 @@ function NotificationSettingsPanel() {
         <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Booking emails</p>
         <Toggle
           label="Owner: new booking request"
-          hint="Notify you when a customer submits a booking request or pays a deposit."
+          hint="Emails you whenever a customer submits a booking request or pays a deposit."
           on={draft.owner_booking_email_enabled}
           onToggle={() => patch({ owner_booking_email_enabled: !draft.owner_booking_email_enabled })}
         />
         <div className="border-t border-hairline-soft pt-3">
           <Toggle
             label="Customer: request received"
-            hint="Send a receipt to the customer when their booking request comes in."
+            hint="Sends a confirmation to the customer the moment their booking request comes in."
             on={draft.client_booking_email_enabled}
             onToggle={() => patch({ client_booking_email_enabled: !draft.client_booking_email_enabled })}
           />
@@ -1109,7 +1107,7 @@ function NotificationSettingsPanel() {
         <div className="border-t border-hairline-soft pt-3">
           <Toggle
             label="Customer: appointment confirmed"
-            hint="Send when you confirm an appointment."
+            hint="Sends the moment you confirm an appointment (or it auto-confirms)."
             on={draft.appointment_confirmed_email_enabled}
             onToggle={() => patch({ appointment_confirmed_email_enabled: !draft.appointment_confirmed_email_enabled })}
           />
@@ -1117,7 +1115,7 @@ function NotificationSettingsPanel() {
         <div className="border-t border-hairline-soft pt-3">
           <Toggle
             label="Customer: appointment cancelled"
-            hint="Send when an appointment is cancelled."
+            hint="Sends the moment an appointment is cancelled, no matter who did it."
             on={draft.appointment_cancelled_email_enabled}
             onToggle={() => patch({ appointment_cancelled_email_enabled: !draft.appointment_cancelled_email_enabled })}
           />
@@ -1129,7 +1127,7 @@ function NotificationSettingsPanel() {
         <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Reminders</p>
         <Toggle
           label="Send appointment reminders"
-          hint="Email each customer a set number of hours before their appointment."
+          hint="Emails each customer a set number of hours before their appointment starts."
           on={draft.reminder_email_enabled}
           onToggle={() => patch({ reminder_email_enabled: !draft.reminder_email_enabled })}
         />
@@ -1141,7 +1139,7 @@ function NotificationSettingsPanel() {
             max={720}
             value={draft.reminder_hours_before}
             onChange={v => patch({ reminder_hours_before: v })}
-            hint="Default 24 hours before the appointment start time."
+            hint="Most owners go with 24. The reminder lands this many hours before the appointment starts."
           />
         )}
       </section>
@@ -1168,7 +1166,7 @@ function NotificationSettingsPanel() {
             {(draft.effective_from_name || 'BookReady')} &lt;{draft.effective_from_address || 'Not set'}&gt;
           </p>
           <p className="text-eyebrow text-muted-text mt-1.5">
-            This is the address customers see in their inbox. The reply address and sent-from name below customize it.
+            This is what shows up in your customers' inboxes. Use the fields below to change the reply address and sent-from name.
           </p>
         </div>
 
@@ -1183,7 +1181,7 @@ function NotificationSettingsPanel() {
             maxLength={255}
           />
           <p className="text-eyebrow text-muted-text mt-1">
-            Replies from customers land here. Leave blank to use the owner email on file.
+            When a customer hits reply, the message lands here. Leave blank to use your account email.
           </p>
         </label>
         <label className="block">
@@ -1197,7 +1195,7 @@ function NotificationSettingsPanel() {
             maxLength={120}
           />
           <p className="text-eyebrow text-muted-text mt-1">
-            Shown as the sent-from name on emails. Defaults to BookReady when blank.
+            What customers see as the sender. Defaults to BookReady when blank.
           </p>
         </label>
       </section>
@@ -1389,8 +1387,8 @@ function AccountSettingsPanel() {
     try {
       const res = await signOutEverywhere()
       setSignoutMsg(res.revoked_count > 0
-        ? `${res.revoked_count} other session${res.revoked_count === 1 ? '' : 's'} signed out.`
-        : 'No other sessions were active.')
+        ? `Signed out of ${res.revoked_count} other ${res.revoked_count === 1 ? 'device' : 'devices'}.`
+        : "You weren't signed in anywhere else.")
     } catch (e) {
       setSignoutErr(e instanceof Error ? e.message : 'Sign out failed')
     } finally {
@@ -1408,7 +1406,7 @@ function AccountSettingsPanel() {
   if (loadErr || !profile) {
     return (
       <div className="bg-white border border-[rgba(180,40,40,0.20)] p-4 text-xs text-danger flex items-center gap-2">
-        <AlertCircle size={14} /> {loadErr ?? 'Could not load account'}
+        <AlertCircle size={14} /> {loadErr ?? "We couldn't load your account. Refresh the page or try again in a minute."}
       </div>
     )
   }
@@ -1425,7 +1423,7 @@ function AccountSettingsPanel() {
       <header className="px-1">
         <h1 className="text-base font-bold text-near-black">Account</h1>
         <p className="text-xs text-muted-text mt-0.5">
-          Your owner profile, sign-in credentials, and active sessions.
+          Your profile, sign-in credentials, and active sessions.
         </p>
       </header>
 
@@ -1452,7 +1450,7 @@ function AccountSettingsPanel() {
             className="mt-1.5 w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
           />
           <p className="text-eyebrow text-muted-text mt-1">
-            Used for signing in and as the default reply address for booking emails.
+            Used to sign in. Also the default reply address on booking emails when you leave Reply address blank.
           </p>
         </label>
 
@@ -1568,8 +1566,7 @@ function AccountSettingsPanel() {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-near-black">Sign out everywhere else</p>
             <p className="text-2xs text-muted-text mt-0.5">
-              Ends every active session for your account except this device.
-              Useful if you logged in somewhere you shouldn&rsquo;t still be signed in.
+              Signs out every other device using your account. Useful if you left yourself logged in somewhere you shouldn't be.
             </p>
             {signoutMsg && (
               <p className="text-2xs text-success mt-2 inline-flex items-center gap-1">
@@ -1774,9 +1771,9 @@ function BusinessSettingsPanel() {
       </Link>
 
       <header className="px-1">
-        <h1 className="text-base font-bold text-near-black">Business Profile</h1>
+        <h1 className="text-base font-bold text-near-black">Business profile</h1>
         <p className="text-xs text-muted-text mt-0.5">
-          Who you are: name, public contact, and where customers can find you.
+          Your name, public contact, and where customers can find you.
         </p>
       </header>
 
@@ -1803,27 +1800,27 @@ function BusinessSettingsPanel() {
 
       {/* Identity */}
       <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
-        <SectionTitle icon={Building2} label="Identity" hint="How your business shows up across BookReady." />
+        <SectionTitle icon={Building2} label="Identity" hint="How your business shows up on your site, emails, and the editor." />
         <TextField
           label="Business name"
           value={draft.business_name ?? ''}
           onChange={v => patch({ business_name: v })}
           placeholder="Lush Studio"
-          hint="Appears on your public site, in customer emails, and on the welcome screen."
+          hint="Shows on your public site, in customer emails, and on your dashboard."
         />
         <TextField
           label="Tagline"
           value={draft.tagline ?? ''}
           onChange={v => patch({ tagline: v })}
           placeholder="Effortless beauty, on your schedule"
-          hint="Optional one-line description shown on your booking site."
+          hint="Optional one-liner shown under your business name on your booking site."
         />
         <SelectField
           label="Business type"
           value={isKnownType ? typeValue : 'Other'}
           onChange={v => patch({ business_type: v === 'Other' ? (showCustomType ? typeValue : '') : v })}
           options={BUSINESS_TYPES.map(t => ({ value: t, label: t }))}
-          hint="Helps us tailor templates and defaults later."
+          hint="Helps us suggest the right templates and defaults for your kind of business."
         />
         {(showCustomType || (typeValue === '' && draft.business_type === null) || (! isKnownType && typeValue === '')) && (
           <TextField
@@ -1862,13 +1859,13 @@ function BusinessSettingsPanel() {
           value={draft.instagram_url ?? ''}
           onChange={v => patch({ instagram_url: v })}
           placeholder="@yourhandle or https://instagram.com/yourhandle"
-          hint="Used on your site header. Other socials live in Website → Header."
+          hint="Shown on your site header. Other social links live in Website → Header."
         />
       </section>
 
       {/* Address */}
       <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
-        <SectionTitle icon={MapPin} label="Address" hint="Helps customers find you. Address shows on your public site." />
+        <SectionTitle icon={MapPin} label="Address" hint="Helps customers find you. Your address appears on your public site and in directions links." />
         <TextField
           label="Street address"
           value={draft.address_line ?? ''}
@@ -1938,10 +1935,10 @@ const COMMON_TIMEZONES = [
 type PrefsSection = 'time_format' | 'duration' | 'communication' | 'visibility'
 
 const PREFS_META: Record<PrefsSection, { icon: React.ElementType; label: string; hint: string }> = {
-  time_format:   { icon: CalendarClock, label: 'Time & format',  hint: 'Used across the app, emails, and your public site.' },
-  duration:      { icon: Calendar,      label: 'Defaults',       hint: 'Speed up common owner workflows.' },
-  communication: { icon: Mail,          label: 'Communication',  hint: 'Show up consistently across emails and the booking site.' },
-  visibility:    { icon: Lock,          label: 'Site visibility',hint: 'Who can see your booking site.' },
+  time_format:   { icon: CalendarClock, label: 'Time & format',  hint: 'Sets the time zone, week start, and clock format we use across the app, emails, and your public site.' },
+  duration:      { icon: Calendar,      label: 'Defaults',       hint: 'Default values that save you clicks when you create things manually.' },
+  communication: { icon: Mail,          label: 'Communication',  hint: 'Copy that appears in every email and on your booking site so customers hear the same voice everywhere.' },
+  visibility:    { icon: Lock,          label: 'Site visibility',hint: 'Who can reach your booking site, and how.' },
 }
 
 function prefsSlice(section: PrefsSection, b: BusinessProfile): Partial<BusinessProfile> {
@@ -2059,7 +2056,7 @@ function PrefsCard({ section }: { section: PrefsSection }) {
               ...COMMON_TIMEZONES.map(t => ({ value: t.value, label: t.label })),
               { value: 'Other', label: 'Other (enter time zone manually)' },
             ]}
-            hint="Affects how all dates and times display. Reminder schedules will start respecting this in the next release."
+            hint="Affects how dates and times display. Reminder timing will start using this in the next release."
           />
           {tzSelect === 'Other' && (
             <TextField
@@ -2078,7 +2075,7 @@ function PrefsCard({ section }: { section: PrefsSection }) {
                 { value: '0', label: 'Sunday' },
                 { value: '1', label: 'Monday' },
               ]}
-              hint="Calendar grid + week-view starting day."
+              hint="Which day your calendar grid and week view start on."
             />
             <SelectField
               label="Time format"
@@ -2101,7 +2098,7 @@ function PrefsCard({ section }: { section: PrefsSection }) {
           min={5}
           max={600}
           suffix="minutes"
-          hint="Used when you create an appointment manually without picking a service."
+          hint="Pre-fills the duration when you create an appointment without picking a service."
         />
       )}
 
@@ -2112,7 +2109,7 @@ function PrefsCard({ section }: { section: PrefsSection }) {
             value={draft.post_booking_message ?? ''}
             onChange={v => patch({ post_booking_message: v })}
             placeholder="Bring your reference photos, and arrive 5 minutes early!"
-            hint="Shown to customers on the booking success page and included in their confirmation email."
+            hint="Shown on the booking success page and tucked into their confirmation email."
             rows={3}
           />
           <TextAreaField
@@ -2120,7 +2117,7 @@ function PrefsCard({ section }: { section: PrefsSection }) {
             value={draft.email_signature ?? ''}
             onChange={v => patch({ email_signature: v })}
             placeholder="Anna at Lush Studio"
-            hint="Appended to customer-facing emails (confirmations, reminders, etc)."
+            hint="Added to the bottom of customer emails (confirmations, reminders, and so on)."
             rows={2}
           />
         </>
@@ -2146,7 +2143,7 @@ function PrefsCard({ section }: { section: PrefsSection }) {
                 value={pwInput}
                 onChange={setPwInput}
                 placeholder={draft.site_password_set ? '(already set, leave blank to keep)' : 'Choose a password'}
-                hint={draft.site_password_set ? 'Type a new value to change it. Leave blank to keep the existing one.' : 'Anyone with the link will need this to view your site.'}
+                hint={draft.site_password_set ? "Type a new password to change it. Leave blank to keep the one you've got." : 'Anyone with the link will need this to view your site.'}
               />
               {draft.site_password_set && (
                 <button
@@ -2363,7 +2360,7 @@ function ExportDataCard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <ExportCard
           label="Appointments"
-          description="Every appointment with status, customer, payment, and timestamps."
+          description="Every appointment with its status, customer, payment, and dates."
           busy={exportBusy === 'appointments'}
           onClick={() => handleExport('appointments')}
         />
@@ -2432,35 +2429,35 @@ const EMAIL_TEMPLATES: EmailTemplateMeta[] = [
     key: 'booking_request_client',
     label: 'Booking request received',
     description: 'Sent right after a customer submits a booking request.',
-    defaultSubject: 'We received your booking request',
-    defaultIntro:   'Thanks for booking with us. We received your request and will confirm it shortly.',
+    defaultSubject: "We've got your booking request",
+    defaultIntro:   "Thanks for booking with us. We've got your request and will confirm it shortly.",
   },
   {
     key: 'appointment_confirmed',
     label: 'Appointment confirmed',
     description: 'Sent when you confirm a booking (or it auto-confirms).',
     defaultSubject: 'Your appointment is confirmed',
-    defaultIntro:   'Great news, your appointment is confirmed. We look forward to seeing you.',
+    defaultIntro:   "Great news — your appointment is confirmed. We can't wait to see you.",
   },
   {
     key: 'appointment_cancelled',
     label: 'Appointment cancelled',
     description: 'Sent when an appointment is cancelled (owner or customer).',
     defaultSubject: 'Your appointment has been cancelled',
-    defaultIntro:   'We are letting you know that the appointment below has been cancelled.',
+    defaultIntro:   "We're writing to let you know the appointment below has been cancelled.",
   },
   {
     key: 'appointment_rescheduled',
     label: 'Appointment rescheduled',
     description: 'Sent when an appointment moves to a new time.',
     defaultSubject: 'Your appointment has been rescheduled',
-    defaultIntro:   'We have moved your appointment to a new time. The details are below.',
+    defaultIntro:   "We've moved your appointment to a new time. New details are below.",
   },
   {
     key: 'appointment_reminder',
     label: 'Appointment reminder',
-    description: 'Sent automatically a configurable number of hours before the appointment.',
-    defaultSubject: 'A reminder about your upcoming appointment',
+    description: 'Sent automatically the number of hours before the appointment that you set under Reminders above.',
+    defaultSubject: 'Reminder: your upcoming appointment',
     defaultIntro:   'This is a friendly reminder about your upcoming appointment with us.',
   },
 ]
@@ -2477,8 +2474,7 @@ function EmailContentEditor({
         <div className="min-w-0">
           <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Email content</p>
           <p className="text-2xs text-muted-text mt-0.5">
-            Override the subject line, opening, or sign-off on the 5 emails that go to your customers.
-            Leave blank to use BookReady defaults. Sample data + your saved overrides are used for test sends.
+            Customize the subject line, opening, or sign-off on the 5 emails that go to your customers. Leave blank to keep our defaults. Test sends use sample data plus whatever you've saved here.
           </p>
         </div>
       </div>
@@ -2600,7 +2596,7 @@ function EmailTemplateCard({
               <p className="text-2xs text-danger">{sendMsg.text}</p>
             ) : (
               <p className="text-2xs text-muted-text">
-                Send a test to verify deliverability + saved content. Leave the address blank to use your account email.
+                Send a test to make sure your customers will actually receive these and see your changes. Leave the address blank to send it to your account email.
               </p>
             )}
             <div className="flex items-stretch gap-2">
@@ -2608,7 +2604,7 @@ function EmailTemplateCard({
                 type="email"
                 value={testTo}
                 onChange={e => setTestTo(e.target.value)}
-                placeholder="Send to… (defaults to your account email)"
+                placeholder="you@example.com (defaults to your account email)"
                 className="flex-1 min-w-0 bg-white border border-hairline-strong px-3 py-1.5 text-xs text-near-black placeholder:text-faint-text focus:outline-none focus:border-near-black"
               />
               <button

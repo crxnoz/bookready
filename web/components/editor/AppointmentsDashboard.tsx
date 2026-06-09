@@ -103,7 +103,7 @@ export default function AppointmentsDashboard() {
           {([
             { label: 'Pending',   value: pending.length,   icon: Clock,    filter: 'pending' },
             { label: 'Today',     value: todayAp.length,   icon: Calendar, filter: 'today'   },
-            { label: 'This Week', value: thisWeek.length,  icon: Calendar, filter: 'week'    },
+            { label: 'This week', value: thisWeek.length,  icon: Calendar, filter: 'week'    },
           ] as const).map(({ label, value, icon: Icon, filter }) => (
             <Link
               key={label}
@@ -114,7 +114,7 @@ export default function AppointmentsDashboard() {
                 <Icon size={10} className="text-muted-text flex-shrink-0" />
                 <p className="text-eyebrow font-bold tracking-[0.10em] uppercase text-muted-text truncate">{label}</p>
               </div>
-              <p className="text-2xl font-bold text-near-black tabular-nums">{loading ? 'None' : value}</p>
+              <p className="text-2xl font-bold text-near-black tabular-nums">{loading ? '—' : value}</p>
               <p className="text-eyebrow font-semibold text-muted-text group-hover:text-near-black mt-0.5 inline-flex items-center gap-0.5">
                 View <ChevronRight size={10} />
               </p>
@@ -135,17 +135,17 @@ export default function AppointmentsDashboard() {
             <HubCard
               href="/editor/services"
               title="Services"
-              description="Configure your offered services and pricing."
+              description="Set up the services you offer and their pricing."
             />
             <HubCard
               href="/editor/availability"
               title="Availability"
-              description="Set your hours, gaps between appointments, and booking windows."
+              description="Set your hours, buffers between appointments, and booking windows."
             />
             <HubCard
               href="/editor/staff"
               title="Staff"
-              description="Manage your team members and their profiles."
+              description="Manage your team and their public profiles."
             />
           </div>
         </div>
@@ -155,10 +155,10 @@ export default function AppointmentsDashboard() {
           <div className="flex items-start justify-between gap-3 mb-3">
             <div>
               <p className="text-eyebrow font-bold tracking-[0.16em] uppercase text-muted-text">
-                Appointments Preview
+                Appointments preview
               </p>
               <p className="text-2xs text-muted-text mt-0.5">
-                A quick look at your schedule and recent booking requests.
+                A quick look at what's on the books and any new requests.
               </p>
             </div>
             <Link
@@ -177,12 +177,12 @@ export default function AppointmentsDashboard() {
             <div className="bg-white border border-hairline-soft px-4 py-10 text-center">
               <Calendar size={20} className="text-muted-text mx-auto mb-2" />
               <p className="text-sm font-semibold text-near-black mb-1">No upcoming appointments</p>
-              <p className="text-xs text-muted-text mb-4">No bookings scheduled yet.</p>
+              <p className="text-xs text-muted-text mb-4">When clients book you, they'll show up here. You can also add one yourself.</p>
               <Link
                 href="/editor/appointments"
                 className="inline-flex items-center gap-1.5 bg-near-black text-white px-4 py-2.5 text-xs font-bold tracking-[0.08em] uppercase hover:opacity-90 transition-colors"
               >
-                <Plus size={11} /> Create Appointment
+                <Plus size={11} /> Create appointment
               </Link>
             </div>
           ) : (
@@ -217,7 +217,7 @@ export default function AppointmentsDashboard() {
               icon={Users}
               tone="accent"
               title="Group appointments"
-              description="One session, multiple customers. Perfect for classes or workshops."
+              description="One session, multiple clients. Perfect for classes or workshops."
               bullets={[
                 'Set a minimum and maximum number of people per session',
                 'Auto-confirm once the minimum is hit',
