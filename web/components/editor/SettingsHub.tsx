@@ -655,6 +655,7 @@ function BookingSettingsPanel() {
         cancellation_window_hours:         draft.cancellation_window_hours,
         reschedule_window_hours:           draft.reschedule_window_hours,
         prevent_duplicate_client_bookings: draft.prevent_duplicate_client_bookings,
+        max_appointments_per_customer_per_day: draft.max_appointments_per_customer_per_day,
       }
       const next = await updateEditorBookingSettings(payload)
       setData(next)
@@ -739,6 +740,17 @@ function BookingSettingsPanel() {
             hint="Reject a booking when the same customer (by email or phone) already holds the same service at the same time."
             on={draft.prevent_duplicate_client_bookings}
             onToggle={() => patch({ prevent_duplicate_client_bookings: !draft.prevent_duplicate_client_bookings })}
+          />
+        </div>
+        <div className="border-t border-hairline-soft pt-3">
+          <NumberField
+            label="Max bookings per customer per day"
+            suffix={draft.max_appointments_per_customer_per_day === 1 ? 'booking' : 'bookings'}
+            min={1}
+            max={20}
+            value={draft.max_appointments_per_customer_per_day ?? 1}
+            onChange={v => patch({ max_appointments_per_customer_per_day: v })}
+            hint="How many appointments a single customer can hold on the same day. 1 is the typical default; raise it if your customers commonly book back-to-back services."
           />
         </div>
       </section>

@@ -71,6 +71,11 @@ class BookingSettingsController extends Controller
             'cancellation_window_hours'           => (int)  ($get('cancellation_window_hours', 24)),
             'reschedule_window_hours'             => (int)  ($get('reschedule_window_hours', 24)),
             'prevent_duplicate_client_bookings'   => (bool) ($get('prevent_duplicate_client_bookings', false)),
+            // null = unlimited; 1 = the recommended default for most beauty
+            // businesses (no customer can hog the day with multiple slots).
+            'max_appointments_per_customer_per_day' => $get('max_appointments_per_customer_per_day', 1) === null
+                ? null
+                : (int) $get('max_appointments_per_customer_per_day', 1),
             'created_at'                          => $row->created_at,
             'updated_at'                          => $row->updated_at,
         ];
@@ -92,9 +97,10 @@ class BookingSettingsController extends Controller
             'booking_enabled'                   => true,
             'cancellation_window_hours'         => 24,
             'reschedule_window_hours'           => 24,
-            'prevent_duplicate_client_bookings' => false,
-            'created_at'                        => now(),
-            'updated_at'                        => now(),
+            'prevent_duplicate_client_bookings'      => false,
+            'max_appointments_per_customer_per_day'  => 1,
+            'created_at'                             => now(),
+            'updated_at'                             => now(),
         ]);
 
         return DB::table('booking_settings')->where('id', $id)->first();
@@ -131,7 +137,9 @@ class BookingSettingsController extends Controller
             'slot_release_anchor_date'            => 'sometimes|nullable|date_format:Y-m-d',
             'cancellation_window_hours'           => 'sometimes|integer|min:0|max:720',
             'reschedule_window_hours'             => 'sometimes|integer|min:0|max:720',
-            'prevent_duplicate_client_bookings'   => 'sometimes|boolean',
+            'prevent_duplicate_client_bookings'      => 'sometimes|boolean',
+            // 1..20 covers normal beauty businesses; null = unlimited (rare).
+            'max_appointments_per_customer_per_day'  => 'sometimes|nullable|integer|min:1|max:20',
         ]);
 
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
@@ -154,6 +162,14 @@ class BookingSettingsController extends Controller
             if (array_key_exists($f, $validated)) {
                 $patch[$f] = (int) $validated[$f];
             }
+        }
+
+        // Nullable int: explicit null = unlimited; otherwise cast to int.
+        if (array_key_exists('max_appointments_per_customer_per_day', $validated)) {
+            $patch['max_appointments_per_customer_per_day'] =
+                $validated['max_appointments_per_customer_per_day'] === null
+                    ? null
+                    : (int) $validated['max_appointments_per_customer_per_day'];
         }
 
         if (array_key_exists('slot_interval_minutes', $validated)) {
