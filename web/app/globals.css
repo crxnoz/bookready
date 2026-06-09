@@ -45,3 +45,38 @@ html {
     font-size: 16px !important;
   }
 }
+
+/*
+ * Date + time input normalization. Two problems we hit on mobile WebKit:
+ *
+ *   1. Native rendering ships a picker chrome (calendar icon, AM/PM
+ *      toggle) at an intrinsic minimum width that ignores the parent's
+ *      width / min-width. The input "goes off the div" in tight cells.
+ *
+ *   2. Stripping the chrome with appearance: none then makes EMPTY
+ *      inputs collapse to ~14px tall (no value text to size against)
+ *      while filled inputs still look fine. Inconsistent heights inside
+ *      the same form.
+ *
+ * Fix at the input element so every callsite gets it: appearance: none
+ * to honor parent width, min-height to guarantee a usable touch target,
+ * and ::-webkit-date-and-time-value reset to align the text vertically.
+ *
+ * Public booking templates (.lush-template, .tfr-booking-inner, etc.)
+ * provide their own input styling at higher specificity, so this is a
+ * BASE for the editor and similar non-templated surfaces only.
+ */
+input[type='time'],
+input[type='date'],
+input[type='datetime-local'] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  min-height: 2.5rem;
+}
+input[type='time']::-webkit-date-and-time-value,
+input[type='date']::-webkit-date-and-time-value,
+input[type='datetime-local']::-webkit-date-and-time-value {
+  text-align: left;
+  min-height: 1.25rem;
+}
