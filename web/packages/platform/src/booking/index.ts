@@ -12,6 +12,11 @@
 // Component — the 5-step booking flow.
 export { default as PlatformBookingFlow } from './LushStudioBooking'
 
+// Template shell — standard wrapper every non-Lush template uses to
+// embed the booking. Pairs the engine's PLATFORM_BOOKING_CSS with the
+// template's theme CSS + frame/scope class names. See ./TemplateBookingShell.tsx.
+export { TemplateBookingShell } from './TemplateBookingShell'
+
 // Customer auth — Provider + hook + Modal. Templates wrap PlatformBookingFlow
 // in CustomerAuthProvider so the customer-account widget and the booking
 // form's "View your bookings" CTA can read shared auth state.

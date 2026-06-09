@@ -18,8 +18,7 @@
 
 import {
   PlatformBookingFlow,
-  CustomerAuthProvider,
-  PLATFORM_BOOKING_CSS,
+  TemplateBookingShell,
 } from '@bkrdy/platform/booking'
 import type {
   AvailabilityData, BookingQuestion, PublicPaymentSettings,
@@ -41,15 +40,13 @@ interface Props {
 
 export default function TheFadeRoomBooking(props: Props) {
   return (
-    <CustomerAuthProvider>
-      <style>{PLATFORM_BOOKING_CSS}</style>
-      <style>{TFR_BOOKING_CSS}</style>
-      <div className="tfr-booking-frame">
-        <div className="lush-template tfr-booking-inner">
-          <PlatformBookingFlow {...props} />
-        </div>
-      </div>
-    </CustomerAuthProvider>
+    <TemplateBookingShell
+      frameClass="tfr-booking-frame"
+      scopeClass="tfr-booking-inner"
+      themeCss={TFR_BOOKING_CSS}
+    >
+      <PlatformBookingFlow {...props} />
+    </TemplateBookingShell>
   )
 }
 

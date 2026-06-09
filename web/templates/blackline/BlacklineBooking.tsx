@@ -20,8 +20,7 @@
 
 import {
   PlatformBookingFlow,
-  CustomerAuthProvider,
-  PLATFORM_BOOKING_CSS,
+  TemplateBookingShell,
 } from '@bkrdy/platform/booking'
 import type {
   AvailabilityData, BookingQuestion, PublicPaymentSettings,
@@ -43,15 +42,13 @@ interface Props {
 
 export default function BlacklineBooking(props: Props) {
   return (
-    <CustomerAuthProvider>
-      <style>{PLATFORM_BOOKING_CSS}</style>
-      <style>{BLACKLINE_BOOKING_CSS}</style>
-      <div className="blackline-booking-frame">
-        <div className="lush-template blackline-booking-inner">
-          <PlatformBookingFlow {...props} />
-        </div>
-      </div>
-    </CustomerAuthProvider>
+    <TemplateBookingShell
+      frameClass="blackline-booking-frame"
+      scopeClass="blackline-booking-inner"
+      themeCss={BLACKLINE_BOOKING_CSS}
+    >
+      <PlatformBookingFlow {...props} />
+    </TemplateBookingShell>
   )
 }
 

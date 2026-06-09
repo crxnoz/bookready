@@ -18,8 +18,7 @@
 
 import {
   PlatformBookingFlow,
-  CustomerAuthProvider,
-  PLATFORM_BOOKING_CSS,
+  TemplateBookingShell,
 } from '@bkrdy/platform/booking'
 import type {
   AvailabilityData, BookingQuestion, PublicPaymentSettings,
@@ -41,15 +40,13 @@ interface Props {
 
 export default function PetaleBooking(props: Props) {
   return (
-    <CustomerAuthProvider>
-      <style>{PLATFORM_BOOKING_CSS}</style>
-      <style>{PETALE_BOOKING_FRAME_CSS}</style>
-      <div className="petale-booking-frame">
-        <div className="lush-template petale-booking-inner">
-          <PlatformBookingFlow {...props} />
-        </div>
-      </div>
-    </CustomerAuthProvider>
+    <TemplateBookingShell
+      frameClass="petale-booking-frame"
+      scopeClass="petale-booking-inner"
+      themeCss={PETALE_BOOKING_FRAME_CSS}
+    >
+      <PlatformBookingFlow {...props} />
+    </TemplateBookingShell>
   )
 }
 

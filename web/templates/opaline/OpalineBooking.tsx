@@ -20,8 +20,7 @@
 
 import {
   PlatformBookingFlow,
-  CustomerAuthProvider,
-  PLATFORM_BOOKING_CSS,
+  TemplateBookingShell,
 } from '@bkrdy/platform/booking'
 import type {
   AvailabilityData, BookingQuestion, PublicPaymentSettings,
@@ -43,15 +42,13 @@ interface Props {
 
 export default function OpalineBooking(props: Props) {
   return (
-    <CustomerAuthProvider>
-      <style>{PLATFORM_BOOKING_CSS}</style>
-      <style>{OPALINE_BOOKING_CSS}</style>
-      <div className="opaline-booking-frame">
-        <div className="lush-template opaline-booking-inner">
-          <PlatformBookingFlow {...props} />
-        </div>
-      </div>
-    </CustomerAuthProvider>
+    <TemplateBookingShell
+      frameClass="opaline-booking-frame"
+      scopeClass="opaline-booking-inner"
+      themeCss={OPALINE_BOOKING_CSS}
+    >
+      <PlatformBookingFlow {...props} />
+    </TemplateBookingShell>
   )
 }
 

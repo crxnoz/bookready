@@ -12,8 +12,7 @@
 
 import {
   PlatformBookingFlow,
-  CustomerAuthProvider,
-  PLATFORM_BOOKING_CSS,
+  TemplateBookingShell,
 } from '@bkrdy/platform/booking'
 import type {
   AvailabilityData, BookingQuestion, PublicPaymentSettings,
@@ -35,15 +34,13 @@ interface Props {
 
 export default function BottegaBooking(props: Props) {
   return (
-    <CustomerAuthProvider>
-      <style>{PLATFORM_BOOKING_CSS}</style>
-      <style>{BOTTEGA_BOOKING_FRAME_CSS}</style>
-      <div className="bottega-booking-frame">
-        <div className="lush-template bottega-booking-inner">
-          <PlatformBookingFlow {...props} />
-        </div>
-      </div>
-    </CustomerAuthProvider>
+    <TemplateBookingShell
+      frameClass="bottega-booking-frame"
+      scopeClass="bottega-booking-inner"
+      themeCss={BOTTEGA_BOOKING_FRAME_CSS}
+    >
+      <PlatformBookingFlow {...props} />
+    </TemplateBookingShell>
   )
 }
 

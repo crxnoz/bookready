@@ -23,9 +23,8 @@
 // are the canonical exports; the Lush-prefixed names below are historical
 // aliases scheduled for cleanup in M2c.
 import {
-  PlatformBookingFlow as LushStudioBooking,
-  CustomerAuthProvider as LushCustomerAuthProvider,
-  PLATFORM_BOOKING_CSS as LUSH_CSS,
+  PlatformBookingFlow,
+  TemplateBookingShell,
 } from '@bkrdy/platform/booking'
 import type {
   AvailabilityData, BookingQuestion, PublicPaymentSettings,
@@ -47,15 +46,13 @@ interface Props {
 
 export default function VelvetTheoryBooking(props: Props) {
   return (
-    <LushCustomerAuthProvider>
-      <style>{LUSH_CSS}</style>
-      <style>{VT_BOOKING_FRAME_CSS}</style>
-      <div className="vt-booking-frame">
-        <div className="lush-template vt-booking-inner">
-          <LushStudioBooking {...props} />
-        </div>
-      </div>
-    </LushCustomerAuthProvider>
+    <TemplateBookingShell
+      frameClass="vt-booking-frame"
+      scopeClass="vt-booking-inner"
+      themeCss={VT_BOOKING_FRAME_CSS}
+    >
+      <PlatformBookingFlow {...props} />
+    </TemplateBookingShell>
   )
 }
 
