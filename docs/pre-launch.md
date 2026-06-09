@@ -83,28 +83,46 @@ the real ceiling before adding more hardware.
 
 ---
 
-## 3. SMS — provider decision ⏸
-**What:** Pick the SMS provider and finish the integration.
+## 3. SMS — Twilio (decided 2026-06-09) ◐
+**What:** Provision Twilio + finish the integration so SMS is live for launch.
 
-**Status:** **Waiting on the Bandwidth meeting (June 9).** Telnyx was abandoned
-after a 10DLC compliance ruling; a Twilio path is scaffolded (`TwilioWebhookController`,
-`SmsOptout`, consent capture at booking) but not the live decision. Bandwidth is
-the third option being evaluated.
+**Provider decision (2026-06-09):** Twilio. The June 9 Bandwidth meeting confirmed
+their pricing is the right service but the wrong fit for our scale today
+(~$3,500/mo minimum for ~875k SMS — capacity we don't yet need). Twilio's
+pay-as-you-go A2P at ~$0.0083/SMS lets us start with real volume from day 1
+and graduate to Bandwidth when steady-state volume justifies the fixed cost.
 
-**Decision criteria:** fastest 10DLC / A2P brand+campaign approval, per-message
-price, deliverability, and how cleanly it drops into the existing provider-shaped
-`SmsService`.
+**Current state of the code:**
+- `App\Services\Sms\SmsService` is already Twilio-shaped (REST POST to
+  `api.twilio.com/2010-04-01/Accounts/{SID}/Messages.json`, HTTP Basic auth
+  via account_sid + auth_token, `MessagingServiceSid` preferred over a bare
+  `From` number for A2P number-pool routing). Dry-run mode auto-engages
+  when creds are absent — drops `notification_send_log` rows with
+  `status='dry_run'` so the rest of the codebase can wire SMS without
+  surprise.
+- `TwilioWebhookController` handles status callbacks + inbound (STOP/HELP).
+- `sms_optouts` table + booking-time `sms_consent_at` + `sms_consent_ip`
+  capture done.
+- ✓ SMS quota tracking + 110% hard cap shipped 2026-06-09 (`#129`).
 
-**Once decided (tracked under `#170–172`, `#127`, `#129`):**
-- Provision account + number + register A2P 10DLC brand & campaign (1–3 business-day approval — start immediately after the call).
-- Wire the provider into `SmsService` (adapter pattern preferred — keep optionality).
-- Webhook for inbound + delivery/status callbacks; STOP/HELP handling against `sms_optouts`.
-- The two highest-value sends: **client appointment reminders** (the no-show killer) and **instant new-booking alert to the owner**.
-- SMS quota tracking + overage logic (`#129`); end-to-end STOP/HELP test on the live number (`#127`).
+**Founder gates that remain (Tonight C, `#170–172`):**
+- Provision Twilio account + buy number + start A2P 10DLC brand + campaign
+  registration (1-3 business day approval window — start immediately).
+- Populate `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and either
+  `TWILIO_MESSAGING_SERVICE_SID` (A2P number-pool, preferred post-launch)
+  or `TWILIO_FROM_NUMBER` in prod `.env`.
+- ✗ End-to-end STOP/HELP test on the live number (`#127`).
 
-> Product note: SMS is the single most-requested feature for this market. Treat
-> it as the first post-launch (or launch-day) headline feature once the provider
-> clears 10DLC.
+**Backend changes still owed:**
+- None functional. The TwilioClient class isn't strictly required (raw HTTP
+  matches the rest of the codebase's pattern); the Tonight C2 task can be
+  marked done once C1 is provisioned and dry-run mode flips to live.
+
+> Product note: SMS is the single most-requested feature for this market.
+> Treat it as the first post-launch (or launch-day) headline feature once
+> Twilio clears 10DLC. Migration path to Bandwidth is clean — the
+> `SmsService::send` interface is provider-agnostic; swap-in happens at
+> the HTTP-call layer with an adapter when the time comes.
 
 ---
 
