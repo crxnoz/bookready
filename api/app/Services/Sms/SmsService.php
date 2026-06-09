@@ -75,7 +75,38 @@ class SmsService
             return SmsSendResult::optedOut($logId);
         }
 
-        // 3. Dry-run path. Service is callable without credentials so
+        // 3. Quota check. SmsQuotaService.canSend reads the tenant's
+        //    plan allowance + a 10% grace and blocks the send when over
+        //    the hard cap. Runaway-cost backstop: a misconfigured booking
+        //    flow could otherwise burn through a tenant's A2P budget
+        //    before we noticed. Default-enabled via services.twilio
+        //    .enforce_quota; flip off for emergency platform-wide pauses.
+        if ($tenantId !== null) {
+            [$canSend, $reason] = SmsQuotaService::canSend($tenantId);
+            if (! $canSend) {
+                $logId = NotificationSendLog::create([
+                    'tenant_id'    => $tenantId,
+                    'channel'      => 'sms',
+                    'template_key' => $templateKey,
+                    'recipient'    => $normalized,
+                    'provider'     => 'twilio',
+                    'status'       => 'over_quota',
+                    'cost_cents'   => 0,
+                    'context'      => array_merge($context, [
+                        'body_preview' => mb_substr($body, 0, 160),
+                        'reason'       => $reason,
+                    ]),
+                ])->id;
+                Log::warning('sms.send.over_quota', [
+                    'tenant_id'    => $tenantId,
+                    'template_key' => $templateKey,
+                    'log_id'       => $logId,
+                ]);
+                return SmsSendResult::failed('over quota — upgrade plan to send more SMS', $logId);
+            }
+        }
+
+        // 4. Dry-run path. Service is callable without credentials so
         //    the rest of the codebase can integrate SMS into booking
         //    flows during Twilio onboarding. The log row tells us
         //    what WOULD have been sent.
@@ -102,7 +133,7 @@ class SmsService
             return SmsSendResult::dryRun($logId);
         }
 
-        // 4. Live send. Twilio REST API (2010-04-01) — direct HTTP, no
+        // 5. Live send. Twilio REST API (2010-04-01) — direct HTTP, no
         //    SDK needed. Auth is HTTP Basic (AccountSid : AuthToken), the
         //    body is form-encoded, and the message SID comes back as
         //    `sid`. Prefer a Messaging Service SID (A2P number pool) over

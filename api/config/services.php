@@ -99,6 +99,14 @@ return [
         // used to reconstruct the exact URL for X-Twilio-Signature
         // verification. Defaults to app.url when blank.
         'webhook_base_url' => env('TWILIO_WEBHOOK_BASE_URL', ''),
+
+        // Quota enforcement. Default true: SmsQuotaService gates every
+        // send and blocks at allowance * 1.10 grace. Runaway-cost
+        // backstop — without this, a misconfigured booking flow can
+        // burn through a tenant's A2P budget before we notice. Flip to
+        // false only for a platform-wide pause (e.g. mass replay during
+        // a webhook backfill).
+        'enforce_quota' => filter_var(env('TWILIO_ENFORCE_QUOTA', true), FILTER_VALIDATE_BOOLEAN),
     ],
 
 ];

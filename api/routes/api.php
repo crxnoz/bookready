@@ -532,6 +532,12 @@ Route::prefix('v1')->group(function () {
         Route::patch('settings/notifications',        [NotificationSettingsController::class, 'update']);
         Route::post('settings/notifications/test-send', [NotificationSettingsController::class, 'testSend']);
 
+        // SMS usage tile — powers the "SMS this month" snapshot in
+        // Settings → Notifications and the admin platform dashboard.
+        // Read-only; the gate that actually blocks sends is in
+        // SmsService.send → SmsQuotaService.canSend.
+        Route::get('sms/usage',                        [\App\Http\Controllers\Api\Editor\SmsUsageController::class, 'show']);
+
         // ── Account (central User, no tenancy init) ─────────────────────────
         Route::get   ('account',                              [AccountController::class, 'show']);
         Route::patch ('account',                              [AccountController::class, 'update']);
