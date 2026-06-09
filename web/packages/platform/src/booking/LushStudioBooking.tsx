@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import { loadStripe } from '@stripe/stripe-js'
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js'
-import { getPublicAvailability, createPublicAppointment, createAppointmentHostedFallback, uploadBookingAnswerImage, joinPublicWaitlist, submitPublicSqueezeIn } from '@/lib/api'
+import { getPublicAvailability, createPublicAppointment, createAppointmentHostedFallback, previewPublicCoupon, uploadBookingAnswerImage, joinPublicWaitlist, submitPublicSqueezeIn } from '@/lib/api'
 import type {
   AvailableSlot, PaymentChoice, PublicBookingPayload, Service,
   AvailabilityData, PublicPaymentSettings,
@@ -209,6 +209,30 @@ export default function LushStudioBooking({
   // row for this booking — drives the post-success verify-email card
   // and the "go to dashboard" CTA.
   const [customerAccountCreated, setCustomerAccountCreated] = useState(false)
+
+  // Coupon code state. The widget is collapsed by default ("Have a code?")
+  // — clean for the 95% of bookings without one. On Apply, we hit the
+  // public preview endpoint server-side (no client-side discount calc)
+  // and pass the validated code through on the booking POST, where the
+  // backend re-validates before redeeming. Cleared whenever the service
+  // or payment choice changes since both affect eligibility / amount.
+  const [couponOpen,    setCouponOpen]    = useState(false)
+  const [couponInput,   setCouponInput]   = useState('')
+  const [couponBusy,    setCouponBusy]    = useState(false)
+  const [couponApplied, setCouponApplied] = useState<{
+    code:            string
+    discount_amount: number
+  } | null>(null)
+  const [couponError, setCouponError] = useState<string | null>(null)
+  // Reset the applied coupon whenever the inputs that affect eligibility
+  // / amount change. Avoids silently sending a stale discount the server
+  // would then 422 us back on. Uses serviceId (not selectedService.id)
+  // because selectedService is derived from services + serviceId later in
+  // the function body — referencing it in this hook's deps would TDZ.
+  useEffect(() => {
+    setCouponApplied(null)
+    setCouponError(null)
+  }, [serviceId, paymentChoice, addonIds])
 
   // Embedded Stripe Checkout. When the booking POST returns a client
   // secret (payment required), we mount Stripe's Checkout component
@@ -586,6 +610,35 @@ export default function LushStudioBooking({
   // Back-compat alias for the rest of the component
   const depositRequired = paymentRequired
 
+  /** Validate a coupon against the live booking inputs and capture the
+   *  discount the backend will apply. Server is the source of truth —
+   *  this client-side state is just for the "$X off" preview line. */
+  async function applyCoupon() {
+    if (! serviceId)        { setCouponError('Pick a service first.'); return }
+    if (! couponInput.trim()) { setCouponError('Enter a code.'); return }
+    setCouponBusy(true); setCouponError(null)
+    try {
+      const r = await previewPublicCoupon(slug, {
+        code:           couponInput.trim(),
+        service_id:     serviceId,
+        payment_choice: effectiveChoice,
+        addon_ids:      addonIds,
+      })
+      if (r.valid && r.code) {
+        setCouponApplied({ code: r.code, discount_amount: r.discount_amount })
+        setCouponInput(r.code)
+      } else {
+        setCouponApplied(null)
+        setCouponError(r.reason ?? 'Coupon not valid.')
+      }
+    } catch (e) {
+      setCouponApplied(null)
+      setCouponError(e instanceof Error ? e.message : 'Could not check coupon.')
+    } finally {
+      setCouponBusy(false)
+    }
+  }
+
   async function handleSubmit() {
     if (!serviceId || !date || !selectedSlot || !name.trim()) return
     setSubmitting(true)
@@ -645,7 +698,21 @@ export default function LushStudioBooking({
       if (smsConsent && phone.trim() !== '') {
         payload.sms_consent = true
       }
-      const res = await createPublicAppointment(slug, payload)
+      // Applied coupon (server re-validates + redeems atomically). We
+      // send the canonical uppercased code returned by the preview, so
+      // a stray lowercase keystroke between Apply and Submit can't fail.
+      if (couponApplied?.code) {
+        payload.coupon_code = couponApplied.code
+      }
+      const res = await createPublicAppointment(slug, payload).catch(err => {
+        // Surface coupon-specific failures in the coupon widget itself
+        // instead of as a generic submit error.
+        if (err instanceof Error && /coupon/i.test(err.message)) {
+          setCouponError(err.message)
+          setCouponApplied(null)
+        }
+        throw err
+      })
       if (res.customer_account_created) {
         setCustomerAccountCreated(true)
       }
@@ -1858,6 +1925,18 @@ export default function LushStudioBooking({
                     <dt>{effectiveChoice === 'full' ? 'Due now (paid in full)' : 'Deposit due now'}</dt>
                     <dd>${chargePreview!.toFixed(2)}</dd>
                   </div>
+                  {couponApplied && (
+                    <div className="brk-booking-coupon-line">
+                      <dt>Coupon {couponApplied.code}</dt>
+                      <dd>− ${couponApplied.discount_amount.toFixed(2)}</dd>
+                    </div>
+                  )}
+                  {couponApplied && (
+                    <div className="brk-booking-total brk-booking-coupon-total">
+                      <dt>Total {effectiveChoice === 'full' ? 'due now' : 'deposit'}</dt>
+                      <dd>${Math.max(0, chargePreview! - couponApplied.discount_amount).toFixed(2)}</dd>
+                    </div>
+                  )}
                   {effectiveChoice === 'deposit' && remainingBalance! > 0 && (
                     <div>
                       <dt>Balance at appointment</dt>
@@ -1865,6 +1944,59 @@ export default function LushStudioBooking({
                     </div>
                   )}
                 </dl>
+
+                {/* Coupon widget. Hidden link by default — clean for the
+                    majority of bookings without a code. Expands inline on
+                    click; applied coupons show a pill with a Remove. */}
+                <div className="brk-booking-coupon">
+                  {couponApplied ? (
+                    <div className="brk-booking-coupon-applied">
+                      <span className="brk-booking-coupon-tag">
+                        ✓ {couponApplied.code} applied
+                      </span>
+                      <button
+                        type="button"
+                        className="brk-booking-coupon-remove"
+                        onClick={() => { setCouponApplied(null); setCouponInput(''); setCouponError(null); setCouponOpen(false) }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : couponOpen ? (
+                    <div className="brk-booking-coupon-form">
+                      <input
+                        type="text"
+                        value={couponInput}
+                        onChange={e => { setCouponInput(e.target.value.toUpperCase()); setCouponError(null) }}
+                        placeholder="Enter code"
+                        autoCapitalize="characters"
+                        spellCheck={false}
+                        maxLength={64}
+                        className="brk-booking-coupon-input"
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void applyCoupon() } }}
+                      />
+                      <button
+                        type="button"
+                        className="brk-booking-coupon-apply"
+                        onClick={() => void applyCoupon()}
+                        disabled={couponBusy || ! couponInput.trim()}
+                      >
+                        {couponBusy ? 'Checking…' : 'Apply'}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="brk-booking-coupon-toggle"
+                      onClick={() => setCouponOpen(true)}
+                    >
+                      Have a coupon code?
+                    </button>
+                  )}
+                  {couponError && (
+                    <p className="brk-booking-coupon-err">{couponError}</p>
+                  )}
+                </div>
                 <p style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
                   You&apos;ll pay
                   {effectiveChoice === 'full' ? ' in full' : ' your deposit'} securely

@@ -1271,6 +1271,67 @@ export const LUSH_CSS = `
 .brk-booking-checkout-loading .brk-booking-spin { animation: brk-booking-spin 0.8s linear infinite; }
 @keyframes brk-booking-spin { to { transform: rotate(360deg); } }
 
+/* ── Coupon widget ── Lives in the Step 5 totals box. Collapsed by
+   default to a small underlined link so the 95% of bookings without a
+   code stay visually clean; expands inline to an input+button row. */
+.brk-booking-coupon {
+  margin-top: 10px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.brk-booking-coupon-toggle {
+  align-self: flex-start; background: none; border: none; cursor: pointer;
+  font-family: var(--lush-ui); font-size: 12px; color: var(--lush-muted);
+  text-decoration: underline; padding: 2px 0;
+}
+.brk-booking-coupon-toggle:hover { color: var(--lush-text); }
+.brk-booking-coupon-form {
+  display: flex; gap: 8px; align-items: stretch;
+}
+.brk-booking-coupon-input {
+  flex: 1; min-width: 0;
+  background: var(--lush-card); border: 1px solid var(--lush-dark-border);
+  font-family: var(--lush-ui); font-size: 13px; color: var(--lush-text);
+  padding: 8px 10px; letter-spacing: 0.04em;
+}
+.brk-booking-coupon-input:focus {
+  outline: none; border-color: var(--lush-pink);
+}
+.brk-booking-coupon-apply {
+  background: var(--lush-text); color: var(--lush-card);
+  border: 1px solid var(--lush-text);
+  font-family: var(--lush-ui); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 0 14px; cursor: pointer;
+}
+.brk-booking-coupon-apply:disabled { opacity: 0.5; cursor: not-allowed; }
+.brk-booking-coupon-applied {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 10px;
+  background: rgba(var(--lush-pink-rgb), 0.10);
+  border: 1px solid rgba(var(--lush-pink-rgb), 0.30);
+}
+.brk-booking-coupon-tag {
+  font-family: var(--lush-ui); font-size: 12px; font-weight: 600;
+  color: var(--lush-text); letter-spacing: 0.03em;
+}
+.brk-booking-coupon-remove {
+  background: none; border: none; cursor: pointer;
+  font-family: var(--lush-ui); font-size: 12px; color: var(--lush-muted);
+  text-decoration: underline; padding: 0;
+}
+.brk-booking-coupon-remove:hover { color: var(--lush-text); }
+.brk-booking-coupon-err {
+  margin: 0; font-family: var(--lush-ui); font-size: 12px;
+  color: #b42828; /* danger — inline at this exact spot to match other booking errors */
+}
+.brk-booking-coupon-line {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 4px 0; font-size: 13px; color: var(--lush-muted);
+  font-style: italic;
+}
+.brk-booking-coupon-line dd { color: var(--lush-text); font-weight: 600; }
+.brk-booking-coupon-total { border-top: 1px dashed var(--lush-dark-border); padding-top: 6px; }
+
 /* ── Gallery ── */
 /* ── Shared tab header ── Every Lush tab opens with the same eyebrow +
    Cookie script section title pair so the tabs read as a consistent

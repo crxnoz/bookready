@@ -2252,3 +2252,48 @@ export async function updateEditorResultsGroup(id: number, payload: Partial<Resu
 export async function deleteEditorResultsGroup(id: number): Promise<{ deleted?: boolean }> {
   return request(`/editor/results/groups/${id}`, { method: 'DELETE' })
 }
+
+// ── Customer booking coupons (editor + public preview) ─────────────────────
+
+import type { Coupon, CouponWritePayload, CouponPreviewResponse } from './types'
+
+export async function getEditorCoupons(): Promise<Coupon[]> {
+  return request<Coupon[]>('/editor/coupons')
+}
+export async function createEditorCoupon(data: CouponWritePayload): Promise<Coupon> {
+  return request<Coupon>('/editor/coupons', { method: 'POST', body: JSON.stringify(data) })
+}
+export async function updateEditorCoupon(id: number, data: CouponWritePayload): Promise<Coupon> {
+  return request<Coupon>(`/editor/coupons/${id}`, { method: 'PATCH', body: JSON.stringify(data) })
+}
+export async function deleteEditorCoupon(id: number): Promise<{ deleted?: boolean }> {
+  return request(`/editor/coupons/${id}`, { method: 'DELETE' })
+}
+
+/**
+ * Public coupon preview — used by the booking flow's "Have a code?" widget
+ * to validate + price a code before the customer submits. No auth: the
+ * preview only ever computes off the public services/payment_settings
+ * shape, never reveals raw coupon configuration.
+ */
+export async function previewPublicCoupon(
+  slug:    string,
+  payload: {
+    code:            string
+    service_id:      number
+    payment_choice?: 'deposit' | 'full'
+    addon_ids?:      number[]
+  },
+): Promise<CouponPreviewResponse> {
+  const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
+  const res = await fetch(`${base}/public/sites/${slug}/coupons/preview`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body:    JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }))
+    throw new Error(err.message ?? 'Could not validate coupon')
+  }
+  return res.json() as Promise<CouponPreviewResponse>
+}

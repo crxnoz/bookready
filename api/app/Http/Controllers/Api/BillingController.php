@@ -124,6 +124,12 @@ class BillingController extends Controller
             ->checkout([
                 'success_url' => $successUrl,
                 'cancel_url'  => $cancelUrl,
+                // Rail 2 — surface BookReady's own promo-code input on the
+                // hosted Checkout page. Codes are created in the Stripe
+                // Dashboard (Products → Coupons → Promotion Codes); Stripe
+                // applies them server-side, so there's no validation work
+                // to mirror locally.
+                'allow_promotion_codes' => true,
                 'metadata'    => [
                     'user_id'         => (string) $user->id,
                     'tenant_id'       => $tenant->id,
@@ -222,6 +228,9 @@ class BillingController extends Controller
                     'success_url'        => $successUrl,
                     'cancel_url'         => $cancelUrl,
                     'payment_method_collection' => 'always',
+                    // Rail 2 — promo codes on the trial flow too, so a code
+                    // like "FRIEND25" can apply once the trial converts.
+                    'allow_promotion_codes' => true,
                     'metadata'           => [
                         'user_id'         => (string) $user->id,
                         'tenant_id'       => $tenant->id,

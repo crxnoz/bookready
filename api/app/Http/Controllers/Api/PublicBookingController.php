@@ -191,6 +191,11 @@ class PublicBookingController extends Controller
             // Optional client preference when both deposit AND full
             // payment are allowed. Ignored when only one is valid.
             'payment_choice'   => 'sometimes|in:deposit,full',
+            // Optional customer coupon code. Server re-validates exactly
+            // the same way the preview endpoint did; an invalid code at
+            // this point fails the booking with a clear 422 (don't silently
+            // ignore — the customer thinks they got a deal).
+            'coupon_code'      => 'sometimes|nullable|string|max:64',
             // Policy-agreement flag. Required only when the tenant has
             // require_policy_agreement turned on (validated below).
             'policy_agreed'    => 'sometimes|boolean',
@@ -456,30 +461,79 @@ class PublicBookingController extends Controller
             ->addMinutes($duration)
             ->format('H:i');
 
+        // Customer identity used by the three guards below.
+        $email = $validated['customer_email'] ?? null;
+        $phone = $validated['customer_phone'] ?? null;
+
+        // ── Failed-deposit lockout ───────────────────────────────────────
+        // A customer who started a booking and abandoned the deposit (their
+        // pending_payment row gets swept by the appointments:expire-pending-
+        // payments cron after 15 min) is blocked from making ANY new
+        // appointment until that earlier attempt either resolves or expires.
+        // Without this, an abandoner can race to grab a second slot while
+        // their first cart is still holding the original.
+        if ($email || $phone) {
+            $lockoutCutoff = now()->subMinutes(15);
+            $openDeposit = DB::table('appointments')
+                ->where('payment_status', 'pending_payment')
+                ->where('created_at', '>=', $lockoutCutoff)
+                ->where(function ($q) use ($email, $phone) {
+                    if ($email) $q->orWhere('customer_email', $email);
+                    if ($phone) $q->orWhere('customer_phone', $phone);
+                })
+                ->exists();
+            if ($openDeposit) {
+                tenancy()->end();
+                return response()->json([
+                    'message' => 'You have a recent booking still resolving. Please try again in a few minutes.',
+                ], 429);
+            }
+        }
+
+        // ── Per-customer per-day cap ─────────────────────────────────────
+        // Default 1. Most beauty businesses don't want one customer hogging
+        // the day. Owners can raise the cap from Booking > Settings (or set
+        // null = unlimited for multi-visit places).
+        $perCustomerCap = $settings->max_appointments_per_customer_per_day ?? 1;
+        if ($perCustomerCap !== null && ($email || $phone)) {
+            $existingForCustomer = DB::table('appointments')
+                ->where('appointment_date', $date)
+                ->whereNotIn('status', ['cancelled'])
+                ->where(function ($q) use ($email, $phone) {
+                    if ($email) $q->orWhere('customer_email', $email);
+                    if ($phone) $q->orWhere('customer_phone', $phone);
+                })
+                ->count();
+            if ($existingForCustomer >= (int) $perCustomerCap) {
+                tenancy()->end();
+                return response()->json([
+                    'message' => $perCustomerCap === 1
+                        ? 'You already have an appointment booked for that day.'
+                        : sprintf('You already have %d appointments on that day, which is the maximum.', $perCustomerCap),
+                ], 422);
+            }
+        }
+
         // ── Duplicate-booking guard ──────────────────────────────────────
         // When enabled, the same client (matched by email OR phone) cannot
         // book the same service at the same date+start time more than once.
         $preventDup = (bool) ($settings->prevent_duplicate_client_bookings ?? false);
-        if ($preventDup) {
-            $email = $validated['customer_email'] ?? null;
-            $phone = $validated['customer_phone'] ?? null;
-            if ($email || $phone) {
-                $exists = DB::table('appointments')
-                    ->where('service_id', $serviceId)
-                    ->where('appointment_date', $date)
-                    ->where('start_time', $startTime . ':00')
-                    ->whereNotIn('status', ['cancelled'])
-                    ->where(function ($q) use ($email, $phone) {
-                        if ($email) $q->orWhere('customer_email', $email);
-                        if ($phone) $q->orWhere('customer_phone', $phone);
-                    })
-                    ->exists();
-                if ($exists) {
-                    tenancy()->end();
-                    return response()->json([
-                        'message' => 'You already have a booking for this service at this time.',
-                    ], 422);
-                }
+        if ($preventDup && ($email || $phone)) {
+            $exists = DB::table('appointments')
+                ->where('service_id', $serviceId)
+                ->where('appointment_date', $date)
+                ->where('start_time', $startTime . ':00')
+                ->whereNotIn('status', ['cancelled'])
+                ->where(function ($q) use ($email, $phone) {
+                    if ($email) $q->orWhere('customer_email', $email);
+                    if ($phone) $q->orWhere('customer_phone', $phone);
+                })
+                ->exists();
+            if ($exists) {
+                tenancy()->end();
+                return response()->json([
+                    'message' => 'You already have a booking for this service at this time.',
+                ], 422);
             }
         }
 
@@ -537,6 +591,38 @@ class PublicBookingController extends Controller
         }
         $paymentRequired = $paymentType !== null;
         $chargeAmount    = $paymentType === 'full' ? $fullAmount : ($paymentType === 'deposit' ? $depositAmount : null);
+        // Pre-coupon deposit/full amount. amount_due (balance owed at the
+        // appointment) is computed from this so a coupon applied to the
+        // deposit reduces what the customer pays now WITHOUT silently
+        // inflating the balance to compensate. Without this snapshot, a
+        // $5-off coupon on a $25 deposit would charge $20 now, then store
+        // amount_due=$80 instead of $75 — customer "saves nothing".
+        $originalChargeAmount = $chargeAmount;
+
+        // Customer coupon. Server-authoritative re-validation of whatever
+        // the public preview returned: the customer can't fake a discount
+        // by editing the form. Applied to $chargeAmount BEFORE the Stripe
+        // session is created so the deposit/full charge collects the
+        // already-discounted amount (Stripe never knows about our coupons).
+        $couponResult       = null;
+        $couponDiscount     = 0.0;
+        $couponCodeRaw      = $validated['coupon_code'] ?? null;
+        if ($paymentRequired && $couponCodeRaw && Schema::hasTable('coupons')) {
+            $couponResult = \App\Services\CouponService::validate(
+                $couponCodeRaw,
+                (float) $chargeAmount,
+                (int)   $validated['service_id'],
+            );
+            if (! $couponResult['valid']) {
+                tenancy()->end();
+                return response()->json([
+                    'message' => $couponResult['reason'] ?? 'Coupon could not be applied.',
+                    'coupon'  => ['valid' => false, 'reason' => $couponResult['reason']],
+                ], 422);
+            }
+            $couponDiscount = (float) $couponResult['discount_amount'];
+            $chargeAmount   = max(0.0, round((float) $chargeAmount - $couponDiscount, 2));
+        }
 
         // Columns we set only when the migration has run (graceful fallback).
         $appointmentsHasPaymentCols = Schema::hasColumn('appointments', 'payment_status');
@@ -702,14 +788,21 @@ class PublicBookingController extends Controller
             if ($paymentRequired) {
                 $insertData['payment_status']      = 'pending_payment';
                 $insertData['deposit_required']    = $paymentType === 'deposit';
+                // deposit_amount stores the discounted (charged) amount —
+                // this is the source of truth for "how much did the customer
+                // pay up front" used by receipts / refunds.
                 $insertData['deposit_amount']      = $chargeAmount;
                 $insertData['deposit_paid_amount'] = 0;
-                // For 'full' the client is paying the whole service price
-                // up front, so no balance is owed at the appointment.
+                // For 'full' nothing is owed at the appointment regardless
+                // of any coupon. For 'deposit', amount_due must use the
+                // ORIGINAL pre-coupon deposit — the coupon discounts what
+                // the customer pays now, NOT what they owe later. Using
+                // $chargeAmount here would shift the discount into the
+                // balance and the customer would pay the full price.
                 $insertData['amount_due'] = $paymentType === 'full'
                     ? 0
                     : ($servicePrice !== null
-                        ? max(0, round($servicePrice - $chargeAmount, 2))
+                        ? max(0, round($servicePrice - $originalChargeAmount, 2))
                         : null);
                 $insertData['currency'] = $payment['currency'] ?? 'USD';
             } else {
@@ -720,6 +813,28 @@ class PublicBookingController extends Controller
         }
 
         $id  = DB::table('appointments')->insertGetId($insertData);
+
+        // Atomic coupon redemption. The validate() above proved eligibility
+        // at this instant; redeemAtomic() re-checks uses_count under a row
+        // lock to win the race against any other booker claiming the last
+        // spot. On loss we roll back the appointment + 422 — never charge
+        // the discounted price for a coupon that didn't actually redeem.
+        if ($couponResult && $couponResult['valid']) {
+            $ok = \App\Services\CouponService::redeemAtomic(
+                (int)    $couponResult['coupon_id'],
+                (int)    $id,
+                (float)  $couponDiscount,
+                (string) $couponResult['code'],
+            );
+            if (! $ok) {
+                DB::table('appointments')->where('id', $id)->delete();
+                tenancy()->end();
+                return response()->json([
+                    'message' => 'Sorry — that coupon was just claimed by someone else. Try again without it.',
+                    'coupon'  => ['valid' => false, 'reason' => 'fully_claimed_race'],
+                ], 422);
+            }
+        }
 
         // Phase 7: persist add-on snapshots — captures price + duration
         // at booking time so future add-on edits don't rewrite history.
@@ -846,6 +961,9 @@ class PublicBookingController extends Controller
                 // for an unpaid appointment.) Treat it as a hard failure:
                 // cancel the held slot and 502 like the other payment errors.
                 if (! $checkoutClientSecret || ! $checkoutPublishableKey) {
+                    // Release the coupon redemption — otherwise a misconfig
+                    // burns the code on a booking the customer can't pay for.
+                    \App\Services\CouponService::releaseRedemption((int) $id);
                     DB::table('appointments')->where('id', $id)->update([
                         'status'         => 'cancelled',
                         'payment_status' => 'failed',
@@ -864,6 +982,7 @@ class PublicBookingController extends Controller
                 }
             } catch (StripeConnectNotReadyException $e) {
                 // Connect went away between our precheck and the create call.
+                \App\Services\CouponService::releaseRedemption((int) $id);
                 DB::table('appointments')->where('id', $id)->delete();
                 tenancy()->end();
                 return response()->json(['message' => $e->getMessage()], 422);
@@ -873,7 +992,9 @@ class PublicBookingController extends Controller
                     'appointment_id' => $appt['id'],
                     'error'    => $e->getMessage(),
                 ]);
-                // Roll back: mark appointment failed and let the caller see an error.
+                // Roll back: mark appointment failed + return the coupon
+                // use so a Stripe hiccup never burns a one-shot code.
+                \App\Services\CouponService::releaseRedemption((int) $id);
                 DB::table('appointments')->where('id', $id)->update([
                     'payment_status' => 'failed',
                     'updated_at'     => now(),
@@ -969,6 +1090,13 @@ class PublicBookingController extends Controller
             $response['checkout_url']           = $checkoutUrl;
             $response['checkout_client_secret'] = $checkoutClientSecret;
             $response['stripe_publishable_key'] = $checkoutPublishableKey;
+            // Applied coupon (success path only — failures already 422'd).
+            if ($couponResult && $couponResult['valid']) {
+                $response['coupon'] = [
+                    'code'            => $couponResult['code'],
+                    'discount_amount' => (float) $couponDiscount,
+                ];
+            }
         }
 
         if ($customerAccountCreated) {

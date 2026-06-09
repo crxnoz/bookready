@@ -94,7 +94,7 @@ export const EDITOR_SECTIONS: EditorSectionConfig[] = [
     key:          'bookings',
     label:        'Bookings',
     hubPath:      '/editor/bookings',
-    pathPrefixes: ['/editor/bookings', '/editor/services', '/editor/availability', '/editor/hours', '/editor/appointments', '/editor/staff', '/editor/booking-form', '/editor/waitlist'],
+    pathPrefixes: ['/editor/bookings', '/editor/services', '/editor/availability', '/editor/hours', '/editor/appointments', '/editor/staff', '/editor/booking-form', '/editor/coupons', '/editor/waitlist'],
     innerNavMode: 'route',
     innerNav: [
       { id: 'overview',      label: 'Overview',      href: '/editor/bookings' },
@@ -103,6 +103,7 @@ export const EDITOR_SECTIONS: EditorSectionConfig[] = [
       { id: 'appointments',  label: 'Appointments',  href: '/editor/appointments' },
       { id: 'staff',         label: 'Staff',         href: '/editor/staff' },
       { id: 'booking-form',  label: 'Booking Form',  href: '/editor/booking-form' },
+      { id: 'coupons',       label: 'Coupons',       href: '/editor/coupons' },
       { id: 'waitlist',      label: 'Waitlist',      href: '/editor/waitlist' },
     ],
     defaultTitle:    'Bookings',

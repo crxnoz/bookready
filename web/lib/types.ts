@@ -792,6 +792,9 @@ export interface BookingSettings {
   cancellation_window_hours:           number
   reschedule_window_hours:             number
   prevent_duplicate_client_bookings:   boolean
+  // Max appointments a single customer can book on the same day. Default
+  // 1; null = unlimited. Owners change this in Booking > Settings.
+  max_appointments_per_customer_per_day: number | null
   created_at?:                         string
   updated_at?:                         string
 }
@@ -1185,6 +1188,10 @@ export interface PublicBookingPayload {
    *  an account (the user can sign in to claim it via the email CTA). */
   create_account?:   boolean
   account_password?: string
+  /** Customer coupon code (uppercased). Server re-validates + atomically
+   *  redeems via CouponService; invalid/expired/exhausted returns 422 with
+   *  reason so the frontend can surface it inline (no silent ignore). */
+  coupon_code?:      string
 
   /** TCR-compliant SMS consent. When true AND customer_phone is set,
    *  the backend stamps sms_consent_at + sms_consent_ip on the
@@ -1220,6 +1227,11 @@ export interface PublicBookingResponse {
   stripe_publishable_key?: string | null
   /** Legacy hosted-redirect fallback. Null in embedded mode. */
   checkout_url?:     string | null
+  /** Applied coupon when the booking POST validated + redeemed a code. */
+  coupon?: {
+    code:            string
+    discount_amount: number
+  }
   /** True when the booking POST also created a customer_users row
    *  (the visitor ticked the "Create a BookReady account" checkbox).
    *  The frontend uses this to show the verify-email prompt + dashboard
@@ -1571,4 +1583,45 @@ export interface StripePayoutsResponse {
   connect_status: string
   count:          number
   message?:       string
+}
+
+// ── Customer booking coupons (tenant rail) ──────────────────────────────────
+
+export interface Coupon {
+  id:                    number
+  code:                  string
+  description:           string | null
+  discount_type:         'percent' | 'flat'
+  discount_value:        number
+  is_active:             boolean
+  max_uses:              number | null
+  uses_count:            number
+  expires_at:            string | null
+  minimum_amount:        number | null
+  applicable_service_ids: number[]
+  created_at:            string | null
+  updated_at:            string | null
+  total_discount_given:  number | null
+}
+
+export interface CouponWritePayload {
+  code?:                   string
+  description?:            string | null
+  discount_type?:          'percent' | 'flat'
+  discount_value?:         number
+  is_active?:              boolean
+  max_uses?:               number | null
+  expires_at?:             string | null
+  minimum_amount?:         number | null
+  applicable_service_ids?: number[] | null
+}
+
+/** Public coupon preview response. Whitelisted on the server to avoid
+ *  leaking discount_type/discount_value to anonymous enumeration. */
+export interface CouponPreviewResponse {
+  valid:           boolean
+  reason:          string | null
+  code:            string | null
+  discount_amount: number
+  final_amount:    number
 }

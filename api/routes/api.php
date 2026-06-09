@@ -55,7 +55,9 @@ use App\Http\Controllers\Api\Editor\BookingQuestionsController;
 use App\Http\Controllers\Api\PublicBookingAnswerUploadController;
 use App\Http\Controllers\Api\PublicSiteUnlockController;
 use App\Http\Controllers\Api\Editor\DashboardMetricsController;
+use App\Http\Controllers\Api\Editor\CouponsController;
 use App\Http\Controllers\Api\Editor\StaffController;
+use App\Http\Controllers\Api\PublicCouponController;
 use App\Http\Controllers\Api\Editor\StaffHoursController;
 use App\Http\Controllers\Api\Editor\StaffBlockedDatesController;
 use App\Http\Controllers\Api\Editor\UploadsController;
@@ -124,6 +126,11 @@ Route::prefix('v1')->group(function () {
     // (a per-booking capability) — see checkoutFallback().
     Route::post('public/sites/{slug}/appointments/{appointment}/checkout-fallback', [PublicBookingController::class, 'checkoutFallback'])
         ->middleware('throttle:10,1');
+    // Coupon code preview — validates a code + previews the discount
+    // before the customer hits Submit. No side effects (no redemption).
+    // Higher throttle than booking POST since this fires on keystrokes.
+    Route::post('public/sites/{slug}/coupons/preview', [PublicCouponController::class, 'preview'])
+        ->middleware('throttle:60,1');
     // Phase S3 — public upload throttled to 5/min per IP. Combined with
     // the active-question + daily-cap gates in the controller this kills
     // anonymous R2 storage abuse.
@@ -382,6 +389,12 @@ Route::prefix('v1')->group(function () {
         Route::post('staff',             [StaffController::class, 'store']);
         Route::patch('staff/{staff}',    [StaffController::class, 'update']);
         Route::delete('staff/{staff}',   [StaffController::class, 'destroy']);
+
+        // Customer booking coupons (Connect rail).
+        Route::get   ('coupons',         [CouponsController::class, 'index']);
+        Route::post  ('coupons',         [CouponsController::class, 'store']);
+        Route::patch ('coupons/{id}',    [CouponsController::class, 'update']);
+        Route::delete('coupons/{id}',    [CouponsController::class, 'destroy']);
         // Per-staff hours + blocked dates. Same /{staff}/* shape Laravel
         // would generate via apiResource, but kept flat for consistency
         // with the rest of the editor namespace.
