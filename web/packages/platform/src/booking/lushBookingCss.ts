@@ -909,10 +909,6 @@ export const LUSH_CSS = `
 .brk-booking-time.is-after-hours.is-selected {
   background:var(--brk-booking-accent); border-color:var(--brk-booking-accent); color:var(--brk-booking-on-accent);
 }
-.brk-booking-time-fee {
-  display:block; margin-top:2px; font-size:10px; font-weight:700;
-  letter-spacing:.04em; opacity:.75;
-}
 .lush-slot-msg { font-size:13px; color:var(--brk-booking-muted); padding:16px 0; }
 .lush-slot-error { color:var(--brk-booking-danger-fg); }
 

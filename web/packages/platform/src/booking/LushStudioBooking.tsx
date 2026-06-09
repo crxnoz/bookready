@@ -69,6 +69,23 @@ export default function LushStudioBooking({
   const [serviceId,    setServiceId]    = useState<number | null>(null)
   const [date,         setDate]         = useState('')
   const [slotState,    setSlotState]    = useState<SlotState>({ status: 'idle' })
+  // Group loaded slots by tier so Step 3 can render regular times under
+  // "Available Times" and after-hours times under their own "After hours
+  // +$FEE" section — instead of stamping +$FEE on every after-hours pill.
+  // The fee is tenant-wide (from after_hours_config), so reading
+  // price_delta off the first after-hours slot is sufficient.
+  const slotGroups = useMemo(() => {
+    if (slotState.status !== 'loaded') {
+      return { regular: [], afterHours: [], afterHoursFee: 0 }
+    }
+    const regular = slotState.slots.filter(s => s.tier !== 'after_hours')
+    const afterHours = slotState.slots.filter(s => s.tier === 'after_hours')
+    return {
+      regular,
+      afterHours,
+      afterHoursFee: afterHours[0]?.price_delta ?? 0,
+    }
+  }, [slotState])
   const [selectedSlot, setSelectedSlot] = useState('')
   const [name,         setName]         = useState('')
   const [email,        setEmail]        = useState('')
@@ -1505,27 +1522,43 @@ export default function LushStudioBooking({
                   )}
                 </div>
               )}
-              {slotState.status === 'loaded' && slotState.slots.length > 0 && (
+              {slotState.status === 'loaded' && slotGroups.regular.length > 0 && (
                 <div className="brk-booking-times">
-                  {slotState.slots.map(slot => {
-                    const isAfterHours = slot.tier === 'after_hours'
-                    return (
-                      <button
-                        key={slot.start_time}
-                        className={`brk-booking-time${selectedSlot === slot.start_time ? ' is-selected' : ''}${isAfterHours ? ' is-after-hours' : ''}`}
-                        onClick={() => setSelectedSlot(slot.start_time)}
-                        title={isAfterHours ? 'After-hours slot — a premium fee applies' : undefined}
-                      >
-                        {slot.label}
-                        {isAfterHours && slot.price_delta ? (
-                          <span className="brk-booking-time-fee">+${slot.price_delta}</span>
-                        ) : null}
-                      </button>
-                    )
-                  })}
+                  {slotGroups.regular.map(slot => (
+                    <button
+                      key={slot.start_time}
+                      className={`brk-booking-time${selectedSlot === slot.start_time ? ' is-selected' : ''}`}
+                      onClick={() => setSelectedSlot(slot.start_time)}
+                    >
+                      {slot.label}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
+
+            {/* After-hours — its own section so the fee shows once in the
+                header instead of stamped on every pill. Only renders
+                when the tenant's after-hours config produced premium
+                slots for the chosen date + service. */}
+            {slotState.status === 'loaded' && slotGroups.afterHours.length > 0 && (
+              <div className="brk-booking-block">
+                <span className="brk-booking-block-label">
+                  After hours{slotGroups.afterHoursFee ? ` +$${slotGroups.afterHoursFee}` : ''}
+                </span>
+                <div className="brk-booking-times">
+                  {slotGroups.afterHours.map(slot => (
+                    <button
+                      key={slot.start_time}
+                      className={`brk-booking-time is-after-hours${selectedSlot === slot.start_time ? ' is-selected' : ''}`}
+                      onClick={() => setSelectedSlot(slot.start_time)}
+                    >
+                      {slot.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="brk-booking-nav">
               <button className="brk-booking-back" onClick={goBackFromDateTime}>
