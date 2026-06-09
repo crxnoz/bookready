@@ -84,6 +84,17 @@ php artisan tenants:migrate --force
 php artisan optimize:clear
 chown -R www-data:www-data bootstrap/cache storage
 
+# .env must be 640 root:www-data. We learned the hard way on staging
+# (2026-06-09) that 600 silently breaks env() for FPM workers —
+# phpdotenv reads NOTHING and Laravel falls back to hardcoded defaults
+# in every config file, without warning or stack trace. Editor sessions
+# 403 with "Untrusted origin" because AUTH_COOKIE_TRUSTED_ORIGINS comes
+# back empty, Stripe/Resend/Twilio all dry-run because their secrets
+# come back null, etc. This line self-heals if any future operator
+# tightens too far (or loosens to 644 world-readable).
+chown root:www-data .env
+chmod 640 .env
+
 # Deploy stamps the admin dashboard reads:
 #   - last-deploy.json → System Health "Last deploy" tile (single value)
 #   - deploys.jsonl    → /admin/system/deploys drill-in (append-only log)
