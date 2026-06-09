@@ -70,6 +70,13 @@ class SmokeTestTenantSeeder extends Seeder
         ['name' => 'Haircut',    'duration' => 30, 'price' => '30.00', 'description' => 'Classic cut — Playwright smoke-test fixture.', 'sort' => 0],
         ['name' => 'Beard Trim', 'duration' => 15, 'price' => '20.00', 'description' => 'Tidy + line-up — Playwright smoke-test fixture.', 'sort' => 1],
         ['name' => 'Combo',      'duration' => 45, 'price' => '45.00', 'description' => 'Haircut + beard trim — Playwright smoke-test fixture.', 'sort' => 2],
+        // The Playwright booking suite under web/tests/booking/ targets a
+        // service named literally "Smoke Test Service" by getByText.
+        // Keep this entry in lock-step with the tests — if the suite ever
+        // renames the target service, rename here too. Kept at 30/$40 so
+        // the booking flow exercises a "real-looking" price + duration
+        // rather than something obviously fake.
+        ['name' => 'Smoke Test Service', 'duration' => 30, 'price' => '40.00', 'description' => 'Playwright happy-path target. Do not rename without updating web/tests/booking/*.spec.ts.', 'sort' => 3],
     ];
 
     public function run(): void
