@@ -105,13 +105,34 @@ and graduate to Bandwidth when steady-state volume justifies the fixed cost.
   capture done.
 - ✓ SMS quota tracking + 110% hard cap shipped 2026-06-09 (`#129`).
 
+**Number type: Toll-free (8YY), not 10DLC.** Decided 2026-06-09 in the Twilio
+onboarding call. Tradeoff vs 10DLC:
+
+- ✓ One number serves the entire platform (no per-carrier-fee math, higher
+  throughput per number, cleaner architecture for the SaaS-fans-out-to-many
+  send pattern).
+- ✓ Toll-Free Verification (TFV) is a single approval flow, not the two-step
+  brand-then-campaign dance of 10DLC.
+- ✗ Slightly higher per-message cost (~$0.0098/SMS vs ~$0.0083 for 10DLC) —
+  irrelevant at launch volume.
+- ✗ TFV approval typically takes 1-3 weeks (10DLC is usually 3-7 days).
+
 **Founder gates that remain (Tonight C, `#170–172`):**
-- Provision Twilio account + buy number + start A2P 10DLC brand + campaign
-  registration (1-3 business day approval window — start immediately).
-- Populate `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and either
-  `TWILIO_MESSAGING_SERVICE_SID` (A2P number-pool, preferred post-launch)
-  or `TWILIO_FROM_NUMBER` in prod `.env`.
-- ✗ End-to-end STOP/HELP test on the live number (`#127`).
+- Buy a toll-free number in Twilio Console (any 8YY prefix), submit it for
+  Toll-Free Verification immediately. Use-case category: "Higher Education /
+  Healthcare / Public Service" doesn't fit; submit under "Marketing,
+  Transactional Confirmation" — appointment reminders + booking confirmations
+  are the canonical transactional pattern reviewers approve.
+- While TFV is in progress, the number can still send to a small whitelist
+  ("daily limit unverified") of 6 messages/day per recipient and similar caps.
+  Useful for our own STOP/HELP testing (`#127`) before TFV clears.
+- Populate `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`
+  (the +18YY... number directly) in prod `.env`. `TWILIO_MESSAGING_SERVICE_SID`
+  is unnecessary at this stage — Messaging Services are for 10DLC pool routing,
+  not single toll-free.
+- ✗ End-to-end STOP/HELP test on the live number (`#127`). Run this DURING TFV
+  using a test recipient on the unverified whitelist; the result is the
+  evidence Twilio sometimes asks for as part of TFV.
 
 **Backend changes still owed:**
 - None functional. The TwilioClient class isn't strictly required (raw HTTP
@@ -120,9 +141,12 @@ and graduate to Bandwidth when steady-state volume justifies the fixed cost.
 
 > Product note: SMS is the single most-requested feature for this market.
 > Treat it as the first post-launch (or launch-day) headline feature once
-> Twilio clears 10DLC. Migration path to Bandwidth is clean — the
+> Twilio TFV clears. Migration path to Bandwidth is clean — the
 > `SmsService::send` interface is provider-agnostic; swap-in happens at
-> the HTTP-call layer with an adapter when the time comes.
+> the HTTP-call layer with an adapter when the time comes. Migration from
+> toll-free to a 10DLC number pool when volume justifies the carrier
+> fees is similarly low-effort: swap `TWILIO_FROM_NUMBER` for a
+> `TWILIO_MESSAGING_SERVICE_SID`.
 
 ---
 
