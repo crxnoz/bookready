@@ -18,72 +18,17 @@ import type {
 import { UserCircle, BookmarkCheck, LogOut, Mail, ExternalLink } from 'lucide-react'
 import { useLushCustomerAuth } from './LushCustomerAuth'
 
-// Sentinel used as the "category id" for the auto-generated bucket that
-// collects services without a category assignment. Real category ids are
-// always positive integers, so this string can't collide.
-const UNCATEGORIZED = '__other__'
-type CategoryKey = number | typeof UNCATEGORIZED
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-]
-
-function startOfMonth(year: number, month: number): Date {
-  return new Date(year, month, 1)
-}
-
-function daysInMonth(year: number, month: number): number {
-  return new Date(year, month + 1, 0).getDate()
-}
-
-function dateKey(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-function isSameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear()
-    && a.getMonth() === b.getMonth()
-    && a.getDate() === b.getDate()
-}
-
-function fmt12(t: string): string {
-  const [h, m] = t.split(':').map(Number)
-  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`
-}
-
-function fmtDateDisplay(iso: string): string {
-  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric',
-  })
-}
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-type Step = 1 | 2 | 3 | 4 | 5
-
-type SlotState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'loaded'; slots: AvailableSlot[]; message: string | null; squeezeIn?: { available: boolean; fee: number } | null }
-  | { status: 'error'; message: string }
-
-// Phase 8 — Add-ons is its own step now. When the chosen service has no
-// linked add-ons the helpers below short-circuit it so the customer
-// jumps 1 → 3 without a dead-end click.
-const STEPS: [Step, string][] = [
-  [1, 'Service'],
-  [2, 'Add-ons'],
-  [3, 'Date & Time'],
-  [4, 'Details'],
-  [5, 'Confirm'],
-]
+// Helpers + types + constants — extracted to sibling modules in Phase 7
+// of the booking-architecture refactor (docs/booking-architecture.md).
+// Keeps this file focused on the component shell + state machine.
+import {
+  DAY_SHORT, MONTH_NAMES,
+  startOfMonth, daysInMonth, dateKey, isSameDay, fmt12, fmtDateDisplay,
+} from './_helpers'
+import {
+  UNCATEGORIZED, STEPS,
+  type CategoryKey, type Step, type SlotState,
+} from './_types'
 
 // ── Component ─────────────────────────────────────────────────────────────────
 

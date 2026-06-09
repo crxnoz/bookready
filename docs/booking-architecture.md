@@ -33,8 +33,8 @@
 | 3 | TFR re-paint                | TFR override file drops `!important` calls  | shipped     |
 | 4 | VT (+ 4 more) re-paint      | Bottega / Petale / Opaline / Blackline / VT | shipped     |
 | 5 | Template shell deduplication| `<TemplateBookingShell>` shared component   | shipped     |
-| 6 | Smoke tests                 | Playwright happy-path against staging tenant| pending     |
-| 7 | Split the engine            | Per-step components under `BookingSteps/`   | deferred    |
+| 6 | Smoke tests                 | Playwright happy-path against staging tenant| **scaffolded** (4 specs + config; awaits staging) |
+| 7 | Split the engine            | Per-step components under `BookingSteps/`   | **safe subset shipped** (helpers + types extracted; per-step split awaits Phase 6 running) |
 
 **Phase order changed 2026-06-09:** swapped what was Phase 2/3 (re-paints)
 with Phase 4 (rename) per architecture review. Rationale: re-paints touch
@@ -332,20 +332,55 @@ CI: run on every PR that changes `web/packages/platform/src/booking/` or
 
 ---
 
-## Phase 7 — Split the engine (deferred)
+## Phase 6 status — scaffolded 2026-06-09
 
-`LushStudioBooking.tsx` is 2,413 lines: 5 step bodies + state machine +
+Test files committed at `web/tests/booking/`:
+
+- `happy-path.spec.ts` — deposit-required service end-to-end
+- `abandoned-checkout.spec.ts` — 15-min cron flips stale rows
+- `dashboard-cta-styled.spec.ts` — "Go to dashboard" CTA visual contract
+  across all 7 templates (locks in the 2026-06-09 cascade-fight fix)
+- `cap-exceeded.spec.ts` — per-customer per-day cap returns 422
+
+Playwright config at `web/playwright.config.ts`. Run scripts:
+`npm run test:e2e` and `test:e2e:headed`.
+
+**Not yet wired to CI** — see `web/tests/README.md` for the seeded test-
+tenant prerequisites that need to be in place before the suite is
+runnable. The tests are good against any live tenant via
+`PLAYWRIGHT_BASE_URL` for manual smoke runs.
+
+---
+
+## Phase 7 — Split the engine (safe subset shipped)
+
+`LushStudioBooking.tsx` was 2,413 lines: 5 step bodies + state machine +
 Stripe handoff + customer-auth integration + account-followup cards, all
-inline. Splitting is correct in the long run, but speculative splitting
-without tests is risky and the payoff is realized only when a future
-feature actually benefits from the split.
+inline. Splitting deeply without tests was rejected as too risky for a
+money-handling component. Instead, Phase 7 shipped the **safe subset**:
 
-**Trigger:** the next substantive booking feature (e.g. "insert pick-a-
-staff step between service and date", or "support multi-service single
-appointment") that would benefit from working in one step file at a time.
-At that point: extract steps to `BookingSteps/Service.tsx`,
-`BookingSteps/Date.tsx`, `BookingSteps/Time.tsx`, `BookingSteps/Form.tsx`,
-`BookingSteps/Confirm.tsx`. Keep state machine in the shell.
+- `web/packages/platform/src/booking/_helpers.ts` — 6 pure date / time
+  helpers + 2 calendar constants (DAY_SHORT, MONTH_NAMES) extracted
+- `web/packages/platform/src/booking/_types.ts` — Step / SlotState /
+  CategoryKey types + UNCATEGORIZED sentinel + STEPS constant extracted
+- `LushStudioBooking.tsx` shrinks ~60 lines, now imports from siblings
+
+These extractions are pure-function moves — zero behavior risk, easy to
+audit. They establish the modular structure for the deeper per-step
+split when Phase 6's smoke tests are running.
+
+**Deferred (awaits Phase 6 running):** extract each step body into its
+own component file:
+- `BookingSteps/Service.tsx`
+- `BookingSteps/AddOns.tsx`
+- `BookingSteps/DateTime.tsx`
+- `BookingSteps/Details.tsx`
+- `BookingSteps/Confirm.tsx`
+
+Keep state machine + state hooks in the shell; step components receive
+state as props. Trigger the deep split when (a) Phase 6 is running and
+(b) the next substantive booking feature would benefit from working in
+one step file at a time.
 
 ---
 
