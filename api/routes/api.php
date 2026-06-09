@@ -194,11 +194,14 @@ Route::prefix('v1')->group(function () {
 
     // ── Public waitlist (Availability 2.0 Phase 7) ────────────────────────
     // Join the waitlist for a service when a desired day is full / locked.
-    // Throttled at 5/min/IP — joining doesn't need to be a hot loop and
-    // we don't want spam-bots flooding the waitlist table.
+    // Throttled at 30/min/IP — joining doesn't need to be a hot loop and
+    // we don't want spam-bots flooding the waitlist table, but a legit
+    // customer who hit a validation error and fixed it shouldn't get
+    // locked out within seconds. 30/min is the same shape the booking
+    // submit endpoint uses and matches what humans naturally do.
     Route::post('public/sites/{slug}/waitlist',
         [\App\Http\Controllers\Api\PublicWaitlistController::class, 'join'])
-        ->middleware('throttle:5,1');
+        ->middleware('throttle:30,1');
     // Claim a token-gated offer. The token itself is the secret, throttled
     // so a leaked link can't be brute-force enumerated.
     Route::post('public/sites/{slug}/waitlist/claim/{token}',

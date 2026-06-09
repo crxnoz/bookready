@@ -2258,7 +2258,11 @@ export default function LushStudioBooking({
                   <button
                     type="button"
                     className="brk-booking-next"
-                    style={{ width: '100%', marginTop: 14 }}
+                    // .brk-booking-next is display:inline-flex with
+                    // align-items:center but no justify-content, so the
+                    // label sat left-aligned even with width 100%.
+                    // justifyContent: center pins the label to the middle.
+                    style={{ width: '100%', marginTop: 14, justifyContent: 'center' }}
                     disabled={waitlistBusy || !name.trim() || !email.trim() || !waitlistEarliest || !waitlistLatest}
                     onClick={async () => {
                       setWaitlistBusy(true)
@@ -2283,7 +2287,7 @@ export default function LushStudioBooking({
                       }
                     }}
                   >
-                    {waitlistBusy ? <><Loader2 size={14} className="lush-spin" /> Joining…</> : <>Join waitlist <Check size={14} strokeWidth={3} /></>}
+                    {waitlistBusy ? <><Loader2 size={14} className="lush-spin" /> Joining…</> : 'Join waitlist'}
                   </button>
                 </>
               )}
