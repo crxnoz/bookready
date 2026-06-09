@@ -129,6 +129,60 @@ REMOTE
 
 - **`echo DEPLOY_OK`** as the last line: if it appears in the output, the entire chain succeeded. If it doesn't, treat the deploy as failed regardless of what pm2 says.
 
+### Deploy to staging
+
+Mirror of the prod deploy, with the staging-specific differences
+baked in: target the staging droplet, restart the `bookready-web-staging`
+pm2 process (NEVER `bookready-web` — that's prod), and skip the
+deploy-stamps block (staging doesn't run the admin dashboard that
+reads them).
+
+Use this when you need to validate a change against the live staging
+environment before promoting to prod — for example after a CSP or
+middleware change you want to smoke-test through the browser, or
+when handing a feature off to QA before it touches paying tenants.
+
+```
+git push origin main
+ssh root@67.205.159.214 'bash -se' <<'REMOTE'
+set -euo pipefail
+cd /var/www/bookready-api
+
+git stash push -- web/package-lock.json 2>/dev/null || true
+git pull origin main
+git stash drop 2>/dev/null || true
+
+cd api
+composer install --no-dev --optimize-autoloader
+rm -f bootstrap/cache/packages.php bootstrap/cache/services.php
+php artisan package:discover --ansi
+php artisan migrate --force
+php artisan tenants:migrate --force
+php artisan optimize:clear
+chown -R www-data:www-data bootstrap/cache storage
+
+# Same .env perms self-heal as prod. Staging tripped this once
+# (2026-06-09) — keep the line so a future operator can't repeat it.
+chown root:www-data .env
+chmod 640 .env
+
+cd ../web
+npm install
+rm -rf .next
+npm run build
+pm2 restart bookready-web-staging
+
+echo STAGING_DEPLOY_OK
+REMOTE
+```
+
+**Differences from the prod block (deliberate):**
+
+- **Target IP `67.205.159.214`** — the staging droplet. Prod is `198.211.116.44`. Mixing these is the #1 way a staging-style change accidentally ships to paying tenants.
+- **PM2 process `bookready-web-staging`** — prod is `bookready-web`. Same script, different name. `pm2 restart bookready-web` on the staging droplet would silently do nothing (no such process), but `pm2 restart bookready-web` on the prod droplet bounces prod regardless of which staging or prod intent you had — always name explicitly.
+- **No deploy-stamps block** — the admin dashboard's "Last deploy" tile reads from prod's `storage/app/last-deploy.json`; staging doesn't run an admin surface that needs it, so the writes would be dead bytes.
+- **Sentinel `STAGING_DEPLOY_OK`** — distinct from prod's `DEPLOY_OK` so a quick grep in the deploy log tells you which environment a given run was. Treat anything other than this string as a failed staging deploy.
+
 ## Architecture essentials
 
 ### Multi-tenancy (stancl/tenancy v3, single MySQL instance)
