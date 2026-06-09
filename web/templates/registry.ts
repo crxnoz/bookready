@@ -23,6 +23,7 @@ const REGISTRY: Record<string, TemplateLoader> = {
   opaline:      () => import('./opaline/OpalineTemplate'),
   petale:       () => import('./petale/PetaleTemplate'),
   bottega:      () => import('./bottega/BottegaTemplate'),
+  inkhouse:     () => import('./inkhouse/InkhouseTemplate'),
 }
 
 /**
@@ -40,6 +41,7 @@ const MANIFESTS: Record<string, ManifestLoader> = {
   opaline:      () => import('./opaline/manifest'),
   petale:       () => import('./petale/manifest'),
   bottega:      () => import('./bottega/manifest'),
+  inkhouse:     () => import('./inkhouse/manifest'),
 }
 
 export function resolveTemplate(site: PublicSite): TemplateLoader | null {

@@ -19,7 +19,7 @@ class TemplateDefaults
      * outside this set is not a real template and must fall back to the
      * default rather than seeding a tenant with a broken slug.
      */
-    public const KNOWN_SLUGS = ['thefaderoom', 'lushstudio', 'velvettheory', 'blackline', 'opaline', 'petale', 'bottega'];
+    public const KNOWN_SLUGS = ['thefaderoom', 'lushstudio', 'velvettheory', 'blackline', 'opaline', 'petale', 'bottega', 'inkhouse'];
 
     /**
      * Map any signup/registry template value to a canonical, KNOWN slug.
@@ -46,6 +46,7 @@ class TemplateDefaults
             'opaline'      => self::opalineSettings(),
             'petale'       => self::petaleSettings(),
             'bottega'      => self::bottegaSettings(),
+            'inkhouse'     => self::inkhouseSettings(),
             default        => self::theFadeRoomSettings(),
         };
     }
@@ -60,6 +61,7 @@ class TemplateDefaults
             'opaline'      => self::opalineSections(),
             'petale'       => self::petaleSections(),
             'bottega'      => self::bottegaSections(),
+            'inkhouse'     => self::inkhouseSections(),
             default        => self::theFadeRoomSections(),
         };
     }
@@ -605,6 +607,75 @@ class TemplateDefaults
         // relational tabs surface first, with policies tucked at the end.
         $sections = self::theFadeRoomSections();
         $order = ['gallery' => 3, 'results' => 4, 'about' => 5, 'advice' => 6, 'timeline' => 7, 'policy' => 8];
+        foreach ($sections as &$s) {
+            if (isset($order[$s['section_key']])) $s['sort_order'] = $order[$s['section_key']];
+        }
+        unset($s);
+        return $sections;
+    }
+
+    private static function inkhouseSettings(): array
+    {
+        $base = self::theFadeRoomSettings();
+        $base['header']['announcement_text'] = 'Now booking custom work, limited consultations each season.';
+        $base['tabs'] = [
+            'book_label'     => 'Book',
+            'gallery_label'  => 'Flash',
+            'policy_label'   => 'House',
+            'about_label'    => 'About',
+            'results_label'  => 'Healed work',
+            'advice_label'   => 'Aftercare',
+            'timeline_label' => 'Process',
+        ];
+        $base['about'] = [
+            'heading'    => 'A studio for considered ink',
+            'eyebrow'    => 'The Studio',
+            'body'       => "Tell visitors who you are, what kind of work you take on, and the customers you build your best pieces with. A few sentences about your training, your line work, your favourite styles, anything that makes the studio feel like yours.\n\nKeep it grounded. Tattooing is a long conversation, not a transaction. The people reading this are choosing the hands they want on their skin for a piece that lives the rest of their lives.",
+            'highlights' => [
+                ['title' => 'Technique first',     'body' => 'Single-needle precision, clean blackwork, traditional with a steady hand. We work to the standard the piece deserves.'],
+                ['title' => 'Consultation always', 'body' => 'Every custom piece begins with a conversation. Reference, placement, fit, longevity. We design with the customer, not at them.'],
+                ['title' => 'Healing supported',   'body' => 'You leave with a clear aftercare plan and a number to text if anything looks off. The work is not done when the session ends.'],
+            ],
+            'images'     => [null, null, null],
+        ];
+        $base['advice'] = [
+            'heading'     => 'Aftercare',
+            'card_kicker' => '',
+            'items'       => [
+                ['title' => 'Keep it hydrated',     'body' => 'Wash gently with unscented soap twice a day. A thin layer of unscented lotion keeps the skin supple while the line heals.'],
+                ['title' => 'Stay out of the sun',  'body' => 'No direct sunlight on a fresh piece for the first two weeks. After that, SPF 30 or higher whenever it sees daylight. Sun is the fastest way to fade ink.'],
+                ['title' => 'No soaking',           'body' => 'Skip the pool, the ocean, hot tubs, and long baths for at least two weeks. Quick showers are fine, just keep the spray off the work.'],
+                ['title' => 'When to call us',      'body' => 'A little redness and peeling is normal. Spreading warmth, weeping, or a fever is not. Send a photo and we will guide you, no judgement.'],
+            ],
+        ];
+        $base['timeline'] = [
+            'heading'     => 'Process',
+            'card_kicker' => '',
+            'items'       => [
+                ['title' => 'Consultation',     'body' => 'Book a free consult to talk through the piece, placement, size, and the style that suits your idea best.'],
+                ['title' => 'Deposit + design', 'body' => 'A small deposit holds your appointment. We send the line drawing for sign-off before you sit.'],
+                ['title' => 'Arrive prepared',  'body' => 'Eat a real meal, hydrate, wear something that gives clean access to the area. Bring whatever helps you sit calmly.'],
+                ['title' => 'Session day',      'body' => 'We tape up, dial in the machine, and get to work. You set the pace for breaks. The line is steady, the studio is quiet.'],
+            ],
+        ];
+        $base['gallery'] = [ 'heading' => 'Flash + portfolio' ];
+        $base['results'] = [ 'heading' => 'Healed work' ];
+        $base['policy']  = [ 'heading' => 'House rules' ];
+        $base['additionals']['thank_you_eyebrow'] = 'A note';
+        $base['additionals']['thank_you_title']   = 'Thank you';
+        $base['additionals']['thank_you_body']    = 'We are grateful for the work, and for the trust it takes to sit in our chair. Every piece that leaves the studio carries a little of the room with it.';
+        $base['footer']['brand_label'] = 'The Studio';
+        $base['footer']['subtext']     = 'By appointment. Consultations always free.';
+        return $base;
+    }
+
+    private static function inkhouseSections(): array
+    {
+        // Inkhouse's designed tab order surfaces Flash first (the visual
+        // hook), then About (the relationship), then Healed work, then
+        // Aftercare + Process, with House rules tucked at the end.
+        $sections = self::theFadeRoomSections();
+        $order = ['gallery' => 3, 'about' => 4, 'results' => 5, 'advice' => 6, 'timeline' => 7, 'policy' => 8];
         foreach ($sections as &$s) {
             if (isset($order[$s['section_key']])) $s['sort_order'] = $order[$s['section_key']];
         }
