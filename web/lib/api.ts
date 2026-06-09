@@ -813,15 +813,27 @@ export async function updateEditorAvailability(data: AvailabilityData): Promise<
 
 // ── Availability 2.0 · Phase 1 · Per-date calendar overrides ───────────────
 
+/** A bookable time window inside a custom_slots override.
+ *  Used for techs whose schedule is bursty (e.g. 9-10am + 2-3pm + 8-9pm)
+ *  instead of one open/close block. */
+export interface SlotWindow {
+  start: string     // HH:MM (24h)
+  end:   string     // HH:MM (24h)
+}
+
 /** Per-date override that layers on top of the weekly schedule. */
 export interface CalendarOverride {
   id:                number
   date:              string             // YYYY-MM-DD
   is_available:      boolean
+  /** 'open_close' (one block) or 'custom_slots' (N bookable windows). */
+  mode:              'open_close' | 'custom_slots'
   open_time:         string | null      // HH:MM, null = inherit weekly
   close_time:        string | null
   break_start:       string | null
   break_end:         string | null
+  /** Used only when mode === 'custom_slots'. */
+  slot_windows:      SlotWindow[] | null
   /** Av2.0 P3: per-date daily capacity override (null = inherit default). */
   max_appointments:  number | null
   staff_ids:         number[] | null    // null = all staff
@@ -831,10 +843,12 @@ export interface CalendarOverride {
 
 export interface CalendarOverridePayload {
   is_available?:     boolean
+  mode?:             'open_close' | 'custom_slots'
   open_time?:        string | null
   close_time?:       string | null
   break_start?:      string | null
   break_end?:        string | null
+  slot_windows?:     SlotWindow[] | null
   max_appointments?: number | null
   staff_ids?:        number[] | null
   service_ids?:      number[] | null

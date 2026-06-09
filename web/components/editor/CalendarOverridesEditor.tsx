@@ -411,9 +411,16 @@ function CalendarCell({
     // Available override — render effective hours (override fills weekly)
     bg = 'bg-cream'
     border = 'border-[rgba(180,138,184,0.55)]'
-    const o = override.open_time  ?? weekly?.open_time  ?? null
-    const c = override.close_time ?? weekly?.close_time ?? null
-    label = o && c ? `${shortTime(o)}–${shortTime(c)}` : 'Custom'
+    if (override.mode === 'custom_slots' && override.slot_windows && override.slot_windows.length > 0) {
+      // Custom-slots day — label with the window count so the calendar
+      // grid signals "this isn't a regular open/close day."
+      const n = override.slot_windows.length
+      label = `${n} window${n === 1 ? '' : 's'}`
+    } else {
+      const o = override.open_time  ?? weekly?.open_time  ?? null
+      const c = override.close_time ?? weekly?.close_time ?? null
+      label = o && c ? `${shortTime(o)}–${shortTime(c)}` : 'Custom'
+    }
     labelTone = 'text-near-black font-semibold'
   }
 
@@ -509,10 +516,16 @@ function OverrideEditorDialog({
   const confirm = useConfirm()
 
   const [isAvailable, setIsAvailable] = useState(true)
+  // Mode controls whether the day is one open/close block ('open_close',
+  // legacy default) or a list of bookable [start, end] windows
+  // ('custom_slots'). Custom slots is for techs whose schedule is
+  // bursty (9-10am + 2-3pm + 8-9pm) instead of one contiguous block.
+  const [mode,        setMode]        = useState<'open_close' | 'custom_slots'>('open_close')
   const [openTime,    setOpenTime]    = useState('')
   const [closeTime,   setCloseTime]   = useState('')
   const [breakStart,  setBreakStart]  = useState('')
   const [breakEnd,    setBreakEnd]    = useState('')
+  const [slotWindows, setSlotWindows] = useState<{ start: string; end: string }[]>([])
   const [maxAppts,    setMaxAppts]    = useState<string>('') // string for blank/empty-input UX
   const [staffIds,    setStaffIds]    = useState<number[] | null>(null)
   const [serviceIds,  setServiceIds]  = useState<number[] | null>(null)
@@ -527,10 +540,12 @@ function OverrideEditorDialog({
         if (o) {
           setHasExisting(true)
           setIsAvailable(o.is_available)
+          setMode      (o.mode ?? 'open_close')
           setOpenTime  (o.open_time   ?? '')
           setCloseTime (o.close_time  ?? '')
           setBreakStart(o.break_start ?? '')
           setBreakEnd  (o.break_end   ?? '')
+          setSlotWindows(o.slot_windows ?? [])
           setMaxAppts  (o.max_appointments !== null ? String(o.max_appointments) : '')
           setStaffIds  (o.staff_ids)
           setServiceIds(o.service_ids)
@@ -557,12 +572,18 @@ function OverrideEditorDialog({
     setSaving(true); setError(null)
     try {
       const maxApptsParsed = maxAppts.trim() === '' ? null : Math.max(1, Math.min(500, parseInt(maxAppts, 10) || 0))
+      // Only send the fields that belong to the chosen mode. The backend
+      // also nulls the irrelevant fields, but pre-trimming here keeps
+      // the payload small + the intent obvious in the network panel.
+      const validWindows = slotWindows.filter(w => w.start && w.end && w.end > w.start)
       await upsertEditorCalendarOverride(date, {
         is_available:     isAvailable,
-        open_time:        emptyToNull(openTime),
-        close_time:       emptyToNull(closeTime),
-        break_start:      emptyToNull(breakStart),
-        break_end:        emptyToNull(breakEnd),
+        mode,
+        open_time:        mode === 'open_close' ? emptyToNull(openTime)   : null,
+        close_time:       mode === 'open_close' ? emptyToNull(closeTime)  : null,
+        break_start:      mode === 'open_close' ? emptyToNull(breakStart) : null,
+        break_end:        mode === 'open_close' ? emptyToNull(breakEnd)   : null,
+        slot_windows:     mode === 'custom_slots' ? validWindows : null,
         max_appointments: maxApptsParsed,
         staff_ids:        staffIds,
         service_ids:      serviceIds,
@@ -637,18 +658,82 @@ function OverrideEditorDialog({
 
             {isAvailable && (
               <>
-                <div className="grid grid-cols-2 gap-3">
-                  <TimeField label="Open"  value={openTime}  onChange={setOpenTime}  placeholder={weekly?.open_time ?? '10:00'} />
-                  <TimeField label="Close" value={closeTime} onChange={setCloseTime} placeholder={weekly?.close_time ?? '18:00'} />
+                {/* Mode toggle — Open-to-Close (one block + optional break)
+                    vs Custom Slots (N bookable [start, end] windows). For
+                    techs without regular hours, Custom Slots expresses
+                    things the existing single-break model can't (e.g.
+                    9-10 + 2-3 + 8-9 — two gaps, one break can't do that). */}
+                <div className="flex gap-2">
+                  <PillToggle on={mode === 'open_close'}   onClick={() => setMode('open_close')}   label="Open to close"   tone="neutral" />
+                  <PillToggle on={mode === 'custom_slots'} onClick={() => setMode('custom_slots')} label="Custom slots"    tone="neutral" />
                 </div>
-                <p className="text-eyebrow text-muted-text -mt-1">
-                  Leave a time blank to inherit the weekly default.
-                </p>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <TimeField label="Break starts" value={breakStart} onChange={setBreakStart} placeholder={weekly?.break_start ?? '—'} />
-                  <TimeField label="Break ends"   value={breakEnd}   onChange={setBreakEnd}   placeholder={weekly?.break_end ?? '—'} />
-                </div>
+                {mode === 'open_close' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <TimeField label="Open"  value={openTime}  onChange={setOpenTime}  placeholder={weekly?.open_time ?? '10:00'} />
+                      <TimeField label="Close" value={closeTime} onChange={setCloseTime} placeholder={weekly?.close_time ?? '18:00'} />
+                    </div>
+                    <p className="text-eyebrow text-muted-text -mt-1">
+                      Leave a time blank to inherit the weekly default.
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <TimeField label="Break starts" value={breakStart} onChange={setBreakStart} placeholder={weekly?.break_start ?? '—'} />
+                      <TimeField label="Break ends"   value={breakEnd}   onChange={setBreakEnd}   placeholder={weekly?.break_end ?? '—'} />
+                    </div>
+                  </>
+                )}
+
+                {mode === 'custom_slots' && (
+                  <div className="space-y-2">
+                    <div className="flex items-baseline justify-between">
+                      <label className="block text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
+                        Bookable windows
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setSlotWindows(ws => [...ws, { start: '', end: '' }])}
+                        className="text-2xs font-bold tracking-[0.14em] uppercase text-near-black hover:underline disabled:opacity-40"
+                        disabled={slotWindows.length >= 16}
+                      >
+                        + Add window
+                      </button>
+                    </div>
+                    {slotWindows.length === 0 && (
+                      <p className="text-eyebrow text-muted-text">
+                        No windows yet. Add the time ranges customers can book on this day.
+                      </p>
+                    )}
+                    {slotWindows.map((w, i) => (
+                      <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                        <TimeField
+                          label={i === 0 ? 'Start' : ''}
+                          value={w.start}
+                          onChange={v => setSlotWindows(ws => ws.map((x, j) => j === i ? { ...x, start: v } : x))}
+                          placeholder="09:00"
+                        />
+                        <TimeField
+                          label={i === 0 ? 'End' : ''}
+                          value={w.end}
+                          onChange={v => setSlotWindows(ws => ws.map((x, j) => j === i ? { ...x, end: v } : x))}
+                          placeholder="10:00"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setSlotWindows(ws => ws.filter((_, j) => j !== i))}
+                          className="w-8 h-8 inline-flex items-center justify-center text-muted-text hover:text-near-black border border-hairline-soft"
+                          aria-label={`Remove window ${i + 1}`}
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                    <p className="text-eyebrow text-muted-text">
+                      Each window becomes its own bookable range — no slots are generated in the gaps between windows.
+                    </p>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5">
@@ -755,7 +840,7 @@ function OverrideEditorDialog({
 
 function PillToggle({
   on, onClick, label, tone,
-}: { on: boolean; onClick: () => void; label: string; tone: 'good' | 'bad' }) {
+}: { on: boolean; onClick: () => void; label: string; tone: 'good' | 'bad' | 'neutral' }) {
   return (
     <button
       type="button"
@@ -765,7 +850,12 @@ function PillToggle({
         on
           ? tone === 'good'
             ? 'bg-[rgba(15,111,61,0.06)] border-success text-success'
-            : 'bg-[rgba(180,40,40,0.06)] border-danger text-danger'
+            : tone === 'bad'
+              ? 'bg-[rgba(180,40,40,0.06)] border-danger text-danger'
+              // Neutral on-state — used for non-binary mode toggles where
+              // neither option is "good" or "bad", just different. Matches
+              // BookReady's dark-CTA aesthetic.
+              : 'bg-near-black border-near-black text-cream'
           : 'bg-white border-hairline-strong text-muted-text hover:border-near-black',
       )}
     >

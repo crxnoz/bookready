@@ -289,9 +289,18 @@ class PublicAvailabilityController extends Controller
             releasedUntil: $releasedUntil,
         );
 
+        // Av2.0 follow-up — if the override defined custom slot windows
+        // instead of one open/close range, drop generated slots that
+        // fell into the gaps between windows. SlotGenerator was run
+        // against the windows' envelope (min start → max end) so a slot
+        // could land in a gap; this filter excludes those.
+        $slots = $result['slots'];
+        if (! empty($override['slot_windows'])) {
+            $slots = \App\Services\AvailabilityOverrideResolver::filterToWindows($slots, $override['slot_windows']);
+        }
+
         // Av2.0 P4 — tag the premium slots (start >= regular close) with a
         // tier + price delta so the booking widget can render a "+$X" badge.
-        $slots = $result['slots'];
         if ($afterHoursRegularClose !== null) {
             $feeDollars = round($afterHoursFeeCents / 100, 2);
             $slots = array_map(function ($slot) use ($afterHoursRegularClose, $feeDollars) {

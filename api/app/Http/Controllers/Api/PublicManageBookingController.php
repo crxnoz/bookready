@@ -366,7 +366,15 @@ class PublicManageBookingController extends Controller
             appTimezone:   $tzId,
             releasedUntil: $releasedUntil,
         );
-        if (! SlotGenerator::containsSlot($result['slots'], $newStart)) {
+
+        // Av2.0 follow-up — when the override on $newDate defined custom
+        // slot windows, filter so reschedule can't drop into a gap.
+        $availableSlots = $result['slots'];
+        if (! empty($override['slot_windows'])) {
+            $availableSlots = \App\Services\AvailabilityOverrideResolver::filterToWindows($availableSlots, $override['slot_windows']);
+        }
+
+        if (! SlotGenerator::containsSlot($availableSlots, $newStart)) {
             tenancy()->end();
             return response()->json(['message' => 'This time is no longer available.'], 422);
         }

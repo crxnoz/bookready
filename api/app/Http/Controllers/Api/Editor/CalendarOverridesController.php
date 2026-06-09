@@ -30,10 +30,18 @@ class CalendarOverridesController extends Controller
             'id'               => (int)  $row->id,
             'date'             =>         (string) substr((string) $row->date, 0, 10),
             'is_available'     => (bool) $row->is_available,
+            // Av2.0 follow-up — mode + slot_windows. Schema-guarded so a
+            // tenant whose migration hasn't run yet still serializes cleanly.
+            'mode'             =>         (property_exists($row, 'mode') && $row->mode !== null)
+                                            ? (string) $row->mode
+                                            : 'open_close',
             'open_time'        =>         $row->open_time   ? substr((string) $row->open_time, 0, 5)   : null,
             'close_time'       =>         $row->close_time  ? substr((string) $row->close_time, 0, 5)  : null,
             'break_start'      =>         $row->break_start ? substr((string) $row->break_start, 0, 5) : null,
             'break_end'        =>         $row->break_end   ? substr((string) $row->break_end, 0, 5)   : null,
+            'slot_windows'     =>         (property_exists($row, 'slot_windows') && $row->slot_windows !== null)
+                                            ? json_decode((string) $row->slot_windows, true)
+                                            : null,
             // Av2.0 P3 capacity field (nullable; null = inherit default)
             'max_appointments' =>         (property_exists($row, 'max_appointments') && $row->max_appointments !== null)
                                             ? (int) $row->max_appointments
@@ -121,27 +129,53 @@ class CalendarOverridesController extends Controller
         }
 
         $validated = $request->validate([
-            'is_available'     => 'sometimes|boolean',
-            'open_time'        => 'nullable|date_format:H:i',
-            'close_time'       => 'nullable|date_format:H:i',
-            'break_start'      => 'nullable|date_format:H:i',
-            'break_end'        => 'nullable|date_format:H:i',
-            'max_appointments' => 'nullable|integer|min:1|max:500',
-            'staff_ids'        => 'nullable|array',
-            'staff_ids.*'      => 'integer|min:1',
-            'service_ids'      => 'nullable|array',
-            'service_ids.*'    => 'integer|min:1',
-            'notes'            => 'nullable|string|max:200',
+            'is_available'         => 'sometimes|boolean',
+            'mode'                 => ['sometimes', Rule::in(['open_close', 'custom_slots'])],
+            'open_time'            => 'nullable|date_format:H:i',
+            'close_time'           => 'nullable|date_format:H:i',
+            'break_start'          => 'nullable|date_format:H:i',
+            'break_end'            => 'nullable|date_format:H:i',
+            // Custom-slots windows — array of { start, end } 24h HH:MM.
+            // Each window must be well-ordered (end > start). Windows
+            // may overlap (the filter is half-open); we don't enforce
+            // non-overlap because the slot generator handles dedupe.
+            'slot_windows'         => 'nullable|array|max:16',
+            'slot_windows.*.start' => 'required_with:slot_windows|date_format:H:i',
+            'slot_windows.*.end'   => 'required_with:slot_windows|date_format:H:i',
+            'max_appointments'     => 'nullable|integer|min:1|max:500',
+            'staff_ids'            => 'nullable|array',
+            'staff_ids.*'          => 'integer|min:1',
+            'service_ids'          => 'nullable|array',
+            'service_ids.*'        => 'integer|min:1',
+            'notes'                => 'nullable|string|max:200',
         ]);
 
-        // Coherence checks: close must come after open; break inside hours.
-        if (! empty($validated['open_time']) && ! empty($validated['close_time'])
-            && $validated['close_time'] <= $validated['open_time']) {
-            return response()->json(['message' => 'Closing time must be after opening time.'], 422);
-        }
-        if (! empty($validated['break_start']) && ! empty($validated['break_end'])
-            && $validated['break_end'] <= $validated['break_start']) {
-            return response()->json(['message' => 'Break end must be after break start.'], 422);
+        $mode = $validated['mode'] ?? 'open_close';
+
+        // Mode-specific coherence checks.
+        if ($mode === 'open_close') {
+            // Close must come after open; break inside hours.
+            if (! empty($validated['open_time']) && ! empty($validated['close_time'])
+                && $validated['close_time'] <= $validated['open_time']) {
+                return response()->json(['message' => 'Closing time must be after opening time.'], 422);
+            }
+            if (! empty($validated['break_start']) && ! empty($validated['break_end'])
+                && $validated['break_end'] <= $validated['break_start']) {
+                return response()->json(['message' => 'Break end must be after break start.'], 422);
+            }
+        } else {
+            // custom_slots — at least one window and each must be ordered.
+            $windows = $validated['slot_windows'] ?? [];
+            if (count($windows) === 0) {
+                return response()->json(['message' => 'Custom slots mode requires at least one window.'], 422);
+            }
+            foreach ($windows as $i => $w) {
+                if ($w['end'] <= $w['start']) {
+                    return response()->json([
+                        'message' => 'Window ' . ($i + 1) . ': end time must be after start time.',
+                    ], 422);
+                }
+            }
         }
 
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
@@ -150,10 +184,20 @@ class CalendarOverridesController extends Controller
         $payload = [
             'date'             => $date,
             'is_available'     => array_key_exists('is_available', $validated) ? (bool) $validated['is_available'] : true,
-            'open_time'        => $validated['open_time']    ?? null,
-            'close_time'       => $validated['close_time']   ?? null,
-            'break_start'      => $validated['break_start']  ?? null,
-            'break_end'        => $validated['break_end']    ?? null,
+            'mode'             => $mode,
+            // In custom_slots mode, open/close/break are not the source of
+            // truth — null them out so an old open_close override that
+            // gets edited into custom_slots doesn't carry stale fields.
+            'open_time'        => $mode === 'open_close' ? ($validated['open_time']   ?? null) : null,
+            'close_time'       => $mode === 'open_close' ? ($validated['close_time']  ?? null) : null,
+            'break_start'      => $mode === 'open_close' ? ($validated['break_start'] ?? null) : null,
+            'break_end'        => $mode === 'open_close' ? ($validated['break_end']   ?? null) : null,
+            'slot_windows'     => $mode === 'custom_slots'
+                                    ? json_encode(array_map(
+                                        fn ($w) => ['start' => $w['start'], 'end' => $w['end']],
+                                        $validated['slot_windows'] ?? [],
+                                    ))
+                                    : null,
             'max_appointments' => $validated['max_appointments'] ?? null,
             'staff_ids'        => isset($validated['staff_ids'])   ? json_encode(array_values(array_unique($validated['staff_ids'])))   : null,
             'service_ids'      => isset($validated['service_ids']) ? json_encode(array_values(array_unique($validated['service_ids']))) : null,

@@ -44,6 +44,7 @@ class AvailabilityOverrideResolver
      *   closed_reason: string|null,
      *   hoursRow:      object|null,
      *   override_id:   int|null,
+     *   slot_windows:  array<int, array{start: string, end: string}>|null,
      * }
      */
     public static function resolve(
@@ -69,6 +70,7 @@ class AvailabilityOverrideResolver
                 'closed_reason' => 'The business is closed on this day.',
                 'hoursRow'      => null,
                 'override_id'   => (int) $override->id,
+                'slot_windows'  => null,
             ];
         }
 
@@ -83,6 +85,7 @@ class AvailabilityOverrideResolver
                     'closed_reason' => 'This service is not offered on this day.',
                     'hoursRow'      => null,
                     'override_id'   => (int) $override->id,
+                    'slot_windows'  => null,
                 ];
             }
         }
@@ -96,7 +99,36 @@ class AvailabilityOverrideResolver
                     'closed_reason' => 'This stylist is not available on this day.',
                     'hoursRow'      => null,
                     'override_id'   => (int) $override->id,
+                    'slot_windows'  => null,
                 ];
+            }
+        }
+
+        // Custom-slots mode — owner defined arbitrary [start,end] windows
+        // instead of one open/close range. Decode them; callers iterate
+        // and call SlotGenerator once per window so each becomes its own
+        // mini-day in the generator's eyes (no break logic, gaps are
+        // implicit between windows).
+        $mode = Schema::hasColumn('calendar_overrides', 'mode')
+            ? (string) ($override->mode ?? 'open_close')
+            : 'open_close';
+
+        $slotWindows = null;
+        if ($mode === 'custom_slots' && Schema::hasColumn('calendar_overrides', 'slot_windows')) {
+            $decoded = json_decode((string) ($override->slot_windows ?? ''), true);
+            if (is_array($decoded) && count($decoded) > 0) {
+                $slotWindows = array_values(array_filter(
+                    $decoded,
+                    fn ($w) => is_array($w)
+                        && isset($w['start'], $w['end'])
+                        && preg_match('/^\d{2}:\d{2}$/', (string) $w['start'])
+                        && preg_match('/^\d{2}:\d{2}$/', (string) $w['end'])
+                        && $w['start'] < $w['end'],
+                ));
+                // If filtering left no valid windows, fall back to open_close.
+                if (count($slotWindows) === 0) {
+                    $slotWindows = null;
+                }
             }
         }
 
@@ -104,20 +136,40 @@ class AvailabilityOverrideResolver
         // they set; otherwise fall through to weekly. An override that
         // only changes break (leaves open/close null) gets the weekly
         // open/close — matches owner intent.
-        $synthetic = (object) [
-            'day_of_week' => $weeklyHoursRow->day_of_week ?? null,
-            'open_time'   => self::pick($override->open_time,   $weeklyHoursRow->open_time   ?? null),
-            'close_time'  => self::pick($override->close_time,  $weeklyHoursRow->close_time  ?? null),
-            'break_start' => self::pick($override->break_start, $weeklyHoursRow->break_start ?? null),
-            'break_end'   => self::pick($override->break_end,   $weeklyHoursRow->break_end   ?? null),
-            'is_closed'   => 0,
-        ];
+        //
+        // For custom_slots mode we also compute the envelope (min start /
+        // max end) of the windows and use that as the synthetic open/close.
+        // This keeps callers that haven't been updated to read slot_windows
+        // working — they generate slots across the envelope and the
+        // windows-aware caller can additionally filter to specific windows.
+        if ($slotWindows !== null) {
+            $envelopeOpen  = min(array_column($slotWindows, 'start'));
+            $envelopeClose = max(array_column($slotWindows, 'end'));
+            $synthetic = (object) [
+                'day_of_week' => $weeklyHoursRow->day_of_week ?? null,
+                'open_time'   => $envelopeOpen,
+                'close_time'  => $envelopeClose,
+                'break_start' => null,
+                'break_end'   => null,
+                'is_closed'   => 0,
+            ];
+        } else {
+            $synthetic = (object) [
+                'day_of_week' => $weeklyHoursRow->day_of_week ?? null,
+                'open_time'   => self::pick($override->open_time,   $weeklyHoursRow->open_time   ?? null),
+                'close_time'  => self::pick($override->close_time,  $weeklyHoursRow->close_time  ?? null),
+                'break_start' => self::pick($override->break_start, $weeklyHoursRow->break_start ?? null),
+                'break_end'   => self::pick($override->break_end,   $weeklyHoursRow->break_end   ?? null),
+                'is_closed'   => 0,
+            ];
+        }
 
         return [
             'closed'        => false,
             'closed_reason' => null,
             'hoursRow'      => $synthetic,
             'override_id'   => (int) $override->id,
+            'slot_windows'  => $slotWindows,
         ];
     }
 
@@ -128,6 +180,7 @@ class AvailabilityOverrideResolver
             'closed_reason' => null,
             'hoursRow'      => $weeklyHoursRow,
             'override_id'   => null,
+            'slot_windows'  => null,
         ];
     }
 
@@ -135,5 +188,38 @@ class AvailabilityOverrideResolver
     private static function pick(mixed $overrideValue, mixed $weeklyValue): mixed
     {
         return $overrideValue !== null && $overrideValue !== '' ? $overrideValue : $weeklyValue;
+    }
+
+    /**
+     * Drop any slot whose start_time doesn't fall inside one of the
+     * supplied windows. Used by callers when the resolver returns a
+     * non-null `slot_windows` — the SlotGenerator runs against the
+     * envelope (min start → max end) and produces slots that include
+     * the gaps; this filter excludes those.
+     *
+     * A slot is INSIDE a window when window.start <= slot.start_time
+     * < window.end. Half-open at the close so a slot starting exactly
+     * at window.end isn't included (matches the existing close_time
+     * semantics SlotGenerator uses).
+     *
+     * @param  array<int, array<string, mixed>>          $slots
+     * @param  array<int, array{start: string, end: string}> $windows
+     * @return array<int, array<string, mixed>>
+     */
+    public static function filterToWindows(array $slots, array $windows): array
+    {
+        if (count($windows) === 0) {
+            return $slots;
+        }
+        return array_values(array_filter($slots, function ($slot) use ($windows) {
+            $startTime = (string) ($slot['start_time'] ?? '');
+            if ($startTime === '') return false;
+            foreach ($windows as $window) {
+                if ($startTime >= $window['start'] && $startTime < $window['end']) {
+                    return true;
+                }
+            }
+            return false;
+        }));
     }
 }
