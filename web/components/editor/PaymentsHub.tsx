@@ -160,6 +160,14 @@ function PaymentsOverview() {
   const hasConnectedAccount = !! settings?.stripe_connect_account_id
     && ['active', 'pending', 'restricted'].includes(settings?.stripe_connect_status ?? '')
 
+  // Stripe is fully connected but the master payments toggle is OFF — the
+  // owner finished onboarding yet bookings still collect nothing (no
+  // deposits, no full payment, embedded checkout never appears). Mutually
+  // exclusive with stripeNotConnected, which requires status !== 'active'.
+  const paymentsOffButConnected = !! settings
+    && settings.stripe_connect_status === 'active'
+    && ! settings.payments_enabled
+
   return (
     <>
       {stripeNotConnected && (
@@ -176,6 +184,25 @@ function PaymentsOverview() {
             className="text-2xs font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-1.5 hover:opacity-90 flex-shrink-0"
           >
             Set up in Integrations
+          </Link>
+        </div>
+      )}
+
+      {paymentsOffButConnected && (
+        <div className="bg-white border border-[rgba(180,120,0,0.35)] p-3.5 flex items-start gap-3">
+          <AlertCircle size={14} className="text-warning flex-shrink-0 mt-0.5" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-warning">Payments are turned off</p>
+            <p className="text-2xs text-muted-text mt-0.5">
+              Your Stripe account is connected, but customer payments are disabled — deposits and
+              full payments won&apos;t be collected at booking. Turn them on to start charging.
+            </p>
+          </div>
+          <Link
+            href="/editor/settings?tab=payments"
+            className="text-2xs font-semibold tracking-[0.08em] uppercase bg-near-black text-white px-3 py-1.5 hover:opacity-90 flex-shrink-0"
+          >
+            Enable payments
           </Link>
         </div>
       )}
