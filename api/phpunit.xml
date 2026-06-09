@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+         executionOrder="random"
+         beStrictAboutOutputDuringTests="true"
+         failOnRisky="true"
+         failOnWarning="true"
+>
+    <testsuites>
+        <!-- All tests live under tests/Feature for now. Add tests/Unit
+             when a pure-PHP test (no Laravel container) makes sense. -->
+        <testsuite name="Feature">
+            <directory>tests/Feature</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory>app</directory>
+        </include>
+    </source>
+
+    <!-- Test-only environment. We deliberately don't load prod .env here:
+         tests run with a fresh in-memory SQLite DB and disabled mailer.
+         Keep this list small — anything specific to a single test should
+         live in that test's setUp() instead. -->
+    <php>
+        <env name="APP_ENV" value="testing" force="true"/>
+        <env name="APP_KEY" value="base64:Wfg5OF1A3z+5dRWi8Wp4nJ5DnnHHSh3UoSZJVrV6gXQ="/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="CACHE_STORE" value="array"/>
+        <env name="DB_CONNECTION" value="sqlite"/>
+        <env name="DB_DATABASE" value=":memory:"/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+
+        <!-- Disable third-party integrations during tests so a failing
+             external dep can never break the test suite. -->
+        <env name="TURNSTILE_DISABLED" value="true"/>
+        <env name="TWILIO_ENFORCE_QUOTA" value="false"/>
+        <env name="STRIPE_KEY" value="pk_test_dummy"/>
+        <env name="STRIPE_SECRET" value="sk_test_dummy"/>
+    </php>
+</phpunit>
