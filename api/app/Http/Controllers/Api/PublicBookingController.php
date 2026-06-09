@@ -1016,6 +1016,12 @@ class PublicBookingController extends Controller
             ->whereNotIn('status', ['cancelled'])
             ->count() === 1;
 
+        // T1.4 — best-effort push to the owner's Google Calendar.
+        // Helper internally skips pending_payment bookings (those re-fire
+        // from the payment webhook once payment lands) and swallows every
+        // failure so a Google outage NEVER breaks a booking.
+        \App\Support\AppointmentGcalHooks::onCreate((string) $tenant->id, (int) $id);
+
         tenancy()->end();
 
         // Phase 3 — pivot upsert MUST happen after tenancy()->end()

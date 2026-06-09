@@ -146,6 +146,11 @@ class PublicManageBookingController extends Controller
             'updated_at' => now(),
         ]);
 
+        // T1.4 — delete the owner's Google Calendar event. Per the launch
+        // decision, cancellations remove rather than STATUS:CANCELLED so
+        // the owner's calendar doesn't accumulate crossed-out events.
+        \App\Support\AppointmentGcalHooks::onCancel((string) $tenant->id, (int) $row->id);
+
         // Av2.0 P7 — waitlist auto-fill. Run before tenancy ends so the
         // service can query waitlist_entries in this tenant's connection.
         $businessName = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
@@ -390,6 +395,10 @@ class PublicManageBookingController extends Controller
                 : 0) + 1;
         }
         DB::table('appointments')->where('id', $row->id)->update($update);
+
+        // T1.4 — customer rescheduled → patch the owner's Google event
+        // to the new time. Helper handles "no event yet" by creating one.
+        \App\Support\AppointmentGcalHooks::onUpdate((string) $tenant->id, (int) $row->id);
 
         $updated     = DB::table('appointments')->find($row->id);
         $publicView  = $this->formatPublic($updated, $bs);

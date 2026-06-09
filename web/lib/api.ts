@@ -2326,6 +2326,53 @@ export async function regenerateEditorIcsFeed(): Promise<IcsFeedInfo> {
   return request<IcsFeedInfo>('/editor/integrations/ics-feed/regenerate', { method: 'POST' })
 }
 
+// ── T1.4 — Google Calendar one-way sync ───────────────────────────────
+
+export interface GoogleCalendarStatus {
+  status:         'not_connected' | 'active' | 'action_required' | 'coming_soon'
+  google_email?:  string
+  calendar_id?:   string
+  calendar_name?: string | null
+  last_sync_at?:  string | null
+  connected_at?:  string
+  connect_url?:   string  // present on not_connected + action_required
+}
+
+export interface GoogleCalendarItem {
+  id:      string
+  summary: string
+  primary: boolean
+}
+
+export async function getGoogleCalendarStatus(): Promise<GoogleCalendarStatus> {
+  return request<GoogleCalendarStatus>('/editor/integrations/google-calendar')
+}
+
+export async function startGoogleCalendarConnect(): Promise<{ connect_url: string }> {
+  return request<{ connect_url: string }>('/editor/integrations/google-calendar/start')
+}
+
+export async function listGoogleCalendars(): Promise<{
+  calendars: GoogleCalendarItem[]
+  selected_calendar: string
+}> {
+  return request('/editor/integrations/google-calendar/calendars')
+}
+
+export async function setGoogleCalendar(
+  calendarId: string,
+  calendarName?: string,
+): Promise<{ ok: boolean }> {
+  return request('/editor/integrations/google-calendar/calendar', {
+    method: 'POST',
+    body:   JSON.stringify({ calendar_id: calendarId, calendar_name: calendarName ?? null }),
+  })
+}
+
+export async function disconnectGoogleCalendar(): Promise<{ ok: boolean }> {
+  return request('/editor/integrations/google-calendar/disconnect', { method: 'POST' })
+}
+
 /**
  * Public coupon preview — used by the booking flow's "Have a code?" widget
  * to validate + price a code before the customer submits. No auth: the

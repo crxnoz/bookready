@@ -52,6 +52,15 @@ return [
         'client_id'     => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),
         'redirect'      => env('GOOGLE_REDIRECT_URI', 'https://api.bkrdy.me/api/v1/auth/google/callback'),
+        // T1.4 — Calendar OAuth uses a DIFFERENT redirect URI than sign-in
+        // so the consent-screen flow + the BookReady-app-name-on-Google's-
+        // settings-page stay scoped to the calendar integration. Must be
+        // registered as an Authorized redirect URI in the Google Cloud
+        // Console alongside the sign-in callback above.
+        'calendar_redirect_uri' => env(
+            'GOOGLE_CALENDAR_REDIRECT_URI',
+            'https://api.bkrdy.me/api/v1/integrations/google-calendar/callback',
+        ),
     ],
 
     'twilio' => [

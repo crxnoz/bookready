@@ -241,6 +241,12 @@ class AppointmentPaymentWebhookController extends Controller
 
             DB::table('appointments')->where('id', $appointmentId)->update($update);
 
+            // T1.4 — payment landed → appointment is now confirmed. Push
+            // (or update an existing) Google Calendar event. The helper is
+            // idempotent — a re-fired webhook bumps the existing event
+            // instead of creating a duplicate.
+            \App\Support\AppointmentGcalHooks::onCreate((string) $tenant->id, (int) $appointmentId);
+
             // Phase 15 — stamp a receipt number on the first payment
             // (deposit or full). Idempotent; ReceiptNumberService skips
             // the bump if one was already issued (e.g. webhook retry).

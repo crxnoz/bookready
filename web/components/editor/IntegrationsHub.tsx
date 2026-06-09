@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import {
-  ArrowRight, Calendar, CalendarMinus, CalendarOff,
+  ArrowRight, CalendarMinus, CalendarOff,
   ExternalLink, Mail, Megaphone,
   ShieldCheck, Building2, Webhook, Zap,
 } from 'lucide-react'
@@ -11,6 +11,7 @@ import IconBox from '@/components/ui/IconBox'
 import StatusBadge from '@/components/ui/StatusBadge'
 import StripeConnectCard from '@/components/editor/StripeConnectCard'
 import IcsFeedCard from '@/components/editor/IcsFeedCard'
+import GoogleCalendarCard from '@/components/editor/GoogleCalendarCard'
 
 /**
  * The Integrations hub — central catalog of third-party connections.
@@ -105,6 +106,7 @@ export default function IntegrationsHub() {
         </div>
         <div className="space-y-3">
           <IcsFeedCard />
+          <GoogleCalendarCard />
           {calendarTiles.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {calendarTiles.map(tile => <Tile key={tile.key} t={tile} />)}
@@ -129,17 +131,10 @@ function buildCatalog(): IntegrationCategory[] {
       title:       'Calendars',
       description: 'Show bookings in your day view, and block out times you\'re already busy.',
       tiles: [
-        // T1.1 ICS feed renders as IcsFeedCard above this grid (status-driven,
-        // not a generic Tile). Google Calendar (T1.4) will likewise flip to
-        // its own status-driven card when shipped; for now it stays as a
-        // coming-soon tile next to busy-import (post-launch T2.1).
-        comingSoon({
-          key:         'google-calendar',
-          name:        'Google Calendar',
-          description: 'New bookings appear on your Google Calendar automatically.',
-          icon:        Calendar,
-          hint:        'Keep your calendars in sync, one direction or both.',
-        }),
+        // T1.1 ICS feed renders as IcsFeedCard above this grid (status-driven).
+        // T1.4 Google Calendar renders as GoogleCalendarCard above this grid
+        // (status-driven). Only `busy-import` remains as a coming-soon tile
+        // here — that's the post-launch T2.1 two-way sync.
         comingSoon({
           key:         'busy-import',
           name:        'Import busy calendar',

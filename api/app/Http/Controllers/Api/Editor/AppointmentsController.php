@@ -303,6 +303,12 @@ class AppointmentsController extends Controller
         }
         $id = DB::table('appointments')->insertGetId($insertData);
 
+        // T1.4 — owner-created appointment → push to Google immediately.
+        // (Editor-created bookings are always considered confirmed; the
+        // helper still respects the pending_payment guard but that
+        // doesn't apply here.)
+        \App\Support\AppointmentGcalHooks::onCreate((string) $tenant->id, (int) $id);
+
         // Phase 7: persist add-on snapshots so future add-on edits don't
         // rewrite this appointment's totals.
         if (! empty($selectedAddons) && Schema::hasTable('appointment_addons')) {
@@ -516,6 +522,15 @@ class AppointmentsController extends Controller
         $row       = DB::table('appointments')->find($appointment);
         $formatted = $this->formatWithExtras($row);
 
+        // T1.4 — owner edited the appointment (time/staff/notes/status).
+        // If they flipped status to 'cancelled', delete the Google event;
+        // otherwise patch the existing one (or create if none yet).
+        if (($row->status ?? null) === 'cancelled') {
+            \App\Support\AppointmentGcalHooks::onCancel((string) $tenant->id, (int) $appointment);
+        } else {
+            \App\Support\AppointmentGcalHooks::onUpdate((string) $tenant->id, (int) $appointment);
+        }
+
         // Collect email payload before ending tenancy if status changed
         // to confirmed/cancelled OR if date/time was rescheduled.
         $newStatus     = $row->status;
@@ -637,6 +652,9 @@ class AppointmentsController extends Controller
             'status'     => 'cancelled',
             'updated_at' => now(),
         ]);
+
+        // T1.4 — owner cancelled → delete the Google event.
+        \App\Support\AppointmentGcalHooks::onCancel((string) $tenant->id, (int) $appointment);
 
         // Collect email payload before ending tenancy
         $emailAppt     = null;

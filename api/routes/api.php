@@ -61,6 +61,7 @@ use App\Http\Controllers\Api\Editor\StaffController;
 use App\Http\Controllers\Api\PublicCouponController;
 use App\Http\Controllers\Api\PublicCalendarFeedController;
 use App\Http\Controllers\Api\Editor\IntegrationsController;
+use App\Http\Controllers\Api\Editor\GoogleCalendarController;
 use App\Http\Controllers\Api\Editor\StaffHoursController;
 use App\Http\Controllers\Api\Editor\StaffBlockedDatesController;
 use App\Http\Controllers\Api\Editor\UploadsController;
@@ -154,6 +155,13 @@ Route::prefix('v1')->group(function () {
     Route::get('cal/customer/{token}.ics', [PublicCalendarFeedController::class, 'customer'])
         ->middleware('throttle:30,1')
         ->where('token', '[A-Za-z0-9]+');
+
+    // T1.4 — Google Calendar OAuth callback. Separate redirect URI from
+    // sign-in (services.google.calendar_redirect_uri); must be registered
+    // in Google Cloud Console alongside the sign-in callback. No auth —
+    // state validation + nonce + APP_KEY HMAC inside the controller.
+    Route::get('integrations/google-calendar/callback', [GoogleCalendarController::class, 'callback'])
+        ->middleware('throttle:30,1');
     // Phase S3 — public upload throttled to 5/min per IP. Combined with
     // the active-question + daily-cap gates in the controller this kills
     // anonymous R2 storage abuse.
@@ -431,6 +439,15 @@ Route::prefix('v1')->group(function () {
         // /api/v1/cal/owner/{tenant}/{token}.ics (no auth, throttled).
         Route::get ('integrations/ics-feed',            [IntegrationsController::class, 'icsFeed']);
         Route::post('integrations/ics-feed/regenerate', [IntegrationsController::class, 'regenerateIcsFeed']);
+
+        // T1.4 — Google Calendar one-way sync. The OAuth CALLBACK lives in
+        // the public route group (no auth — Google posts to it directly).
+        // Everything below is owner-authed.
+        Route::get ('integrations/google-calendar',           [GoogleCalendarController::class, 'status']);
+        Route::get ('integrations/google-calendar/start',     [GoogleCalendarController::class, 'start']);
+        Route::get ('integrations/google-calendar/calendars', [GoogleCalendarController::class, 'listCalendars']);
+        Route::post('integrations/google-calendar/calendar',  [GoogleCalendarController::class, 'setCalendar']);
+        Route::post('integrations/google-calendar/disconnect',[GoogleCalendarController::class, 'disconnect']);
         // Per-staff hours + blocked dates. Same /{staff}/* shape Laravel
         // would generate via apiResource, but kept flat for consistency
         // with the rest of the editor namespace.
