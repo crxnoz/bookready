@@ -53,8 +53,14 @@ return [
     // Pattern match for the tenant subdomains: {slug}.bkrdy.me — these
     // make anonymous public/* requests but the browser still needs the
     // origin to be allow-listed for the credentials preflight to pass.
+    //
+    // The second pattern covers the staging environment:
+    // app.staging.bkrdy.me + api.staging.bkrdy.me + tenant subdomains
+    // like {slug}.staging.bkrdy.me. Kept narrowly scoped to staging so
+    // prod's allow-list doesnt accidentally widen.
     'allowed_origins_patterns' => [
         '#^https://[a-z0-9][a-z0-9-]*\.bkrdy\.me$#i',
+        '#^https://([a-z0-9][a-z0-9-]*\.)?staging\.bkrdy\.me$#i',
         '#^https?://[a-z0-9][a-z0-9-]*\.daysbookings\.site$#i',
     ],
 
