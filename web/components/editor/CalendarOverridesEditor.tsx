@@ -621,9 +621,13 @@ function OverrideEditorDialog({
   })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 bg-black/40 overflow-y-auto" onClick={onClose}>
+      {/* items-start on mobile so the dialog header is always visible
+          at the viewport top (was items-end + 92vh max-height, which
+          let tall content push the top off-screen). Outer flex scrolls
+          when content overflows. */}
       <div
-        className="relative bg-white border border-hairline-soft w-full max-w-md max-h-[92vh] overflow-y-auto shadow-xl"
+        className="relative bg-white border border-hairline-soft w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto shadow-xl"
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -672,17 +676,29 @@ function OverrideEditorDialog({
 
                 {mode === 'open_close' && (
                   <>
-                    <div className="grid grid-cols-2 gap-3">
-                      <TimeField label="Open"  value={openTime}  onChange={setOpenTime}  placeholder={weekly?.open_time ?? '10:00'} />
-                      <TimeField label="Close" value={closeTime} onChange={setCloseTime} placeholder={weekly?.close_time ?? '18:00'} />
+                    {/* flex over grid here, matching the slot-windows row.
+                        grid-cols-2 lets cells exceed their column width
+                        on mobile when the native time input's intrinsic
+                        size is wider than 50% of the column. */}
+                    <div className="flex gap-3">
+                      <div className="flex-1 min-w-0">
+                        <TimeField label="Open"  value={openTime}  onChange={setOpenTime}  placeholder={weekly?.open_time ?? '10:00'} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <TimeField label="Close" value={closeTime} onChange={setCloseTime} placeholder={weekly?.close_time ?? '18:00'} />
+                      </div>
                     </div>
                     <p className="text-eyebrow text-muted-text -mt-1">
                       Leave a time blank to inherit the weekly default.
                     </p>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <TimeField label="Break starts" value={breakStart} onChange={setBreakStart} placeholder={weekly?.break_start ?? '—'} />
-                      <TimeField label="Break ends"   value={breakEnd}   onChange={setBreakEnd}   placeholder={weekly?.break_end ?? '—'} />
+                    <div className="flex gap-3">
+                      <div className="flex-1 min-w-0">
+                        <TimeField label="Break starts" value={breakStart} onChange={setBreakStart} placeholder={weekly?.break_start ?? '—'} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <TimeField label="Break ends"   value={breakEnd}   onChange={setBreakEnd}   placeholder={weekly?.break_end ?? '—'} />
+                      </div>
                     </div>
                   </>
                 )}
@@ -708,12 +724,14 @@ function OverrideEditorDialog({
                       </p>
                     )}
                     {slotWindows.map((w, i) => (
-                      // min-w-0 on the grid lets the time inputs shrink
-                      // below their intrinsic width (mobile native time
-                      // picker is wider than expected); the auto column
-                      // is the remove button which stays a fixed 32px.
-                      <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end min-w-0">
-                        <div className="min-w-0">
+                      // flex over grid here — grid's track sizing was
+                      // producing an overlap on mobile when the inputs
+                      // hit their intrinsic min-width. flex-1 + min-w-0
+                      // is the bulletproof "shrink-with-the-row" pattern
+                      // and the button is flex-shrink-0 so it always
+                      // sits to the right of the inputs, never on top.
+                      <div key={i} className="flex items-end gap-2">
+                        <div className="flex-1 min-w-0">
                           <TimeField
                             label={i === 0 ? 'Start' : ''}
                             value={w.start}
@@ -721,7 +739,7 @@ function OverrideEditorDialog({
                             placeholder="09:00"
                           />
                         </div>
-                        <div className="min-w-0">
+                        <div className="flex-1 min-w-0">
                           <TimeField
                             label={i === 0 ? 'End' : ''}
                             value={w.end}
@@ -732,7 +750,7 @@ function OverrideEditorDialog({
                         <button
                           type="button"
                           onClick={() => setSlotWindows(ws => ws.filter((_, j) => j !== i))}
-                          className="w-8 h-8 flex-shrink-0 inline-flex items-center justify-center text-muted-text hover:text-near-black border border-hairline-soft"
+                          className="w-9 h-9 flex-shrink-0 inline-flex items-center justify-center text-muted-text hover:text-near-black border border-hairline-soft"
                           aria-label={`Remove window ${i + 1}`}
                         >
                           <X size={12} />
@@ -886,14 +904,20 @@ function TimeField({
   label, value, onChange, placeholder,
 }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
-    <div>
-      <label className="block text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5">{label}</label>
+    // min-w-0 so this component can shrink below its native intrinsic
+    // width when placed inside a grid/flex cell — native <input
+    // type="time"> reports a wide minimum on mobile (AM/PM picker) and
+    // without this it pushes its container past the column edge.
+    <div className="min-w-0">
+      {label && (
+        <label className="block text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5">{label}</label>
+      )}
       <input
         type="time"
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder ?? ''}
-        className="w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+        className="w-full min-w-0 bg-white border border-hairline-strong px-2.5 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
       />
     </div>
   )
