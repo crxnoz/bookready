@@ -81,15 +81,20 @@ export function Section({
   const dark = tone === 'dark'
   return (
     <div className={cn('border', dark ? 'bg-near-black border-near-black' : 'bg-white border-hairline-soft')}>
-      <div className="flex items-center gap-3 px-5 py-4">
+      {/* Below sm: action wraps to its own row so wide actions
+          (calendar's prev/next + month + Today) don't collide with
+          the title or push the column off-screen. */}
+      <div className="flex items-center gap-3 px-4 py-3 sm:px-5 sm:py-4 flex-wrap sm:flex-nowrap">
         <IconBox icon={icon} size="sm" tone={tone} />
         <div className="flex-1 min-w-0">
           <p className={cn('text-sm font-bold', dark ? 'text-white' : 'text-near-black')}>{title}</p>
           {subtitle && <p className={cn('text-xs mt-0.5', dark ? 'text-white/60' : 'text-muted-text')}>{subtitle}</p>}
         </div>
-        {action}
+        {action && (
+          <div className="w-full sm:w-auto flex justify-end">{action}</div>
+        )}
       </div>
-      <div className="px-5 pb-5 pt-1">{children}</div>
+      <div className="px-4 pb-4 pt-1 sm:px-5 sm:pb-5">{children}</div>
     </div>
   )
 }
@@ -113,7 +118,7 @@ export function CollapsibleSection({
         type="button"
         onClick={onToggle}
         className={cn(
-          'w-full flex items-center gap-3 px-5 py-4 text-left transition-colors',
+          'w-full flex items-center gap-3 px-4 py-3 sm:px-5 sm:py-4 text-left transition-colors',
           dark ? 'hover:bg-white/5' : 'hover:bg-[rgba(18,18,18,0.02)]',
         )}
       >
@@ -128,7 +133,7 @@ export function CollapsibleSection({
           ? <ChevronUp size={15} className={cn('flex-shrink-0', dark ? 'text-white/60' : 'text-muted-text')} />
           : <ChevronDown size={15} className={cn('flex-shrink-0', dark ? 'text-white/60' : 'text-muted-text')} />}
       </button>
-      {open && <div className="px-5 pb-5 pt-1">{children}</div>}
+      {open && <div className="px-4 pb-4 pt-1 sm:px-5 sm:pb-5">{children}</div>}
     </div>
   )
 }

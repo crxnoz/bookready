@@ -199,22 +199,24 @@ export default function CalendarOverridesEditor() {
         title="Smart Calendar"
         subtitle="Per-date hours, capacity, and release windows."
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="w-9 h-9 inline-flex items-center justify-center bg-white border border-hairline-strong text-near-black hover:border-near-black"
+              className="w-9 h-9 flex-shrink-0 inline-flex items-center justify-center bg-white border border-hairline-strong text-near-black hover:border-near-black"
               aria-label="Previous month"
             >
               <ChevronLeft size={14} />
             </button>
-            <div className="text-sm font-bold text-near-black tracking-tight w-36 text-center">
+            {/* Month label flexes on mobile (eats leftover space between
+                the nav buttons); fixed width on desktop. */}
+            <div className="flex-1 sm:flex-none sm:w-36 text-sm font-bold text-near-black tracking-tight text-center">
               {monthLabel}
             </div>
             <button
               type="button"
               onClick={() => navigate(1)}
-              className="w-9 h-9 inline-flex items-center justify-center bg-white border border-hairline-strong text-near-black hover:border-near-black"
+              className="w-9 h-9 flex-shrink-0 inline-flex items-center justify-center bg-white border border-hairline-strong text-near-black hover:border-near-black"
               aria-label="Next month"
             >
               <ChevronRight size={14} />
@@ -222,7 +224,7 @@ export default function CalendarOverridesEditor() {
             <button
               type="button"
               onClick={() => setCursor(firstOfMonth(new Date()))}
-              className="text-2xs font-semibold tracking-[0.06em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:border-near-black"
+              className="flex-shrink-0 text-2xs font-semibold tracking-[0.06em] uppercase border border-hairline-strong bg-white text-near-black px-2.5 py-2 hover:border-near-black"
             >
               Today
             </button>
@@ -649,7 +651,7 @@ function OverrideEditorDialog({
             <Loader2 size={14} className="animate-spin" /> Loading override…
           </div>
         ) : (
-          <div className="px-5 py-4 space-y-4">
+          <div className="px-4 py-4 sm:px-5 space-y-4">
             {/* Available toggle */}
             <div className="flex gap-2">
               <PillToggle on={isAvailable}  onClick={() => setIsAvailable(true)}  label="Available"  tone="good" />
@@ -706,23 +708,31 @@ function OverrideEditorDialog({
                       </p>
                     )}
                     {slotWindows.map((w, i) => (
-                      <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
-                        <TimeField
-                          label={i === 0 ? 'Start' : ''}
-                          value={w.start}
-                          onChange={v => setSlotWindows(ws => ws.map((x, j) => j === i ? { ...x, start: v } : x))}
-                          placeholder="09:00"
-                        />
-                        <TimeField
-                          label={i === 0 ? 'End' : ''}
-                          value={w.end}
-                          onChange={v => setSlotWindows(ws => ws.map((x, j) => j === i ? { ...x, end: v } : x))}
-                          placeholder="10:00"
-                        />
+                      // min-w-0 on the grid lets the time inputs shrink
+                      // below their intrinsic width (mobile native time
+                      // picker is wider than expected); the auto column
+                      // is the remove button which stays a fixed 32px.
+                      <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end min-w-0">
+                        <div className="min-w-0">
+                          <TimeField
+                            label={i === 0 ? 'Start' : ''}
+                            value={w.start}
+                            onChange={v => setSlotWindows(ws => ws.map((x, j) => j === i ? { ...x, start: v } : x))}
+                            placeholder="09:00"
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <TimeField
+                            label={i === 0 ? 'End' : ''}
+                            value={w.end}
+                            onChange={v => setSlotWindows(ws => ws.map((x, j) => j === i ? { ...x, end: v } : x))}
+                            placeholder="10:00"
+                          />
+                        </div>
                         <button
                           type="button"
                           onClick={() => setSlotWindows(ws => ws.filter((_, j) => j !== i))}
-                          className="w-8 h-8 inline-flex items-center justify-center text-muted-text hover:text-near-black border border-hairline-soft"
+                          className="w-8 h-8 flex-shrink-0 inline-flex items-center justify-center text-muted-text hover:text-near-black border border-hairline-soft"
                           aria-label={`Remove window ${i + 1}`}
                         >
                           <X size={12} />
@@ -793,25 +803,29 @@ function OverrideEditorDialog({
           </div>
         )}
 
-        <footer className="sticky bottom-0 bg-white border-t border-hairline-soft px-5 py-3 flex items-center justify-between gap-2">
-          <div>
+        <footer className="sticky bottom-0 bg-white border-t border-hairline-soft px-4 py-3 sm:px-5 flex flex-wrap items-center justify-between gap-2">
+          <div className="order-2 sm:order-1">
             {hasExisting && (
               <button
                 type="button"
                 onClick={clearOverride}
                 disabled={deleting}
-                className="text-2xs font-semibold tracking-[0.06em] uppercase text-danger hover:underline disabled:opacity-50 inline-flex items-center gap-1"
+                className="text-2xs font-semibold tracking-[0.04em] uppercase text-danger hover:underline disabled:opacity-50 inline-flex items-center gap-1 whitespace-nowrap"
               >
-                {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />} Clear override
+                {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+                {/* Shorter copy on mobile so the button stays on one line
+                    next to Save without wrapping. */}
+                <span className="sm:hidden">Clear</span>
+                <span className="hidden sm:inline">Clear override</span>
               </button>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="order-1 sm:order-2 flex items-center gap-2 ml-auto">
             <button
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="text-2xs font-semibold tracking-[0.08em] uppercase text-muted-text hover:text-near-black px-2 py-2"
+              className="text-2xs font-semibold tracking-[0.06em] uppercase text-muted-text hover:text-near-black px-2 py-2"
             >
               Cancel
             </button>
@@ -820,14 +834,18 @@ function OverrideEditorDialog({
               onClick={save}
               disabled={saving || loading}
               className={cn(
-                'inline-flex items-center gap-1.5 text-2xs font-bold tracking-[0.08em] uppercase px-3.5 py-2 border',
+                'inline-flex items-center gap-1.5 text-2xs font-bold tracking-[0.04em] uppercase px-3 py-2 border whitespace-nowrap',
                 saving || loading
                   ? 'bg-cream border-hairline-soft text-muted-text cursor-wait'
                   : 'bg-near-black border-near-black text-white hover:opacity-90',
               )}
             >
               {saving ? <Loader2 size={11} className="animate-spin" /> : <Save size={11} />}
-              {hasExisting ? 'Save changes' : 'Save override'}
+              {/* Mobile uses the short verb; desktop keeps the descriptive
+                  label. whitespace-nowrap prevents the icon + word from
+                  wrapping inside the button at narrow widths. */}
+              <span className="sm:hidden">Save</span>
+              <span className="hidden sm:inline">{hasExisting ? 'Save changes' : 'Save override'}</span>
             </button>
           </div>
         </footer>

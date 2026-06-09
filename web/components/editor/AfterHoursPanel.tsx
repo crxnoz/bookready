@@ -109,11 +109,15 @@ export default function AfterHoursPanel() {
                     </div>
                   </Field>
                   <Field label="Latest booking time" hint="A hard cap, even if the extension allows later. Optional.">
+                    {/* Native time inputs ship with a wider intrinsic
+                        width on mobile (the AM/PM toggle). Cap at the
+                        same 12rem footprint the other inputs use so it
+                        can't push the form column past the screen edge. */}
                     <input
                       type="time"
                       value={cfg.latest_booking_time ?? ''}
                       onChange={e => patch('latest_booking_time', e.target.value || null)}
-                      className="w-full bg-white border border-hairline-strong px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black/30"
+                      className="w-full max-w-[12rem] bg-white border border-hairline-strong px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-near-black/30"
                     />
                   </Field>
                   <Field label="After-hours capacity" hint="Max premium bookings per day. Blank = no limit.">
