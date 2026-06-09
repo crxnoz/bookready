@@ -2130,10 +2130,13 @@ export default function LushStudioBooking({
             <div
               onClick={e => e.stopPropagation()}
               style={{
-                background: 'var(--lush-cream, #faf6f1)',
-                color: 'var(--lush-ink, #1a1a1a)',
-                borderRadius: 20,
-                padding: '22px 22px 20px',
+                background: 'var(--brk-booking-card)',
+                color: 'var(--brk-booking-text)',
+                // Use the same radius token cards use so the modal
+                // matches the template's chosen card shape (Lush: 6px,
+                // TFR: 8px, VT: 0 sharp, etc.) instead of a hardcoded 20px.
+                borderRadius: 'var(--brk-booking-radius-card)',
+                padding: '20px 20px 18px',
                 maxWidth: 440,
                 width: '100%',
                 boxShadow: '0 18px 60px rgba(0,0,0,0.25)',
@@ -2179,7 +2182,11 @@ export default function LushStudioBooking({
                     We&rsquo;ll email you if a {selectedService.name} spot opens between these dates.
                   </p>
 
-                  <div style={{ display: 'grid', gap: 10 }}>
+                  {/* brk-booking-fields wrapper makes the inputs pick up
+                      the engine's padding (12px 14px), border, focus ring,
+                      and radius-input token — without this the inputs
+                      rendered as browser default with no padding. */}
+                  <div className="brk-booking-fields">
                     <label className="brk-booking-field">
                       <span>Your Name *</span>
                       <input
@@ -2207,7 +2214,7 @@ export default function LushStudioBooking({
                         placeholder="(555) 555-5555"
                       />
                     </label>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div className="brk-booking-fields" style={{ gridTemplateColumns: '1fr 1fr' }}>
                       <label className="brk-booking-field">
                         <span>Earliest *</span>
                         <input
@@ -2228,6 +2235,7 @@ export default function LushStudioBooking({
                     <label className="brk-booking-field">
                       <span>Notes (optional)</span>
                       <textarea
+                        className="brk-booking-textarea"
                         value={waitlistNotes}
                         onChange={e => setWaitlistNotes(e.target.value)}
                         placeholder="Anything you'd like us to know?"
@@ -2238,8 +2246,12 @@ export default function LushStudioBooking({
 
                   {waitlistError && (
                     <p style={{
-                      marginTop: 10, fontSize: 13, color: '#a4252b',
-                      background: 'rgba(164,37,43,0.08)', padding: '8px 10px', borderRadius: 10,
+                      marginTop: 12, fontSize: 13,
+                      color: 'var(--brk-booking-danger-fg)',
+                      background: 'var(--brk-booking-danger-bg)',
+                      border: '1px solid var(--brk-booking-danger-border)',
+                      padding: '10px 12px',
+                      borderRadius: 'var(--brk-booking-radius-card)',
                     }}>{waitlistError}</p>
                   )}
 

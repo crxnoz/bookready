@@ -1092,7 +1092,7 @@ export async function joinPublicWaitlist(
   slug: string,
   payload: PublicWaitlistJoinPayload,
 ): Promise<{ id: number; message: string; duplicate?: boolean }> {
-  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.bkrdy.me') + '/v1'
+  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.bkrdy.me') + '/api/v1'
   const res = await fetch(`${baseUrl}/public/sites/${slug}/waitlist`, {
     method:  'POST',
     headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
@@ -1112,7 +1112,7 @@ export async function claimPublicWaitlist(
   start_time:        string
   message:           string
 }> {
-  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.bkrdy.me') + '/v1'
+  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.bkrdy.me') + '/api/v1'
   const res = await fetch(`${baseUrl}/public/sites/${slug}/waitlist/claim/${token}`, {
     method:  'POST',
     headers: { 'Accept': 'application/json' },
@@ -1145,7 +1145,7 @@ export async function updateEditorSqueezeIns(payload: Partial<SqueezeInConfig>):
 export async function submitPublicSqueezeIn(
   slug: string, payload: PublicAvailabilityRequestPayload,
 ): Promise<{ id: number; message: string }> {
-  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.bkrdy.me') + '/v1'
+  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.bkrdy.me') + '/api/v1'
   const res = await fetch(`${baseUrl}/public/sites/${slug}/squeeze-ins`, {
     method: 'POST',
     headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
@@ -1257,7 +1257,7 @@ export interface PublicAvailabilityRequestView {
 }
 
 export async function getPublicAvailabilityRequest(slug: string, token: string): Promise<PublicAvailabilityRequestView> {
-  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.bkrdy.me') + '/v1'
+  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.bkrdy.me') + '/api/v1'
   const res = await fetch(`${baseUrl}/public/sites/${slug}/availability-requests/${token}`, {
     headers: { 'Accept': 'application/json' },
     cache: 'no-store',
@@ -1270,7 +1270,7 @@ export async function getPublicAvailabilityRequest(slug: string, token: string):
 export async function acceptPublicAvailabilityRequest(
   slug: string, token: string,
 ): Promise<{ appointment_id: number; appointment_date: string; start_time: string; message: string }> {
-  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.bkrdy.me') + '/v1'
+  const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.bkrdy.me') + '/api/v1'
   const res = await fetch(`${baseUrl}/public/sites/${slug}/availability-requests/${token}/accept`, {
     method: 'POST',
     headers: { 'Accept': 'application/json' },
