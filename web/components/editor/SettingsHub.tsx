@@ -343,7 +343,6 @@ function PaymentSettingsPanel() {
         <Toggle
           label="Enable customer payments"
           hint="Turn this off and customers book without paying."
-          icon={CreditCard}
           on={draft.payments_enabled}
           onToggle={() => patch({ payments_enabled: !draft.payments_enabled })}
         />
@@ -366,7 +365,6 @@ function PaymentSettingsPanel() {
         <Toggle
           label="Require a deposit"
           hint={paymentsOff ? 'Turn on customer payments first to use deposits.' : 'Ask for an upfront amount when a customer books.'}
-          icon={DollarSign}
           on={draft.deposits_enabled && !depositsLocked}
           onToggle={() => patch({ deposits_enabled: !draft.deposits_enabled })}
           disabled={depositsLocked}
@@ -716,19 +714,18 @@ function BookingSettingsPanel() {
         </p>
       </header>
 
-      {/* Default appointment duration (moved from the old Preferences tab). */}
-      <PrefsCard section="duration" />
-
-      {/* Booking enabled */}
+      {/* Booking enabled — kept at the top of the page */}
       <section className="bg-white border border-hairline-soft p-3.5 space-y-2">
         <Toggle
           label="Booking enabled"
           hint="When this is off, your public site shows a friendly unavailable message and no new bookings can come in."
-          icon={Calendar}
           on={draft.booking_enabled}
           onToggle={() => patch({ booking_enabled: !draft.booking_enabled })}
         />
       </section>
+
+      {/* Default appointment duration (moved from the old Preferences tab). */}
+      <PrefsCard section="duration" />
 
       {/* Confirmation + duplicate guard */}
       <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
@@ -1015,7 +1012,6 @@ function NotificationSettingsPanel() {
         <Toggle
           label="Owner: new booking request"
           hint="Notify you when a customer submits a booking request or pays a deposit."
-          icon={Bell}
           on={draft.owner_booking_email_enabled}
           onToggle={() => patch({ owner_booking_email_enabled: !draft.owner_booking_email_enabled })}
         />
@@ -1486,7 +1482,6 @@ function AccountSettingsPanel() {
       <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
         <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Security</p>
         <div className="flex items-start gap-3">
-          <UserCircle size={14} className="text-near-black flex-shrink-0 mt-1" strokeWidth={1.8} />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-near-black">Sign out everywhere else</p>
             <p className="text-2xs text-muted-text mt-0.5">
@@ -2580,7 +2575,6 @@ function EmailContentEditor({
   return (
     <section className="bg-white border border-hairline-soft p-3.5 space-y-2.5">
       <div className="flex items-start gap-2 mb-1">
-        <Mail size={13} className="text-near-black mt-0.5 flex-shrink-0" />
         <div className="min-w-0">
           <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Email content</p>
           <p className="text-2xs text-muted-text mt-0.5">
