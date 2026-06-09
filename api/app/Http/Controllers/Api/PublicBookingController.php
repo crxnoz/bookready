@@ -316,9 +316,16 @@ class PublicBookingController extends Controller
                     return response()->json(['message' => 'This time is not available.'], 422);
                 }
                 // Access tier (anonymous → only 'everyone' passes).
+                // Email lookup is case-insensitive + trimmed to match the
+                // PublicBookingController auto-stamp normalization and to
+                // remove the casing footgun that let a visitor who typed
+                // the exact stored casing through a tier check while a
+                // case-mismatched typo failed silently.
                 $ahClient = null;
                 if (! empty($validated['customer_email']) && Schema::hasTable('clients')) {
-                    $ahClient = DB::table('clients')->where('email', $validated['customer_email'])->first();
+                    $ahClient = DB::table('clients')
+                        ->whereRaw('LOWER(email) = ?', [strtolower(trim((string) $validated['customer_email']))])
+                        ->first();
                 }
                 if (! \App\Services\AfterHoursResolver::accessAllowed((string) ($ahConfig->access_tier ?? 'everyone'), $ahClient)) {
                     tenancy()->end();
@@ -597,13 +604,30 @@ class PublicBookingController extends Controller
         // authed customer's id so the customer dashboard surfaces this
         // booking immediately. Guarded by Schema::hasColumn so a tenant
         // mid-deploy without the Phase 1 migration doesn't blow up.
+        //
+        // SECURITY: only stamp when BOTH (a) the existing link is NULL
+        // (never overwrite another customer's claim) AND (b) the booking's
+        // customer_email matches the authed customer's email exactly
+        // (case-insensitive). Without (b), a customer booking under a
+        // third party's email — common when one device handles bookings
+        // for a family — would silently absorb that person's history.
+        // Without (a), a freshly-registered attacker who knew a target's
+        // email could overwrite the legitimate link. Both blocked here.
+        // The Claim flow remains the canonical path for cross-account
+        // linkage of pre-existing rows.
         if ($authedCustomer && $clientId && Schema::hasColumn('clients', 'customer_user_id')) {
-            DB::table('clients')
-                ->where('id', $clientId)
-                ->update([
-                    'customer_user_id' => $authedCustomer->id,
-                    'updated_at'       => now(),
-                ]);
+            $authedEmail  = strtolower(trim((string) $authedCustomer->email));
+            $bookingEmail = strtolower(trim((string) ($validated['customer_email'] ?? '')));
+            $existingLink = DB::table('clients')->where('id', $clientId)->value('customer_user_id');
+
+            if ($existingLink === null && $authedEmail !== '' && $authedEmail === $bookingEmail) {
+                DB::table('clients')
+                    ->where('id', $clientId)
+                    ->update([
+                        'customer_user_id' => $authedCustomer->id,
+                        'updated_at'       => now(),
+                    ]);
+            }
         }
 
         // ── Payment branching ────────────────────────────────────────────

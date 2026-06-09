@@ -175,7 +175,20 @@ class DangerController extends Controller
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        if (! $customer->password || ! Hash::check($validated['password'], $customer->password)) {
+        // Read the authoritative password hash. Per #159, identities.password
+        // is canonical (login + change-password check it); customer_users.password
+        // is mirrored but is stale if a dual-write ever fails. Mirror the
+        // ProfileController::changePassword pattern so the only "you can prove
+        // you own this account" gate matches in both surfaces — otherwise
+        // an attacker who knew the original password (but can't log in
+        // after a reset) could still nuke the account.
+        $identityHash = null;
+        if ($customer->identity_id) {
+            $identityHash = DB::table('identities')->where('id', $customer->identity_id)->value('password');
+        }
+        $authoritativeHash = $identityHash ?: $customer->password;
+
+        if (! $authoritativeHash || ! Hash::check($validated['password'], $authoritativeHash)) {
             throw ValidationException::withMessages([
                 'password' => ['Password is incorrect.'],
             ]);

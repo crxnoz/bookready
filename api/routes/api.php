@@ -98,8 +98,13 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:60,1');
 
     // ── Marketing lead capture (no auth, from mybookready.com) ──────────
+    // Tightened to 2/min/IP. This endpoint has no captcha + no honeypot;
+    // at 5/min a single IP could plant ~7,200 rows/day. 2/min still
+    // covers legitimate retries (form fumble + resubmit) but caps
+    // single-source spam at ~2,880/day. Distributed-IP abuse is the
+    // realistic threat — for that, the next bump is Turnstile.
     Route::post('leads', [MarketingLeadController::class, 'store'])
-        ->middleware('throttle:5,1');
+        ->middleware('throttle:2,1');
 
     // ── Public tenant lookup, availability + booking (no auth) ──────────
     // Phase S5++ — throttle anonymous reads to slow automated scraping
