@@ -183,19 +183,11 @@ export default function ReleaseStrategyPanel({ onChange }: { onChange?: () => vo
 
   // Step 1 of the two-step UX: "Always open" vs "Custom schedule".
   // Anything that isn't always_open is custom (Step 2 reveals the cadence).
+  // Click handlers are inlined at the call site so TypeScript's null-narrowing
+  // on `settings` (above) carries into them; declaring nested functions here
+  // would lose the narrowing because they could be called after settings
+  // changes.
   const step1IsCustom = settings.slot_release_mode !== 'always_open'
-
-  // Step 1 click handlers. Switching to custom defaults to weekly (a sensible
-  // most-common starting point); switching back to always_open just flips the
-  // mode and leaves the cadence config alone so re-toggling is non-destructive.
-  function selectAlwaysOpen() {
-    patch('slot_release_mode', 'always_open')
-  }
-  function selectCustomSchedule() {
-    if (settings.slot_release_mode === 'always_open') {
-      patch('slot_release_mode', 'weekly')
-    }
-  }
 
   return (
     <TabShell>
@@ -271,12 +263,16 @@ export default function ReleaseStrategyPanel({ onChange }: { onChange?: () => vo
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
               <ModePill
                 active={! step1IsCustom}
-                onClick={selectAlwaysOpen}
+                onClick={() => patch('slot_release_mode', 'always_open')}
                 label="Always open"
               />
               <ModePill
                 active={step1IsCustom}
-                onClick={selectCustomSchedule}
+                onClick={() => {
+                  if (settings.slot_release_mode === 'always_open') {
+                    patch('slot_release_mode', 'weekly')
+                  }
+                }}
                 label="Custom schedule"
               />
             </div>
