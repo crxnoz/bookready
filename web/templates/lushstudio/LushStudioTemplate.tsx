@@ -362,6 +362,14 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
 
   return (
     <>
+      {/* Lush owns its --lush-* tokens (Phase 2 of the booking-architecture
+          refactor; see docs/booking-architecture.md). The engine reads them
+          via `var(--lush-X, default)` aliases — so this style block IS the
+          source of truth for the Lush palette, and it must be injected
+          BEFORE LUSH_CSS so the aliases resolve to these values rather than
+          the engine's hardcoded fallback defaults. Tenant accent picker
+          continues to override --lush-pink at the wrapper level. */}
+      <style>{LUSH_PAGE_TOKENS_CSS}</style>
       <style>{LUSH_CSS}</style>
       <style>{SECTIONS_CSS}</style>
       <style>{LUSH_SECTIONS_SKIN}</style>
@@ -959,6 +967,51 @@ function AboutPanel({
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// LUSH PAGE TOKENS — the source of truth for Lush's --lush-* palette
+// ────────────────────────────────────────────────────────────────────────────
+// Phase 2 of the booking-architecture refactor moved these defs OUT of the
+// engine CSS (lushBookingCss.ts) and INTO the Lush template (here). The
+// engine now consumes canonical --brk-booking-* names and aliases them via
+// `var(--lush-X, fallback)` so this block IS the value source for Lush —
+// the fallback only kicks in if a non-Lush template doesn't set --lush-X.
+//
+// Tenant accent override (--lush-pink + --lush-pink-rgb + --lush-on-pink) is
+// applied via inline style on the wrapper (see accentVars in the render),
+// which has higher specificity than the class-scoped rules here.
+const LUSH_PAGE_TOKENS_CSS = `
+.lush-template {
+  --lush-bg:          #F6F3EE;
+  --lush-card:        #FFFFFF;
+  --lush-text:        #0E1111;
+  --lush-muted:       #6B7280;
+  /* "pink" is historical — these are sage values internally. The accent
+     picker overrides --lush-pink via inline style on the wrapper. */
+  --lush-pink:        #7FAF9A;
+  --lush-pink-rgb:    127, 175, 154;
+  --lush-on-pink:     #FFFFFF;
+  --lush-pink-soft:   #B3D0C2;
+  --lush-dark-border: rgba(14,17,17,0.10);
+  --lush-cta-bg:        #121212;
+  --lush-cta-bg-hover:  #2a2a2a;
+  --lush-cta-fg:        #FFFFFF;
+  --lush-card-soft:     #F8F6F2;
+  --lush-input-placeholder: #c4bcb6;
+  --lush-danger-fg:     #B91C1C;
+  --lush-danger-bg:     #FEF2F2;
+  --lush-danger-border: #FECACA;
+  /* Spa visual language is calm + flat; glow tokens stay defined so the
+     engine has a value to read, but they render as "no shadow". */
+  --lush-glow:        none;
+  --lush-text-glow:   none;
+  --lush-script:      "Cookie", cursive;
+  --lush-molle:       "Molle", cursive;
+  --lush-serif:       "DM Serif Text", serif;
+  --lush-sans:        "DM Sans", sans-serif;
+  --lush-ui:          "Roboto", sans-serif;
+  --lush-mono:        "DM Mono","Roboto Mono",monospace;
+}
+`
+
 // LUSH SKIN over the shared platform sections (@bkrdy/platform/sections)
 // ────────────────────────────────────────────────────────────────────────────
 // The FAQ / Reviews / Thank-you / Footer now render the canonical .brk-*
@@ -972,12 +1025,9 @@ function AboutPanel({
 //     hairlines,
 //   - the sage pill footer CTA + Lush footer typography.
 //
-// LUSH_CSS lives in the SHARED booking module (lushBookingCss.ts) and is NOT
-// edited here. It does NOT inject tokensToCss(), so the shared sections'
-// --brk-* SIZE tokens would resolve empty — hence ${tokensToCss()} below,
-// alongside the color/font aliases that bridge Lush's --lush-* onto the
-// canonical --brk-* roles. Lush injects --lush-pink/-rgb/-on-pink inline on
-// the root via accentVars; the remaining --lush-* tokens come from LUSH_CSS.
+// Tokens that this block bridges from --lush-* to --brk-color-* come from
+// LUSH_PAGE_TOKENS_CSS above (Phase 2 — Lush owns its tokens; engine reads
+// them via `var(--lush-X, fallback)` aliases).
 //
 // This is a real template literal (not CSS embedded inside another literal),
 // so the single ${tokensToCss()} interpolation below is intentional and the

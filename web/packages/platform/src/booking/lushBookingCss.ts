@@ -17,76 +17,69 @@
 export const LUSH_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Cookie&family=DM+Mono:wght@400;500&family=Molle:ital@1&family=DM+Serif+Text:ital@0;1&family=DM+Sans:opsz,wght@9..40,300..700&family=Roboto:wght@400;500;700&display=swap');
 
-/* ── Tokens scoped to template root ── */
+/* ── Canonical platform tokens (--brk-booking-*) scoped to template root ──
+   Phase 2 of the booking-architecture refactor (see docs/booking-
+   architecture.md). The engine consumes only --brk-booking-* names
+   internally; the legacy --lush-* names are kept as ALIAS FALLBACKS so
+   templates that override --lush-X (Lush + the six other current shims)
+   continue to drive the engine values transparently. The Lush palette
+   defaults below are the fallback when no template provides --lush-X. */
 .lush-template {
-  /* Lush Studio palette (soft spa). Cream page, near-black text,
-     muted sage accent. Var names retain "pink" for now to avoid a
-     full rename sweep — they're sage values internally. */
-  --lush-bg:          #F6F3EE;
-  --lush-card:        #FFFFFF;
-  --lush-text:        #0E1111;
-  --lush-muted:       #6B7280;
-  --lush-pink:        #7FAF9A;
-  /* Comma-separated RGB triplet for the same accent. Used by every
-     rgba(var(--lush-pink-rgb), opacity) glow so swapping accents
-     propagates everywhere via a single override on .lush-template. */
-  --lush-pink-rgb:    127, 175, 154;
-  /* Foreground color rendered ON TOP of a solid --lush-pink background.
-     Default is white (legible on every preset except white itself);
-     the editor flips this to dark when the white accent is picked. */
-  --lush-on-pink:     #FFFFFF;
-  --lush-pink-soft:   #B3D0C2;
-  --lush-dark-border: rgba(14,17,17,0.10);
-  /* Dark "call to action" surface — the filled button used for
-     primary actions (Continue, Confirm, Go to dashboard). Templates
-     override this to re-theme every CTA at once. The matching CTA
-     foreground (text-on-dark) is --lush-cta-fg. */
-  --lush-cta-bg:        #121212;
-  --lush-cta-bg-hover:  #2a2a2a;
-  --lush-cta-fg:        #FFFFFF;
-  /* Soft cream secondary card surface — used by the post-booking
-     "All set" confirmation card and a couple of inline strips.
-     Distinct from --lush-card (white) so templates can tint them
-     separately. */
-  --lush-card-soft:     #F8F6F2;
-  /* Form input placeholder color — softer than --lush-muted because
-     placeholder text shouldn't compete with real input. */
-  --lush-input-placeholder: #c4bcb6;
-  /* Danger / inline-error palette — used by the auth modal error
-     banner, slot conflict toasts, etc. */
-  --lush-danger-fg:     #B91C1C;
-  --lush-danger-bg:     #FEF2F2;
-  --lush-danger-border: #FECACA;
-  /* Glow effects intentionally removed for the soft-spa direction —
-     spa visual language is calm + flat, not luminous. The vars stay
-     so the existing references still resolve; they just render as
-     "no shadow". */
-  --lush-glow:        none;
-  --lush-text-glow:   none;
-  /* Cookie — clean handwritten script for decorative headings.
-     Molle — italic display script used for the highlight-color
-     Before/After block; defined here so it propagates to any future
-     use (the section pulls var(--lush-molle) directly). */
-  --lush-script:      "Cookie", cursive;
-  --lush-molle:       "Molle", cursive;
-  --lush-serif:       "DM Serif Text", serif;
-  --lush-sans:        "DM Sans", sans-serif;
-  --lush-ui:          "Roboto", sans-serif;
-  --lush-mono:        "DM Mono","Roboto Mono",monospace;
-  width: 100%; background: var(--lush-bg); color: var(--lush-text);
+  --brk-booking-bg:    var(--lush-bg,    #F6F3EE);
+  --brk-booking-card:  var(--lush-card,  #FFFFFF);
+  --brk-booking-text:  var(--lush-text,  #0E1111);
+  --brk-booking-muted: var(--lush-muted, #6B7280);
+  /* Brand accent. Templates / tenants override --lush-pink (the legacy
+     name was kept for backward compat with the accent picker; semantically
+     it's "accent" — the var was sage at Lush, hot-pink at FadeRoom, etc). */
+  --brk-booking-accent:      var(--lush-pink,      #7FAF9A);
+  --brk-booking-accent-rgb:  var(--lush-pink-rgb,  127, 175, 154);
+  --brk-booking-on-accent:   var(--lush-on-pink,   #FFFFFF);
+  --brk-booking-accent-soft: var(--lush-pink-soft, #B3D0C2);
+  --brk-booking-rule:        var(--lush-dark-border, rgba(14,17,17,0.10));
+  /* Dark "call to action" surface — the filled button used for primary
+     actions (Continue, Confirm, Go to dashboard). Templates override to
+     re-theme every CTA at once. */
+  --brk-booking-cta-bg:       var(--lush-cta-bg,       #121212);
+  --brk-booking-cta-bg-hover: var(--lush-cta-bg-hover, #2a2a2a);
+  --brk-booking-cta-fg:       var(--lush-cta-fg,       #FFFFFF);
+  /* Soft cream secondary card — used by the post-booking "All set"
+     confirmation card and a couple of inline strips. */
+  --brk-booking-card-soft:    var(--lush-card-soft,    #F8F6F2);
+  --brk-booking-input-placeholder: var(--lush-input-placeholder, #c4bcb6);
+  /* Danger / inline-error palette — auth modal error banner, slot
+     conflict toasts, etc. */
+  --brk-booking-danger-fg:     var(--lush-danger-fg,     #B91C1C);
+  --brk-booking-danger-bg:     var(--lush-danger-bg,     #FEF2F2);
+  --brk-booking-danger-border: var(--lush-danger-border, #FECACA);
+  /* Optional shadow effects (no-op for spa-flat templates). */
+  --brk-booking-glow:      var(--lush-glow,      none);
+  --brk-booking-text-glow: var(--lush-text-glow, none);
+  /* Reserved "ink" — used by a couple of post-booking confirmation
+     surfaces that want a deeper near-black than the main text color. */
+  --brk-booking-ink:       var(--lush-ink,       #16131a);
+  /* Font stacks. Templates override these to swap typography. */
+  --brk-booking-font-script: var(--lush-script, "Cookie", cursive);
+  --brk-booking-font-molle:  var(--lush-molle,  "Molle",  cursive);
+  --brk-booking-font-serif:  var(--lush-serif,  "DM Serif Text", serif);
+  --brk-booking-font-sans:   var(--lush-sans,   "DM Sans", sans-serif);
+  --brk-booking-font-ui:     var(--lush-ui,     "Roboto", sans-serif);
+  --brk-booking-font-mono:   var(--lush-mono,   "DM Mono","Roboto Mono",monospace);
+
+  width: 100%; background: var(--brk-booking-bg); color: var(--brk-booking-text);
   /* overflow-x:clip (not overflow-x:hidden) so the tab rail's
      position:sticky still works. overflow:hidden would establish a
      scroll container on .lush-template and ancestors of sticky
      elements then become the sticky's scroll boundary — sticky never
      activates against the viewport. overflow:clip does the same visual
      clipping without creating a scroll context. */
-  overflow-x: clip; font-family: var(--lush-ui);
+  overflow-x: clip; font-family: var(--brk-booking-font-ui);
 }
 .lush-template *, .lush-template *::before, .lush-template *::after { box-sizing: border-box; }
 .lush-template img { max-width: 100%; display: block; }
 .lush-template a { text-decoration: none; }
 .lush-template button, .lush-template a { -webkit-tap-highlight-color: transparent; cursor: pointer; }
-.lush-template :focus-visible { outline: 2px solid var(--lush-pink); outline-offset: 3px; }
+.lush-template :focus-visible { outline: 2px solid var(--brk-booking-accent); outline-offset: 3px; }
 
 /* ── Announcement bar ── Static centered strip matching the pattern
    TFR (✦ bookends) and Blackline (clean strip) established. Lush keeps
@@ -97,10 +90,10 @@ export const LUSH_CSS = `
   justify-content:center;
   gap:14px;
   padding:12px 24px;
-  background:rgba(var(--lush-pink-rgb),0.08);
-  border-bottom:1px solid rgba(var(--lush-pink-rgb),0.20);
-  color:var(--lush-text);
-  font-family:var(--lush-ui);
+  background:rgba(var(--brk-booking-accent-rgb),0.08);
+  border-bottom:1px solid rgba(var(--brk-booking-accent-rgb),0.20);
+  color:var(--brk-booking-text);
+  font-family:var(--brk-booking-font-ui);
   font-size:11px;
   font-weight:600;
   letter-spacing:0.22em;
@@ -110,7 +103,7 @@ export const LUSH_CSS = `
 .lush-announce-spark {
   display:inline-flex;
   align-items:center;
-  color:var(--lush-pink);
+  color:var(--brk-booking-accent);
   flex-shrink:0;
 }
 
@@ -140,7 +133,7 @@ export const LUSH_CSS = `
      mobile but still applied on tablet/desktop, forcing the header to a
      full viewport height and leaving a big empty gap before the tab rail
      on PC. */
-  width:100%; min-height:auto; background:var(--lush-bg);
+  width:100%; min-height:auto; background:var(--brk-booking-bg);
   overflow:hidden; position:relative;
 }
 /* ── Customer-account widget (BookReady house style) ──
@@ -155,7 +148,7 @@ export const LUSH_CSS = `
   position:absolute; top:14px; right:14px; z-index:6;
   display:inline-flex; align-items:center; gap:7px;
   padding:8px 12px; border-radius:0;
-  background:var(--lush-card); color:var(--lush-text);
+  background:var(--brk-booking-card); color:var(--brk-booking-text);
   border:1px solid rgba(18,18,18,0.15);
   font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   font-size:10px; font-weight:700; line-height:1;
@@ -167,7 +160,7 @@ export const LUSH_CSS = `
 }
 @media (hover:hover) and (pointer:fine) {
   .lush-account-widget:hover {
-    background:var(--lush-cta-bg); color:var(--lush-cta-fg); border-color:var(--lush-cta-bg);
+    background:var(--brk-booking-cta-bg); color:var(--brk-booking-cta-fg); border-color:var(--brk-booking-cta-bg);
   }
 }
 .lush-account-widget--authed { padding:0; gap:0; overflow:hidden; }
@@ -220,7 +213,7 @@ export const LUSH_CSS = `
 @keyframes lushAuthFade { from{opacity:0} to{opacity:1} }
 .lush-auth-modal {
   position:relative; width:100%; max-width:440px;
-  background:var(--lush-card); color:var(--lush-text);
+  background:var(--brk-booking-card); color:var(--brk-booking-text);
   border-radius:0;
   font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   box-shadow:0 24px 60px rgba(0,0,0,0.35);
@@ -233,7 +226,7 @@ export const LUSH_CSS = `
 .lush-auth-modal-brand {
   display:flex; align-items:center; justify-content:space-between;
   padding:14px 22px;
-  background:var(--lush-cta-bg); color:var(--lush-cta-fg);
+  background:var(--brk-booking-cta-bg); color:var(--brk-booking-cta-fg);
 }
 .lush-auth-modal-wordmark {
   font-size:10px; font-weight:700;
@@ -247,7 +240,7 @@ export const LUSH_CSS = `
   margin:-4px -6px -4px 0;
   transition:color .15s ease;
 }
-.lush-auth-modal-close:hover { color:var(--lush-cta-fg); }
+.lush-auth-modal-close:hover { color:var(--brk-booking-cta-fg); }
 
 /* Tab strip — same 2-col grid with bg-near-black-on-active treatment
    that the editor app auth pages use. */
@@ -260,57 +253,57 @@ export const LUSH_CSS = `
   border:none; background:transparent;
   font:inherit; font-size:11px; font-weight:700;
   letter-spacing:0.18em; text-transform:uppercase;
-  color:var(--lush-muted); cursor:pointer;
+  color:var(--brk-booking-muted); cursor:pointer;
   transition:color .15s ease, background .15s ease;
 }
 .lush-auth-modal-tab.is-active {
-  background:var(--lush-cta-bg); color:var(--lush-cta-fg);
+  background:var(--brk-booking-cta-bg); color:var(--brk-booking-cta-fg);
 }
-.lush-auth-modal-tab:not(.is-active):hover { color:var(--lush-text); }
+.lush-auth-modal-tab:not(.is-active):hover { color:var(--brk-booking-text); }
 
 .lush-auth-modal-body { padding:28px 26px 24px; }
 .lush-auth-modal-eyebrow {
   display:block;
   font-size:10px; font-weight:700;
   letter-spacing:0.18em; text-transform:uppercase;
-  color:var(--lush-muted);
+  color:var(--brk-booking-muted);
   margin:0 0 6px;
 }
 .lush-auth-modal-title {
   font-family:inherit;
   font-size:26px; font-weight:700;
   letter-spacing:-0.01em; line-height:1.1;
-  margin:0 0 6px; color:var(--lush-text);
+  margin:0 0 6px; color:var(--brk-booking-text);
 }
 .lush-auth-modal-tag {
-  font-size:13px; color:var(--lush-muted); line-height:1.5;
+  font-size:13px; color:var(--brk-booking-muted); line-height:1.5;
   margin:0 0 20px;
 }
 .lush-auth-modal-error {
   margin-bottom:14px; padding:10px 12px;
-  background:var(--lush-danger-bg); border:1px solid var(--lush-danger-border); border-radius:0;
-  font-size:12px; color:var(--lush-danger-fg);
+  background:var(--brk-booking-danger-bg); border:1px solid var(--brk-booking-danger-border); border-radius:0;
+  font-size:12px; color:var(--brk-booking-danger-fg);
 }
 .lush-auth-modal-form { display:grid; gap:14px; }
 .lush-auth-modal-field { display:flex; flex-direction:column; gap:5px; }
 .lush-auth-modal-field > span {
   font-size:10px; font-weight:700;
   letter-spacing:0.18em; text-transform:uppercase;
-  color:var(--lush-muted);
+  color:var(--brk-booking-muted);
 }
 .lush-auth-modal-form input {
   width:100%; padding:12px 14px;
-  background:var(--lush-card); color:var(--lush-text);
+  background:var(--brk-booking-card); color:var(--brk-booking-text);
   border:1px solid rgba(18,18,18,0.15); border-radius:0;
   font:inherit; font-size:14px; line-height:1.2;
   -webkit-appearance:none; appearance:none;
   transition:border-color .15s ease;
 }
-.lush-auth-modal-form input:focus { outline:none; border-color:var(--lush-cta-bg); }
-.lush-auth-modal-form input::placeholder { color:var(--lush-input-placeholder); }
+.lush-auth-modal-form input:focus { outline:none; border-color:var(--brk-booking-cta-bg); }
+.lush-auth-modal-form input::placeholder { color:var(--brk-booking-input-placeholder); }
 .lush-auth-modal-submit {
   width:100%; padding:14px;
-  background:var(--lush-cta-bg); color:var(--lush-cta-fg);
+  background:var(--brk-booking-cta-bg); color:var(--brk-booking-cta-fg);
   border:none; border-radius:0;
   font:inherit; font-size:11px; font-weight:700;
   letter-spacing:0.18em; text-transform:uppercase;
@@ -318,14 +311,14 @@ export const LUSH_CSS = `
   display:inline-flex; align-items:center; justify-content:center;
   transition:background .15s ease;
 }
-.lush-auth-modal-submit:hover:not(:disabled) { background:var(--lush-cta-bg-hover); }
+.lush-auth-modal-submit:hover:not(:disabled) { background:var(--brk-booking-cta-bg-hover); }
 .lush-auth-modal-submit:disabled { opacity:0.6; cursor:default; }
 .lush-auth-modal-foot {
   margin:16px 0 0; text-align:center;
-  font-size:12px; color:var(--lush-muted);
+  font-size:12px; color:var(--brk-booking-muted);
 }
 .lush-auth-modal-foot a {
-  color:var(--lush-text); text-decoration:underline; text-underline-offset:2px;
+  color:var(--brk-booking-text); text-decoration:underline; text-underline-offset:2px;
 }
 .lush-auth-modal-fineprint { font-size:11px; line-height:1.45; }
 .lush-spin { animation:lushAuthSpin .9s linear infinite; }
@@ -344,7 +337,7 @@ export const LUSH_CSS = `
    so the content card visibly sits ON TOP of it instead of touching. */
 .lush-header-cover {
   width:100%; height:31vh; min-height:230px; position:relative;
-  background:var(--lush-bg);
+  background:var(--brk-booking-bg);
   overflow:hidden;
 }
 .lush-header-cover > img {
@@ -380,19 +373,19 @@ export const LUSH_CSS = `
   width:100%; margin:0 auto;
   padding:44px 30px 48px;
   text-align:left;
-  background:var(--lush-bg);
+  background:var(--brk-booking-bg);
   border-radius:36px 36px 0 0;
   margin-top:-48px;
   box-shadow:0 -14px 36px rgba(14,17,17,0.14);
 }
 .lush-header-content h1 {
-  margin:0; color:var(--lush-text); font-family:var(--lush-serif);
+  margin:0; color:var(--brk-booking-text); font-family:var(--brk-booking-font-serif);
   font-size:clamp(34px,8vw,56px); line-height:1.05;
   font-weight:400; letter-spacing:-0.02em;
 }
 .lush-header-subtype {
   margin:10px 0 0;
-  font-family:var(--lush-ui); /* Roboto bold */
+  font-family:var(--brk-booking-font-ui); /* Roboto bold */
   font-size:14px; font-weight:700;
   letter-spacing:0.16em; text-transform:uppercase;
   color:rgba(14,17,17,0.55);
@@ -406,12 +399,12 @@ export const LUSH_CSS = `
    name. Solid filled icons in highlight color, scaled to match. */
 .lush-header-info-row {
   display:inline-flex; align-items:center; gap:12px;
-  font-family:var(--lush-ui); /* Roboto bold */
+  font-family:var(--brk-booking-font-ui); /* Roboto bold */
   font-size:16px; line-height:1.3; font-weight:700;
   color:rgba(14,17,17,0.65);
 }
 .lush-header-info-row > svg {
-  color:var(--lush-pink); flex-shrink:0;
+  color:var(--brk-booking-accent); flex-shrink:0;
 }
 
 /* ── Header buttons ──
@@ -434,7 +427,7 @@ export const LUSH_CSS = `
   display:inline-flex; align-items:center; justify-content:center;
   width:50px; height:50px; padding:0;
   border-radius:50%;
-  color:var(--lush-cta-fg);
+  color:var(--brk-booking-cta-fg);
   border:none; cursor:pointer; text-decoration:none;
   font-size:0; line-height:1;
   transition:transform .15s ease, filter .15s ease;
@@ -453,9 +446,9 @@ export const LUSH_CSS = `
    buttons override this to forced white further down so platform
    gradients stay legible regardless of the chosen accent. */
 .lush-header-btn svg {
-  color:var(--lush-on-pink) !important;
-  stroke:var(--lush-on-pink);
-  fill:var(--lush-on-pink);
+  color:var(--brk-booking-on-accent) !important;
+  stroke:var(--brk-booking-on-accent);
+  fill:var(--brk-booking-on-accent);
 }
 
 /* Book + Call + Email + Message → flat accent solids (highlight color),
@@ -464,8 +457,8 @@ export const LUSH_CSS = `
 .lush-header-btn-call,
 .lush-header-btn-chat,
 .lush-header-btn-message {
-  background:var(--lush-pink) !important;
-  color:var(--lush-on-pink) !important;
+  background:var(--brk-booking-accent) !important;
+  color:var(--brk-booking-on-accent) !important;
 }
 
 /* The remaining contact + social buttons keep their brand gradients
@@ -488,15 +481,15 @@ export const LUSH_CSS = `
 .lush-header-btn-facebook svg,
 .lush-header-btn-pinterest svg,
 .lush-header-btn-whatsapp svg {
-  color:var(--lush-cta-fg) !important;
-  stroke:var(--lush-cta-fg) !important;
-  fill:var(--lush-cta-fg) !important;
+  color:var(--brk-booking-cta-fg) !important;
+  stroke:var(--brk-booking-cta-fg) !important;
+  fill:var(--brk-booking-cta-fg) !important;
 }
 
 .lush-header-btn-mobile-only { display:inline-flex !important; }
 
 /* ── Tabs ── */
-.lush-tabbed-section { width:100%; background:var(--lush-bg); }
+.lush-tabbed-section { width:100%; background:var(--brk-booking-bg); }
 
 /* Sticky rail — keeps Lush's own rhythm (wider 1180px container, 24px
    sides, 18/24 padding, z-index:20) per user feedback. The trio's exact
@@ -504,9 +497,9 @@ export const LUSH_CSS = `
    mask-image fade edges (none of the others use them). */
 .lush-tab-rail {
   position:sticky; top:0; z-index:20;
-  background:var(--lush-bg);
-  border-top:1px solid var(--lush-dark-border);
-  border-bottom:1px solid var(--lush-dark-border);
+  background:var(--brk-booking-bg);
+  border-top:1px solid var(--brk-booking-rule);
+  border-bottom:1px solid var(--brk-booking-rule);
   overflow-x:auto;
   -webkit-overflow-scrolling:touch;
   /* Keep the horizontal tab-scroll from bleeding into the browser's
@@ -542,10 +535,10 @@ export const LUSH_CSS = `
   display:inline-flex; align-items:center; justify-content:center;
   padding:12px 22px;
   background:transparent;
-  border:1px solid rgba(var(--lush-pink-rgb),0.30);
+  border:1px solid rgba(var(--brk-booking-accent-rgb),0.30);
   border-radius:999px;
-  color:var(--lush-muted);
-  font-family:var(--lush-ui); font-size:11px; font-weight:600;
+  color:var(--brk-booking-muted);
+  font-family:var(--brk-booking-font-ui); font-size:11px; font-weight:600;
   letter-spacing:0.20em; text-transform:uppercase; line-height:1;
   cursor:pointer; white-space:nowrap; scroll-snap-align:center;
   transition:color .22s ease, border-color .22s ease, background .22s ease;
@@ -554,26 +547,26 @@ export const LUSH_CSS = `
   content:"\\2726\\FE0E"; /* ✦ — \\FE0E variation selector forces text rendering, not emoji */
   position:absolute; top:-12px; left:50%;
   transform:translateX(-50%) translateY(-2px);
-  color:var(--lush-pink);
+  color:var(--brk-booking-accent);
   font-size:11px; line-height:1;
   opacity:0;
   transition:opacity .22s ease, transform .28s cubic-bezier(.4,0,.2,1);
   pointer-events:none;
 }
 .lush-tab-pill:hover {
-  color:var(--lush-text);
-  border-color:rgba(var(--lush-pink-rgb),0.55);
+  color:var(--brk-booking-text);
+  border-color:rgba(var(--brk-booking-accent-rgb),0.55);
 }
 .lush-tab-pill.is-active {
-  color:var(--lush-pink);
-  border-color:var(--lush-pink);
+  color:var(--brk-booking-accent);
+  border-color:var(--brk-booking-accent);
 }
 .lush-tab-pill.is-active::before {
   opacity:1;
   transform:translateX(-50%) translateY(0);
 }
 .lush-tab-pill:focus-visible {
-  outline:2px solid var(--lush-pink); outline-offset:2px;
+  outline:2px solid var(--brk-booking-accent); outline-offset:2px;
 }
 @media (prefers-reduced-motion:reduce) {
   .lush-tab-pill,
@@ -583,17 +576,17 @@ export const LUSH_CSS = `
 .lush-tab-panel.is-active { display:block; }
 
 /* ── Booking ── */
-.brk-booking-section { padding:36px 22px 64px; max-width:860px; margin:0 auto; color:var(--lush-text); }
+.brk-booking-section { padding:36px 22px 64px; max-width:860px; margin:0 auto; color:var(--brk-booking-text); }
 .brk-booking-head { text-align:center; margin-bottom:28px; }
 .brk-booking-eyebrow {
-  display:inline-block; font-family:var(--lush-ui); font-size:11px;
+  display:inline-block; font-family:var(--brk-booking-font-ui); font-size:11px;
   font-weight:600; letter-spacing:0.22em; text-transform:uppercase;
-  color:var(--lush-pink); margin-bottom:8px;
+  color:var(--brk-booking-accent); margin-bottom:8px;
 }
 .brk-booking-head h2 {
-  font-family:var(--lush-script); font-size:clamp(48px,9vw,64px);
+  font-family:var(--brk-booking-font-script); font-size:clamp(48px,9vw,64px);
   font-weight:400; line-height:1; letter-spacing:0; margin:0 0 22px;
-  color:var(--lush-text);
+  color:var(--brk-booking-text);
 }
 /* Compact dot-timeline: small numbered circles connected by thin lines
    with a single caption underneath ("Step 3 of 5 · Date & Time"). */
@@ -615,42 +608,42 @@ export const LUSH_CSS = `
   width:28px; height:28px;
   display:inline-flex; align-items:center; justify-content:center;
   font-size:11px; font-weight:600; letter-spacing:0.02em;
-  border:1px solid var(--lush-dark-border); border-radius:999px;
-  color:var(--lush-muted); background:transparent;
+  border:1px solid var(--brk-booking-rule); border-radius:999px;
+  color:var(--brk-booking-muted); background:transparent;
   transition:all .25s ease;
 }
 .brk-booking-step + .brk-booking-step::before {
   content:""; flex:1 1 auto; height:1px; min-width:14px;
-  background:var(--lush-dark-border); margin:0 4px;
+  background:var(--brk-booking-rule); margin:0 4px;
   transition:background .25s ease;
 }
 .brk-booking-step.is-done + .brk-booking-step::before {
-  background:var(--lush-pink);
+  background:var(--brk-booking-accent);
 }
 .brk-booking-step.is-active { transform:scale(1.05); }
 .brk-booking-step.is-active .brk-booking-step-num {
-  background:var(--lush-pink); border-color:var(--lush-pink);
-  color:var(--lush-on-pink);
+  background:var(--brk-booking-accent); border-color:var(--brk-booking-accent);
+  color:var(--brk-booking-on-accent);
 }
 .brk-booking-step.is-done .brk-booking-step-num {
-  border-color:var(--lush-pink);
-  color:var(--lush-pink);
+  border-color:var(--brk-booking-accent);
+  color:var(--brk-booking-accent);
   background:transparent;
 }
 .brk-booking-step:hover:not(.is-active) .brk-booking-step-num {
-  border-color:var(--lush-pink);
+  border-color:var(--brk-booking-accent);
 }
 .brk-booking-step-label {
   position:absolute; width:1px; height:1px; padding:0; margin:-1px;
   overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
 }
 .brk-booking-progress-caption {
-  margin:0; font-family:var(--lush-ui);
+  margin:0; font-family:var(--brk-booking-font-ui);
   font-size:10px; letter-spacing:0.18em; text-transform:uppercase;
-  color:var(--lush-muted); font-weight:600;
+  color:var(--brk-booking-muted); font-weight:600;
 }
 .brk-booking-progress-caption strong {
-  color:var(--lush-pink); font-weight:600;
+  color:var(--brk-booking-accent); font-weight:600;
   margin-left:4px;
 }
 /* Add-on cards: hidden native checkbox + visible card with flat sage
@@ -658,32 +651,32 @@ export const LUSH_CSS = `
 .lush-addon-card {
   display:flex; align-items:flex-start; gap:12px;
   padding:14px 16px;
-  background:var(--lush-card);
-  border:1px solid var(--lush-dark-border);
+  background:var(--brk-booking-card);
+  border:1px solid var(--brk-booking-rule);
   cursor:pointer;
   transition:border-color .2s ease, background .2s ease;
 }
 .lush-addon-card:hover:not(.is-locked) {
-  border-color:var(--lush-pink);
+  border-color:var(--brk-booking-accent);
 }
 .lush-addon-card.is-checked {
-  border-color:var(--lush-pink);
-  background:rgba(var(--lush-pink-rgb),0.06);
+  border-color:var(--brk-booking-accent);
+  background:rgba(var(--brk-booking-accent-rgb),0.06);
 }
 .lush-addon-card.is-locked { cursor:not-allowed; }
 .lush-addon-input { position:absolute; opacity:0; pointer-events:none; }
 .lush-addon-indicator {
   flex-shrink:0; width:22px; height:22px;
   display:inline-flex; align-items:center; justify-content:center;
-  border:1.5px solid var(--lush-dark-border);
+  border:1.5px solid var(--brk-booking-rule);
   background:transparent;
-  color:var(--lush-on-pink);
+  color:var(--brk-booking-on-accent);
   margin-top:1px;
   transition:all .2s ease;
 }
 .lush-addon-card.is-checked .lush-addon-indicator {
-  border-color:var(--lush-pink);
-  background:var(--lush-pink);
+  border-color:var(--brk-booking-accent);
+  background:var(--brk-booking-accent);
 }
 /* Optional addon thumbnail — slots between the checkbox indicator and
    the text body when an image_url is set. Square, modest size so a
@@ -693,7 +686,7 @@ export const LUSH_CSS = `
   width:48px; height:48px;
   border-radius:4px;
   object-fit:cover;
-  background:rgba(var(--lush-pink-rgb),0.06);
+  background:rgba(var(--brk-booking-accent-rgb),0.06);
 }
 .lush-addon-body { flex:1; min-width:0; }
 .lush-addon-head {
@@ -701,27 +694,27 @@ export const LUSH_CSS = `
   margin-bottom:2px;
 }
 .lush-addon-name {
-  font-family:var(--lush-ui); font-size:13px; font-weight:600;
-  color:var(--lush-text); letter-spacing:0.01em;
+  font-family:var(--brk-booking-font-ui); font-size:13px; font-weight:600;
+  color:var(--brk-booking-text); letter-spacing:0.01em;
 }
 .lush-addon-required {
   font-size:9px; font-weight:700; letter-spacing:0.12em;
   text-transform:uppercase;
   padding:2px 8px;
-  color:var(--lush-pink);
-  border:1px solid var(--lush-pink);
-  background:rgba(var(--lush-pink-rgb),0.08);
+  color:var(--brk-booking-accent);
+  border:1px solid var(--brk-booking-accent);
+  background:rgba(var(--brk-booking-accent-rgb),0.08);
 }
 .lush-addon-desc {
   font-size:11px; line-height:1.45;
-  color:var(--lush-muted);
+  color:var(--brk-booking-muted);
   margin:2px 0 6px;
 }
 .lush-addon-meta {
   display:inline-flex; gap:8px; align-items:center;
-  font-family:var(--lush-ui); font-size:11px; font-weight:600;
+  font-family:var(--brk-booking-font-ui); font-size:11px; font-weight:600;
   letter-spacing:0.06em;
-  color:var(--lush-pink);
+  color:var(--brk-booking-accent);
 }
 .lush-addon-meta-dot { opacity:0.45; }
 
@@ -733,9 +726,9 @@ export const LUSH_CSS = `
 /* Services in booking */
 .brk-booking-services { display:grid; gap:12px; }
 .brk-booking-service-card {
-  background:var(--lush-card);
-  border:1px solid var(--lush-dark-border);
-  border-left:2px solid var(--lush-pink);
+  background:var(--brk-booking-card);
+  border:1px solid var(--brk-booking-rule);
+  border-left:2px solid var(--brk-booking-accent);
   border-radius:6px; padding:18px 18px 16px;
   display:flex; flex-direction:column; gap:8px;
   transition:border-color .2s ease;
@@ -752,81 +745,81 @@ export const LUSH_CSS = `
   aspect-ratio:16 / 9;
   object-fit:cover;
   border-radius:4px;
-  background:rgba(var(--lush-pink-rgb),0.06);
+  background:rgba(var(--brk-booking-accent-rgb),0.06);
 }
-.brk-booking-service-card:hover { border-color:var(--lush-pink); }
+.brk-booking-service-card:hover { border-color:var(--brk-booking-accent); }
 .brk-booking-service-card.is-selected {
-  border-color:var(--lush-pink);
-  background:rgba(var(--lush-pink-rgb),0.06);
+  border-color:var(--brk-booking-accent);
+  background:rgba(var(--brk-booking-accent-rgb),0.06);
 }
 .brk-booking-service-top { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
-.brk-booking-service-card h3 { margin:0; font-family:var(--lush-ui); font-size:16px; font-weight:600; letter-spacing:0.02em; color:var(--lush-text); }
-.brk-booking-price { font-family:var(--lush-ui); font-size:15px; font-weight:600; color:var(--lush-pink); white-space:nowrap; }
-.brk-booking-desc { margin:0; font-size:13px; color:var(--lush-muted); line-height:1.5; }
-.brk-booking-meta { margin:0; font-size:12px; color:var(--lush-muted); display:inline-flex; gap:6px; align-items:center; }
+.brk-booking-service-card h3 { margin:0; font-family:var(--brk-booking-font-ui); font-size:16px; font-weight:600; letter-spacing:0.02em; color:var(--brk-booking-text); }
+.brk-booking-price { font-family:var(--brk-booking-font-ui); font-size:15px; font-weight:600; color:var(--brk-booking-accent); white-space:nowrap; }
+.brk-booking-desc { margin:0; font-size:13px; color:var(--brk-booking-muted); line-height:1.5; }
+.brk-booking-meta { margin:0; font-size:12px; color:var(--brk-booking-muted); display:inline-flex; gap:6px; align-items:center; }
 .brk-booking-pick {
   align-self:flex-start; margin-top:4px; background:transparent;
-  border:1px solid var(--lush-pink); color:var(--lush-text);
+  border:1px solid var(--brk-booking-accent); color:var(--brk-booking-text);
   border-radius:999px; padding:8px 14px;
   font-size:11px; letter-spacing:0.16em; text-transform:uppercase; font-weight:600;
   cursor:pointer; display:inline-flex; gap:8px; align-items:center;
   transition:background .2s ease;
 }
-.brk-booking-pick:hover { background:rgba(var(--lush-pink-rgb),0.10); }
+.brk-booking-pick:hover { background:rgba(var(--brk-booking-accent-rgb),0.10); }
 
 /* Date & time */
 .brk-booking-datetime { display:flex; flex-direction:column; gap:22px; }
 .brk-booking-block { }
 .brk-booking-block-label {
   display:block; font-size:11px; letter-spacing:0.18em;
-  text-transform:uppercase; color:var(--lush-muted); margin-bottom:12px; font-weight:600;
+  text-transform:uppercase; color:var(--brk-booking-muted); margin-bottom:12px; font-weight:600;
 }
 .brk-booking-days { display:flex; flex-wrap:wrap; gap:8px; }
 .brk-booking-day {
   flex:1 1 72px; min-width:68px; max-width:100px;
-  background:var(--lush-card);
-  border:1px solid var(--lush-dark-border);
+  background:var(--brk-booking-card);
+  border:1px solid var(--brk-booking-rule);
   border-radius:8px; padding:12px 8px;
   display:flex; flex-direction:column; align-items:center; gap:3px;
-  color:var(--lush-text); cursor:pointer; transition:all .2s ease;
+  color:var(--brk-booking-text); cursor:pointer; transition:all .2s ease;
 }
-.brk-booking-day span { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--lush-muted); }
-.brk-booking-day strong { font-family:var(--lush-ui); font-size:18px; font-weight:600; }
-.brk-booking-day:hover { border-color:var(--lush-pink); }
+.brk-booking-day span { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--brk-booking-muted); }
+.brk-booking-day strong { font-family:var(--brk-booking-font-ui); font-size:18px; font-weight:600; }
+.brk-booking-day:hover { border-color:var(--brk-booking-accent); }
 .brk-booking-day.is-selected {
-  border-color:var(--lush-pink);
-  background:var(--lush-pink);
-  color:var(--lush-on-pink);
+  border-color:var(--brk-booking-accent);
+  background:var(--brk-booking-accent);
+  color:var(--brk-booking-on-accent);
 }
 .brk-booking-day.is-selected span,
-.brk-booking-day.is-selected strong { color:var(--lush-on-pink); }
+.brk-booking-day.is-selected strong { color:var(--brk-booking-on-accent); }
 
 /* ── Calendar ── */
 .brk-booking-calendar {
-  background:var(--lush-card);
-  border:1px solid var(--lush-dark-border); border-radius:10px;
+  background:var(--brk-booking-card);
+  border:1px solid var(--brk-booking-rule); border-radius:10px;
   padding:14px; display:flex; flex-direction:column; gap:10px;
 }
 .lush-calendar-head {
   display:flex; align-items:center; justify-content:space-between; gap:8px;
 }
 .lush-calendar-title {
-  font-family:var(--lush-ui); font-size:14px; font-weight:600;
-  letter-spacing:0.08em; color:var(--lush-text); text-transform:uppercase;
+  font-family:var(--brk-booking-font-ui); font-size:14px; font-weight:600;
+  letter-spacing:0.08em; color:var(--brk-booking-text); text-transform:uppercase;
 }
 .lush-calendar-nav {
-  background:transparent; border:1px solid var(--lush-dark-border);
-  color:var(--lush-text); width:34px; height:34px; border-radius:999px;
+  background:transparent; border:1px solid var(--brk-booking-rule);
+  color:var(--brk-booking-text); width:34px; height:34px; border-radius:999px;
   display:inline-flex; align-items:center; justify-content:center;
   cursor:pointer; transition:all .2s ease;
 }
-.lush-calendar-nav:hover { border-color:var(--lush-pink); color:var(--lush-pink); }
+.lush-calendar-nav:hover { border-color:var(--brk-booking-accent); color:var(--brk-booking-accent); }
 .lush-calendar-nav:disabled { opacity:0.3; cursor:not-allowed; }
-.lush-calendar-nav:disabled:hover { border-color:var(--lush-dark-border); color:var(--lush-text); }
+.lush-calendar-nav:disabled:hover { border-color:var(--brk-booking-rule); color:var(--brk-booking-text); }
 .lush-calendar-dow {
   display:grid; grid-template-columns:repeat(7,1fr); gap:4px;
-  font-family:var(--lush-ui); font-size:10px; font-weight:600;
-  letter-spacing:0.1em; text-transform:uppercase; color:var(--lush-muted);
+  font-family:var(--brk-booking-font-ui); font-size:10px; font-weight:600;
+  letter-spacing:0.1em; text-transform:uppercase; color:var(--brk-booking-muted);
   text-align:center; padding:0 2px;
 }
 .lush-calendar-dow span { padding:4px 0; }
@@ -835,16 +828,16 @@ export const LUSH_CSS = `
 }
 .lush-calendar-day {
   aspect-ratio:1/1; min-height:36px;
-  background:var(--lush-card);
-  border:1px solid var(--lush-dark-border);
-  border-radius:6px; color:var(--lush-text);
-  font-family:var(--lush-ui); font-size:13px; font-weight:500;
+  background:var(--brk-booking-card);
+  border:1px solid var(--brk-booking-rule);
+  border-radius:6px; color:var(--brk-booking-text);
+  font-family:var(--brk-booking-font-ui); font-size:13px; font-weight:500;
   display:inline-flex; align-items:center; justify-content:center;
   cursor:pointer; transition:all .15s ease; padding:0;
 }
-.lush-calendar-day:hover:not(:disabled) { border-color:var(--lush-pink); transform:translateY(-1px); }
+.lush-calendar-day:hover:not(:disabled) { border-color:var(--brk-booking-accent); transform:translateY(-1px); }
 .lush-calendar-day--today {
-  border-color:var(--lush-pink); color:var(--lush-text);
+  border-color:var(--brk-booking-accent); color:var(--brk-booking-text);
 }
 .lush-calendar-day--blocked {
   background:transparent; border-color:rgba(14,17,17,0.04);
@@ -852,9 +845,9 @@ export const LUSH_CSS = `
 }
 .lush-calendar-day--blocked:hover { transform:none; }
 .lush-calendar-day--selected {
-  background:var(--lush-pink); border-color:var(--lush-pink); color:var(--lush-on-pink);
+  background:var(--brk-booking-accent); border-color:var(--brk-booking-accent); color:var(--brk-booking-on-accent);
 }
-.lush-calendar-day--selected.lush-calendar-day--today { color:var(--lush-on-pink); }
+.lush-calendar-day--selected.lush-calendar-day--today { color:var(--brk-booking-on-accent); }
 .lush-calendar-day--empty {
   background:transparent; border:0; cursor:default; visibility:hidden;
 }
@@ -869,7 +862,7 @@ export const LUSH_CSS = `
    without reading as closed. */
 .lush-calendar-day--waitlist {
   background:rgba(201,168,118,0.18); border-color:rgba(201,168,118,0.55);
-  color:var(--lush-text);
+  color:var(--brk-booking-text);
 }
 .lush-calendar-day--waitlist:hover:not(:disabled) {
   border-color:rgba(201,168,118,0.85); transform:translateY(-1px);
@@ -878,41 +871,41 @@ export const LUSH_CSS = `
    with squeeze-ins enabled reads differently from a waitlist-only day. */
 .lush-calendar-day--squeeze-in {
   background:rgba(155,118,201,0.18); border-color:rgba(155,118,201,0.55);
-  color:var(--lush-text);
+  color:var(--brk-booking-text);
 }
 .lush-calendar-day--squeeze-in:hover:not(:disabled) {
   border-color:rgba(155,118,201,0.85); transform:translateY(-1px);
 }
 .brk-booking-times { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:8px; }
 .brk-booking-time {
-  background:var(--lush-card); border:1px solid var(--lush-dark-border);
-  border-radius:999px; padding:12px 10px; color:var(--lush-text);
-  font-family:var(--lush-ui); font-size:13px; cursor:pointer; transition:all .2s ease; text-align:center;
+  background:var(--brk-booking-card); border:1px solid var(--brk-booking-rule);
+  border-radius:999px; padding:12px 10px; color:var(--brk-booking-text);
+  font-family:var(--brk-booking-font-ui); font-size:13px; cursor:pointer; transition:all .2s ease; text-align:center;
 }
-.brk-booking-time:hover { border-color:var(--lush-pink); }
+.brk-booking-time:hover { border-color:var(--brk-booking-accent); }
 .brk-booking-time.is-selected {
-  border-color:var(--lush-pink);
-  background:var(--lush-pink);
-  color:var(--lush-on-pink);
+  border-color:var(--brk-booking-accent);
+  background:var(--brk-booking-accent);
+  color:var(--brk-booking-on-accent);
 }
 /* Av2.0 P4 — after-hours (premium) slots: dark fill + dashed edge so they
    visibly read as "after hours / premium" against the regular pills. */
 .brk-booking-time.is-after-hours {
   border-style:dashed;
-  background:var(--lush-ink, #16131a);
-  border-color:var(--lush-ink, #16131a);
+  background:var(--brk-booking-ink, #16131a);
+  border-color:var(--brk-booking-ink, #16131a);
   color:#fff;
 }
-.brk-booking-time.is-after-hours:hover { border-color:var(--lush-pink); }
+.brk-booking-time.is-after-hours:hover { border-color:var(--brk-booking-accent); }
 .brk-booking-time.is-after-hours.is-selected {
-  background:var(--lush-pink); border-color:var(--lush-pink); color:var(--lush-on-pink);
+  background:var(--brk-booking-accent); border-color:var(--brk-booking-accent); color:var(--brk-booking-on-accent);
 }
 .brk-booking-time-fee {
   display:block; margin-top:2px; font-size:10px; font-weight:700;
   letter-spacing:.04em; opacity:.75;
 }
-.lush-slot-msg { font-size:13px; color:var(--lush-muted); padding:16px 0; }
-.lush-slot-error { color:var(--lush-danger-fg); }
+.lush-slot-msg { font-size:13px; color:var(--brk-booking-muted); padding:16px 0; }
+.lush-slot-error { color:var(--brk-booking-danger-fg); }
 
 /* Details step */
 /* Customer-account banner above the Details step inputs (BookReady
@@ -924,17 +917,17 @@ export const LUSH_CSS = `
 .brk-booking-auth {
   display:flex; align-items:center; gap:10px; flex-wrap:wrap;
   padding:11px 14px; margin-bottom:14px;
-  background:var(--lush-card);
+  background:var(--brk-booking-card);
   border:1px solid rgba(18,18,18,0.10);
   border-radius:0;
   font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   font-size:12px; line-height:1.3;
-  color:var(--lush-text);
+  color:var(--brk-booking-text);
 }
-.brk-booking-auth--authed { background:var(--lush-card-soft); }
+.brk-booking-auth--authed { background:var(--brk-booking-card-soft); }
 .brk-booking-auth strong { font-weight:700; }
 .brk-booking-auth-link {
-  margin-left:auto; color:var(--lush-text);
+  margin-left:auto; color:var(--brk-booking-text);
   text-decoration:underline; text-underline-offset:2px;
   font-weight:700; font-size:10px;
   letter-spacing:0.14em; text-transform:uppercase;
@@ -944,7 +937,7 @@ export const LUSH_CSS = `
   font-family:inherit; cursor:pointer;
 }
 @media (hover:hover) and (pointer:fine) {
-  .brk-booking-auth-link:hover { color:var(--lush-muted); }
+  .brk-booking-auth-link:hover { color:var(--brk-booking-muted); }
 }
 
 /* Persistent thin sign-in row below the booking title. Centered,
@@ -954,13 +947,13 @@ export const LUSH_CSS = `
   margin:6px 0 20px;
   font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   font-size:12px; line-height:1.4;
-  color:var(--lush-muted);
+  color:var(--brk-booking-muted);
   text-align:center;
 }
-.brk-booking-auth-thin strong { font-weight:600; color:var(--lush-text); }
+.brk-booking-auth-thin strong { font-weight:600; color:var(--brk-booking-text); }
 .brk-booking-auth-thin button {
   background:transparent; border:none; padding:0;
-  font:inherit; color:var(--lush-text);
+  font:inherit; color:var(--brk-booking-text);
   text-decoration:underline; text-underline-offset:2px;
   cursor:pointer;
 }
@@ -975,7 +968,7 @@ export const LUSH_CSS = `
 .brk-booking-account-cta {
   display:flex; align-items:center; gap:14px;
   padding:14px 16px; margin-bottom:18px;
-  background:var(--lush-card); color:var(--lush-text);
+  background:var(--brk-booking-card); color:var(--brk-booking-text);
   border:1px solid rgba(18,18,18,0.12);
   border-radius:0;
   text-decoration:none;
@@ -984,7 +977,7 @@ export const LUSH_CSS = `
 }
 @media (hover:hover) and (pointer:fine) {
   .brk-booking-account-cta:hover {
-    background:var(--lush-cta-bg); color:var(--lush-cta-fg); border-color:var(--lush-cta-bg);
+    background:var(--brk-booking-cta-bg); color:var(--brk-booking-cta-fg); border-color:var(--brk-booking-cta-bg);
   }
 }
 .brk-booking-account-cta-icon {
@@ -1021,11 +1014,11 @@ export const LUSH_CSS = `
 .brk-booking-create-account {
   margin-top:6px;
   padding:14px 16px;
-  background:var(--lush-card);
+  background:var(--brk-booking-card);
   border:1px solid rgba(18,18,18,0.12);
   border-radius:0;
   font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
-  color:var(--lush-text);
+  color:var(--brk-booking-text);
 }
 .brk-booking-create-account-row {
   display:flex; align-items:center; gap:10px;
@@ -1033,7 +1026,7 @@ export const LUSH_CSS = `
 }
 .brk-booking-create-account-row > input[type="checkbox"] {
   width:16px; height:16px; flex-shrink:0;
-  accent-color:var(--lush-cta-bg); cursor:pointer;
+  accent-color:var(--brk-booking-cta-bg); cursor:pointer;
 }
 .brk-booking-create-account-row > strong {
   font-size:14px; font-weight:700; letter-spacing:-0.005em;
@@ -1042,7 +1035,7 @@ export const LUSH_CSS = `
    indent that would compete with the checkbox alignment above. */
 .brk-booking-create-account-blurb {
   margin:8px 0 0;
-  font-size:12px; line-height:1.45; color:var(--lush-muted);
+  font-size:12px; line-height:1.45; color:var(--brk-booking-muted);
 }
 .brk-booking-create-account-pw {
   display:flex; flex-direction:column; gap:6px;
@@ -1052,7 +1045,7 @@ export const LUSH_CSS = `
 .brk-booking-create-account-pw > span:first-child {
   font-size:10px; font-weight:700;
   letter-spacing:0.18em; text-transform:uppercase;
-  color:var(--lush-muted);
+  color:var(--brk-booking-muted);
 }
 /* Password input — the higher-specificity selector (with [type] and
    the create-account scope) wins over .brk-booking-fields input which
@@ -1060,20 +1053,20 @@ export const LUSH_CSS = `
    Also using stronger border + a visible placeholder color. */
 .brk-booking-create-account .brk-booking-create-account-pw input[type="password"] {
   width:100%; padding:11px 13px;
-  background:var(--lush-card); color:var(--lush-text);
+  background:var(--brk-booking-card); color:var(--brk-booking-text);
   border:1px solid rgba(18,18,18,0.25); border-radius:0;
   font:inherit; font-size:14px; line-height:1.2;
   -webkit-appearance:none; appearance:none;
   box-shadow:none;
 }
 .brk-booking-create-account .brk-booking-create-account-pw input[type="password"]:focus {
-  outline:none; border-color:var(--lush-cta-bg);
+  outline:none; border-color:var(--brk-booking-cta-bg);
 }
 .brk-booking-create-account .brk-booking-create-account-pw input[type="password"]::placeholder {
-  color:var(--lush-input-placeholder);
+  color:var(--brk-booking-input-placeholder);
 }
 .brk-booking-create-account-fineprint {
-  font-size:11px; line-height:1.45; color:var(--lush-muted);
+  font-size:11px; line-height:1.45; color:var(--brk-booking-muted);
 }
 
 /* Account-follow-up card. Used twice: at the top of the booking form
@@ -1084,7 +1077,7 @@ export const LUSH_CSS = `
   display:flex; gap:14px;
   padding:16px;
   margin:12px 0 24px;
-  background:var(--lush-card-soft); color:var(--lush-text);
+  background:var(--brk-booking-card-soft); color:var(--brk-booking-text);
   border:1px solid rgba(18,18,18,0.10);
   font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   text-align:left;
@@ -1095,14 +1088,14 @@ export const LUSH_CSS = `
 .brk-booking-account-followup-icon {
   width:36px; height:36px; flex-shrink:0;
   display:inline-flex; align-items:center; justify-content:center;
-  background:var(--lush-card); border:1px solid rgba(18,18,18,0.12);
+  background:var(--brk-booking-card); border:1px solid rgba(18,18,18,0.12);
 }
 .brk-booking-account-followup-body { display:flex; flex-direction:column; gap:4px; flex:1; min-width:0; }
 .brk-booking-account-followup-eyebrow {
   margin:0;
   font-size:9px; font-weight:700;
   letter-spacing:0.18em; text-transform:uppercase;
-  color:var(--lush-muted);
+  color:var(--brk-booking-muted);
 }
 .brk-booking-account-followup-title {
   margin:0;
@@ -1110,21 +1103,21 @@ export const LUSH_CSS = `
 }
 .brk-booking-account-followup-sub {
   margin:0;
-  font-size:12px; line-height:1.45; color:var(--lush-muted);
+  font-size:12px; line-height:1.45; color:var(--brk-booking-muted);
 }
 .brk-booking-account-followup-cta {
   display:inline-flex; align-items:center; gap:6px;
   margin-top:6px; align-self:flex-start;
   padding:7px 11px;
-  background:var(--lush-cta-bg); color:var(--lush-cta-fg);
-  border:1px solid var(--lush-cta-bg);
+  background:var(--brk-booking-cta-bg); color:var(--brk-booking-cta-fg);
+  border:1px solid var(--brk-booking-cta-bg);
   font-size:10px; font-weight:700;
   letter-spacing:0.14em; text-transform:uppercase;
   text-decoration:none;
   transition:background .15s ease,color .15s ease;
 }
 @media (hover:hover) and (pointer:fine) {
-  .brk-booking-account-followup-cta:hover { background:var(--lush-cta-bg-hover); }
+  .brk-booking-account-followup-cta:hover { background:var(--brk-booking-cta-bg-hover); }
 }
 @media (hover:hover) and (pointer:fine) {
   .brk-booking-auth-link:hover { opacity:0.75; }
@@ -1142,11 +1135,11 @@ export const LUSH_CSS = `
   margin-top:-4px; padding:8px 0;
   cursor:pointer; user-select:none;
   font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
-  font-size:11px; line-height:1.45; color:var(--lush-muted);
+  font-size:11px; line-height:1.45; color:var(--brk-booking-muted);
 }
 .brk-booking-sms-consent > input[type="checkbox"] {
   width:14px; height:14px; margin-top:2px; flex-shrink:0;
-  accent-color:var(--lush-cta-bg); cursor:pointer;
+  accent-color:var(--brk-booking-cta-bg); cursor:pointer;
 }
 
 /* One standard identity field row (Name / Email / Phone / Notes).
@@ -1158,69 +1151,69 @@ export const LUSH_CSS = `
 .brk-booking-field { display:flex; flex-direction:column; gap:6px; }
 .brk-booking-field > span {
   font-size:10px; letter-spacing:0.18em; text-transform:uppercase;
-  color:var(--lush-muted); font-weight:600;
+  color:var(--brk-booking-muted); font-weight:600;
 }
 .brk-booking-fields input,
 .brk-booking-textarea {
-  background:var(--lush-card); border:1px solid var(--lush-dark-border);
-  border-radius:6px; padding:12px 14px; color:var(--lush-text);
-  font-family:var(--lush-ui); font-size:14px; width:100%;
+  background:var(--brk-booking-card); border:1px solid var(--brk-booking-rule);
+  border-radius:6px; padding:12px 14px; color:var(--brk-booking-text);
+  font-family:var(--brk-booking-font-ui); font-size:14px; width:100%;
   transition:border-color .2s ease;
 }
 .brk-booking-fields input::placeholder,
-.brk-booking-textarea::placeholder { color:var(--lush-muted); }
+.brk-booking-textarea::placeholder { color:var(--brk-booking-muted); }
 .brk-booking-fields input:focus,
-.brk-booking-textarea:focus { outline:0; border-color:var(--lush-pink); }
+.brk-booking-textarea:focus { outline:0; border-color:var(--brk-booking-accent); }
 .brk-booking-textarea { resize:vertical; }
 
 /* Phase 16 — custom questions on the Details step */
 .brk-booking-questions {
   display:grid; gap:14px;
   padding-top:14px; margin-top:6px;
-  border-top:1px solid var(--lush-dark-border);
+  border-top:1px solid var(--brk-booking-rule);
 }
 .brk-booking-question { display:flex; flex-direction:column; gap:4px; }
 .brk-booking-question > label { display:flex; flex-direction:column; gap:6px; }
 .brk-booking-question select {
   width:100%; padding:12px 14px;
-  background:var(--lush-card); border:1px solid var(--lush-dark-border);
-  color:var(--lush-text); font-family:var(--lush-ui); font-size:14px;
+  background:var(--brk-booking-card); border:1px solid var(--brk-booking-rule);
+  color:var(--brk-booking-text); font-family:var(--brk-booking-font-ui); font-size:14px;
   border-radius:6px;
 }
-.brk-booking-question select:focus { outline:0; border-color:var(--lush-pink); }
-.brk-booking-question-hint { font-size:11px; color:var(--lush-muted); margin:0; }
+.brk-booking-question select:focus { outline:0; border-color:var(--brk-booking-accent); }
+.brk-booking-question-hint { font-size:11px; color:var(--brk-booking-muted); margin:0; }
 .brk-booking-checkbox-row {
   display:flex; align-items:center; gap:10px;
-  font-size:13px !important; color:var(--lush-text) !important;
+  font-size:13px !important; color:var(--brk-booking-text) !important;
   letter-spacing:normal !important; text-transform:none !important; font-weight:400 !important;
 }
-.brk-booking-checkbox-row input[type="checkbox"] { width:18px; height:18px; accent-color:var(--lush-pink); }
+.brk-booking-checkbox-row input[type="checkbox"] { width:18px; height:18px; accent-color:var(--brk-booking-accent); }
 
 .brk-booking-image-upload { display:flex; flex-direction:column; gap:8px; }
 .brk-booking-image-pick {
   display:inline-flex; align-items:center; gap:8px;
   align-self:flex-start; padding:10px 16px; border-radius:6px;
-  background:var(--lush-card); border:1px dashed var(--lush-dark-border);
-  color:var(--lush-text); font-size:12px; cursor:pointer;
+  background:var(--brk-booking-card); border:1px dashed var(--brk-booking-rule);
+  color:var(--brk-booking-text); font-size:12px; cursor:pointer;
   transition:border-color .2s ease;
   letter-spacing:normal !important; text-transform:none !important; font-weight:500 !important;
 }
-.brk-booking-image-pick:hover { border-color:var(--lush-pink); }
+.brk-booking-image-pick:hover { border-color:var(--brk-booking-accent); }
 .brk-booking-image-preview {
   position:relative; display:inline-block; max-width:220px;
 }
 .brk-booking-image-preview img {
   width:100%; height:auto; max-height:180px; object-fit:cover;
-  border-radius:6px; border:1px solid var(--lush-dark-border);
+  border-radius:6px; border:1px solid var(--brk-booking-rule);
 }
 .brk-booking-image-remove {
   position:absolute; top:6px; right:6px;
   width:24px; height:24px; border-radius:50%;
-  background:rgba(14,17,17,0.85); border:1px solid var(--lush-dark-border);
+  background:rgba(14,17,17,0.85); border:1px solid var(--brk-booking-rule);
   color:#fff; display:inline-flex; align-items:center; justify-content:center;
   cursor:pointer;
 }
-.brk-booking-image-err { font-size:11px; color:var(--lush-danger-fg); }
+.brk-booking-image-err { font-size:11px; color:var(--brk-booking-danger-fg); }
 .lush-spin { animation: lush-spin 1s linear infinite; }
 @keyframes lush-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
@@ -1229,18 +1222,18 @@ export const LUSH_CSS = `
 .brk-booking-back,
 .brk-booking-next,
 .brk-booking-confirm-btn {
-  background:transparent; border:1px solid var(--lush-dark-border);
-  color:var(--lush-text); padding:13px 20px; border-radius:999px;
+  background:transparent; border:1px solid var(--brk-booking-rule);
+  color:var(--brk-booking-text); padding:13px 20px; border-radius:999px;
   font-size:11px; letter-spacing:0.16em; text-transform:uppercase;
   font-weight:600; cursor:pointer;
   display:inline-flex; gap:8px; align-items:center;
-  transition:all .25s ease; font-family:var(--lush-ui);
+  transition:all .25s ease; font-family:var(--brk-booking-font-ui);
 }
-.brk-booking-back:hover { border-color:var(--lush-cta-bg); }
+.brk-booking-back:hover { border-color:var(--brk-booking-cta-bg); }
 .brk-booking-next,
 .brk-booking-confirm-btn {
-  background:var(--lush-pink); border-color:var(--lush-pink);
-  color:var(--lush-on-pink);
+  background:var(--brk-booking-accent); border-color:var(--brk-booking-accent);
+  color:var(--brk-booking-on-accent);
 }
 .brk-booking-next:hover,
 .brk-booking-confirm-btn:hover { filter:brightness(1.06); transform:translateY(-1px); }
@@ -1250,36 +1243,36 @@ export const LUSH_CSS = `
 /* Confirm step */
 .brk-booking-confirm { display:flex; flex-direction:column; gap:18px; }
 .brk-booking-summary {
-  background:var(--lush-card);
-  border:1px solid var(--lush-dark-border); border-radius:8px; padding:18px;
+  background:var(--brk-booking-card);
+  border:1px solid var(--brk-booking-rule); border-radius:8px; padding:18px;
 }
 .brk-booking-summary dl { margin:0; display:flex; flex-direction:column; gap:8px; margin-top:12px; }
 .brk-booking-summary div {
   display:flex; justify-content:space-between; align-items:baseline; gap:12px;
-  padding-bottom:8px; border-bottom:1px dashed var(--lush-dark-border);
+  padding-bottom:8px; border-bottom:1px dashed var(--brk-booking-rule);
 }
 .brk-booking-summary div:last-child { border-bottom:0; padding-bottom:0; }
-.brk-booking-summary dt { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--lush-muted); margin:0; font-weight:600; }
-.brk-booking-summary dd { margin:0; font-family:var(--lush-ui); font-size:14px; color:var(--lush-text); text-align:right; }
-.brk-booking-total dt, .brk-booking-total dd { color:var(--lush-pink) !important; font-size:16px !important; }
-.brk-booking-error { background:var(--lush-danger-bg); border:1px solid var(--lush-danger-border); border-radius:6px; padding:12px 16px; font-size:13px; color:var(--lush-danger-fg); }
-.brk-booking-disclaimer { text-align:center; font-size:11px; color:var(--lush-muted); margin-top:4px; }
+.brk-booking-summary dt { font-size:10px; letter-spacing:0.16em; text-transform:uppercase; color:var(--brk-booking-muted); margin:0; font-weight:600; }
+.brk-booking-summary dd { margin:0; font-family:var(--brk-booking-font-ui); font-size:14px; color:var(--brk-booking-text); text-align:right; }
+.brk-booking-total dt, .brk-booking-total dd { color:var(--brk-booking-accent) !important; font-size:16px !important; }
+.brk-booking-error { background:var(--brk-booking-danger-bg); border:1px solid var(--brk-booking-danger-border); border-radius:6px; padding:12px 16px; font-size:13px; color:var(--brk-booking-danger-fg); }
+.brk-booking-disclaimer { text-align:center; font-size:11px; color:var(--brk-booking-muted); margin-top:4px; }
 
 /* Success */
 .brk-booking-success {
   text-align:center; padding:48px 24px; display:flex; flex-direction:column;
   align-items:center; gap:12px; max-width:500px; margin:0 auto;
 }
-.brk-booking-success-icon { font-size:48px; color:var(--lush-pink); }
-.brk-booking-success h3 { font-family:var(--lush-serif); font-size:clamp(28px,5vw,40px); font-weight:400; letter-spacing:-0.02em; margin:0; }
-.brk-booking-success-copy { font-size:15px; color:var(--lush-muted); line-height:1.55; margin:0; }
+.brk-booking-success-icon { font-size:48px; color:var(--brk-booking-accent); }
+.brk-booking-success h3 { font-family:var(--brk-booking-font-serif); font-size:clamp(28px,5vw,40px); font-weight:400; letter-spacing:-0.02em; margin:0; }
+.brk-booking-success-copy { font-size:15px; color:var(--brk-booking-muted); line-height:1.55; margin:0; }
 .brk-booking-success-summary {
   display:flex; flex-wrap:wrap; justify-content:center; gap:8px;
-  background:rgba(var(--lush-pink-rgb),0.07); border:1px solid var(--lush-dark-border);
-  border-radius:8px; padding:12px 18px; font-size:14px; color:var(--lush-text);
+  background:rgba(var(--brk-booking-accent-rgb),0.07); border:1px solid var(--brk-booking-rule);
+  border-radius:8px; padding:12px 18px; font-size:14px; color:var(--brk-booking-text);
 }
-.brk-booking-success-dot { color:var(--lush-pink); }
-.brk-booking-success-note { font-size:12px; color:var(--lush-muted); margin:0; }
+.brk-booking-success-dot { color:var(--brk-booking-accent); }
+.brk-booking-success-note { font-size:12px; color:var(--brk-booking-muted); margin:0; }
 
 /* ── Embedded Stripe Checkout ── Mounted on-page after the booking POST
    returns a client secret. The Stripe component renders its own iframe
@@ -1291,27 +1284,27 @@ export const LUSH_CSS = `
 }
 .brk-booking-checkout-head { text-align:center; display:flex; flex-direction:column; gap:6px; }
 .brk-booking-checkout-head h3 {
-  font-family:var(--lush-serif); font-size:clamp(24px,4vw,34px);
-  font-weight:400; letter-spacing:-0.02em; margin:0; color:var(--lush-text);
+  font-family:var(--brk-booking-font-serif); font-size:clamp(24px,4vw,34px);
+  font-weight:400; letter-spacing:-0.02em; margin:0; color:var(--brk-booking-text);
 }
-.brk-booking-checkout-sub { font-size:13px; color:var(--lush-muted); margin:0; }
+.brk-booking-checkout-sub { font-size:13px; color:var(--brk-booking-muted); margin:0; }
 .brk-booking-checkout-frame {
-  background:var(--lush-card); border:1px solid var(--lush-dark-border);
+  background:var(--brk-booking-card); border:1px solid var(--brk-booking-rule);
   border-radius:8px; padding:8px;
 }
 .brk-booking-checkout-cancel {
   align-self:center; background:none; border:none; cursor:pointer;
-  font-family:var(--lush-ui); font-size:13px; color:var(--lush-muted);
+  font-family:var(--brk-booking-font-ui); font-size:13px; color:var(--brk-booking-muted);
   text-decoration:underline; padding:4px 8px;
 }
-.brk-booking-checkout-cancel:hover { color:var(--lush-text); }
+.brk-booking-checkout-cancel:hover { color:var(--brk-booking-text); }
 .brk-booking-checkout-errmsg {
   margin:0; padding:20px 16px; text-align:center;
-  font-family:var(--lush-ui); font-size:14px; line-height:1.55; color:var(--lush-text);
+  font-family:var(--brk-booking-font-ui); font-size:14px; line-height:1.55; color:var(--brk-booking-text);
 }
 .brk-booking-checkout-loading {
   margin:0; padding:24px 16px; display:flex; align-items:center; justify-content:center;
-  gap:8px; font-family:var(--lush-ui); font-size:14px; color:var(--lush-muted);
+  gap:8px; font-family:var(--brk-booking-font-ui); font-size:14px; color:var(--brk-booking-muted);
 }
 .brk-booking-checkout-loading .brk-booking-spin { animation: brk-booking-spin 0.8s linear infinite; }
 @keyframes brk-booking-spin { to { transform: rotate(360deg); } }
@@ -1325,26 +1318,26 @@ export const LUSH_CSS = `
 }
 .brk-booking-coupon-toggle {
   align-self: flex-start; background: none; border: none; cursor: pointer;
-  font-family: var(--lush-ui); font-size: 12px; color: var(--lush-muted);
+  font-family: var(--brk-booking-font-ui); font-size: 12px; color: var(--brk-booking-muted);
   text-decoration: underline; padding: 2px 0;
 }
-.brk-booking-coupon-toggle:hover { color: var(--lush-text); }
+.brk-booking-coupon-toggle:hover { color: var(--brk-booking-text); }
 .brk-booking-coupon-form {
   display: flex; gap: 8px; align-items: stretch;
 }
 .brk-booking-coupon-input {
   flex: 1; min-width: 0;
-  background: var(--lush-card); border: 1px solid var(--lush-dark-border);
-  font-family: var(--lush-ui); font-size: 13px; color: var(--lush-text);
+  background: var(--brk-booking-card); border: 1px solid var(--brk-booking-rule);
+  font-family: var(--brk-booking-font-ui); font-size: 13px; color: var(--brk-booking-text);
   padding: 8px 10px; letter-spacing: 0.04em;
 }
 .brk-booking-coupon-input:focus {
-  outline: none; border-color: var(--lush-pink);
+  outline: none; border-color: var(--brk-booking-accent);
 }
 .brk-booking-coupon-apply {
-  background: var(--lush-text); color: var(--lush-card);
-  border: 1px solid var(--lush-text);
-  font-family: var(--lush-ui); font-size: 11px; font-weight: 700;
+  background: var(--brk-booking-text); color: var(--brk-booking-card);
+  border: 1px solid var(--brk-booking-text);
+  font-family: var(--brk-booking-font-ui); font-size: 11px; font-weight: 700;
   letter-spacing: 0.1em; text-transform: uppercase;
   padding: 0 14px; cursor: pointer;
 }
@@ -1352,30 +1345,30 @@ export const LUSH_CSS = `
 .brk-booking-coupon-applied {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 8px 10px;
-  background: rgba(var(--lush-pink-rgb), 0.10);
-  border: 1px solid rgba(var(--lush-pink-rgb), 0.30);
+  background: rgba(var(--brk-booking-accent-rgb), 0.10);
+  border: 1px solid rgba(var(--brk-booking-accent-rgb), 0.30);
 }
 .brk-booking-coupon-tag {
-  font-family: var(--lush-ui); font-size: 12px; font-weight: 600;
-  color: var(--lush-text); letter-spacing: 0.03em;
+  font-family: var(--brk-booking-font-ui); font-size: 12px; font-weight: 600;
+  color: var(--brk-booking-text); letter-spacing: 0.03em;
 }
 .brk-booking-coupon-remove {
   background: none; border: none; cursor: pointer;
-  font-family: var(--lush-ui); font-size: 12px; color: var(--lush-muted);
+  font-family: var(--brk-booking-font-ui); font-size: 12px; color: var(--brk-booking-muted);
   text-decoration: underline; padding: 0;
 }
-.brk-booking-coupon-remove:hover { color: var(--lush-text); }
+.brk-booking-coupon-remove:hover { color: var(--brk-booking-text); }
 .brk-booking-coupon-err {
-  margin: 0; font-family: var(--lush-ui); font-size: 12px;
+  margin: 0; font-family: var(--brk-booking-font-ui); font-size: 12px;
   color: #b42828; /* danger — inline at this exact spot to match other booking errors */
 }
 .brk-booking-coupon-line {
   display: flex; justify-content: space-between; align-items: baseline;
-  padding: 4px 0; font-size: 13px; color: var(--lush-muted);
+  padding: 4px 0; font-size: 13px; color: var(--brk-booking-muted);
   font-style: italic;
 }
-.brk-booking-coupon-line dd { color: var(--lush-text); font-weight: 600; }
-.brk-booking-coupon-total { border-top: 1px dashed var(--lush-dark-border); padding-top: 6px; }
+.brk-booking-coupon-line dd { color: var(--brk-booking-text); font-weight: 600; }
+.brk-booking-coupon-total { border-top: 1px dashed var(--brk-booking-rule); padding-top: 6px; }
 
 /* ── Gallery ── */
 /* ── Shared tab header ── Every Lush tab opens with the same eyebrow +
@@ -1391,21 +1384,21 @@ export const LUSH_CSS = `
 }
 .lush-eyebrow {
   margin: 0;
-  font-family: var(--lush-ui);
+  font-family: var(--brk-booking-font-ui);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: var(--lush-pink);
+  color: var(--brk-booking-accent);
 }
 .lush-section-title {
   margin: 14px 0 0;
-  font-family: var(--lush-script);
+  font-family: var(--brk-booking-font-script);
   font-weight: 400;
   font-size: clamp(52px, 8vw, 72px);
   line-height: 1;
   letter-spacing: 0;
-  color: var(--lush-text);
+  color: var(--brk-booking-text);
 }
 
 /* ── Gallery / Before & After ── now render via the shared
@@ -1425,7 +1418,7 @@ export const LUSH_CSS = `
   width: 100%;
   max-width: 720px;
   margin: 0 auto;
-  background: var(--lush-bg);
+  background: var(--brk-booking-bg);
   padding: 56px 24px 80px;
 }
 
@@ -1436,8 +1429,8 @@ export const LUSH_CSS = `
   margin: 0 0 56px;
   border-radius: 18px;
   overflow: hidden;
-  border: 1px solid var(--lush-dark-border);
-  background: rgba(var(--lush-pink-rgb), 0.06);
+  border: 1px solid var(--brk-booking-rule);
+  background: rgba(var(--brk-booking-accent-rgb), 0.06);
   aspect-ratio: 16/9;
 }
 .lush-about-feature img {
@@ -1459,8 +1452,8 @@ export const LUSH_CSS = `
 .lush-about-img {
   border-radius: 14px;
   overflow: hidden;
-  border: 1px solid var(--lush-dark-border);
-  background: rgba(var(--lush-pink-rgb), 0.06);
+  border: 1px solid var(--brk-booking-rule);
+  background: rgba(var(--brk-booking-accent-rgb), 0.06);
 }
 .lush-about-img img {
   width: 100%;
@@ -1471,8 +1464,8 @@ export const LUSH_CSS = `
 .lush-about-img--placeholder {
   background: linear-gradient(
     135deg,
-    rgba(var(--lush-pink-rgb), 0.04),
-    rgba(var(--lush-pink-rgb), 0.14)
+    rgba(var(--brk-booking-accent-rgb), 0.04),
+    rgba(var(--brk-booking-accent-rgb), 0.14)
   );
 }
 .lush-about-images > *:nth-child(1) { aspect-ratio: 4/5; margin-top: 0; }
@@ -1495,19 +1488,19 @@ export const LUSH_CSS = `
    that pulls the eye into the prose — borrowed from VT's editorial
    treatment. */
 .lush-about-copy {
-  font-family: var(--lush-ui);
+  font-family: var(--brk-booking-font-ui);
   font-size: 15px;
   line-height: 1.7;
-  color: var(--lush-text);
+  color: var(--brk-booking-text);
 }
 .lush-about-body { margin: 0 0 40px; }
 .lush-about-body::first-letter {
-  font-family: var(--lush-serif);
+  font-family: var(--brk-booking-font-serif);
   font-size: 56px;
   line-height: 0.9;
   float: left;
   padding: 6px 12px 0 0;
-  color: var(--lush-pink);
+  color: var(--brk-booking-accent);
 }
 
 /* Highlights — divided list with sage hairlines top + bottom of each
@@ -1520,25 +1513,25 @@ export const LUSH_CSS = `
 }
 .lush-about-highlights > li {
   padding: 24px 0;
-  border-top: 1px solid var(--lush-dark-border);
+  border-top: 1px solid var(--brk-booking-rule);
 }
 .lush-about-highlights > li:last-child {
-  border-bottom: 1px solid var(--lush-dark-border);
+  border-bottom: 1px solid var(--brk-booking-rule);
 }
 .lush-about-highlights h3 {
   margin: 0 0 6px;
-  font-family: var(--lush-serif);
+  font-family: var(--brk-booking-font-serif);
   font-size: 22px;
   font-weight: 400;
   letter-spacing: -0.01em;
-  color: var(--lush-text);
+  color: var(--brk-booking-text);
 }
 .lush-about-highlights p {
   margin: 0;
-  font-family: var(--lush-ui);
+  font-family: var(--brk-booking-font-ui);
   font-size: 14px;
   line-height: 1.6;
-  color: var(--lush-muted);
+  color: var(--brk-booking-muted);
 }
 
 /* Signature closer — small uppercase Roboto "With care," sits above
@@ -1547,21 +1540,21 @@ export const LUSH_CSS = `
 .lush-about-sign {
   margin: 0;
   text-align: center;
-  font-family: var(--lush-ui);
+  font-family: var(--brk-booking-font-ui);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--lush-muted);
+  color: var(--brk-booking-muted);
 }
 .lush-about-sign em {
   display: block;
   margin-top: 14px;
-  font-family: var(--lush-script);
+  font-family: var(--brk-booking-font-script);
   font-style: normal;
   font-size: 48px;
   line-height: 1;
-  color: var(--lush-pink);
+  color: var(--brk-booking-accent);
   letter-spacing: 0;
   text-transform: none;
 }
@@ -1582,15 +1575,15 @@ export const LUSH_CSS = `
 /* ── Contact cards ── */
 .lush-contact-card {
   display:flex; align-items:center; gap:14px; padding:16px 18px;
-  background:var(--lush-card); border:1px solid var(--lush-dark-border);
-  border-left:2px solid var(--lush-pink); border-radius:4px;
-  text-decoration:none; color:var(--lush-text); transition:border-color .2s ease;
+  background:var(--brk-booking-card); border:1px solid var(--brk-booking-rule);
+  border-left:2px solid var(--brk-booking-accent); border-radius:4px;
+  text-decoration:none; color:var(--brk-booking-text); transition:border-color .2s ease;
 }
-.lush-contact-card:hover { border-color:var(--lush-pink); }
+.lush-contact-card:hover { border-color:var(--brk-booking-accent); }
 .lush-contact-icon { font-size:20px; flex-shrink:0; }
 .lush-contact-card div { display:flex; flex-direction:column; gap:3px; }
-.lush-contact-label { font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--lush-pink); font-weight:600; }
-.lush-contact-value { font-size:14px; color:var(--lush-text); }
+.lush-contact-label { font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--brk-booking-accent); font-weight:600; }
+.lush-contact-value { font-size:14px; color:var(--brk-booking-text); }
 
 /* ── Desktop ── Rebuilt PC layout. Keeps the tabbed-SPA model + the
    Lush identity; styles the component's CURRENT classes. The previous
@@ -1783,7 +1776,7 @@ export const LUSH_CSS = `
   content: '\\2726\\FE0E';
   position: absolute;
   font-family: serif;
-  color: rgba(var(--lush-pink-rgb), 0.65);
+  color: rgba(var(--brk-booking-accent-rgb), 0.65);
   pointer-events: none;
   animation: lf-twinkle 4s ease-in-out infinite;
 }
@@ -1819,11 +1812,11 @@ export const LUSH_CSS = `
 }
 .lush-femme .lush-tab-pill.is-active {
   background: linear-gradient(135deg,
-    rgba(var(--lush-pink-rgb), 0.16),
-    rgba(var(--lush-pink-rgb), 0.06));
+    rgba(var(--brk-booking-accent-rgb), 0.16),
+    rgba(var(--brk-booking-accent-rgb), 0.06));
   box-shadow:
-    inset 0 0 0 1px rgba(var(--lush-pink-rgb), 0.32),
-    0 4px 12px rgba(var(--lush-pink-rgb), 0.18);
+    inset 0 0 0 1px rgba(var(--brk-booking-accent-rgb), 0.32),
+    0 4px 12px rgba(var(--brk-booking-accent-rgb), 0.18);
 }
 .lush-femme .lush-tab-pill.is-active::after {
   display: none; /* drop the underline — we use the soft pill fill now */
@@ -1846,8 +1839,8 @@ export const LUSH_CSS = `
 .lush-femme .lush-header-btn-book {
   box-shadow:
     0 1px 0 rgba(255,255,255,0.42) inset,
-    0 8px 18px rgba(var(--lush-pink-rgb), 0.28),
-    0 2px 6px rgba(var(--lush-pink-rgb), 0.20);
+    0 8px 18px rgba(var(--brk-booking-accent-rgb), 0.28),
+    0 2px 6px rgba(var(--brk-booking-accent-rgb), 0.20);
 }
 
 /* Reduced-motion respect — kill the animations for users who opt out. */

@@ -28,13 +28,22 @@
 
 | # | Phase                       | What ships                                  | Status      |
 | - | --------------------------- | ------------------------------------------- | ----------- |
-| 1 | Theme tokens                | `--brk-booking-*` variables + Lush parity   | **active**  |
-| 2 | TFR re-paint                | TFR override file drops `!important` calls  | pending     |
-| 3 | VT re-paint                 | VT override file drops `!important` calls   | pending     |
-| 4 | Rename + drop legacy class  | `PlatformBookingFlow`, no `.lush-template`  | pending     |
+| 1 | Theme tokens                | `--brk-booking-*` variables + Lush parity   | shipped     |
+| 2 | Rename + Lush owns tokens   | Engine consumes `--brk-booking-*`; Lush defines `--lush-*` | **active**  |
+| 3 | TFR re-paint                | TFR override file drops `!important` calls  | pending     |
+| 4 | VT (+ 4 more) re-paint      | Bottega / Petale / Opaline / Blackline / VT | pending     |
 | 5 | Template shell deduplication| `<TemplateBookingShell>` shared component   | pending     |
 | 6 | Smoke tests                 | Playwright happy-path against staging tenant| pending     |
 | 7 | Split the engine            | Per-step components under `BookingSteps/`   | deferred    |
+
+**Phase order changed 2026-06-09:** swapped what was Phase 2/3 (re-paints)
+with Phase 4 (rename) per architecture review. Rationale: re-paints touch
+the same lines the rename would touch — doing rename first means each shim
+gets rewritten once, not twice. Scope expansion: discovered **7 templates**
+(not 3) use `--lush-*` and `.lush-template`. All 7 must continue rendering
+correctly post-Phase-2; the chosen approach (alias `--brk-booking-X: var
+(--lush-X, default)` in the engine) keeps every shim working without any
+shim file changes in Phase 2 itself.
 
 Phase 7 is deferred until a substantive booking feature motivates the split.
 Splitting a 2,413-line component speculatively, with no tests, is a recipe
@@ -116,7 +125,79 @@ No `!important` is added. No template shim file changes.
 
 ---
 
-## Phase 2 — TheFadeRoom re-paint
+## Phase 2 — Rename + Lush owns tokens (Option 1)
+
+**Goal:** the canonical token namespace in the booking engine is
+`--brk-booking-*`. Lush owns its own `--lush-*` tokens, defined in
+`LushStudioTemplate.tsx`, not borrowed from the engine. Templates can
+override either name; the engine's aliases connect them.
+
+**Approach (alias-via-fallback):**
+
+```css
+/* Engine — was:
+.lush-template {
+  --lush-bg:   #F6F3EE;
+  --lush-text: #0E1111;
+}
+.X { color: var(--lush-text); }
+
+/* Engine — now:
+.lush-template, .brk-booking-root {
+  --brk-booking-bg:   var(--lush-bg,   #F6F3EE);
+  --brk-booking-text: var(--lush-text, #0E1111);
+}
+.lush-template .X, .brk-booking-root .X { color: var(--brk-booking-text); }
+
+/* LushStudioTemplate.tsx — now provides its own --lush-* tokens */
+.lush-template {
+  --lush-bg:   #F6F3EE;
+  --lush-text: #0E1111;
+}
+```
+
+**Why this approach:**
+
+1. **Lush owns its tokens (Option 1).** `LushStudioTemplate.tsx` is now
+   the source of truth for `--lush-*`. The engine only defines its
+   canonical names.
+2. **All 7 shims keep working unchanged.** They wrap in `.lush-template`
+   and override `--lush-X` — the engine's alias `var(--lush-X, default)`
+   reads their override transparently. Zero shim file changes in Phase 2.
+3. **Cascade-anchor selectors get a sibling.** `.lush-template .X` is
+   joined by `.brk-booking-root .X` in every engine rule. Both selectors
+   have 0,2,0 specificity, both beat `.tfr-template a` (0,1,1) — so the
+   cascade-fight bug class is fixed for the rules that already use the
+   anchor pattern. (The 4-5 bare `.brk-booking-X` rules that don't use
+   the anchor are addressed at the end of Phase 2 by adding the anchor
+   prefix.)
+4. **Phase 3+ (re-paints) become small.** TFR/VT/etc. can drop their
+   `!important` rules once they know the engine wins the cascade
+   without `!important`. Phase 2 makes that possible.
+
+**Files changed:**
+
+- `web/packages/platform/src/booking/lushBookingCss.ts` — engine var
+  rename + selector dual-anchor + bare-class anchor prefix
+- `web/templates/lushstudio/LushStudioTemplate.tsx` — adds
+  `LUSH_PAGE_TOKENS_CSS` const that defines `--lush-*` at
+  `.lush-template`; injects it before `<style>{LUSH_CSS}</style>`
+
+**Not changed in Phase 2:**
+
+- 6 other template shims (TFR, VT, Bottega, Petale, Opaline, Blackline)
+- File names (`LushStudioBooking.tsx` etc.) — defer to a small follow-up
+- Constant rename `LUSH_CSS` → `PLATFORM_BOOKING_CSS` — same
+- `.lush-auth-modal-*` class rename — same
+
+**Acceptance:** all 7 templates render visually identical to post-Phase-1.
+The `.tfr-template a` cascade-fight bug we shipped a fix for on
+2026-06-09 should be solvable without the TFR-side `!important`
+override; Phase 3 will verify by deleting that override.
+
+---
+
+## Phase 3 — TheFadeRoom re-paint
 
 **Goal:** `TheFadeRoomBooking.tsx` sets the `--brk-booking-*` variables
 once at its scope root, then deletes the surgical `!important` overrides
