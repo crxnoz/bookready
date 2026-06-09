@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalShell eyebrow="Legal" title="Privacy Policy" effectiveDate="May 26, 2026">
+    <LegalShell eyebrow="Legal" title="Privacy Policy" effectiveDate="June 9, 2026">
       <p>
         This Privacy Notice for DaysGraphic LLC, the company that operates the
         BookReady platform (&ldquo;<strong>we</strong>,&rdquo; &ldquo;<strong>us</strong>,&rdquo;
@@ -276,9 +276,130 @@ export default function PrivacyPage() {
         </li>
       </ul>
 
-      <h3>Google API</h3>
+      <h3 id="googleapi">Google API access</h3>
       <p>
-        Our use of information received from Google APIs will adhere to the{' '}
+        <strong><em>In short:</em></strong> <em>If you choose to connect your
+        Google Calendar to BookReady, we use the Google Calendar API to push
+        your bookings into a calendar of your choice. We do not read your
+        other calendar events, sell your Google data, or use it to train AI
+        models.</em>
+      </p>
+      <p>
+        BookReady offers an optional integration that pushes appointments
+        booked on your BookReady site into your Google Calendar. The
+        integration is off by default; you connect it from{' '}
+        <a href="https://app.bkrdy.me/editor/integrations">
+          app.bkrdy.me/editor/integrations
+        </a>{' '}
+        by signing in with Google and explicitly granting permission.
+      </p>
+      <p>
+        <strong>Scopes we request and how we use them:</strong>
+      </p>
+      <ul>
+        <li>
+          &ldquo;See, edit, share, and permanently delete all the calendars
+          you can access using Google Calendar&rdquo; — requested as the{' '}
+          <em>Calendar Events Owned</em> scope
+          (<code>https://www.googleapis.com/auth/calendar.events.owned</code>).
+          Used <em>only</em> to create, update, and delete the calendar
+          events that BookReady itself creates for your appointments. We do
+          not read, modify, or delete events created by other apps or by
+          you directly in Google Calendar.
+        </li>
+        <li>
+          &ldquo;See and download any calendar you can access using your
+          Google Calendar&rdquo; — requested as the{' '}
+          <em>Calendar Read-Only</em> scope
+          (<code>https://www.googleapis.com/auth/calendar.readonly</code>).
+          Used <em>only</em> to list the calendars you own at setup so you
+          can choose which calendar BookReady should sync into (typically
+          your primary calendar, but many owners prefer a dedicated
+          &ldquo;BookReady Bookings&rdquo; calendar). We do not read the
+          contents of those calendars.
+        </li>
+      </ul>
+      <p>
+        <strong>What we store.</strong> When you connect Google Calendar, we
+        store: your Google account&rsquo;s unique identifier and email
+        address (so we can show you which account is connected), an
+        encrypted refresh token (so we can keep pushing events on your
+        behalf without re-prompting you for permission), the ID and display
+        name of the calendar you selected, and the Google event ID we
+        receive back for each appointment we push (so we can update or
+        delete the right event if your appointment changes). Tokens are
+        encrypted at rest using application-level encryption.
+      </p>
+      <p>
+        <strong>What we do NOT do with your Google data.</strong>{' '}
+        Consistent with the{' '}
+        <a
+          href="https://developers.google.com/terms/api-services-user-data-policy#limited-use"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Google API Services User Data Policy &mdash; Limited Use
+          requirements
+        </a>
+        , we do not:
+      </p>
+      <ul>
+        <li>
+          Sell, lease, or transfer Google user data to any third party for
+          advertising, marketing, or any other purpose.
+        </li>
+        <li>
+          Use Google user data to serve advertisements, including
+          personalized or retargeted ads.
+        </li>
+        <li>
+          Use Google user data to train, develop, or improve any
+          general-purpose artificial intelligence or machine learning model.
+        </li>
+        <li>
+          Allow humans to read your Google data, except (i) with your
+          explicit consent for specific data points, (ii) where necessary
+          for security purposes (such as investigating abuse), (iii) to
+          comply with applicable law, or (iv) where the data has been
+          aggregated and anonymized for internal operations.
+        </li>
+        <li>
+          Read events your calendar contains beyond the ones BookReady
+          itself created.
+        </li>
+      </ul>
+      <p>
+        <strong>How to disconnect.</strong> You can revoke
+        BookReady&rsquo;s access to your Google Calendar at any time:
+      </p>
+      <ul>
+        <li>
+          From inside BookReady, go to{' '}
+          <a href="https://app.bkrdy.me/editor/integrations">
+            Integrations
+          </a>{' '}
+          and click <strong>Disconnect</strong> on the Google Calendar
+          card. BookReady will stop pushing events and delete the stored
+          tokens. We make a best-effort sweep of the events we previously
+          created in your calendar; for older accounts with very long
+          booking histories, the disconnect screen will hand you a link to
+          revoke the remaining access directly on Google.
+        </li>
+        <li>
+          From Google directly, go to{' '}
+          <a
+            href="https://myaccount.google.com/permissions"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Google Account &rarr; Security &rarr; Third-party apps with
+            account access
+          </a>
+          , find BookReady, and click <strong>Remove Access</strong>.
+        </li>
+      </ul>
+      <p>
+        Our use of information received from Google APIs adheres to the{' '}
         <a
           href="https://developers.google.com/terms/api-services-user-data-policy"
           target="_blank"
@@ -428,6 +549,12 @@ export default function PrivacyPage() {
       <ul>
         <li><strong>Invoice and Billing</strong> — Stripe</li>
         <li><strong>User Account Registration and Authentication</strong> — Google Sign-In</li>
+        <li>
+          <strong>Calendar Sync (optional)</strong> — Google Calendar API,
+          only if you connect your Google Calendar from Integrations. See{' '}
+          <a href="#googleapi">Google API access</a> below for what is sent
+          and stored.
+        </li>
         <li><strong>Transactional Email Delivery</strong> — Resend</li>
         <li><strong>Cloud Storage</strong> — Cloudflare R2 (uploaded photos and media)</li>
         <li><strong>Cloud Hosting</strong> — DigitalOcean</li>
