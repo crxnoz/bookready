@@ -383,8 +383,11 @@ class BillingController extends Controller
             ]);
         }
 
-        $subscribed = $tenant->subscribed('default');
-        $sub        = $tenant->subscription('default');
+        // Read the subscription straight from Stripe (the local Cashier
+        // mirror isn't reliable for the Tenant billable), keyed off the
+        // tenant's Stripe customer id.
+        $stripeSub  = $this->findStripeSubscription($tenant);
+        $subscribed = $stripeSub && in_array($stripeSub->status, ['active', 'trialing', 'past_due'], true);
 
         // Resolve plan + multiplier from the Stripe subscription's price
         // lookup_key — that's br_{plan}_{cycle}_{mult}x by construction
@@ -402,48 +405,35 @@ class BillingController extends Controller
         $paused             = false;
         $card               = null;
 
-        if ($subscribed && $sub) {
-            try {
-                $stripeSub = Cashier::stripe()->subscriptions->retrieve(
-                    $sub->stripe_id,
-                    ['expand' => ['items.data.price', 'default_payment_method']],
-                );
-                $price = $stripeSub->items->data[0]->price ?? null;
-                $lookup = $price->lookup_key ?? null;
+        if ($stripeSub) {
+            $price  = $stripeSub->items->data[0]->price ?? null;
+            $lookup = $price->lookup_key ?? null;
 
-                // Parse br_{plan}_{cycle}_{mult}x — anchor the plan keys
-                // so an unrelated lookup_key with a similar prefix never
-                // matches accidentally.
-                if ($lookup && preg_match('/^br_(solo|studio|salon)_(monthly|annual)_(1|2|3)x$/', $lookup, $m)) {
-                    $plan  = $m[1];
-                    $cycle = $m[2];
-                    $mult  = (int) $m[3];
-                    $smsIncluded = (int) (config("plans.plans.{$plan}.sms_base", 0) * $mult);
-                }
+            // Parse br_{plan}_{cycle}_{mult}x — anchor the plan keys so an
+            // unrelated lookup_key with a similar prefix never matches.
+            if ($lookup && preg_match('/^br_(solo|studio|salon)_(monthly|annual)_(1|2|3)x$/', $lookup, $m)) {
+                $plan  = $m[1];
+                $cycle = $m[2];
+                $mult  = (int) $m[3];
+                $smsIncluded = (int) (config("plans.plans.{$plan}.sms_base", 0) * $mult);
+            }
 
-                // Renewal window + cancel/pause flags straight off Stripe
-                // (source of truth — survives portal-side changes).
-                $currentPeriodEnd   = isset($stripeSub->current_period_end) ? date('c', $stripeSub->current_period_end) : null;
-                $currentPeriodStart = isset($stripeSub->current_period_start) ? date('c', $stripeSub->current_period_start) : null;
-                $cancelAtPeriodEnd  = (bool) ($stripeSub->cancel_at_period_end ?? false);
-                $paused             = ($stripeSub->pause_collection ?? null) !== null;
+            // Renewal window + cancel/pause flags straight off Stripe.
+            $currentPeriodEnd   = isset($stripeSub->current_period_end) ? date('c', $stripeSub->current_period_end) : null;
+            $currentPeriodStart = isset($stripeSub->current_period_start) ? date('c', $stripeSub->current_period_start) : null;
+            $cancelAtPeriodEnd  = (bool) ($stripeSub->cancel_at_period_end ?? false);
+            $paused             = ($stripeSub->pause_collection ?? null) !== null;
 
-                // Card on file — only populated when the default payment
-                // method is an expanded object carrying a card.
-                $pm = $stripeSub->default_payment_method ?? null;
-                if ($pm && is_object($pm) && isset($pm->card)) {
-                    $card = [
-                        'brand'     => $pm->card->brand,
-                        'last4'     => $pm->card->last4,
-                        'exp_month' => (int) $pm->card->exp_month,
-                        'exp_year'  => (int) $pm->card->exp_year,
-                    ];
-                }
-            } catch (\Throwable $e) {
-                Log::warning('Billing: subscription lookup failed', [
-                    'tenant_id' => $tenant->id,
-                    'error'     => $e->getMessage(),
-                ]);
+            // Card on file — only when the default payment method is an
+            // expanded object carrying a card.
+            $pm = $stripeSub->default_payment_method ?? null;
+            if ($pm && is_object($pm) && isset($pm->card)) {
+                $card = [
+                    'brand'     => $pm->card->brand,
+                    'last4'     => $pm->card->last4,
+                    'exp_month' => (int) $pm->card->exp_month,
+                    'exp_year'  => (int) $pm->card->exp_year,
+                ];
             }
         }
 
@@ -457,7 +447,7 @@ class BillingController extends Controller
             'subscribed'         => $subscribed,
             'on_trial'           => $tenant->onTrial(),
             'trial_ends'         => $tenant->trial_ends_at,
-            'subscription'       => $sub,
+            'subscription'       => $stripeSub?->id,
             'plan'               => $plan,
             'sms_mult'           => $mult,
             'sms_included'       => $smsIncluded,
@@ -489,6 +479,52 @@ class BillingController extends Controller
     }
 
     /**
+     * Find the tenant's subscription directly on Stripe, keyed off the
+     * Cashier customer id stored on the tenant. The local Cashier mirror
+     * isn't reliable for the Tenant billable, so the billing screen and the
+     * cancel/pause lifecycle actions read + operate on Stripe as the source
+     * of truth. Prefers a live subscription; falls back to the most recent.
+     */
+    private function findStripeSubscription(Tenant $tenant): ?\Stripe\Subscription
+    {
+        $stripeId = $tenant->hasStripeId() ? $tenant->stripeId() : null;
+        if (! $stripeId) {
+            return null;
+        }
+
+        try {
+            $list = Cashier::stripe()->subscriptions->all([
+                'customer' => $stripeId,
+                'status'   => 'all',
+                'limit'    => 20,
+                'expand'   => ['data.default_payment_method', 'data.items.data.price'],
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Billing: Stripe subscription list failed', [
+                'tenant_id' => $tenant->id,
+                'error'     => $e->getMessage(),
+            ]);
+            return null;
+        }
+
+        $subs = $list->data ?? [];
+        if (! $subs) {
+            return null;
+        }
+
+        $live = ['active', 'trialing', 'past_due', 'unpaid'];
+        foreach ($subs as $s) {
+            if (in_array($s->status, $live, true)) {
+                return $s;
+            }
+        }
+
+        usort($subs, fn ($a, $b) => ($b->created ?? 0) <=> ($a->created ?? 0));
+
+        return $subs[0] ?? null;
+    }
+
+    /**
      * Cancel the subscription at period end (grace period). Resume-able
      * during grace via resume(). Deliberately NOT cancelNow() — the owner
      * keeps access until the current period ends.
@@ -502,13 +538,14 @@ class BillingController extends Controller
             return response()->json(['message' => 'No active workspace for this account.'], 400);
         }
 
-        $sub = $tenant->subscription('default');
-        if (! $sub) {
+        $stripeSub = $this->findStripeSubscription($tenant);
+        if (! $stripeSub || ! in_array($stripeSub->status, ['active', 'trialing', 'past_due'], true)) {
             return response()->json(['message' => 'No active subscription.'], 422);
         }
 
         try {
-            $sub->cancel();
+            // Cancel at period end (grace period) — resume-able via resume().
+            Cashier::stripe()->subscriptions->update($stripeSub->id, ['cancel_at_period_end' => true]);
         } catch (\Throwable $e) {
             Log::error('Billing: cancel failed', ['tenant_id' => $tenant->id, 'error' => $e->getMessage()]);
             return response()->json(['message' => 'Could not cancel your subscription. Try again or contact support.'], 500);
@@ -529,13 +566,14 @@ class BillingController extends Controller
             return response()->json(['message' => 'No active workspace for this account.'], 400);
         }
 
-        $sub = $tenant->subscription('default');
-        if (! $sub) {
+        $stripeSub = $this->findStripeSubscription($tenant);
+        if (! $stripeSub) {
             return response()->json(['message' => 'No active subscription.'], 422);
         }
 
         try {
-            $sub->resume();
+            // Un-cancel during the grace period.
+            Cashier::stripe()->subscriptions->update($stripeSub->id, ['cancel_at_period_end' => false]);
         } catch (\Throwable $e) {
             Log::error('Billing: resume failed', ['tenant_id' => $tenant->id, 'error' => $e->getMessage()]);
             return response()->json(['message' => 'Could not resume your subscription. Try again or contact support.'], 500);
@@ -557,13 +595,13 @@ class BillingController extends Controller
             return response()->json(['message' => 'No active workspace for this account.'], 400);
         }
 
-        $sub = $tenant->subscription('default');
-        if (! $sub) {
+        $stripeSub = $this->findStripeSubscription($tenant);
+        if (! $stripeSub || ! in_array($stripeSub->status, ['active', 'trialing', 'past_due'], true)) {
             return response()->json(['message' => 'No active subscription.'], 422);
         }
 
         try {
-            $sub->updateStripeSubscription(['pause_collection' => ['behavior' => 'void']]);
+            Cashier::stripe()->subscriptions->update($stripeSub->id, ['pause_collection' => ['behavior' => 'void']]);
         } catch (\Throwable $e) {
             Log::error('Billing: pause failed', ['tenant_id' => $tenant->id, 'error' => $e->getMessage()]);
             return response()->json(['message' => 'Could not pause your subscription. Try again or contact support.'], 500);
@@ -585,14 +623,14 @@ class BillingController extends Controller
             return response()->json(['message' => 'No active workspace for this account.'], 400);
         }
 
-        $sub = $tenant->subscription('default');
-        if (! $sub) {
+        $stripeSub = $this->findStripeSubscription($tenant);
+        if (! $stripeSub) {
             return response()->json(['message' => 'No active subscription.'], 422);
         }
 
         try {
             // Empty string unsets pause_collection in Stripe.
-            $sub->updateStripeSubscription(['pause_collection' => '']);
+            Cashier::stripe()->subscriptions->update($stripeSub->id, ['pause_collection' => '']);
         } catch (\Throwable $e) {
             Log::error('Billing: unpause failed', ['tenant_id' => $tenant->id, 'error' => $e->getMessage()]);
             return response()->json(['message' => 'Could not resume billing. Try again or contact support.'], 500);
