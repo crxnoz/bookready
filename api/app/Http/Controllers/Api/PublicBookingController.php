@@ -867,8 +867,9 @@ class PublicBookingController extends Controller
         ], $selectedAddons);
 
         // Build a plain-array snapshot for use after tenancy ends.
-        $apptToken = property_exists($row, 'manage_token') ? $row->manage_token : null;
-        $manageUrl = $apptToken ? sprintf('https://%s.bkrdy.me/manage/%s', $tenant->id, $apptToken) : null;
+        $apptToken        = property_exists($row, 'manage_token') ? $row->manage_token : null;
+        $manageUrl        = \App\Support\BookingUrls::manage($tenant->id, $apptToken);
+        $addToCalendarUrl = \App\Support\BookingUrls::calendarIcs($tenant->id, $apptToken);
 
         // Phase 4 customer-accounts — mint a "Save this booking" claim
         // token ONLY when the booker is anonymous AND we have an email
@@ -897,8 +898,9 @@ class PublicBookingController extends Controller
             'end_time'         => substr($row->end_time,   0, 5),
             'status'           => $row->status,
             'notes'            => $row->notes,
-            'manage_url'       => $manageUrl,
-            'claim_url'        => $claimUrl,
+            'manage_url'         => $manageUrl,
+            'add_to_calendar_url'=> $addToCalendarUrl,
+            'claim_url'          => $claimUrl,
             // Phase 7 extras. Empty array / null when not used so blades
             // can @if-guard cheaply.
             'staff_name'       => $staffName,

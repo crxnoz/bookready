@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Calendar, ArrowRight } from 'lucide-react'
 import { listCustomerBookings, type CustomerBookingRow } from '@/lib/customerApi'
 import AccountShell from '@/components/account/AccountShell'
+import CustomerIcsFeedCard from '@/components/account/CustomerIcsFeedCard'
 
 /**
  * Phase 4 — customer dashboard at /account.
@@ -103,6 +104,14 @@ function DashboardInner() {
           {past.map(b => <BookingCard key={`${b.tenant_id}-${b.id}`} b={b} />)}
         </Section>
       )}
+
+      {/* T1.3 — calendar subscription card. Lives below bookings so it
+          doesn't compete with the primary list, but stays visible enough
+          that customers discover it. The card lazy-mints its own URL on
+          first render. */}
+      <Section title="Calendar">
+        <CustomerIcsFeedCard />
+      </Section>
     </>
   )
 }

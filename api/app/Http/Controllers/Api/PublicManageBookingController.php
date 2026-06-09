@@ -397,8 +397,9 @@ class PublicManageBookingController extends Controller
         $notify       = NotificationSettingsService::load();
 
         // Plain-array snapshot for both emails.
-        $manageToken = property_exists($updated, 'manage_token') ? $updated->manage_token : null;
-        $manageUrl   = $manageToken ? sprintf('https://%s.bkrdy.me/manage/%s', $tenant->id, $manageToken) : null;
+        $manageToken      = property_exists($updated, 'manage_token') ? $updated->manage_token : null;
+        $manageUrl        = \App\Support\BookingUrls::manage($tenant->id, $manageToken);
+        $addToCalendarUrl = \App\Support\BookingUrls::calendarIcs($tenant->id, $manageToken);
         $extras = \App\Services\AppointmentMailer::buildExtras(
             (int) $updated->id,
             property_exists($updated, 'staff_id') ? $updated->staff_id : null,
@@ -413,9 +414,10 @@ class PublicManageBookingController extends Controller
             'start_time'       => substr($updated->start_time, 0, 5),
             'end_time'         => substr($updated->end_time,   0, 5),
             'status'           => $updated->status,
-            'manage_url'       => $manageUrl,
-            'staff_name'       => $extras['staff_name'],
-            'addons'           => $extras['addons'],
+            'manage_url'         => $manageUrl,
+            'add_to_calendar_url'=> $addToCalendarUrl,
+            'staff_name'         => $extras['staff_name'],
+            'addons'             => $extras['addons'],
         ];
 
         tenancy()->end();

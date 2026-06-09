@@ -2306,6 +2306,26 @@ export async function deleteEditorCoupon(id: number): Promise<{ deleted?: boolea
   return request(`/editor/coupons/${id}`, { method: 'DELETE' })
 }
 
+// ── T1.1 — owner ICS calendar feed (lazy-minted on first read) ─────────
+
+export interface IcsFeedInfo {
+  /** False on a dev box where the central migration hasn't run yet. The
+   *  card surfaces a calm "available after the next migration" line
+   *  instead of erroring. */
+  available: boolean
+  token?:    string
+  url?:      string
+  message?:  string
+}
+
+export async function getEditorIcsFeed(): Promise<IcsFeedInfo> {
+  return request<IcsFeedInfo>('/editor/integrations/ics-feed')
+}
+
+export async function regenerateEditorIcsFeed(): Promise<IcsFeedInfo> {
+  return request<IcsFeedInfo>('/editor/integrations/ics-feed/regenerate', { method: 'POST' })
+}
+
 /**
  * Public coupon preview — used by the booking flow's "Have a code?" widget
  * to validate + price a code before the customer submits. No auth: the

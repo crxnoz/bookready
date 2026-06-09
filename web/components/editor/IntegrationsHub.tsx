@@ -3,13 +3,14 @@
 import Link from 'next/link'
 import {
   ArrowRight, Calendar, CalendarMinus, CalendarOff,
-  ExternalLink, Mail, Megaphone, Rss,
-  ShieldCheck, Square as SquareIcon, Building2, Webhook, Zap,
+  ExternalLink, Mail, Megaphone,
+  ShieldCheck, Building2, Webhook, Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import IconBox from '@/components/ui/IconBox'
 import StatusBadge from '@/components/ui/StatusBadge'
 import StripeConnectCard from '@/components/editor/StripeConnectCard'
+import IcsFeedCard from '@/components/editor/IcsFeedCard'
 
 /**
  * The Integrations hub — central catalog of third-party connections.
@@ -22,15 +23,23 @@ import StripeConnectCard from '@/components/editor/StripeConnectCard'
  * an integration order.
  *
  * Categories:
- *   - Payments         (Stripe live; Square coming soon)
+ *   - Payments         (Stripe — the single supported processor.
+ *                       Stripe's own alt-payment methods cover Apple Pay
+ *                       / Google Pay / Link / Klarna / Afterpay / Affirm
+ *                       so we don't need a second processor.)
  *   - Calendars        (Google + .ics export + busy-calendar import)
  *   - Marketing        (BookReady Marketing — built-in — plus
- *                       Mailchimp / Klaviyo sync)
+ *                       Mailchimp sync)
  *   - Automation       (Outbound webhooks, Zapier)
  *   - Local SEO        (Google Business Profile)
  *
  * No Twilio / external SMS tile — customer-facing SMS is handled
  * in-house, not as a connectable integration.
+ *
+ * Square is intentionally NOT listed — Square competes with BookReady
+ * (their own booking product), and Stripe Connect already covers the
+ * payment surface cleanly. Klaviyo is intentionally NOT listed — most
+ * beauty pros aren't running campaigns there; revisit on real demand.
  */
 
 type IntegrationStatus =
@@ -63,31 +72,48 @@ interface IntegrationCategory {
 
 export default function IntegrationsHub() {
   const categories = buildCatalog()
+  // Calendars renders explicitly (matches the Payments split) — the .ics
+  // feed is a real status-driven card, not a generic Tile, so we host it
+  // here alongside the remaining placeholder tiles in its own grid.
+  const calendarTiles = (categories.find(c => c.key === 'calendars')?.tiles) ?? []
+  const restCategories = categories.filter(c => c.key !== 'calendars')
 
   return (
     <div className="w-full p-3 sm:p-5 md:p-6 space-y-6 max-w-[1024px]">
       {/* Page header is provided by EditorShell (Integrations section). */}
 
-      {/* Payments — Stripe is the one live integration; set it up + manage it here. */}
+      {/* Payments — Stripe is the single supported processor. Stripe's own
+          alt-payment methods (Apple Pay, Google Pay, Link, Klarna, Afterpay,
+          Affirm) cover the breadth a second processor would. */}
       <section>
         <div className="mb-2.5">
           <h2 className="text-xs font-bold tracking-[0.18em] uppercase text-near-black">Payments</h2>
           <p className="text-xs text-muted-text mt-0.5">Accept appointment payments + deposits.</p>
         </div>
+        <StripeConnectCard />
+      </section>
+
+      {/* Calendars — T1.1 lives here. IcsFeedCard is a status-driven card
+          (real "Live" badge, copy URL, regenerate). The other tiles stay
+          as coming-soon placeholders for now. */}
+      <section>
+        <div className="mb-2.5">
+          <h2 className="text-xs font-bold tracking-[0.18em] uppercase text-near-black">Calendars</h2>
+          <p className="text-xs text-muted-text mt-0.5">
+            Show bookings in your day view, and block out times you&apos;re already busy.
+          </p>
+        </div>
         <div className="space-y-3">
-          <StripeConnectCard />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Tile t={comingSoon({
-              key:         'square',
-              name:        'Square',
-              description: 'Accept payments through your Square account, and keep your Square POS in sync.',
-              icon:        SquareIcon,
-            })} />
-          </div>
+          <IcsFeedCard />
+          {calendarTiles.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {calendarTiles.map(tile => <Tile key={tile.key} t={tile} />)}
+            </div>
+          )}
         </div>
       </section>
 
-      {categories.map(cat => (
+      {restCategories.map(cat => (
         <CategorySection key={cat.key} category={cat} />
       ))}
     </div>
@@ -103,18 +129,16 @@ function buildCatalog(): IntegrationCategory[] {
       title:       'Calendars',
       description: 'Show bookings in your day view, and block out times you\'re already busy.',
       tiles: [
+        // T1.1 ICS feed renders as IcsFeedCard above this grid (status-driven,
+        // not a generic Tile). Google Calendar (T1.4) will likewise flip to
+        // its own status-driven card when shipped; for now it stays as a
+        // coming-soon tile next to busy-import (post-launch T2.1).
         comingSoon({
           key:         'google-calendar',
           name:        'Google Calendar',
           description: 'New bookings appear on your Google Calendar automatically.',
           icon:        Calendar,
           hint:        'Keep your calendars in sync, one direction or both.',
-        }),
-        comingSoon({
-          key:         'ics-feed',
-          name:        'Calendar feed (.ics)',
-          description: 'Subscribe to a per-business calendar URL from Apple, Outlook, Fantastical, or any iCal-compatible app.',
-          icon:        Rss,
         }),
         comingSoon({
           key:         'busy-import',
@@ -140,12 +164,6 @@ function buildCatalog(): IntegrationCategory[] {
           key:         'mailchimp',
           name:        'Mailchimp',
           description: 'Sync booking customers to your existing Mailchimp list.',
-          icon:        Mail,
-        }),
-        comingSoon({
-          key:         'klaviyo',
-          name:        'Klaviyo',
-          description: 'Send your booking customers to Klaviyo for email marketing.',
           icon:        Mail,
         }),
       ],

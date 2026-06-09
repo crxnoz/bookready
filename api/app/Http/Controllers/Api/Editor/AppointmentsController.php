@@ -533,8 +533,9 @@ class AppointmentsController extends Controller
         $shouldSendRescheduled = false;
 
         if (! empty($row->customer_email) && ($statusChanged || $rescheduled)) {
-            $manageToken = property_exists($row, 'manage_token') ? $row->manage_token : null;
-            $manageUrl   = $manageToken ? sprintf('https://%s.bkrdy.me/manage/%s', $tenant->id, $manageToken) : null;
+            $manageToken      = property_exists($row, 'manage_token') ? $row->manage_token : null;
+            $manageUrl        = \App\Support\BookingUrls::manage($tenant->id, $manageToken);
+            $addToCalendarUrl = \App\Support\BookingUrls::calendarIcs($tenant->id, $manageToken);
 
             // Phase 7 — look up staff name + per-appointment add-on snapshot
             // inside the tenant scope so the mailer doesn't need DB access.
@@ -564,10 +565,11 @@ class AppointmentsController extends Controller
                 'start_time'       => substr($row->start_time, 0, 5),
                 'end_time'         => substr($row->end_time, 0, 5),
                 'status'           => $row->status,
-                'notes'            => $row->notes,
-                'manage_url'       => $manageUrl,
-                'staff_name'       => $emailStaffName,
-                'addons'           => $emailAddons,
+                'notes'              => $row->notes,
+                'manage_url'         => $manageUrl,
+                'add_to_calendar_url'=> $addToCalendarUrl,
+                'staff_name'         => $emailStaffName,
+                'addons'             => $emailAddons,
             ];
             $emailBusiness = (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
             $emailNotify   = NotificationSettingsService::load();
@@ -643,7 +645,11 @@ class AppointmentsController extends Controller
 
         if (! empty($appt->customer_email) && $appt->status !== 'cancelled') {
             $manageToken = property_exists($appt, 'manage_token') ? $appt->manage_token : null;
-            $manageUrl   = $manageToken ? sprintf('https://%s.bkrdy.me/manage/%s', $tenant->id, $manageToken) : null;
+            $manageUrl   = \App\Support\BookingUrls::manage($tenant->id, $manageToken);
+            // No add_to_calendar_url here — this code path sends the
+            // CANCELLED email, where an "Add to calendar" button would be
+            // wrong. Future: send an UPDATE VEVENT with STATUS:CANCELLED
+            // to clear the event from the customer's calendar.
             $extras = AppointmentMailer::buildExtras(
                 (int) $appt->id,
                 property_exists($appt, 'staff_id') ? $appt->staff_id : null,

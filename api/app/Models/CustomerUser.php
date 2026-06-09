@@ -56,6 +56,11 @@ class CustomerUser extends Authenticatable
         // A6 — never expose the hashed code or its TTL via API.
         'email_verification_code',
         'email_verification_code_expires_at',
+        // T1.3 — the iCalendar feed URL is the capability; leaking the
+        // token via any future raw-model JSON would let anyone read the
+        // customer's cross-tenant bookings. Defense in depth on top of
+        // the explicit presentUser() allowlist used by AuthController today.
+        'ics_feed_token',
     ];
 
     protected $casts = [

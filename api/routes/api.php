@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\Customer\BookingsController            as CustomerB
 use App\Http\Controllers\Api\Customer\ClaimController               as CustomerClaimController;
 use App\Http\Controllers\Api\Customer\DangerController              as CustomerDangerController;
 use App\Http\Controllers\Api\Customer\EmailVerificationController   as CustomerEmailVerificationController;
+use App\Http\Controllers\Api\Customer\IntegrationsController        as CustomerIntegrationsController;
 use App\Http\Controllers\Api\Customer\PasswordResetController       as CustomerPasswordResetController;
 use App\Http\Controllers\Api\Customer\ProfileController             as CustomerProfileController;
 use App\Http\Controllers\Api\Customer\RegisterController            as CustomerRegisterController;
@@ -58,6 +59,8 @@ use App\Http\Controllers\Api\Editor\DashboardMetricsController;
 use App\Http\Controllers\Api\Editor\CouponsController;
 use App\Http\Controllers\Api\Editor\StaffController;
 use App\Http\Controllers\Api\PublicCouponController;
+use App\Http\Controllers\Api\PublicCalendarFeedController;
+use App\Http\Controllers\Api\Editor\IntegrationsController;
 use App\Http\Controllers\Api\Editor\StaffHoursController;
 use App\Http\Controllers\Api\Editor\StaffBlockedDatesController;
 use App\Http\Controllers\Api\Editor\UploadsController;
@@ -136,6 +139,21 @@ Route::prefix('v1')->group(function () {
     // Higher throttle than booking POST since this fires on keystrokes.
     Route::post('public/sites/{slug}/coupons/preview', [PublicCouponController::class, 'preview'])
         ->middleware('throttle:60,1');
+
+    // T1.1 — owner iCalendar feed. URL is the capability (token + slug).
+    // No auth. Calendar apps poll on a 5–15 min cadence, so the throttle
+    // is loose by anonymous-endpoint standards but still rate-limits a
+    // misbehaving polluter. The `.ics` suffix is part of the route so
+    // calendar clients (and link-preview bots) route by extension.
+    Route::get('cal/owner/{tenant}/{token}.ics', [PublicCalendarFeedController::class, 'owner'])
+        ->middleware('throttle:30,1')
+        ->where('token', '[A-Za-z0-9]+');
+    // T1.3 — customer-scoped iCalendar feed. Aggregates bookings across
+    // every tenant the customer is on the `customer_user_tenants` pivot
+    // for. Same throttle posture as the owner feed.
+    Route::get('cal/customer/{token}.ics', [PublicCalendarFeedController::class, 'customer'])
+        ->middleware('throttle:30,1')
+        ->where('token', '[A-Za-z0-9]+');
     // Phase S3 — public upload throttled to 5/min per IP. Combined with
     // the active-question + daily-cap gates in the controller this kills
     // anonymous R2 storage abuse.
@@ -157,6 +175,13 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:10,1');
     Route::post('public/sites/{slug}/manage/{token}/reschedule',  [PublicManageBookingController::class, 'reschedule'])
         ->middleware('throttle:10,1');
+    // T1.2 — single-appointment .ics download for the customer's
+    // "Add to calendar" button. Gated by the same manage_token capability
+    // as cancel/reschedule. Generous throttle because clients may retry
+    // on mobile networks; no real abuse vector (the response is just the
+    // event the customer already knows about).
+    Route::get('public/sites/{slug}/manage/{token}/calendar.ics', [PublicCalendarFeedController::class, 'appointment'])
+        ->middleware('throttle:30,1');
 
     // ── Public waitlist (Availability 2.0 Phase 7) ────────────────────────
     // Join the waitlist for a service when a desired day is full / locked.
@@ -400,6 +425,12 @@ Route::prefix('v1')->group(function () {
         Route::post  ('coupons',         [CouponsController::class, 'store']);
         Route::patch ('coupons/{id}',    [CouponsController::class, 'update']);
         Route::delete('coupons/{id}',    [CouponsController::class, 'destroy']);
+
+        // T1.1 — owner's calendar-feed URL (lazy-mint on first read +
+        // explicit rotation). The PUBLIC consumption route lives at
+        // /api/v1/cal/owner/{tenant}/{token}.ics (no auth, throttled).
+        Route::get ('integrations/ics-feed',            [IntegrationsController::class, 'icsFeed']);
+        Route::post('integrations/ics-feed/regenerate', [IntegrationsController::class, 'regenerateIcsFeed']);
         // Per-staff hours + blocked dates. Same /{staff}/* shape Laravel
         // would generate via apiResource, but kept flat for consistency
         // with the rest of the editor namespace.
@@ -621,6 +652,14 @@ Route::prefix('v1')->group(function () {
             Route::get   ('bookings',                                       [CustomerBookingsController::class, 'index']);
             Route::get   ('bookings/{tenant_slug}/{id}',                    [CustomerBookingsController::class, 'show'])
                 ->whereNumber('id')->where('tenant_slug', '[a-z0-9-]+');
+
+            // T1.3 — customer's iCalendar subscription URL (lazy-mint
+            // on first read + explicit rotation). The PUBLIC consumption
+            // route is /api/v1/cal/customer/{token}.ics (no auth, throttled).
+            // Open to unverified customers — the verify-email banner already
+            // nags; blocking the calendar subscription would be punitive.
+            Route::get ('ics-feed',            [CustomerIntegrationsController::class, 'icsFeed']);
+            Route::post('ics-feed/regenerate', [CustomerIntegrationsController::class, 'regenerateIcsFeed']);
             // #160 — cancel + reschedule mutate the appointment under
             // the salon owner's calendar. We need confirmation the
             // email on file reaches the human clicking; otherwise the

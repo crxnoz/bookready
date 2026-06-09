@@ -286,3 +286,23 @@ export async function deleteCustomerAccount(password: string): Promise<{
     body:   JSON.stringify({ password }),
   })
 }
+
+// ── T1.3 — customer iCalendar feed (lazy-minted on first read) ─────────
+
+export interface CustomerIcsFeedInfo {
+  /** False on a dev box where the migration hasn't run yet. The card
+   *  surfaces a calm "available after the next migration" line instead
+   *  of erroring. */
+  available: boolean
+  token?:    string
+  url?:      string
+  message?:  string
+}
+
+export async function getCustomerIcsFeed(): Promise<CustomerIcsFeedInfo> {
+  return request<CustomerIcsFeedInfo>('/ics-feed')
+}
+
+export async function regenerateCustomerIcsFeed(): Promise<CustomerIcsFeedInfo> {
+  return request<CustomerIcsFeedInfo>('/ics-feed/regenerate', { method: 'POST' })
+}

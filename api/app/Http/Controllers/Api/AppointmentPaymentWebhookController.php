@@ -248,8 +248,9 @@ class AppointmentPaymentWebhookController extends Controller
 
             $updated = DB::table('appointments')->find($appointmentId);
 
-            $manageToken = property_exists($updated, 'manage_token') ? $updated->manage_token : null;
-            $manageUrl   = $manageToken ? sprintf('https://%s.bkrdy.me/manage/%s', $tenant->id, $manageToken) : null;
+            $manageToken      = property_exists($updated, 'manage_token') ? $updated->manage_token : null;
+            $manageUrl        = \App\Support\BookingUrls::manage($tenant->id, $manageToken);
+            $addToCalendarUrl = \App\Support\BookingUrls::calendarIcs($tenant->id, $manageToken);
 
             // Phase 7 — staff name + add-on snapshot for email templates.
             $apptStaffName = null;
@@ -280,8 +281,9 @@ class AppointmentPaymentWebhookController extends Controller
                 'end_time'         => substr($updated->end_time,   0, 5),
                 'status'           => $updated->status,
                 'notes'            => $updated->notes,
-                'manage_url'       => $manageUrl,
-                'staff_name'       => $apptStaffName,
+                'manage_url'         => $manageUrl,
+                'add_to_calendar_url'=> $addToCalendarUrl,
+                'staff_name'         => $apptStaffName,
                 'addons'           => $apptAddons,
                 // Payment receipt fields — blades render a receipt block when these are present.
                 'payment_amount'   => $amountTotal,

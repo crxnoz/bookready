@@ -30,6 +30,11 @@ class User extends Authenticatable
         // live on the user row purely for backend validation.
         'email_verification_code',
         'email_verification_code_expires_at',
+        // T1.1 — the iCalendar feed URL is the capability; leaking the
+        // token via any future raw-model JSON would let anyone read the
+        // owner's bookings. Defense in depth on top of the explicit
+        // allowlist projections every controller already uses today.
+        'ics_feed_token',
     ];
 
     protected $casts = [

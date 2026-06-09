@@ -19,6 +19,13 @@
 <a href="{{ $appt['manage_url'] }}" style="display:inline-block;background:#121212;color:#FFFFFF;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:14px 22px;border:1px solid #121212;">
   Manage your booking &rarr;
 </a>
+@if (! empty($appt['add_to_calendar_url']))
+<div style="margin-top:10px;">
+  <a href="{{ $appt['add_to_calendar_url'] }}" style="display:inline-block;background:#FFFFFF;color:#121212;text-decoration:none;font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;padding:10px 18px;border:1px solid rgba(18,18,18,0.30);">
+    Add to your calendar
+  </a>
+</div>
+@endif
 @endsection
 @endif
 

@@ -85,21 +85,22 @@ class SendAppointmentReminders extends Command
 
                     $businessName = $businessName ?? (string) (DB::table('business_profiles')->value('business_name') ?: $tenant->id);
 
-                    $manageUrl = property_exists($row, 'manage_token') && $row->manage_token
-                        ? sprintf('https://%s.bkrdy.me/manage/%s', $tenant->id, $row->manage_token)
-                        : null;
+                    $manageToken      = property_exists($row, 'manage_token') ? $row->manage_token : null;
+                    $manageUrl        = \App\Support\BookingUrls::manage($tenant->id, $manageToken);
+                    $addToCalendarUrl = \App\Support\BookingUrls::calendarIcs($tenant->id, $manageToken);
 
                     $appt = [
-                        'id'               => (int) $row->id,
-                        'customer_name'    => $row->customer_name,
-                        'customer_email'   => $row->customer_email,
-                        'customer_phone'   => property_exists($row, 'customer_phone') ? $row->customer_phone : null,
-                        'service_name'     => $row->service_name,
-                        'appointment_date' => $row->appointment_date,
-                        'start_time'       => substr($row->start_time, 0, 5),
-                        'end_time'         => substr($row->end_time,   0, 5),
-                        'status'           => $row->status,
-                        'manage_url'       => $manageUrl,
+                        'id'                 => (int) $row->id,
+                        'customer_name'      => $row->customer_name,
+                        'customer_email'     => $row->customer_email,
+                        'customer_phone'     => property_exists($row, 'customer_phone') ? $row->customer_phone : null,
+                        'service_name'       => $row->service_name,
+                        'appointment_date'   => $row->appointment_date,
+                        'start_time'         => substr($row->start_time, 0, 5),
+                        'end_time'           => substr($row->end_time,   0, 5),
+                        'status'             => $row->status,
+                        'manage_url'         => $manageUrl,
+                        'add_to_calendar_url'=> $addToCalendarUrl,
                     ];
 
                     // Mark FIRST so a re-run can't double-send if the mailer hangs.

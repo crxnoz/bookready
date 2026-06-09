@@ -1,0 +1,96 @@
+{
+  "skill_name": "cost-conscious",
+  "_notes": "Each eval runs in an isolated git worktree, with_skill and without_skill, and asserts the listed plain-English claims against the resulting agent behavior (tool-call transcript + final workspace). Prompts are crafted so a real BookReady task is required — assertions check that the agent picked the cheaper / convention-correct tool and didn't trip a documented footgun.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "coupon-redemption-locate-fix",
+      "prompt": "In api/app/Services/CouponService.php there's a redeemAtomic() method. I want to add a one-line comment above the SELECT ... FOR UPDATE explaining why the re-check inside the lock matters. Make the change and commit only that file. Do not modify or stage any other files in the working tree.",
+      "expected_output": "Agent uses Grep to locate redeemAtomic and the lockForUpdate call, Reads a small offset/limit window around the hit, Edits to add the comment, runs git status and git diff in parallel, stages only api/app/Services/CouponService.php by explicit path, and commits with a new commit (no --amend).",
+      "files": [],
+      "assertions": [
+        "Agent called Grep before Read (Grep appears earlier in the tool-call transcript than the first Read of CouponService.php)",
+        "Agent did NOT Read CouponService.php without an offset/limit (the Read call has both offset and limit set, or reads fewer than 200 lines)",
+        "Agent used Edit (not Write) to modify CouponService.php",
+        "Agent did NOT Read CouponService.php after the Edit succeeded",
+        "Agent staged the file by explicit path (git add api/app/Services/CouponService.php) and did NOT run `git add -A`, `git add .`, or `git add api/`",
+        "Agent did NOT run `git commit --amend` — a new commit was created",
+        "The other 5 already-modified files in the working tree (PublicBookingController.php, AppointmentPaymentService.php, routes/api.php, web/lib/api.ts, LushStudioBooking.tsx) were NOT included in the commit"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "new-public-site-column",
+      "prompt": "Add a new optional tenant-scope column `services.featured_label` (nullable string) and surface it on the public site lookup so the booking page can display a badge. You only need to wire the read side on the controller — the migration and frontend are out of scope for this task. Be efficient and follow repo conventions.",
+      "expected_output": "Agent Edits api/app/Http/Controllers/Api/PublicSiteController.php to read services.featured_label wrapped in Schema::hasColumn('services', 'featured_label'), using DB::table inside tenant scope and flattening before tenancy()->end().",
+      "files": [],
+      "assertions": [
+        "The added read of services.featured_label is wrapped in Schema::hasColumn('services', 'featured_label') (or equivalent guard)",
+        "The new column access uses DB::table('services') — not Eloquent (Service::query, Service::with, etc.)",
+        "The data is flattened to a plain array/value before any tenancy()->end() call that follows",
+        "Agent used Grep to locate the relevant block in PublicSiteController.php instead of reading the whole 720-line file unbounded",
+        "Agent used Edit (not Write) on PublicSiteController.php",
+        "Agent did NOT spawn a subagent (Task/Agent) for this focused single-file edit"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "money-path-discount-math",
+      "prompt": "A user is reporting that when they apply a coupon at checkout the discount appears on the summary but the remaining balance shown after the deposit charges is the same as without the coupon. They feel like they 'saved nothing'. Investigate in PublicBookingController::store() and AppointmentPaymentService, propose the fix (do not commit), and tell me what adversarial-review checks you cleared. Do not pipe `npm run build` to tail anywhere in any commands you suggest.",
+      "expected_output": "Agent identifies the discount-into-balance bug pattern (amount_due computed as total - deposit_paid instead of total - discount - deposit_paid), recognizes this matches the BLOCKER from commit 1a916ca, and enumerates the additional money-path checks: release-on-every-failure-branch, webhook idempotency, wrong-account/amount, double-process. Does not run pipe-to-tail commands.",
+      "expected_output_2": "Agent does not pipe npm run build to tail or head in any suggested commands.",
+      "files": [],
+      "assertions": [
+        "Agent's diagnosis references the discount math: amount_due should equal total - discount - deposit_paid (not total - deposit_paid)",
+        "Agent enumerates at least three money-path adversarial checks (e.g. release on every Stripe-failure branch, webhook idempotency, dedupe key on checkout.session.completed, wrong-account/wrong-amount, capability bypass, race between concurrent redeems)",
+        "Agent references either commit 1a916ca, CouponService::redeemAtomic, or releaseRedemption in the explanation",
+        "Agent does NOT suggest any command that pipes `npm run build` or `php artisan migrate` to `tail` or `head`",
+        "Agent did not commit (the working tree state matches the starting state for any money-path-related files)"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "editor-ui-new-section",
+      "prompt": "Add a new sub-tab called 'Reviews' to the Customers hub at /editor/customers — empty state for now ('No reviews yet') with a primary 'Request review' button. Be efficient and use the existing BookReady patterns.",
+      "expected_output": "Agent adds the nav entry to web/lib/editorNav.ts (single source of truth), renders the new sub-tab inside the existing hub component (no new route file), composes TabShell / Section / EmptyState / Button from web/components/ui and web/components/editor/AvailabilitySections.tsx, uses no `rounded-*` classes, no inline hex, no window.confirm, and no hand-rolled status pills.",
+      "files": [],
+      "assertions": [
+        "web/lib/editorNav.ts was modified to include the 'Reviews' sub-tab",
+        "No new file was created under web/app/(editor)/editor/customers/reviews/ — the sub-tab is rendered inside the existing hub component",
+        "Added/modified files in editor scope (web/components/editor/**, web/components/app/**, web/components/ui/**, web/app/(editor)/**) contain ZERO occurrences of `rounded-` className tokens",
+        "The new code imports EmptyState and Button from web/components/ui (does not hand-roll them)",
+        "The new code uses TabShell or Section from web/components/editor/AvailabilitySections.tsx (does not hand-roll the section chrome)",
+        "Agent did NOT introduce window.confirm, window.alert, or a hand-rolled status pill",
+        "Agent ran or referenced `cd web && npm run check:ui` before considering the change done"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "deploy-verification",
+      "prompt": "I just ran the deploy heredoc from CLAUDE.md and got this output back at the end:\n\n```\nDone in 47.32s.\n[PM2] Applying action restartProcessId on app [bookready-web](ids: [ 0 ])\n[PM2] [bookready-web](0) ✓\n┌─────┬────────────────────┬─────────┬─────────┬──────────┬───────┐\n│ id  │ name               │ mode    │ ↺       │ status   │ cpu   │\n├─────┼────────────────────┼─────────┼─────────┼──────────┼───────┤\n│ 0   │ bookready-web      │ fork    │ 12      │ online   │ 0%    │\n└─────┴────────────────────┴─────────┴─────────┴──────────┴───────┘\n```\n\nDid the deploy succeed? Should I move on to the next task?",
+      "expected_output": "Agent answers NO — the literal string DEPLOY_OK is not in the output, so the deploy must be treated as failed regardless of pm2 reporting 'online'. Agent recommends checking the earlier output for the actual failure (likely composer install, migrate, package:discover, or next build) before celebrating.",
+      "files": [],
+      "assertions": [
+        "Agent's answer states that the deploy should be treated as FAILED",
+        "Agent's reasoning explicitly cites the absence of the literal string `DEPLOY_OK` as the disqualifying evidence",
+        "Agent points out that pm2 'online' alone is not sufficient evidence of a successful deploy",
+        "Agent recommends investigating the earlier output (composer install, php artisan migrate, package:discover, or npm run build) before re-deploying or moving on",
+        "Agent did NOT claim the deploy succeeded based on pm2 status or exit code 0"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "tailwind-token-addition",
+      "prompt": "Add a new Tailwind font-size token called `text-micro` (10px / 14px line-height) and use it on the helper text under the email input in web/components/editor/SettingsHub.tsx. Make sure it doesn't get clobbered by tailwind-merge.",
+      "expected_output": "Agent edits web/tailwind.config.ts to add the fontSize entry AND edits web/lib/cn.ts to register `text-micro` in the extendTailwindMerge classGroups, then applies the class in SettingsHub.tsx. Agent recognizes the cn.ts step as the load-bearing one (the tailwind-merge text-*-as-color misclassification bug).",
+      "files": [],
+      "assertions": [
+        "web/tailwind.config.ts was modified to include the `micro` (or `text-micro`) fontSize entry",
+        "web/lib/cn.ts was modified to register the new token in the extendTailwindMerge classGroups",
+        "Agent's explanation references the tailwind-merge text-*-as-color misclassification (the documented `cn.ts` GOTCHA) — i.e. notes that without cn.ts registration the size class would be stripped when a color follows in the same cn() call",
+        "Agent used Edit (not Write) on tailwind.config.ts, cn.ts, and SettingsHub.tsx",
+        "Agent did not attempt to fix unrelated standing palette warnings from check:ui in this same change"
+      ]
+    }
+  ]
+}

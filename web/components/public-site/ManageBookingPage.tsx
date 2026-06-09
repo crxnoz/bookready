@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ArrowLeft, Calendar, CheckCircle2, Clock, Loader2, XCircle, AlertCircle, RefreshCw,
+  ArrowLeft, Calendar, CalendarPlus, CheckCircle2, Clock, Loader2, XCircle, AlertCircle, RefreshCw,
 } from 'lucide-react'
 import {
   cancelManageBooking,
@@ -211,6 +211,17 @@ export default function ManageBookingPage({ slug, token }: { slug: string; token
             >
               <RefreshCw size={11} /> Reschedule
             </button>
+            {/* T1.2 — single-event .ics download. URL is fully derived from
+                slug+token (the same capability the page itself uses). Native
+                <a download> triggers the browser save / open-in-calendar
+                handoff with no JS needed. */}
+            <a
+              href={`${process.env.NEXT_PUBLIC_API_URL ?? 'https://api.bkrdy.me/api/v1'}/public/sites/${slug}/manage/${token}/calendar.ics`}
+              download="appointment.ics"
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase bg-white text-near-black border border-hairline-strong px-3 py-2 hover:border-near-black"
+            >
+              <CalendarPlus size={11} /> Add to calendar
+            </a>
             <button
               type="button"
               onClick={handleCancel}
