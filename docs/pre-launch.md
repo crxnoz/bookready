@@ -122,7 +122,7 @@ surface.
 - Verify rate limits on every public/auth endpoint (booking, login, register, password reset, leads, check-subdomain, verify-code, switch-role).
 - Re-grep for secret/`APP_DEBUG`/dev leaks; confirm `APP_DEBUG=false` in prod.
 - Confirm CSP, HSTS, COOP/CORP headers still correct after the recent additions.
-- **Fix the realip-vs-allow/deny nginx ordering bug — `#31` (still pending).**
+- ☑ Realip-vs-allow/deny nginx ordering bug fixed 2026-06-09 (`#31`) — root cause was the `cloudflare-realip.conf` include missing from `/etc/nginx/nginx.conf`, so `$remote_addr` was never rewritten and Laravel saw Cloudflare edge IPs in every per-IP throttle. README updated to call out both required includes.
 - Pen-test the booking + manage-booking token flow (token entropy, IDOR on appointment IDs, tenant isolation — can tenant A read tenant B's data via any endpoint?).
 - Confirm tenant DB isolation holds on every editor controller (the `tenancy()->end()` + plain-array pattern).
 

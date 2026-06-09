@@ -93,15 +93,27 @@ specifically for this case). The site config then enforces with
    ```
 
 2. **Edit `/etc/nginx/nginx.conf`** — inside the `http { ... }` block,
-   add:
+   add BOTH includes. `realip` first so it's defined before anything
+   that references `$realip_remote_addr`:
 
    ```nginx
    include /etc/nginx/snippets/cloudflare-realip.conf;
+   include /etc/nginx/snippets/cloudflare-geo.conf;
    ```
 
+   Both lines are required. Missing the `realip` line is the trap we
+   hit on 2026-06-09: the geo block still rejected direct-IP bypass
+   attempts (so the surface looked locked), but `$remote_addr` was
+   never rewritten, so Laravel's `Request::ip()` returned the
+   Cloudflare edge IP instead of the visitor's real IP. Every per-IP
+   throttle was keying on a tiny handful of CF edges — effectively
+   lumping all real-world traffic together. Verify with the access-log
+   probe in §Verification below.
+
 3. **Run the refresh script once** to generate
-   `/etc/nginx/snippets/cloudflare-allow.conf`. The script will also
-   `nginx -t` and reload, so it'll fail loudly if anything's off.
+   `/etc/nginx/snippets/cloudflare-geo.conf` (the file referenced by
+   the second include you just added). The script also runs
+   `nginx -t` and reloads, so it'll fail loudly if anything's off.
 
    ```bash
    /usr/local/bin/refresh-cf-ips.sh
