@@ -1,5 +1,12 @@
 /** @type {import('next').NextConfig} */
 
+// Strip a trailing /api/v1 from NEXT_PUBLIC_API_URL so CSP connect-src
+// gets just the origin. Default to prod when unset (the common case).
+// Setting NEXT_PUBLIC_API_URL=https://api.staging.bkrdy.me/api/v1 in a
+// build (staging .env.production) automatically widens connect-src and
+// form-action to the staging API without any hardcoded hostnames here.
+const API_ORIGIN = (process.env.NEXT_PUBLIC_API_URL ?? 'https://api.bkrdy.me/api/v1').replace(/\/api\/v1\/?$/, '')
+
 // Phase S5 — security headers (updated for editor preview iframe).
 //
 // Per-host rules: the editor at app.bkrdy.me, app.daysbookings.site,
@@ -36,14 +43,14 @@ const PUBLIC_SITE_CSP = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
-  "connect-src 'self' https://api.bkrdy.me",
+  `connect-src 'self' ${API_ORIGIN}`,
   // The editor is served from both app.bkrdy.me AND the apex bkrdy.me
   // (the marketing surface + login live on the apex). Both need to be
   // listed as allowed iframe parents or Chrome refuses to render the
   // preview iframe — "preview doesnt show in incognito tabs".
   "frame-ancestors 'self' https://app.bkrdy.me https://bkrdy.me https://app.daysbookings.site https://mybookready.com",
   "base-uri 'self'",
-  "form-action 'self' https://api.bkrdy.me",
+  `form-action 'self' ${API_ORIGIN}`,
   "object-src 'none'",
 ].join('; ')
 
@@ -62,7 +69,7 @@ const APP_CSP = [
   "font-src 'self' data: https:",
   // challenges.cloudflare.com on connect-src — Turnstile's XHR/POST
   // calls back into Cloudflare during the challenge lifecycle.
-  "connect-src 'self' https://api.bkrdy.me https://api.stripe.com https://*.stripe.com https://accounts.google.com https://challenges.cloudflare.com",
+  `connect-src 'self' ${API_ORIGIN} https://api.stripe.com https://*.stripe.com https://accounts.google.com https://challenges.cloudflare.com`,
   // frame-src — what the editor is allowed to load AS iframes. Stripe
   // and Google for their respective widgets, plus the wildcard tenant
   // subdomains so the website-preview iframe in /editor/website can
@@ -76,7 +83,7 @@ const APP_CSP = [
   "frame-src https://js.stripe.com https://hooks.stripe.com https://accounts.google.com https://*.bkrdy.me https://*.daysbookings.site https://challenges.cloudflare.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
-  "form-action 'self' https://api.bkrdy.me https://checkout.stripe.com",
+  `form-action 'self' ${API_ORIGIN} https://checkout.stripe.com`,
   "object-src 'none'",
 ].join('; ')
 
