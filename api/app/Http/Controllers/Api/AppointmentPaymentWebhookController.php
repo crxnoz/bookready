@@ -81,6 +81,9 @@ class AppointmentPaymentWebhookController extends Controller
             case 'charge.dispute.closed':
                 return $this->handleDisputeClosed($event);
             case 'payment_intent.payment_failed':
+            case 'payment_intent.canceled':
+                // Both events mean "this payment is not happening." Same fix:
+                // free the held slot so it doesn't rot in pending_payment.
                 return $this->handlePaymentFailed($event);
             case 'payout.failed':
                 return $this->handlePayoutFailed($event);
@@ -748,14 +751,22 @@ class AppointmentPaymentWebhookController extends Controller
                 return response()->json(['received' => true]);
             }
 
-            // Only transition pending_payment → failed. If the customer
-            // already retried and succeeded, don't clobber that.
+            // Only transition pending_payment → failed/cancelled. If the
+            // customer already retried and succeeded, don't clobber that.
+            //
+            // We ALSO flip status to 'cancelled' so the slot is freed for
+            // real bookings. Previously this handler only marked the
+            // payment failed and left status='pending', which left the
+            // row blocking the slot until the cron sweeper (every 5min)
+            // caught it. With this change the webhook releases the slot
+            // immediately on a failure/cancel signal.
             if ($row->payment_status === 'pending_payment') {
                 DB::table('appointments')->where('id', $appointmentId)->update([
+                    'status'         => 'cancelled',
                     'payment_status' => 'failed',
                     'updated_at'     => now(),
                 ]);
-                Log::info('Appointment payment failed', [
+                Log::info('Appointment payment failed/canceled — slot released', [
                     'tenant_id'      => $tenantId,
                     'appointment_id' => $appointmentId,
                     'payment_intent' => $piId,
