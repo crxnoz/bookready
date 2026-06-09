@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { getPublicSite } from '@/lib/api'
 import { PublicSite } from '@/lib/types'
 import { resolveTemplate } from '@/templates/registry'
@@ -12,10 +13,53 @@ interface Props {
   searchParams: { unlock?: string }
 }
 
-export async function generateMetadata({ params, searchParams }: Props) {
-  const site = await getPublicSite(params.slug, searchParams?.unlock).catch(() => null)
-  if (!site) return { title: 'Not Found — BookReady' }
-  return { title: `${site.business_name ?? site.slug} — BookReady` }
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+  const baseDomain  = process.env.NEXT_PUBLIC_TENANT_BASE_DOMAIN ?? 'bkrdy.me'
+  const unlockToken = Boolean(searchParams?.unlock)
+  const site        = await getPublicSite(params.slug, searchParams?.unlock).catch(() => null)
+
+  // 404 — don't index missing-site responses.
+  if (!site) {
+    return {
+      title:  'Not Found — BookReady',
+      robots: { index: false, follow: false },
+    }
+  }
+
+  const title = `${site.business_name ?? site.slug} — BookReady`
+
+  // Phase S1 privacy gate: locked / coming-soon are private to the
+  // owner. Don't surface them in SERPs. Same for any request carrying
+  // ?unlock= — the token is a single-use secret; indexing leaks it
+  // into search results, and outbound links from the page (Stripe
+  // iframes, "open in maps") would leak it via Referer to third
+  // parties unless `referrer: no-referrer` is set on the document.
+  if (unlockToken || site.status === 'locked' || site.status === 'coming_soon') {
+    const base: Metadata = {
+      title,
+      robots: {
+        index:     false,
+        follow:    false,
+        nosnippet: true,
+        noarchive: true,
+      },
+    }
+    return unlockToken
+      ? { ...base, referrer: 'no-referrer' }
+      : base
+  }
+
+  // Active site, no unlock token. Canonical points at the subdomain
+  // root (NOT the internal /site/{slug} rewrite target, NOT the
+  // current URL which may carry tracking params or future ?unlock=).
+  // This consolidates link-equity on the marketing-facing URL.
+  return {
+    title,
+    robots: { index: true, follow: true },
+    alternates: {
+      canonical: `https://${params.slug}.${baseDomain}/`,
+    },
+  }
 }
 
 export default async function PublicSitePage({ params, searchParams }: Props) {
