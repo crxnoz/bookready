@@ -6,7 +6,7 @@
   'preheader' => 'Loved your visit? Leave ' . $businessName . ' a tip.',
   'eyebrow'   => 'Thank you',
   'headline'  => 'Loved your visit?',
-  'intro'     => 'Hi ' . $customerName . ' — thanks for visiting ' . $businessName . ' for your ' . $serviceName . ' on ' . $apptStr . '. If you&rsquo;d like to leave a tip, the link below takes you straight there.',
+  'intro'     => 'Hi ' . $customerName . ', thanks for visiting ' . $businessName . ' for your ' . $serviceName . ' on ' . $apptStr . '. If you’d like to leave a tip, the link below takes you straight there.',
 ])
 
 @section('cta')
@@ -17,6 +17,6 @@
 
 @section('extra')
 <p style="margin:0;font-size:13px;line-height:1.55;color:#3A3A3A;">
-  Tips go directly to {{ $businessName }} through Stripe. No pressure &mdash; this is entirely optional.
+  Tips go directly to {{ $businessName }} through Stripe. No pressure, this is entirely optional.
 </p>
 @endsection

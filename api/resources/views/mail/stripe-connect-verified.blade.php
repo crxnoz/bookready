@@ -1,8 +1,8 @@
 @extends('mail.layouts.bookready', [
   'preheader' => 'Stripe is connected. ' . $businessName . ' can accept online payments.',
   'eyebrow'   => 'Stripe connected',
-  'headline'  => 'You&rsquo;re ready to collect payments.',
-  'intro'     => 'Hi ' . $ownerName . ' — Stripe just verified the connected account for ' . $businessName . '. Customer deposits and payments will land in your Stripe account from now on.',
+  'headline'  => 'You’re ready to collect payments.',
+  'intro'     => 'Hi ' . $ownerName . ', Stripe just verified the connected account for ' . $businessName . '. Customer deposits and payments will land in your Stripe account from now on.',
 ])
 
 @section('cta')

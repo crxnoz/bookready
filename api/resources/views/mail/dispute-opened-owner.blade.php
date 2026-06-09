@@ -7,10 +7,10 @@
 @endphp
 
 @extends('mail.layouts.bookready', [
-  'preheader' => 'A customer disputed ' . $amountStr . '. You have time-limited to respond in Stripe.',
+  'preheader' => 'A customer disputed ' . $amountStr . '. You have limited time to respond in Stripe.',
   'eyebrow'   => 'Action needed',
   'headline'  => 'A payment was disputed.',
-  'intro'     => 'Hi ' . $ownerName . ' — a customer of ' . $businessName . ' has filed a chargeback for ' . $amountStr . '. Stripe will hold the funds until the dispute is resolved.',
+  'intro'     => 'Hi ' . $ownerName . ', a customer of ' . $businessName . ' has filed a chargeback for ' . $amountStr . '. Stripe will hold the funds until the dispute is resolved.',
 ])
 
 @section('details')

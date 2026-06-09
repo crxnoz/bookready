@@ -30,7 +30,7 @@
 
 @section('extra')
 <p style="margin:0;font-size:13px;line-height:1.55;color:#3A3A3A;">
-  Hey {{ $ownerName }} — if anything looks off or you&rsquo;d like a hand getting set up,
+  Hey {{ $ownerName ?: 'there' }}, if anything looks off or you&rsquo;d like a hand getting set up,
   just reply to this email. We read every one.
 </p>
 @endsection

@@ -2,7 +2,7 @@
   'preheader' => $appt['customer_name'] . ' cancelled their ' . $appt['service_name'] . ' appointment.',
   'eyebrow'   => 'Booking cancelled by client',
   'headline'  => $appt['customer_name'] . ' cancelled their appointment.',
-  'intro'     => 'Just a heads up — the time has been released back to your calendar.',
+  'intro'     => 'Just a heads up, the time has been released back to your calendar.',
 ])
 
 @section('details')

@@ -10,7 +10,7 @@
   'preheader' => ($isNoShow ? 'No-show fee: ' : 'Late-cancel fee: ') . $amountStr,
   'eyebrow'   => $isNoShow ? 'No-show fee' : 'Late-cancel fee',
   'headline'  => $isNoShow ? 'A no-show fee was charged.' : 'A late-cancellation fee was charged.',
-  'intro'     => 'Hi ' . $customerName . ' — ' . $businessName . ' has charged ' . $amountStr . ' to the card on file for your ' . $serviceName . ' on ' . $apptStr . '.',
+  'intro'     => 'Hi ' . $customerName . ', ' . $businessName . ' has charged ' . $amountStr . ' to the card on file for your ' . $serviceName . ' on ' . $apptStr . '.',
 ])
 
 @section('details')

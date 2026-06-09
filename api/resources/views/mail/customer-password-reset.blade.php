@@ -2,7 +2,7 @@
   'preheader' => 'Reset your BookReady password.',
   'eyebrow'   => 'Password reset',
   'headline'  => 'Reset your password',
-  'intro'     => 'Hi ' . $customerName . ' — someone (hopefully you) asked to reset the password on your BookReady account.',
+  'intro'     => 'Hi ' . $customerName . ', someone (hopefully you) asked to reset the password on your BookReady account.',
 ])
 
 @section('cta')
@@ -16,7 +16,7 @@
   This link is good for the next {{ $ttlMins }} minutes. After that, you&rsquo;ll need to request a new one.
 </p>
 <p style="margin:0;font-size:12px;line-height:1.55;color:#6B7280;">
-  Didn&rsquo;t ask for this? You can safely ignore this email &mdash; your password won&rsquo;t change unless someone clicks the link above and sets a new one.
+  Didn&rsquo;t ask for this? You can safely ignore this email. Your password won&rsquo;t change unless someone clicks the link above and sets a new one.
 </p>
 <p style="margin:14px 0 0;font-size:11px;line-height:1.5;color:#9AA0A6;word-break:break-all;">
   If the button doesn&rsquo;t work, paste this URL into your browser:<br>

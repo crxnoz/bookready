@@ -8,10 +8,10 @@
     ? 'You won the dispute.'
     : ($isLost ? 'The dispute was lost.' : 'The dispute has been closed.');
   $intro = $isWon
-    ? 'Hi ' . $ownerName . ' — Stripe ruled in your favor on the ' . $amountStr . ' chargeback for ' . $businessName . '. The held funds are released back to you.'
+    ? 'Hi ' . $ownerName . ', Stripe ruled in your favor on the ' . $amountStr . ' chargeback for ' . $businessName . '. The held funds are released back to you.'
     : ($isLost
-        ? 'Hi ' . $ownerName . ' — the ' . $amountStr . ' chargeback for ' . $businessName . ' was decided against you. The funds have been reversed and a dispute fee may apply.'
-        : 'Hi ' . $ownerName . ' — the dispute on ' . $businessName . ' (' . $amountStr . ') has been closed by Stripe. See your dashboard for details.');
+        ? 'Hi ' . $ownerName . ', the ' . $amountStr . ' chargeback for ' . $businessName . ' was decided against you. The funds have been reversed and a dispute fee may apply.'
+        : 'Hi ' . $ownerName . ', the dispute on ' . $businessName . ' (' . $amountStr . ') has been closed by Stripe. See your dashboard for details.');
 @endphp
 
 @extends('mail.layouts.bookready', [

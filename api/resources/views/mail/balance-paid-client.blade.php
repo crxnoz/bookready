@@ -8,8 +8,8 @@
 @extends('mail.layouts.bookready', [
   'preheader' => 'You paid ' . $amountStr . '. You are all set.',
   'eyebrow'   => 'Payment received',
-  'headline'  => 'You&rsquo;re all paid up.',
-  'intro'     => 'Hi ' . $customerName . ' — thanks for paying the remaining balance for your ' . $serviceName . ' on ' . $apptStr . '. Nothing more to pay at the appointment.',
+  'headline'  => 'You’re all paid up.',
+  'intro'     => 'Hi ' . $customerName . ', thanks for paying the remaining balance for your ' . $serviceName . ' on ' . $apptStr . '. Nothing more to pay at the appointment.',
 ])
 
 @section('details')

@@ -11,8 +11,8 @@
   'eyebrow'   => $bal ? 'Balance due' : 'Confirm your booking',
   'headline'  => $bal ? 'Pay your remaining balance.' : 'Confirm your booking with a payment.',
   'intro'     => $bal
-    ? 'Hi ' . $customerName . ' — ' . $businessName . ' is collecting the balance for your ' . $serviceName . ' on ' . $apptStr . '. The link below takes you straight to secure Stripe checkout.'
-    : 'Hi ' . $customerName . ' — ' . $businessName . ' is holding your ' . $serviceName . ' for ' . $apptStr . '. Pay below to lock in the appointment.',
+    ? 'Hi ' . $customerName . ', ' . $businessName . ' is collecting the balance for your ' . $serviceName . ' on ' . $apptStr . '. The link below takes you straight to secure Stripe checkout.'
+    : 'Hi ' . $customerName . ', ' . $businessName . ' is holding your ' . $serviceName . ' for ' . $apptStr . '. Pay below to lock in the appointment.',
 ])
 
 @section('details')

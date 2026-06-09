@@ -1,8 +1,8 @@
 @extends('mail.layouts.bookready', [
   'preheader' => 'Your appointment with ' . $businessName . ' is coming up.',
   'eyebrow'   => 'Reminder',
-  'headline'  => 'See you soon, ' . $appt['customer_name'] . '.',
-  'intro'     => ($customIntro ?? null) ?: ('Your appointment with ' . $businessName . ' is coming up in roughly ' . $hoursBefore . ' hour' . ($hoursBefore === 1 ? '' : 's') . '.'),
+  'headline'  => 'See you soon, ' . ($appt['customer_name'] ?: 'there') . '.',
+  'intro'     => ($customIntro ?? null) ?: ('Your appointment with ' . $businessName . ' is coming up in about ' . $hoursBefore . ' hour' . ($hoursBefore === 1 ? '' : 's') . '.'),
 ])
 
 @section('details')

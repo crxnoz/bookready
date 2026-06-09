@@ -2,7 +2,7 @@
   'preheader' => 'Your BookReady verification code is ' . $verifyCode,
   'eyebrow'   => 'Email verification',
   'headline'  => 'Confirm your email',
-  'intro'     => 'Hi ' . $ownerName . ' — thanks for joining BookReady. Enter the 6-digit code below on the verification screen, or click the button if you opened this email on the same device.',
+  'intro'     => 'Hi ' . $ownerName . ', thanks for joining BookReady. Enter the 6-digit code below on the verification screen, or click the button if you opened this email on the same device.',
 ])
 
 @section('details')
@@ -30,10 +30,10 @@
 
 @section('extra')
 <p style="margin:0 0 12px;font-size:13px;line-height:1.55;color:#3A3A3A;">
-  Either method works. The code expires in 15 minutes; the link is good for {{ $ttlMins }} minutes after that, sign in and request a new one from your dashboard.
+  Either method works. The code expires in 15 minutes and the link is good for {{ $ttlMins }} minutes. After that, sign in and request a new one from your dashboard.
 </p>
 <p style="margin:0;font-size:12px;line-height:1.55;color:#6B7280;">
-  Didn&rsquo;t create a BookReady account? You can ignore this email &mdash; the code is useless without your password.
+  Didn&rsquo;t create a BookReady account? You can ignore this email. The code is useless without your password.
 </p>
 <p style="margin:14px 0 0;font-size:11px;line-height:1.5;color:#9AA0A6;word-break:break-all;">
   If the button doesn&rsquo;t work, paste this URL into your browser:<br>

@@ -1,8 +1,8 @@
 @extends('mail.layouts.bookready', [
-  'preheader' => 'A spot just opened on ' . \Carbon\Carbon::parse($appointmentDate)->format('M j') . ' — claim it before it goes.',
+  'preheader' => 'A spot just opened on ' . \Carbon\Carbon::parse($appointmentDate)->format('M j') . '. Claim it before it goes.',
   'eyebrow'   => 'Spot opened',
   'headline'  => 'A spot just opened.',
-  'intro'     => "Hi " . $customerName . ", a matching cancellation came in at " . $businessName . ". This slot is offered to you first — first to click claims it.",
+  'intro'     => "Hi " . ($customerName ?: 'there') . ", a matching cancellation came in at " . $businessName . ". This slot is offered to you first, and the first to click claims it.",
 ])
 
 @section('details')
@@ -10,7 +10,7 @@
   @include('mail.partials.kv', ['label' => 'Service', 'value' => $serviceName])
   @include('mail.partials.kv', ['label' => 'Date',    'value' => \Carbon\Carbon::parse($appointmentDate)->format('l, F j, Y')])
   @include('mail.partials.kv', ['label' => 'Time',    'value' => $startTime ? \Carbon\Carbon::createFromFormat('H:i', $startTime)->format('g:i A') : 'See booking page'])
-  @include('mail.partials.kv', ['label' => 'Expires', 'value' => $expiresAt->format('g:i A') . ' today'])
+  @include('mail.partials.kv', ['label' => 'Expires', 'value' => 'Today at ' . $expiresAt->format('g:i A')])
 </table>
 
 <div style="text-align:center;margin:24px 0 8px;">

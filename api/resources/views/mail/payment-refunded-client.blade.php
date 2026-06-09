@@ -7,7 +7,7 @@
   'preheader' => ($isFullRefund ? 'Refund issued: ' : 'Partial refund issued: ') . $amountStr,
   'eyebrow'   => $isFullRefund ? 'Refund issued' : 'Partial refund',
   'headline'  => $isFullRefund ? 'Your refund is on the way.' : 'A partial refund is on the way.',
-  'intro'     => 'Hi ' . $customerName . ' — ' . $businessName . ' has issued a refund of ' . $amountStr . ' for your ' . $serviceName . ' booking on ' . $apptStr . '.',
+  'intro'     => 'Hi ' . $customerName . ', ' . $businessName . ' has issued a refund of ' . $amountStr . ' for your ' . $serviceName . ' booking on ' . $apptStr . '.',
 ])
 
 @section('extra')

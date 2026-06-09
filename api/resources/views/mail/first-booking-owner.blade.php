@@ -1,8 +1,8 @@
 @extends('mail.layouts.bookready', [
   'preheader' => 'Your first booking just landed.',
   'eyebrow'   => 'First booking',
-  'headline'  => 'You made your first booking, ' . $ownerName . '!',
-  'intro'     => $businessName . ' just received its very first booking on BookReady. That&rsquo;s a real one — congrats.',
+  'headline'  => 'You got your first booking, ' . $ownerName . '!',
+  'intro'     => $businessName . ' just received its very first booking on BookReady. That’s a real one. Congrats.',
 ])
 
 @section('details')

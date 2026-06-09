@@ -1,7 +1,7 @@
 @extends('mail.layouts.bookready', [
   'preheader' => 'We received your booking request for ' . $businessName . '.',
   'eyebrow'   => 'Booking request received',
-  'headline'  => 'Thanks, ' . $appt['customer_name'] . '!',
+  'headline'  => 'Thanks, ' . ($appt['customer_name'] ?: 'there') . '!',
   'intro'     => ($customIntro ?? null) ?: ('We received your request and ' . $businessName . ' will review and confirm shortly.'),
 ])
 
@@ -77,7 +77,7 @@
         Save this booking
       </p>
       <p style="margin:0 0 10px;font-size:13px;line-height:1.55;color:#3A3A3A;">
-        Create a free BookReady account to manage this booking &mdash; and any future ones &mdash; from one place.
+        Create a free BookReady account to manage this booking, plus any future ones, from one place.
       </p>
       <a href="{{ $appt['claim_url'] }}" style="display:inline-block;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#121212;text-decoration:underline;text-underline-offset:3px;">
         Save my booking &rarr;

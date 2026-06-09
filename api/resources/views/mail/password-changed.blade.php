@@ -2,7 +2,7 @@
   'preheader' => 'Your BookReady password was just changed.',
   'eyebrow'   => 'Security',
   'headline'  => 'Your password was changed.',
-  'intro'     => 'Hi ' . $ownerName . ' — the password on your BookReady account was just updated at ' . $changedAt . '.',
+  'intro'     => 'Hi ' . $ownerName . ', the password on your BookReady account was just updated at ' . $changedAt . '.',
 ])
 
 @section('cta')
@@ -13,7 +13,7 @@
 
 @section('extra')
 <p style="margin:0 0 12px;font-size:13px;line-height:1.55;color:#3A3A3A;">
-  If that was you — you can ignore this email. You&rsquo;re all set.
+  If that was you, you can ignore this email. You&rsquo;re all set.
 </p>
 <p style="margin:0;font-size:13px;line-height:1.55;color:#3A3A3A;">
   If it wasn&rsquo;t you, open Account Settings and:

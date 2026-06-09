@@ -2,7 +2,7 @@
   'preheader' => 'Stripe needs more information to keep accepting payments for ' . $businessName . '.',
   'eyebrow'   => 'Action required',
   'headline'  => 'Stripe needs more info on your account.',
-  'intro'     => 'Hi ' . $ownerName . ' — Stripe flagged your connected account for ' . $businessName . ' and paused payments until the requirements are resolved. Customers can&rsquo;t complete bookings that require a payment until this is sorted.',
+  'intro'     => 'Hi ' . $ownerName . ', Stripe flagged your connected account for ' . $businessName . ' and paused payments until the requirements are resolved. Customers can’t complete bookings that require a payment until this is sorted.',
 ])
 
 @section('cta')

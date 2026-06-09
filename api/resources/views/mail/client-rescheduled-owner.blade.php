@@ -1,7 +1,7 @@
 @extends('mail.layouts.bookready', [
-  'preheader' => $appt['customer_name'] . ' moved their appointment.',
+  'preheader' => ($appt['customer_name'] ?: 'A client') . ' moved their appointment.',
   'eyebrow'   => 'Booking rescheduled by client',
-  'headline'  => $appt['customer_name'] . ' moved their appointment.',
+  'headline'  => ($appt['customer_name'] ?: 'A client') . ' moved their appointment.',
   'intro'     => 'Your calendar has been updated automatically.',
 ])
 

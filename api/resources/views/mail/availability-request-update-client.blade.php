@@ -3,17 +3,17 @@
     'approved' => [
       'eyebrow'  => 'Request approved',
       'headline' => "You're booked.",
-      'intro'    => "Hi " . $customerName . ", good news — " . $businessName . " confirmed your appointment for " . $serviceName . ".",
+      'intro'    => "Hi " . ($customerName ?: 'there') . ", good news: " . $businessName . " confirmed your appointment for " . $serviceName . ".",
     ],
     'suggested' => [
       'eyebrow'  => 'New time offered',
       'headline' => 'How about this time?',
-      'intro'    => "Hi " . $customerName . ", " . $businessName . " couldn't do your exact request but offered an alternative for " . $serviceName . ". Accept it below if it works.",
+      'intro'    => "Hi " . ($customerName ?: 'there') . ", " . $businessName . " couldn't do your exact request but offered an alternative for " . $serviceName . ". Accept it below if it works.",
     ],
     'declined' => [
       'eyebrow'  => 'Request update',
       'headline' => "Couldn't make that one work.",
-      'intro'    => "Hi " . $customerName . ", unfortunately " . $businessName . " can't accommodate your request for " . $serviceName . " at this time.",
+      'intro'    => "Hi " . ($customerName ?: 'there') . ", " . $businessName . " couldn't fit your request for " . $serviceName . " this time.",
     ],
   ][$outcome] ?? [
     'eyebrow' => 'Request update', 'headline' => 'Update on your request.', 'intro' => 'There is an update on your appointment request.',
@@ -54,6 +54,6 @@
 @if($outcome === 'declined')
 You're welcome to try another date on the booking page anytime.
 @elseif($outcome === 'suggested')
-This offer is held for you — accept it to lock in the time before someone else books it.
+This offer is held for you. Accept it to lock in the time before someone else books it.
 @endif
 @endsection

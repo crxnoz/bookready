@@ -8,7 +8,7 @@
   'preheader' => 'A ' . $amountStr . ' payout to your bank was rejected.',
   'eyebrow'   => 'Action needed',
   'headline'  => 'A payout to your bank failed.',
-  'intro'     => 'Hi ' . $ownerName . ' — Stripe tried to deposit ' . $amountStr . ' to your bank for ' . $businessName . ' and the bank rejected it. The funds are held in your Stripe balance until you update your account details and Stripe retries the payout.',
+  'intro'     => 'Hi ' . $ownerName . ', Stripe tried to deposit ' . $amountStr . ' to your bank for ' . $businessName . ' and the bank rejected it. The funds are held in your Stripe balance until you update your account details and Stripe retries the payout.',
 ])
 
 @section('details')
@@ -35,6 +35,6 @@
   Most common causes: bank account closed, wrong routing number, account name doesn&rsquo;t match the business name on file, or a hold from your bank.
 </p>
 <p style="margin:0;font-size:13px;line-height:1.55;color:#3A3A3A;">
-  Once you update your details, Stripe will automatically retry the payout. The money isn&rsquo;t lost &mdash; it&rsquo;s waiting in your Stripe balance.
+  Once you update your details, Stripe will automatically retry the payout. The money isn&rsquo;t lost. It&rsquo;s waiting in your Stripe balance.
 </p>
 @endsection

@@ -5,10 +5,10 @@
   'eyebrow'   => 'Security',
   'headline'  => $recipientRole === 'old'
       ? 'Your account email was changed.'
-      : 'You&rsquo;re all set.',
+      : 'You’re all set.',
   'intro'     => $recipientRole === 'old'
-      ? ('Hi ' . $ownerName . ' — the email on your BookReady account changed from this address at ' . $changedAt . '.')
-      : ('Hi ' . $ownerName . ' — this is now the email on your BookReady account, as of ' . $changedAt . '.'),
+      ? ('Hi ' . $ownerName . ', the email on your BookReady account changed from this address at ' . $changedAt . '.')
+      : ('Hi ' . $ownerName . ', this is now the email on your BookReady account, as of ' . $changedAt . '.'),
 ])
 
 @section('details')
@@ -28,7 +28,7 @@
 @section('extra')
 @if ($recipientRole === 'old')
 <p style="margin:0 0 12px;font-size:13px;line-height:1.55;color:#3A3A3A;">
-  If <strong>you</strong> made this change, you can ignore this email — you&rsquo;ll receive future emails at <strong>{{ $newEmail }}</strong> from now on.
+  If <strong>you</strong> made this change, you can ignore this email. You&rsquo;ll receive future emails at <strong>{{ $newEmail }}</strong> from now on.
 </p>
 <p style="margin:0;font-size:13px;line-height:1.55;color:#b42828;">
   If you didn&rsquo;t change it, your account may have been compromised. Reset your password right away and then click <strong>Sign out everywhere</strong> from Account Settings.
