@@ -161,7 +161,7 @@ export const EDITOR_SECTIONS: EditorSectionConfig[] = [
       { id: 'payments',      label: 'Payments' },
       { id: 'notifications', label: 'Notifications' },
       { id: 'account',       label: 'Account' },
-      { id: 'danger',        label: 'Danger Zone' },
+      { id: 'subscription',  label: 'Subscription' },
     ],
     defaultTitle:    'Settings',
     defaultSubtitle: 'Business-wide settings: payments, notifications, integrations, and account.',

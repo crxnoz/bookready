@@ -18,7 +18,7 @@ import { useConfirm } from '@/components/ui/ConfirmDialog'
 import Switch from '@/components/ui/Toggle'
 import {
   Building2, Calendar, CalendarClock, CreditCard, Bell, UserCircle,
-  Plug, AlertTriangle, ChevronRight, ChevronDown, Loader2, Check, AlertCircle,
+  Plug, ChevronRight, ChevronDown, Loader2, Check, AlertCircle,
   DollarSign, Download, Instagram, Mail, MapPin, MessageSquare, Phone,
   Percent, Lock, ExternalLink, RefreshCw, ShieldCheck, Send, Trash2, Webhook,
   X,
@@ -58,16 +58,17 @@ import type {
   SlotReleaseMode,
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
+import BillingHub from '@/components/editor/BillingHub'
 
 // ── Sub-tab plumbing ─────────────────────────────────────────────────────────
 
 type SettingsTab =
   | 'overview' | 'business' | 'booking' | 'payments'
-  | 'notifications' | 'account' | 'danger'
+  | 'notifications' | 'account' | 'subscription'
 
 const VALID_TABS: SettingsTab[] = [
   'overview', 'business', 'booking', 'payments',
-  'notifications', 'account', 'danger',
+  'notifications', 'account', 'subscription',
 ]
 
 interface GroupDef {
@@ -85,7 +86,7 @@ const GROUPS: GroupDef[] = [
   { tab: 'payments',      label: 'Payment Settings',   hint: 'Customer payments, deposits, currency',          icon: CreditCard,   status: 'ready' },
   { tab: 'notifications', label: 'Notifications',      hint: 'Toggle booking emails, reply address, sent-from name', icon: Bell,         status: 'ready' },
   { tab: 'account',       label: 'Account',            hint: 'Owner profile, password, sign-out everywhere',   icon: UserCircle,   status: 'ready' },
-  { tab: 'danger',        label: 'Danger Zone',        hint: 'Pause bookings, export data, delete account',    icon: AlertTriangle, status: 'ready', tone: 'danger' },
+  { tab: 'subscription',  label: 'Subscription & Plan', hint: 'Plan, billing cycle, card on file, delete account', icon: CreditCard,   status: 'ready' },
 ]
 
 function hrefFor(tab: SettingsTab): string {
@@ -121,7 +122,7 @@ export default function SettingsHub() {
       {tab === 'booking'       && <BookingSettingsPanel />}
       {tab === 'notifications' && <NotificationSettingsPanel />}
       {tab === 'account'       && <AccountSettingsPanel />}
-      {tab === 'danger'        && <DangerSettingsPanel />}
+      {tab === 'subscription'  && <SubscriptionPanel />}
     </div>
   )
 }
@@ -1517,6 +1518,8 @@ function AccountSettingsPanel() {
           </button>
         </div>
       </section>
+
+      <ExportDataCard />
     </div>
   )
 }
@@ -1816,8 +1819,9 @@ function BusinessSettingsPanel() {
         </div>
       </section>
 
-      {/* Time & format (moved from the old Preferences tab). */}
+      {/* Time & format + site visibility (moved from the old Preferences / Danger tabs). */}
       <PrefsCard section="time_format" />
+      <PrefsCard section="visibility" />
 
       <SaveBar
         dirty={dirty}
@@ -1849,7 +1853,7 @@ const COMMON_TIMEZONES = [
  * The old Preferences tab was dissolved (#settings-ia) and its four blocks
  * moved to the tabs they belong to:
  *   time_format   → Business      duration   → Booking
- *   communication → Notifications  visibility → Danger Zone
+ *   communication → Notifications  visibility → Business
  * Each PrefsCard owns its own load + partial save (updateEditorBusiness only
  * sends the fields for that slice, so it never clobbers a sibling tab).
  */
@@ -2231,23 +2235,28 @@ function SaveBar({
 
 // ── Danger Zone panel ───────────────────────────────────────────────────────
 
-function DangerSettingsPanel() {
-  // We pull the booking-enabled state for the "pause bookings" status card
-  // — but the actual edit lives in Booking Settings to keep state in one place.
-  const [bookingSettings, setBookingSettings] = useState<BookingSettings | null>(null)
-  const [loading,         setLoading]         = useState(true)
-  const [exportBusy,      setExportBusy]      = useState<null | 'appointments' | 'customers'>(null)
-  const [exportErr,       setExportErr]       = useState<string | null>(null)
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
+function SubscriptionPanel() {
+  return (
+    <div className="space-y-4">
+      <Link
+        href={hrefFor('overview')}
+        className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-tight text-near-black hover:underline"
+      >
+        ← Back to Settings
+      </Link>
 
-  useEffect(() => {
-    let cancelled = false
-    getEditorBookingSettings()
-      .then(d => { if (!cancelled) setBookingSettings(d) })
-      .catch(() => { /* non-fatal — we still render the rest */ })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
-  }, [])
+      <BillingHub />
+
+      <DeleteAccountCard />
+    </div>
+  )
+}
+
+// Export-your-data card — lives in Account. Self-contained: owns its busy/
+// error state and triggers the CSV download.
+function ExportDataCard() {
+  const [exportBusy, setExportBusy] = useState<null | 'appointments' | 'customers'>(null)
+  const [exportErr,  setExportErr]  = useState<string | null>(null)
 
   async function handleExport(type: 'appointments' | 'customers') {
     setExportBusy(type); setExportErr(null)
@@ -2268,92 +2277,45 @@ function DangerSettingsPanel() {
     }
   }
 
-  const bookingsPaused = bookingSettings && bookingSettings.booking_enabled === false
-
   return (
-    <div className="space-y-3">
-      <Link
-        href={hrefFor('overview')}
-        className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-tight text-near-black hover:underline"
-      >
-        ← Back to Settings
-      </Link>
-
-      <header className="px-1">
-        <h1 className="text-base font-bold text-near-black">Danger Zone</h1>
-        <p className="text-xs text-muted-text mt-0.5">
-          Destructive and archival actions. Read carefully, since these affect real customer data and money.
-        </p>
-      </header>
-
-      {/* Site visibility (moved from the old Preferences tab). */}
-      <PrefsCard section="visibility" />
-
-      {/* Pause bookings (read-only status with deep-link to source) */}
-      <section className="bg-white border border-hairline-soft p-3.5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0">
-            <span className={cn(
-              'w-9 h-9 flex items-center justify-center border flex-shrink-0',
-              bookingsPaused
-                ? 'bg-[rgba(180,120,0,0.08)] border-[rgba(180,120,0,0.35)] text-warning'
-                : 'bg-cream border-hairline-soft text-near-black',
-            )}>
-              <Calendar size={15} strokeWidth={1.8} />
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-near-black">Pause bookings</p>
-              <p className="text-2xs text-muted-text mt-0.5">
-                {loading
-                  ? 'Checking status…'
-                  : bookingsPaused
-                    ? 'Bookings are paused. Your site shows an unavailable message; existing appointments are untouched.'
-                    : 'Bookings are accepting new customers. Pause to temporarily stop accepting bookings without deleting anything.'}
-              </p>
-            </div>
-          </div>
-          <Link
-            href={hrefFor('booking')}
-            className="text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white px-3 py-1.5 hover:border-near-black transition-colors flex-shrink-0"
-          >
-            {bookingsPaused ? 'Manage' : 'Pause →'}
-          </Link>
-        </div>
-      </section>
-
-      {/* Export data */}
-      <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
-        <SectionTitle
-          icon={Download}
-          label="Export your data"
-          hint="Download a CSV copy of your bookings and customers. Useful for backups, accounting, or moving off BookReady."
+    <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
+      <SectionTitle
+        icon={Download}
+        label="Export your data"
+        hint="Download a CSV copy of your bookings and customers. Useful for backups, accounting, or moving off BookReady."
+      />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <ExportCard
+          label="Appointments"
+          description="Every appointment with status, customer, payment, and timestamps."
+          busy={exportBusy === 'appointments'}
+          onClick={() => handleExport('appointments')}
         />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <ExportCard
-            label="Appointments"
-            description="Every appointment with status, customer, payment, and timestamps."
-            busy={exportBusy === 'appointments'}
-            onClick={() => handleExport('appointments')}
-          />
-          <ExportCard
-            label="Customers"
-            description="Your customer list with name, email, phone, and notes."
-            busy={exportBusy === 'customers'}
-            onClick={() => handleExport('customers')}
-          />
+        <ExportCard
+          label="Customers"
+          description="Your customer list with name, email, phone, and notes."
+          busy={exportBusy === 'customers'}
+          onClick={() => handleExport('customers')}
+        />
+      </div>
+      {exportErr && (
+        <div className="px-3 py-2 bg-danger-bg border border-danger text-xs text-danger flex items-center gap-2">
+          <AlertCircle size={12} /> {exportErr}
         </div>
-        {exportErr && (
-          <div className="px-3 py-2 bg-danger-bg border border-danger text-xs text-danger flex items-center gap-2">
-            <AlertCircle size={12} /> {exportErr}
-          </div>
-        )}
-      </section>
+      )}
+    </section>
+  )
+}
 
-      {/* Delete account */}
-      <section className="bg-white border border-[rgba(180,40,40,0.30)] p-3.5">
+// Delete-account card — lives in Subscription. Self-contained confirm flow.
+function DeleteAccountCard() {
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  return (
+    <>
+      <section className="bg-white border border-danger/30 p-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0">
-            <span className="w-9 h-9 flex items-center justify-center border bg-[rgba(180,40,40,0.06)] border-[rgba(180,40,40,0.30)] text-danger flex-shrink-0">
+            <span className="w-9 h-9 flex items-center justify-center border bg-danger-bg border-danger/30 text-danger flex-shrink-0">
               <Trash2 size={15} strokeWidth={1.8} />
             </span>
             <div className="min-w-0">
@@ -2367,7 +2329,7 @@ function DangerSettingsPanel() {
           <button
             type="button"
             onClick={() => setShowDeleteModal(true)}
-            className="text-2xs font-bold tracking-[0.08em] uppercase border border-[rgba(180,40,40,0.45)] bg-white text-danger px-3 py-1.5 hover:bg-[rgba(180,40,40,0.05)] transition-colors flex-shrink-0"
+            className="text-2xs font-bold tracking-[0.08em] uppercase border border-danger/40 bg-white text-danger px-3 py-1.5 hover:bg-danger-bg transition-colors flex-shrink-0"
           >
             Delete account
           </button>
@@ -2377,7 +2339,7 @@ function DangerSettingsPanel() {
       {showDeleteModal && (
         <DeleteAccountDialog onClose={() => setShowDeleteModal(false)} />
       )}
-    </div>
+    </>
   )
 }
 
