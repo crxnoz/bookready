@@ -754,22 +754,25 @@ export default function PrivacyPage() {
         information will not be shared with third parties.
       </p>
 
-      <h3>SMS Communications and 10DLC Compliance</h3>
+      <h3>SMS Communications and Compliance</h3>
       <p>
         <strong><u>What SMS we send.</u></strong>{' '}
         BookReady sends transactional SMS notifications related to your
         appointments on a BookReady-powered booking site. Categories include:
-        appointment confirmations, reminders (typically 24 hours and 2 hours
-        before the appointment), cancellation notices, and reschedule notices.
+        appointment confirmations, reminders, updates, and cancellations.
         We do not send marketing or promotional SMS through this consent channel.
       </p>
       <p>
         <strong><u>How we collect your consent.</u></strong>{' '}
         When you book an appointment on a BookReady-powered website, the booking
         form presents an unchecked consent checkbox below the phone-number field
-        with the label: &ldquo;Send me appointment reminders from BookReady. Msg
-        &amp; data rates may apply. Msg frequency varies. Reply STOP to opt out,
-        HELP for help. View our Privacy Policy.&rdquo; You must affirmatively check this box before
+        with the label: &ldquo;I agree to receive appointment confirmations,
+        reminders, updates, and cancellations from [Business Name] about my
+        booking. Sent via BookReady. Msg &amp; data rates may apply. Msg
+        frequency varies. Reply
+        STOP to opt out, HELP for help. View our Privacy Policy.&rdquo; The
+        bracketed business name is replaced with the actual name of the business
+        you are booking with. You must affirmatively check this box before
         submitting the booking. We record the consent action, timestamp, IP
         address, and phone number against the appointment record. No SMS is sent
         to a number without a recorded affirmative consent. Consent is{' '}

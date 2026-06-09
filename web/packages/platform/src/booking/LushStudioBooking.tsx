@@ -1686,8 +1686,8 @@ export default function LushStudioBooking({
                 />
                 <span>
                   I agree to receive appointment confirmations, reminders,
-                  and updates from <strong>{displayName}</strong> about my
-                  booking. Sent via BookReady. Msg &amp; data rates may
+                  updates, and cancellations from <strong>{displayName}</strong>
+                  about my booking. Sent via BookReady. Msg &amp; data rates may
                   apply. Msg frequency varies. Reply STOP to opt out, HELP
                   for help. View our{' '}
                   <a
