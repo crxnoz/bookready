@@ -251,6 +251,80 @@ class AppointmentPaymentService
     }
 
     /**
+     * Embedded-checkout fallback. Given an existing (embedded) Checkout
+     * session that the browser couldn't mount — Stripe.js blocked, offline,
+     * etc. — mint an equivalent HOSTED session for the same charge so the
+     * customer can be redirected to Stripe's own page instead of stranded.
+     *
+     * We retrieve the original session and mirror its amount, currency,
+     * payment methods, metadata, and Connect destination rather than
+     * recomputing from settings — that guarantees the fallback charges
+     * exactly what the embedded session would have, with no drift.
+     *
+     * @return array{id:?string,url:?string,already_paid:bool}
+     */
+    public static function createHostedFromSession(
+        string $sessionId,
+        string $successUrl,
+        string $cancelUrl,
+    ): array {
+        Stripe::setApiKey(config('cashier.secret') ?: env('STRIPE_SECRET'));
+
+        $old = Session::retrieve([
+            'id'     => $sessionId,
+            'expand' => ['payment_intent'],
+        ]);
+
+        // Already paid (race: payment landed before the fallback fired) —
+        // nothing to do; caller treats this as success.
+        if (($old->payment_status ?? null) === 'paid') {
+            return ['id' => $old->id, 'url' => null, 'already_paid' => true];
+        }
+
+        $currency = $old->currency ?? 'usd';
+        $amount   = (int) ($old->amount_total ?? 0);
+        $metadata = isset($old->metadata) ? $old->metadata->toArray() : [];
+        $methods  = (isset($old->payment_method_types) && count($old->payment_method_types) > 0)
+            ? $old->payment_method_types
+            : ['card'];
+        $destination = $old->payment_intent->transfer_data->destination ?? null;
+
+        $paymentType = $metadata['payment_type'] ?? self::TYPE_DEPOSIT;
+        $itemName = match ($paymentType) {
+            self::TYPE_FULL    => 'Booking',
+            self::TYPE_BALANCE => 'Balance',
+            self::TYPE_TIP     => 'Tip',
+            default            => 'Deposit',
+        };
+
+        $params = [
+            'mode'                 => 'payment',
+            'payment_method_types' => $methods,
+            'success_url'          => $successUrl,
+            'cancel_url'           => $cancelUrl,
+            'line_items'           => [[
+                'quantity'   => 1,
+                'price_data' => [
+                    'currency'     => $currency,
+                    'unit_amount'  => $amount,
+                    'product_data' => ['name' => $itemName],
+                ],
+            ]],
+            'metadata'            => $metadata,
+            'payment_intent_data' => ['metadata' => $metadata],
+            // Match the embedded session's short hold window.
+            'expires_at'          => time() + (30 * 60),
+        ];
+        if ($destination) {
+            $params['payment_intent_data']['transfer_data'] = ['destination' => $destination];
+        }
+
+        $new = Session::create($params);
+
+        return ['id' => $new->id, 'url' => $new->url ?? null, 'already_paid' => false];
+    }
+
+    /**
      * Look up the most recent Stripe Customer matching an email. Returns
      * null when nothing matches (or on error — Checkout falls back to
      * creating a new customer in that case).

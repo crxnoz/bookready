@@ -371,6 +371,33 @@ export async function createPublicAppointment(
   return res.json() as Promise<PublicBookingResponse>
 }
 
+/**
+ * Embedded-checkout fallback. Called when Stripe.js can't load in the
+ * booking page — mints a HOSTED Checkout session for the same pending
+ * appointment so the customer can be redirected to Stripe's own page.
+ * Gated server-side by the embedded session's client_secret (a per-booking
+ * capability). Returns a checkout_url to redirect to, or already_paid when
+ * the original session settled in a race.
+ */
+export async function createAppointmentHostedFallback(
+  slug: string,
+  appointmentId: number,
+  clientSecret: string,
+): Promise<{ checkout_url?: string; already_paid?: boolean }> {
+  const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
+  const res = await fetch(`${base}/public/sites/${slug}/appointments/${appointmentId}/checkout-fallback`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body:    JSON.stringify({ client_secret: clientSecret }),
+    credentials: 'include',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }))
+    throw new Error(err.message ?? 'Could not start payment')
+  }
+  return res.json() as Promise<{ checkout_url?: string; already_paid?: boolean }>
+}
+
 // ── Public manage-booking (token-gated, no auth) ────────────────────────────
 
 export async function getManageBooking(slug: string, token: string): Promise<ManageBookingView> {

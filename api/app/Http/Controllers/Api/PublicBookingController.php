@@ -986,6 +986,118 @@ class PublicBookingController extends Controller
     }
 
     /**
+     * POST /api/v1/public/sites/{slug}/appointments/{appointment}/checkout-fallback
+     *
+     * Embedded-checkout fallback. When Stripe.js can't load in the booking
+     * page (ad/script blocker, firewall, offline), the frontend posts the
+     * embedded session's client_secret here. We verify it matches the
+     * appointment's stored session (a per-booking capability — the secret
+     * is only ever returned to the original booker), mint a HOSTED Checkout
+     * session for the same charge, repoint the appointment at it (so the
+     * webhook keeps matching), and return its URL for a redirect.
+     *
+     * No auth: same posture as the booking POST itself, gated by the
+     * client_secret capability + the throttle on the route.
+     */
+    public function checkoutFallback(Request $request, string $slug, int $appointment): JsonResponse
+    {
+        $slug = strtolower($slug);
+        if (! preg_match('/^[a-z0-9-]+$/', $slug)) {
+            return response()->json(['message' => 'Site not found'], 404);
+        }
+
+        $data         = $request->validate(['client_secret' => 'required|string']);
+        $clientSecret = $data['client_secret'];
+
+        // The client secret is "{session_id}_secret_{random}"; the session
+        // id is everything before the delimiter and must look like a
+        // Checkout session id.
+        $sessionId = explode('_secret_', $clientSecret, 2)[0];
+        if (! str_starts_with($sessionId, 'cs_')) {
+            return response()->json(['message' => 'Invalid payment session'], 422);
+        }
+
+        $tenant = Tenant::find($slug);
+        if (! $tenant) {
+            return response()->json(['message' => 'Site not found'], 404);
+        }
+
+        tenancy()->initialize($tenant);
+
+        if (! Schema::hasColumn('appointments', 'stripe_checkout_session_id')) {
+            tenancy()->end();
+            return response()->json(['message' => 'Payments not enabled'], 422);
+        }
+
+        $row = DB::table('appointments')->where('id', $appointment)->first();
+
+        // Capability check: the row must exist AND its stored session id
+        // must equal the one embedded in the supplied client_secret. This
+        // proves the caller holds the secret from the original booking.
+        if (! $row || ($row->stripe_checkout_session_id ?? null) !== $sessionId) {
+            tenancy()->end();
+            return response()->json(['message' => 'Booking not found'], 404);
+        }
+
+        // Terminal states can't be paid.
+        if (in_array($row->status ?? '', ['cancelled', 'completed', 'no_show'], true)) {
+            tenancy()->end();
+            return response()->json(['message' => 'This booking can no longer be paid.'], 422);
+        }
+
+        // Already settled — tell the frontend to show success instead of
+        // sending the customer to pay twice.
+        if (in_array($row->payment_status ?? '', ['deposit_paid', 'paid'], true)) {
+            tenancy()->end();
+            return response()->json(['already_paid' => true]);
+        }
+
+        $tenantId = (string) $tenant->id;
+        $apptId   = (int) $row->id;
+
+        try {
+            $session = AppointmentPaymentService::createHostedFromSession(
+                $sessionId,
+                sprintf(
+                    'https://%s.bkrdy.me/?booking=success&appointment=%d&session_id={CHECKOUT_SESSION_ID}',
+                    $tenantId, $apptId,
+                ),
+                sprintf(
+                    'https://%s.bkrdy.me/?booking=cancelled&appointment=%d',
+                    $tenantId, $apptId,
+                ),
+            );
+        } catch (\Throwable $e) {
+            tenancy()->end();
+            Log::error('Hosted checkout fallback failed', [
+                'tenant'         => $tenantId,
+                'appointment_id' => $apptId,
+                'error'          => $e->getMessage(),
+            ]);
+            return response()->json([
+                'message' => 'Could not start payment. Please try again in a moment.',
+            ], 502);
+        }
+
+        if (! empty($session['already_paid'])) {
+            tenancy()->end();
+            return response()->json(['already_paid' => true]);
+        }
+
+        // Repoint the appointment at the new (hosted) session so the
+        // checkout.session.completed webhook still matches. The old
+        // embedded session is abandoned and expires within 30 minutes.
+        DB::table('appointments')->where('id', $apptId)->update([
+            'stripe_checkout_session_id' => $session['id'],
+            'updated_at'                 => now(),
+        ]);
+
+        tenancy()->end();
+
+        return response()->json(['checkout_url' => $session['url']]);
+    }
+
+    /**
      * Phase 7: resolve which add-ons apply to this booking.
      *
      * Required add-ons (per the service_addon_links pivot) are always

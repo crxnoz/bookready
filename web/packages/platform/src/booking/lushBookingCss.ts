@@ -1264,6 +1264,12 @@ export const LUSH_CSS = `
   margin:0; padding:20px 16px; text-align:center;
   font-family:var(--lush-ui); font-size:14px; line-height:1.55; color:var(--lush-text);
 }
+.brk-booking-checkout-loading {
+  margin:0; padding:24px 16px; display:flex; align-items:center; justify-content:center;
+  gap:8px; font-family:var(--lush-ui); font-size:14px; color:var(--lush-muted);
+}
+.brk-booking-checkout-loading .brk-booking-spin { animation: brk-booking-spin 0.8s linear infinite; }
+@keyframes brk-booking-spin { to { transform: rotate(360deg); } }
 
 /* ── Gallery ── */
 /* ── Shared tab header ── Every Lush tab opens with the same eyebrow +

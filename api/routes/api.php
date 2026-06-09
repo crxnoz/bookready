@@ -116,6 +116,14 @@ Route::prefix('v1')->group(function () {
     // a flaky network does not lock themselves out.
     Route::post('public/sites/{slug}/appointments',       [PublicBookingController::class,     'store'])
         ->middleware('throttle:10,1');
+    // Embedded-checkout fallback. When Stripe.js fails to load in the
+    // booking page (ad/script blocker, firewall, offline), the frontend
+    // calls this to mint a HOSTED Checkout session for the same pending
+    // appointment and redirect there, so the customer always reaches a
+    // working checkout. Gated by the embedded session's client_secret
+    // (a per-booking capability) — see checkoutFallback().
+    Route::post('public/sites/{slug}/appointments/{appointment}/checkout-fallback', [PublicBookingController::class, 'checkoutFallback'])
+        ->middleware('throttle:10,1');
     // Phase S3 — public upload throttled to 5/min per IP. Combined with
     // the active-question + daily-cap gates in the controller this kills
     // anonymous R2 storage abuse.

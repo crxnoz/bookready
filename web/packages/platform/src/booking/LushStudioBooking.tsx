@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import { loadStripe } from '@stripe/stripe-js'
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js'
-import { getPublicAvailability, createPublicAppointment, uploadBookingAnswerImage, joinPublicWaitlist, submitPublicSqueezeIn } from '@/lib/api'
+import { getPublicAvailability, createPublicAppointment, createAppointmentHostedFallback, uploadBookingAnswerImage, joinPublicWaitlist, submitPublicSqueezeIn } from '@/lib/api'
 import type {
   AvailableSlot, PaymentChoice, PublicBookingPayload, Service,
   AvailabilityData, PublicPaymentSettings,
@@ -218,23 +218,60 @@ export default function LushStudioBooking({
   // so a re-render doesn't re-initialize the SDK.
   const [checkoutSecret, setCheckoutSecret] = useState<string | null>(null)
   const [checkoutPubKey, setCheckoutPubKey] = useState<string | null>(null)
-  // Flips true when Stripe.js fails to load (ad/script blocker, firewall,
-  // offline, or a malformed key). loadStripe rejects in those cases and
-  // EmbeddedCheckout would otherwise render a silent blank box. We watch
-  // the promise and surface a recoverable error instead.
+  const [checkoutApptId, setCheckoutApptId] = useState<number | null>(null)
+  // True while the hosted fallback is in flight — unmounts the embedded
+  // form (closing a slow-load race where it could submit on the old,
+  // about-to-be-repointed session) and shows a "Connecting…" spinner
+  // instead of a blank box during the brief redirect.
+  const [checkoutFallingBack, setCheckoutFallingBack] = useState(false)
+  // Last-resort error: only shown if BOTH the on-page Stripe form fails to
+  // load AND the hosted-checkout fallback fails too (Stripe fully
+  // unreachable). The common load-failure case auto-redirects to the
+  // hosted page below, so a customer effectively never sees this.
   const [checkoutError, setCheckoutError] = useState(false)
   const stripePromise = useMemo(
     () => (checkoutPubKey ? loadStripe(checkoutPubKey) : null),
     [checkoutPubKey],
   )
+  // Watch Stripe.js. If it can't load (ad/script blocker, firewall, offline)
+  // or stalls, don't strand the customer on a blank box — mint a HOSTED
+  // Checkout for the same appointment and redirect there. Only a total
+  // failure (hosted fallback also errors) surfaces checkoutError.
   useEffect(() => {
-    if (! stripePromise) return
-    let cancelled = false
+    if (! stripePromise || ! checkoutSecret) return
+    let settled = false
+
+    async function goHostedFallback() {
+      if (settled) return
+      settled = true
+      // Unmount the embedded form immediately so it can't capture on the
+      // old session while we mint + repoint to the hosted one.
+      setCheckoutFallingBack(true)
+      if (! checkoutApptId) { setCheckoutError(true); return }
+      try {
+        const r = await createAppointmentHostedFallback(slug, checkoutApptId, checkoutSecret!)
+        if (r.already_paid)  { setCheckoutSecret(null); setSuccess(true); return }
+        if (r.checkout_url)  { window.location.href = r.checkout_url; return }
+        setCheckoutError(true)
+      } catch {
+        setCheckoutError(true)
+      }
+    }
+
+    // Generous stall timeout for silent-drop firewalls; hard blocks reject
+    // near-instantly via the script error event.
+    const timer = setTimeout(goHostedFallback, 12000)
     stripePromise
-      .then(s => { if (! cancelled && ! s) setCheckoutError(true) })
-      .catch(() => { if (! cancelled) setCheckoutError(true) })
-    return () => { cancelled = true }
-  }, [stripePromise])
+      .then(s => {
+        if (settled) return
+        clearTimeout(timer)
+        if (! s) goHostedFallback()    // resolved null = failed to init
+        else     settled = true        // loaded OK — embedded mounts normally
+      })
+      .catch(() => { clearTimeout(timer); goHostedFallback() })
+
+    return () => { clearTimeout(timer); settled = true }
+  }, [stripePromise, checkoutSecret, checkoutApptId, slug])
 
   // Stripe-redirect-return banner. Two flavors:
   //   - "account=new" — booking ALSO created a customer account; show
@@ -618,6 +655,8 @@ export default function LushStudioBooking({
         // on completion Stripe redirects to return_url (the &booking=success
         // banner, including &account=new when an account was also created).
         setCheckoutError(false)
+        setCheckoutFallingBack(false)
+        setCheckoutApptId(res.appointment?.id ?? null)
         setCheckoutPubKey(res.stripe_publishable_key)
         setCheckoutSecret(res.checkout_client_secret)
         return
@@ -689,8 +728,12 @@ export default function LushStudioBooking({
         <div className="brk-booking-checkout-frame">
           {checkoutError ? (
             <p className="brk-booking-checkout-errmsg">
-              We couldn’t load secure payment. Turn off any ad or content blocker and
-              try again, or contact the business to pay another way.
+              We couldn’t start payment right now. Please try again in a moment,
+              or contact the business to finish your booking.
+            </p>
+          ) : checkoutFallingBack ? (
+            <p className="brk-booking-checkout-loading">
+              <Loader2 size={16} className="brk-booking-spin" /> Connecting to secure payment…
             </p>
           ) : (
             <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret: checkoutSecret }}>
@@ -698,13 +741,15 @@ export default function LushStudioBooking({
             </EmbeddedCheckoutProvider>
           )}
         </div>
-        <button
-          type="button"
-          className="brk-booking-checkout-cancel"
-          onClick={() => { setCheckoutSecret(null); setCheckoutPubKey(null); setCheckoutError(false) }}
-        >
-          Cancel and go back
-        </button>
+        {! checkoutFallingBack && (
+          <button
+            type="button"
+            className="brk-booking-checkout-cancel"
+            onClick={() => { setCheckoutSecret(null); setCheckoutPubKey(null); setCheckoutApptId(null); setCheckoutError(false); setCheckoutFallingBack(false) }}
+          >
+            Cancel and go back
+          </button>
+        )}
       </div>
     )
   }
