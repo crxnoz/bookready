@@ -5,6 +5,7 @@ import Link from 'next/link'
 import {
   ChevronLeft, ChevronRight, Loader2, AlertCircle, X, Plus, Minus,
   Trash2, Save, Sparkles, Info, CalendarDays, Clock, CalendarOff,
+  Zap, ArrowRight,
 } from 'lucide-react'
 import {
   getEditorCalendarOverrides, getEditorCalendarOverride,
@@ -194,6 +195,27 @@ export default function CalendarOverridesEditor() {
         }
       `}</style>
       <TabIntro>Click any date to set hours, breaks, available staff, or close the day — falls back to your weekly schedule for any date you haven&rsquo;t touched.</TabIntro>
+
+      {/* Suggestion banner — surfaces the squeeze-in feature where the
+          owner is most likely to think of it (looking at their calendar,
+          realizing they have an opening today). Compact + dismissible-
+          feeling without being dismissable in v1; if it becomes noisy
+          we can add a localStorage dismiss flag. */}
+      <Link
+        href="/editor/availability?tab=squeeze-ins"
+        className="group flex items-center gap-3 bg-white border border-hairline-soft px-4 py-3 sm:px-5 sm:py-4 hover:border-near-black transition-colors"
+      >
+        <div className="w-9 h-9 flex-shrink-0 inline-flex items-center justify-center bg-cream border border-hairline-soft">
+          <Zap size={16} className="text-near-black" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-near-black">Have extra time today?</p>
+          <p className="text-xs text-muted-text mt-0.5">
+            Create a squeeze-in slot — customers can book it at a premium fee.
+          </p>
+        </div>
+        <ArrowRight size={14} className="text-muted-text group-hover:text-near-black flex-shrink-0 transition-colors" />
+      </Link>
       <Section
         icon={CalendarDays}
         title="Smart Calendar"

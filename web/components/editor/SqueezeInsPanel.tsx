@@ -155,6 +155,22 @@ export default function SqueezeInsPanel() {
         </AsyncBoundary>
       </CollapsibleSection>
 
+      {/* Owner-published squeeze-ins — proactively created slots inside
+          regular hours. Surfaced BEFORE "Who Can Request" + the queue
+          because owners visit this tab when they have extra time and
+          want to publish a slot RIGHT NOW; settings + access policy are
+          set-once-and-forget, and the queue is for customer-requested
+          fit-ins. */}
+      <CollapsibleSection
+        icon={CalendarPlus}
+        title="Create a Squeeze-In"
+        subtitle="Publish extra premium slots inside your regular hours"
+        open={open === 'announce'}
+        onToggle={() => setOpen(o => o === 'announce' ? null : 'announce')}
+      >
+        <SqueezeInAnnouncementsEditor configFee={cfg?.fee ?? null} />
+      </CollapsibleSection>
+
       <CollapsibleSection
         icon={Users}
         title="Who Can Request"
@@ -189,18 +205,6 @@ export default function SqueezeInsPanel() {
             </div>
           )}
         </AsyncBoundary>
-      </CollapsibleSection>
-
-      {/* Owner-announced squeeze-ins — proactively published slots
-          (vs the queue below which is customer-requested). */}
-      <CollapsibleSection
-        icon={CalendarPlus}
-        title="Announce a Squeeze-In"
-        subtitle="Publish extra premium slots inside your regular hours"
-        open={open === 'announce'}
-        onToggle={() => setOpen(o => o === 'announce' ? null : 'announce')}
-      >
-        <SqueezeInAnnouncementsEditor configFee={cfg?.fee ?? null} />
       </CollapsibleSection>
 
       {/* The squeeze-in request queue */}
@@ -245,7 +249,7 @@ function SqueezeInAnnouncementsEditor({ configFee }: { configFee: number | null 
       const r = await getEditorSqueezeInAnnouncements(from, to)
       setAnnouncements(r.announcements)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load announcements.')
+      setError(e instanceof Error ? e.message : 'Could not load squeeze-ins.')
     } finally {
       setLoading(false)
     }
@@ -270,10 +274,10 @@ function SqueezeInAnnouncementsEditor({ configFee }: { configFee: number | null 
       })
       // Reset form + refresh.
       setDate(''); setStart(''); setEnd(''); setFeeStr('')
-      toast.success('Squeeze-in announced')
+      toast.success('Squeeze-in created')
       await load()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not announce.')
+      toast.error(e instanceof Error ? e.message : 'Could not create squeeze-in.')
     } finally {
       setSaving(false)
     }
@@ -281,18 +285,18 @@ function SqueezeInAnnouncementsEditor({ configFee }: { configFee: number | null 
 
   async function remove(id: number) {
     const ok = await confirm({
-      title: 'Pull this squeeze-in?',
+      title: 'Delete this squeeze-in?',
       message: 'Customers who haven\'t booked yet will lose this slot.',
-      confirmLabel: 'Pull',
+      confirmLabel: 'Delete',
       tone: 'danger',
     })
     if (! ok) return
     try {
       await deleteEditorSqueezeInAnnouncement(id)
-      toast.success('Pulled')
+      toast.success('Deleted')
       await load()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not remove.')
+      toast.error(e instanceof Error ? e.message : 'Could not delete.')
     }
   }
 
@@ -301,43 +305,47 @@ function SqueezeInAnnouncementsEditor({ configFee }: { configFee: number | null 
       {/* Form */}
       <div className="bg-white border border-hairline-soft p-4 space-y-3">
         <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
-          New announcement
+          New squeeze-in
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_1fr] gap-3">
-          <label className="block">
+        {/* Stack on mobile; two-by-two on small screens; row of four on
+            desktop. The native <input type="date"/"time"> reports a wide
+            intrinsic min-width on mobile WebKit, so each cell needs
+            min-w-0 to allow shrinking inside its track. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          <label className="block min-w-0">
             <span className="text-2xs font-bold tracking-[0.12em] uppercase text-muted-text block mb-1">Date</span>
             <input
               type="date"
               value={date}
               onChange={e => setDate(e.target.value)}
               min={new Date().toISOString().slice(0, 10)}
-              className={INPUT}
+              className="w-full min-w-0 bg-white border border-hairline-strong px-2.5 py-2 text-sm text-near-black focus:outline-none focus:border-near-black/30"
             />
           </label>
-          <label className="block">
+          <label className="block min-w-0">
             <span className="text-2xs font-bold tracking-[0.12em] uppercase text-muted-text block mb-1">Start</span>
             <input
               type="time"
               value={start}
               onChange={e => setStart(e.target.value)}
-              className={INPUT}
+              className="w-full min-w-0 bg-white border border-hairline-strong px-2.5 py-2 text-sm text-near-black focus:outline-none focus:border-near-black/30"
             />
           </label>
-          <label className="block">
+          <label className="block min-w-0">
             <span className="text-2xs font-bold tracking-[0.12em] uppercase text-muted-text block mb-1">End</span>
             <input
               type="time"
               value={end}
               onChange={e => setEnd(e.target.value)}
-              className={INPUT}
+              className="w-full min-w-0 bg-white border border-hairline-strong px-2.5 py-2 text-sm text-near-black focus:outline-none focus:border-near-black/30"
             />
           </label>
-          <label className="block">
+          <label className="block min-w-0">
             <span className="text-2xs font-bold tracking-[0.12em] uppercase text-muted-text block mb-1">
-              Fee {configFee !== null ? `(default $${configFee})` : ''}
+              Fee {configFee !== null ? `($${configFee} default)` : ''}
             </span>
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm text-muted-text">$</span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-sm text-muted-text flex-shrink-0">$</span>
               <input
                 type="number"
                 min={0}
@@ -345,7 +353,7 @@ function SqueezeInAnnouncementsEditor({ configFee }: { configFee: number | null 
                 value={feeStr}
                 onChange={e => setFeeStr(e.target.value)}
                 placeholder="inherit"
-                className={INPUT}
+                className="w-full min-w-0 bg-white border border-hairline-strong px-2.5 py-2 text-sm text-near-black focus:outline-none focus:border-near-black/30"
               />
             </div>
           </label>
@@ -354,15 +362,15 @@ function SqueezeInAnnouncementsEditor({ configFee }: { configFee: number | null 
           Customer sees this slot under a &ldquo;Squeeze-in&rdquo; section in the time picker, with the fee folded into the booking total.
         </p>
         <div>
-          <Button onClick={add} loading={saving}>Announce</Button>
+          <Button onClick={add} loading={saving}>Create squeeze-in</Button>
         </div>
       </div>
 
       {/* List */}
-      <AsyncBoundary loading={loading} error={error} onRetry={load} loadingLabel="Loading announcements…">
+      <AsyncBoundary loading={loading} error={error} onRetry={load} loadingLabel="Loading squeeze-ins…">
         <div className="space-y-2">
           {announcements.length === 0 && (
-            <p className="text-xs text-muted-text">No upcoming announcements. Add one above to publish a premium slot.</p>
+            <p className="text-xs text-muted-text">No upcoming squeeze-ins. Add one above to publish a premium slot.</p>
           )}
           {announcements.map(a => {
             const w = a.slot_windows[0]
@@ -385,7 +393,7 @@ function SqueezeInAnnouncementsEditor({ configFee }: { configFee: number | null 
                   type="button"
                   onClick={() => void remove(a.id)}
                   className="w-8 h-8 inline-flex items-center justify-center text-muted-text hover:text-danger border border-hairline-soft"
-                  aria-label="Pull announcement"
+                  aria-label="Delete squeeze-in"
                 >
                   <X size={14} />
                 </button>
