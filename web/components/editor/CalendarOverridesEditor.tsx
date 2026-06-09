@@ -11,9 +11,10 @@ import {
   upsertEditorCalendarOverride, deleteEditorCalendarOverride,
   getEditorHours, getEditorStaff, getEditorServices,
   getEditorReleaseState, getEditorCalendarCounts,
+  getEditorBlockedDates,
   type CalendarOverride, type ReleaseState, type CalendarCount, type CalendarCountsResponse,
 } from '@/lib/api'
-import type { HoursEntry, Service, ApiStaffMember } from '@/lib/types'
+import type { HoursEntry, Service, ApiStaffMember, BlockedDate } from '@/lib/types'
 import { cn } from '@/lib/cn'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
 import { TabShell, TabIntro, Section } from '@/components/editor/AvailabilitySections'
@@ -51,6 +52,12 @@ export default function CalendarOverridesEditor() {
   const [services,    setServices]    = useState<Service[]>([])
   const [releaseState, setReleaseState] = useState<ReleaseState | null>(null)
   const [counts,      setCounts]      = useState<CalendarCountsResponse | null>(null)
+  // Tenant-wide blocked dates (vacation, holiday closures). Distinct from
+  // calendar_overrides: an override is "this date has different hours";
+  // a blocked date is "this date is closed by owner intent". The booking
+  // engine already respects them server-side; this state lets the calendar
+  // VISUALIZE them so owners can see at a glance where their blocks land.
+  const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([])
   const [loading,     setLoading]     = useState(true)
   const [error,       setError]       = useState<string | null>(null)
   const [editingDate, setEditingDate] = useState<string | null>(null)
@@ -88,11 +95,15 @@ export default function CalendarOverridesEditor() {
       // Counts powers the per-cell capacity badge + tint. Failures
       // are silently absorbed — calendar still renders without badges.
       getEditorCalendarCounts(from, to).catch(() => null),
+      // Blocked dates are tenant-wide; we fetch the full list and filter
+      // client-side per month. Failures absorbed (older builds 404).
+      getEditorBlockedDates().catch(() => [] as BlockedDate[]),
     ])
-      .then(([o, c]) => {
+      .then(([o, c, bd]) => {
         if (cancelled) return
         setOverrides(o.overrides)
         setCounts(c)
+        setBlockedDates(Array.isArray(bd) ? bd : [])
       })
       .catch(e => { if (! cancelled) setError(e instanceof Error ? e.message : 'Failed to load overrides') })
       .finally(() => { if (! cancelled) setLoading(false) })
@@ -120,6 +131,23 @@ export default function CalendarOverridesEditor() {
     return m
   }, [counts])
   const defaultCapacity = counts?.default_capacity ?? null
+
+  // Blocked-date lookup. Each entry may span a date range (start..end
+  // inclusive) or a single day (end null). Expanded into a Set of
+  // YYYY-MM-DD strings so the per-cell lookup is O(1).
+  const blockedSet = useMemo(() => {
+    const s = new Set<string>()
+    for (const b of blockedDates) {
+      const start = new Date(b.start_date + 'T00:00:00')
+      const end   = b.end_date ? new Date(b.end_date + 'T00:00:00') : start
+      const d = new Date(start)
+      while (d <= end) {
+        s.add(formatDate(d))
+        d.setDate(d.getDate() + 1)
+      }
+    }
+    return s
+  }, [blockedDates])
 
   // Build the 6-row grid of dates for the cursor month, padding with
   // outside-month days so every row has 7 cells.
@@ -237,6 +265,8 @@ export default function CalendarOverridesEditor() {
             ?? countRow?.capacity
             ?? defaultCapacity
 
+          const blocked = blockedSet.has(cell.dateStr)
+
           return (
             <CalendarCell
               key={i}
@@ -246,6 +276,7 @@ export default function CalendarOverridesEditor() {
               override={override}
               weekly={weeklyByDow.get(cell.dow)}
               unreleased={unreleased}
+              blocked={blocked}
               count={count}
               capacity={capacity}
               onClick={() => setEditingDate(cell.dateStr)}
@@ -265,6 +296,7 @@ export default function CalendarOverridesEditor() {
         <Legend swatchClass="bg-white border border-hairline-strong" label="Default — weekly schedule applies" />
         <Legend swatchClass="bg-cream border border-[rgba(180,138,184,0.6)]" label="Custom — date override set" />
         <Legend swatchClass="bg-[rgba(180,40,40,0.10)] border border-[rgba(180,40,40,0.40)]" label="Closed by override" />
+        <Legend swatchClass="bg-[rgba(180,40,40,0.18)] border border-[rgba(180,40,40,0.55)]" label="Blocked date (vacation, holiday)" />
         <Legend swatchClass="bg-[rgba(18,18,18,0.06)] border border-hairline-strong" label="Weekly default: closed" />
         <Legend swatchClass="cal-unreleased border border-hairline-strong" label="Not released for booking yet" />
         <Legend swatchClass="bg-[rgba(15,111,61,0.06)] border border-hairline-strong" label="Has space (under 70% booked)" />
@@ -316,7 +348,7 @@ export default function CalendarOverridesEditor() {
 interface CellModel { date: Date; dateStr: string; dow: number; outsideMonth: boolean }
 
 function CalendarCell({
-  cell, today, cursorMonth, override, weekly, unreleased, count, capacity, onClick,
+  cell, today, cursorMonth, override, weekly, unreleased, blocked, count, capacity, onClick,
 }: {
   cell:         CellModel
   today:        string
@@ -324,6 +356,8 @@ function CalendarCell({
   override?:    CalendarOverride
   weekly?:      HoursEntry
   unreleased?:  boolean
+  /** Tenant-wide blocked date (vacation, holiday). Override wins over it. */
+  blocked?:     boolean
   /** Av2.0 P3: appointments booked so far on this date. */
   count?:       number
   /** Av2.0 P3: effective daily cap (null = unlimited). */
@@ -334,10 +368,17 @@ function CalendarCell({
   const isPast    = cell.dateStr <  today
   const isOutside = cell.date.getMonth() !== cursorMonth
 
-  // Closed state (weekly is_closed or override force-closed) is independent
-  // of capacity — even fully-booked-on-paper closed days stay gray.
+  // Blocked-by-tenant has priority over the weekly fallback but loses to
+  // an explicit per-date override (owner intentionally changed their mind
+  // and set hours on the blocked date).
+  const isBlocked = !! blocked && ! override
+
+  // Closed state (weekly is_closed or override force-closed or tenant block)
+  // is independent of capacity — even fully-booked-on-paper closed days
+  // stay gray.
   const isClosed = (! override && (! weekly || ! weekly.is_open))
     || (override && ! override.is_available)
+    || isBlocked
 
   // Effective state
   let bg = 'bg-white'
@@ -345,8 +386,16 @@ function CalendarCell({
   let label = ''
   let labelTone = 'text-muted-text'
 
+  // Tenant-wide block. Owner intentionally closed the day from the
+  // Blocked Dates panel. Render with a distinct stronger red than the
+  // override-closed so the two states read as different at a glance.
+  if (isBlocked) {
+    bg = 'bg-[rgba(180,40,40,0.14)]'
+    border = 'border-[rgba(180,40,40,0.55)]'
+    label = 'Blocked'
+    labelTone = 'text-danger font-semibold'
   // Default (no override) — derive from weekly
-  if (! override) {
+  } else if (! override) {
     if (! weekly || ! weekly.is_open) {
       bg = 'bg-[rgba(18,18,18,0.04)]'
       label = 'Closed'
