@@ -25,22 +25,71 @@ setting `PLAYWRIGHT_BASE_URL` — but **do not run them against a
 production tenant** because they write real appointments and burn
 real time slots.
 
-## Local dev run
+## Two run modes
+
+### A) Local dev — pre-deploy smoke (recommended)
+
+The point of this mode: run the suite against your local web + API
+before you `git push` anything that touches the booking flow. The
+config auto-starts `npm run dev` for you, so you only need to make
+sure the API is up.
+
+One-time setup:
 
 ```
 cd web
 npm install
-npx playwright install chromium    # one-time browser download
+npx playwright install chromium    # ~250MB, one-time
+```
+
+Then, every time you want to smoke-test before deploy:
+
+```
+# In one terminal: bring up the API
+cd api
+php artisan serve   # localhost:8000
+
+# In another terminal (web/), run the suite — auto-starts the dev server
+cd web
+npm run test:e2e
+```
+
+Or headed (visible browser, slower, for debugging):
+
+```
+npm run test:e2e:headed
+```
+
+The config's `webServer` block auto-starts `npm run dev` on :3000
+and waits for it to be reachable. If you already have `npm run dev`
+running, it reuses the existing server. Per-test results stream in
+the terminal; failures get screenshots + traces in
+`playwright-report/` and `test-results/`.
+
+**You also need a seeded test tenant on your local API.** Until the
+`SmokeTestTenantSeeder.php` lands (see "Prerequisites for a test
+tenant" below), set up one tenant manually in `/editor` matching
+the fixtures in the table below, then point the tests at it with
+`PLAYWRIGHT_BASE_URL=http://<your-tenant>.localhost:3000` (or
+whatever your local subdomain mapping is). Without a test tenant
+the tests will fail at the very first navigation.
+
+### B) Manual smoke against a live tenant
+
+Useful for one-off checks against a staging or demo tenant on the
+real hosted domain.
+
+```
 PLAYWRIGHT_BASE_URL=https://your-test-tenant.bkrdy.me \
   PLAYWRIGHT_API_URL=https://api.bkrdy.me \
   npm run test:e2e
 ```
 
-Or headed (visible browser) for debugging:
+When `PLAYWRIGHT_BASE_URL` is set, the config skips the local
+webServer auto-start.
 
-```
-npm run test:e2e:headed
-```
+⚠️ **Never point this at a production tenant** — the tests write
+real appointments and burn real time slots.
 
 ## Prerequisites for a test tenant
 
