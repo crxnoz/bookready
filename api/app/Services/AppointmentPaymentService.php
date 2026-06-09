@@ -287,7 +287,21 @@ class AppointmentPaymentService
         $methods  = (isset($old->payment_method_types) && count($old->payment_method_types) > 0)
             ? $old->payment_method_types
             : ['card'];
-        $destination = $old->payment_intent->transfer_data->destination ?? null;
+        $destination       = $old->payment_intent->transfer_data->destination ?? null;
+        $oldSetupFutureUse = $old->payment_intent->setup_future_usage ?? null;
+        $oldCustomerId     = $old->customer        ?? null;
+        $oldCustomerEmail  = $old->customer_email  ?? null;
+
+        // Save-cards-for-reuse propagation. The original embedded session
+        // set setup_future_usage='off_session' AND forced card-only AND
+        // attached a Customer (reused by email or customer_creation=always)
+        // — that combination is what makes the resulting PaymentMethod
+        // chargeable off_session later (no-show / late fee). The webhook's
+        // saved-card stash (AppointmentPaymentWebhookController) keys off
+        // $session->customer, so without these the fallback would silently
+        // skip card-on-file capture even though the deposit itself charges
+        // correctly.
+        $saveCards = $oldSetupFutureUse === 'off_session' || $oldCustomerId !== null;
 
         $paymentType = $metadata['payment_type'] ?? self::TYPE_DEPOSIT;
         $itemName = match ($paymentType) {
@@ -299,7 +313,10 @@ class AppointmentPaymentService
 
         $params = [
             'mode'                 => 'payment',
-            'payment_method_types' => $methods,
+            // Save-cards is card-only (setup_future_usage is incompatible
+            // with BNPL); force ['card'] when on, otherwise mirror the
+            // original session's methods exactly.
+            'payment_method_types' => $saveCards ? ['card'] : $methods,
             'success_url'          => $successUrl,
             'cancel_url'           => $cancelUrl,
             'line_items'           => [[
@@ -317,6 +334,20 @@ class AppointmentPaymentService
         ];
         if ($destination) {
             $params['payment_intent_data']['transfer_data'] = ['destination' => $destination];
+        }
+        if ($saveCards) {
+            $params['payment_intent_data']['setup_future_usage'] = 'off_session';
+            // Reuse the Customer the embedded session already attached,
+            // or — if it was using customer_creation=always (no id yet) —
+            // tell Stripe to create one now with the same email.
+            if ($oldCustomerId) {
+                $params['customer'] = $oldCustomerId;
+            } else {
+                $params['customer_creation'] = 'always';
+                if ($oldCustomerEmail) {
+                    $params['customer_email'] = $oldCustomerEmail;
+                }
+            }
         }
 
         $new = Session::create($params);
