@@ -1752,6 +1752,36 @@ export async function sendNotificationTestEmail(
   })
 }
 
+// ── SMS usage snapshot (#129) ────────────────────────────────────────────
+//
+// Powers the "SMS this month" tile in Settings → Notifications and the
+// admin platform dashboard. Read-only — actual quota enforcement happens
+// inside the backend SmsService send path.
+
+export interface SmsUsageSnapshot {
+  used:           number
+  allowed:        number
+  effective_cap:  number
+  /** 0.0 - 1.0+ (can exceed 1.0 when over allowance, capped at 1.1 by enforcement). */
+  percent:        number
+  remaining:      number
+  /** 'solo' | 'studio' | 'salon' | null (null for trial / no Stripe sub). */
+  plan:           string | null
+  /** SMS bundle multiplier (1 | 2 | 3). */
+  sms_factor:     number
+  /** YYYY-MM-DD. */
+  cycle_start:    string
+  cycle_end:      string
+  is_warning:     boolean
+  is_over_cap:    boolean
+  is_over_hard:   boolean
+  enforce_quota:  boolean
+}
+
+export async function getEditorSmsUsage(): Promise<SmsUsageSnapshot> {
+  return request<SmsUsageSnapshot>('/editor/sms/usage')
+}
+
 // ── Settings: Bookings ──────────────────────────────────────────────────────
 
 export async function getEditorBookingSettings(): Promise<BookingSettings> {

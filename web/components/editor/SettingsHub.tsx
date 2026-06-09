@@ -30,6 +30,7 @@ import {
   getEditorNotificationSettings,
   updateEditorNotificationSettings,
   sendNotificationTestEmail,
+  getEditorSmsUsage,
   getEditorAccount,
   updateEditorAccount,
   changeEditorPassword,
@@ -40,6 +41,7 @@ import {
   updateEditorPolicies,
   downloadEditorExport,
 } from '@/lib/api'
+import type { SmsUsageSnapshot } from '@/lib/api'
 import type {
   AccountProfile,
   BookingSettings,
@@ -878,6 +880,120 @@ function stripMeta(s: BookingSettings) {
 
 // ── Notification Settings panel ─────────────────────────────────────────────
 
+/**
+ * SMS usage tile (#129) — shows the tenant's monthly SMS quota usage,
+ * cycle window, and a warning at 80%+. Self-loading. Lives in
+ * NotificationSettingsPanel because SMS lives next to email in the
+ * owner's mental model. Read-only — the backend already enforces the
+ * hard cap; this tile just makes it visible.
+ */
+function SmsUsageTile() {
+  const [snap, setSnap] = useState<SmsUsageSnapshot | null>(null)
+  const [err,  setErr]  = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getEditorSmsUsage()
+      .then(d => { if (!cancelled) setSnap(d) })
+      .catch(e => { if (!cancelled) setErr(e instanceof Error ? e.message : 'Could not load SMS usage') })
+    return () => { cancelled = true }
+  }, [])
+
+  if (err) {
+    return (
+      <div className="bg-white border border-hairline px-4 py-3 flex items-center gap-2 text-xs text-muted-text">
+        <MessageSquare size={14} className="text-muted-text" />
+        SMS usage unavailable.
+      </div>
+    )
+  }
+  if (!snap) {
+    return (
+      <div className="bg-white border border-hairline px-4 py-3 flex items-center gap-2 text-xs text-muted-text">
+        <Loader2 size={14} className="animate-spin" /> Loading SMS usage...
+      </div>
+    )
+  }
+
+  // Cap the visual bar fill at 100% even when usage is over cap — the
+  // numbers in the row above carry the "over by N" story, the bar just
+  // shows progress against the plan.
+  const fillPct = Math.min(100, Math.round(snap.percent * 100))
+  const isHot   = snap.is_warning && ! snap.is_over_cap
+  const isOver  = snap.is_over_cap
+
+  const barColor = isOver ? 'bg-danger'   : isHot ? 'bg-warning-icon' : 'bg-near-black'
+  const numColor = isOver ? 'text-danger' : isHot ? 'text-warning-icon' : 'text-near-black'
+
+  function fmtDate(iso: string) {
+    // YYYY-MM-DD -> "Jun 1" (locale-friendly short). new Date('YYYY-MM-DD')
+    // parses as UTC midnight; we display in local with day precision so
+    // there's no off-by-one between server tz and the owner's tz on cycle
+    // boundaries.
+    const [y, m, d] = iso.split('-').map(n => parseInt(n, 10))
+    if (!y || !m || !d) return iso
+    const dt = new Date(y, m - 1, d)
+    return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  }
+
+  const planLabel = snap.plan
+    ? `${snap.plan[0].toUpperCase()}${snap.plan.slice(1)} plan`
+    : 'Trial allowance'
+  const factorLabel = snap.sms_factor > 1 ? ` · ${snap.sms_factor}x bundle` : ''
+
+  return (
+    <div className="bg-white border border-hairline px-4 py-3 space-y-2.5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-cream border border-hairline-soft flex items-center justify-center">
+            <MessageSquare size={13} className="text-muted-text" />
+          </div>
+          <div className="text-eyebrow tracking-eyebrow uppercase font-bold text-muted-text">
+            SMS this period
+          </div>
+        </div>
+        <div className="text-2xs text-faint-text">
+          {fmtDate(snap.cycle_start)} - {fmtDate(snap.cycle_end)}
+        </div>
+      </div>
+
+      <div className="flex items-baseline gap-1.5">
+        <div className={`text-2xl font-bold ${numColor}`}>{snap.used.toLocaleString()}</div>
+        <div className="text-xs text-muted-text">of {snap.allowed.toLocaleString()} sent</div>
+      </div>
+
+      <div className="h-1.5 bg-cream border border-hairline-soft overflow-hidden">
+        <div className={`h-full ${barColor} transition-all duration-300`} style={{ width: `${fillPct}%` }} />
+      </div>
+
+      <div className="flex items-center justify-between gap-3 text-2xs">
+        <div className="text-muted-text">
+          {planLabel}{factorLabel}
+        </div>
+        <div className={isOver ? 'text-danger font-semibold' : isHot ? 'text-warning-icon font-semibold' : 'text-muted-text'}>
+          {isOver
+            ? `Over plan by ${(snap.used - snap.allowed).toLocaleString()}`
+            : `${snap.remaining.toLocaleString()} remaining this cycle`
+          }
+        </div>
+      </div>
+
+      {isOver && (
+        <div className="bg-danger-bg border-l-2 border-danger px-3 py-2 text-2xs text-near-black">
+          You have used your full SMS allowance for this billing period.
+          Upgrade your plan or add an SMS bundle in <a href="/editor/billing" className="font-semibold underline">Billing</a> to keep sending.
+        </div>
+      )}
+      {isHot && ! isOver && (
+        <div className="bg-warning-bg border-l-2 border-warning-icon px-3 py-2 text-2xs text-near-black">
+          You are at {Math.round(snap.percent * 100)}% of your monthly SMS allowance. Add an SMS bundle
+          in <a href="/editor/billing" className="font-semibold underline">Billing</a> if you expect a busy week.
+        </div>
+      )}
+    </div>
+  )
+}
+
 function NotificationSettingsPanel() {
   const [data,    setData]    = useState<NotificationSettings | null>(null)
   const [draft,   setDraft]   = useState<NotificationSettings | null>(null)
@@ -964,6 +1080,11 @@ function NotificationSettingsPanel() {
           Choose which emails your business and your customers receive when a booking happens.
         </p>
       </header>
+
+      {/* SMS usage at-a-glance (#129). Surfaces the monthly cap so an
+          owner notices before they hit the wall. The backend already
+          enforces a hard cap inside SmsService.send. */}
+      <SmsUsageTile />
 
       {/* Communication copy (moved from the old Preferences tab). */}
       <PrefsCard section="communication" />
