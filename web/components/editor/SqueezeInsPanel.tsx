@@ -308,9 +308,11 @@ function SqueezeInAnnouncementsEditor({ configFee }: { configFee: number | null 
           New squeeze-in
         </p>
         {/* Stack on mobile; two-by-two on small screens; row of four on
-            desktop. The native <input type="date"/"time"> reports a wide
-            intrinsic min-width on mobile WebKit, so each cell needs
-            min-w-0 to allow shrinking inside its track. */}
+            desktop. The `appearance-none` class is non-negotiable —
+            without it iOS Safari renders <input type="date"/"time"> at
+            an intrinsic minimum that ignores both w-full and min-w-0
+            (the native picker chrome reserves space even when the
+            input is supposed to be smaller). */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           <label className="block min-w-0">
             <span className="text-2xs font-bold tracking-[0.12em] uppercase text-muted-text block mb-1">Date</span>
@@ -319,7 +321,7 @@ function SqueezeInAnnouncementsEditor({ configFee }: { configFee: number | null 
               value={date}
               onChange={e => setDate(e.target.value)}
               min={new Date().toISOString().slice(0, 10)}
-              className="w-full min-w-0 bg-white border border-hairline-strong px-2.5 py-2 text-sm text-near-black focus:outline-none focus:border-near-black/30"
+              className="block w-full min-w-0 appearance-none bg-white border border-hairline-strong px-2.5 py-2 text-sm text-near-black focus:outline-none focus:border-near-black/30"
             />
           </label>
           <label className="block min-w-0">
@@ -328,7 +330,7 @@ function SqueezeInAnnouncementsEditor({ configFee }: { configFee: number | null 
               type="time"
               value={start}
               onChange={e => setStart(e.target.value)}
-              className="w-full min-w-0 bg-white border border-hairline-strong px-2.5 py-2 text-sm text-near-black focus:outline-none focus:border-near-black/30"
+              className="block w-full min-w-0 appearance-none bg-white border border-hairline-strong px-2.5 py-2 text-sm text-near-black focus:outline-none focus:border-near-black/30"
             />
           </label>
           <label className="block min-w-0">
@@ -337,7 +339,7 @@ function SqueezeInAnnouncementsEditor({ configFee }: { configFee: number | null 
               type="time"
               value={end}
               onChange={e => setEnd(e.target.value)}
-              className="w-full min-w-0 bg-white border border-hairline-strong px-2.5 py-2 text-sm text-near-black focus:outline-none focus:border-near-black/30"
+              className="block w-full min-w-0 appearance-none bg-white border border-hairline-strong px-2.5 py-2 text-sm text-near-black focus:outline-none focus:border-near-black/30"
             />
           </label>
           <label className="block min-w-0">
@@ -353,7 +355,7 @@ function SqueezeInAnnouncementsEditor({ configFee }: { configFee: number | null 
                 value={feeStr}
                 onChange={e => setFeeStr(e.target.value)}
                 placeholder="inherit"
-                className="w-full min-w-0 bg-white border border-hairline-strong px-2.5 py-2 text-sm text-near-black focus:outline-none focus:border-near-black/30"
+                className="block w-full min-w-0 appearance-none bg-white border border-hairline-strong px-2.5 py-2 text-sm text-near-black focus:outline-none focus:border-near-black/30"
               />
             </div>
           </label>

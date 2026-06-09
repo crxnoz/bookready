@@ -698,11 +698,10 @@ function OverrideEditorDialog({
 
                 {mode === 'open_close' && (
                   <>
-                    {/* flex over grid here, matching the slot-windows row.
-                        grid-cols-2 lets cells exceed their column width
-                        on mobile when the native time input's intrinsic
-                        size is wider than 50% of the column. */}
-                    <div className="flex gap-3">
+                    {/* Stack on mobile so each native time picker gets
+                        the full dialog width; side-by-side on sm:+
+                        where there's enough room for both. */}
+                    <div className="flex flex-col sm:flex-row gap-3">
                       <div className="flex-1 min-w-0">
                         <TimeField label="Open"  value={openTime}  onChange={setOpenTime}  placeholder={weekly?.open_time ?? '10:00'} />
                       </div>
@@ -714,7 +713,7 @@ function OverrideEditorDialog({
                       Leave a time blank to inherit the weekly default.
                     </p>
 
-                    <div className="flex gap-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
                       <div className="flex-1 min-w-0">
                         <TimeField label="Break starts" value={breakStart} onChange={setBreakStart} placeholder={weekly?.break_start ?? '—'} />
                       </div>
@@ -926,10 +925,11 @@ function TimeField({
   label, value, onChange, placeholder,
 }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
-    // min-w-0 so this component can shrink below its native intrinsic
-    // width when placed inside a grid/flex cell — native <input
-    // type="time"> reports a wide minimum on mobile (AM/PM picker) and
-    // without this it pushes its container past the column edge.
+    // min-w-0 + appearance-none on the input: iOS Safari renders
+    // <input type="time"> at an intrinsic minimum that includes the
+    // AM/PM picker chrome. w-full + min-w-0 alone aren't enough — the
+    // native rendering ignores them. appearance-none strips that
+    // chrome and lets the input actually fill its cell.
     <div className="min-w-0">
       {label && (
         <label className="block text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text mb-1.5">{label}</label>
@@ -939,7 +939,7 @@ function TimeField({
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder ?? ''}
-        className="w-full min-w-0 bg-white border border-hairline-strong px-2.5 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+        className="block w-full min-w-0 appearance-none bg-white border border-hairline-strong px-2.5 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
       />
     </div>
   )
