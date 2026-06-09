@@ -32,6 +32,12 @@ const DOW_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Fri
 const DEFAULT_TIME = '09:00'
 
 interface Settings {
+  // Booking window — orthogonal to release mode. Lives here (Date Drops)
+  // because owners think about "when can a customer book?" as a single
+  // mental model rather than splitting it across two settings pages.
+  minimum_notice_minutes:    number
+  max_days_ahead:            number
+  // Release mode + cadence-specific fields.
   slot_release_mode:         ReleaseMode
   slot_release_window_days:  number | null
   slot_release_day_of_week:  number | null
@@ -60,6 +66,8 @@ export default function ReleaseStrategyPanel({ onChange }: { onChange?: () => vo
       .then(([bs, d]) => {
         if (cancelled) return
         setSettings({
+          minimum_notice_minutes:    bs.minimum_notice_minutes ?? 120,
+          max_days_ahead:            bs.max_days_ahead ?? 30,
           slot_release_mode:         (bs.slot_release_mode as ReleaseMode) ?? 'always_open',
           slot_release_window_days:  bs.slot_release_window_days ?? null,
           slot_release_day_of_week:  bs.slot_release_day_of_week ?? null,
@@ -85,7 +93,12 @@ export default function ReleaseStrategyPanel({ onChange }: { onChange?: () => vo
       // Send only the fields relevant to the chosen mode — keeps the
       // payload focused and lets the backend leave irrelevant columns
       // alone (e.g. don't blank day_of_week when switching to monthly).
-      const payload: Partial<Settings> = { slot_release_mode: settings.slot_release_mode }
+      // Booking-window fields always go regardless of mode.
+      const payload: Partial<Settings> = {
+        minimum_notice_minutes: settings.minimum_notice_minutes,
+        max_days_ahead:         settings.max_days_ahead,
+        slot_release_mode:      settings.slot_release_mode,
+      }
       const m = settings.slot_release_mode
       if (m === 'weekly' || m === 'biweekly' || m === 'monthly') {
         payload.slot_release_window_days = settings.slot_release_window_days ?? defaultWindowFor(m)
@@ -168,10 +181,26 @@ export default function ReleaseStrategyPanel({ onChange }: { onChange?: () => vo
     </div>
   )
 
+  // Step 1 of the two-step UX: "Always open" vs "Custom schedule".
+  // Anything that isn't always_open is custom (Step 2 reveals the cadence).
+  const step1IsCustom = settings.slot_release_mode !== 'always_open'
+
+  // Step 1 click handlers. Switching to custom defaults to weekly (a sensible
+  // most-common starting point); switching back to always_open just flips the
+  // mode and leaves the cadence config alone so re-toggling is non-destructive.
+  function selectAlwaysOpen() {
+    patch('slot_release_mode', 'always_open')
+  }
+  function selectCustomSchedule() {
+    if (settings.slot_release_mode === 'always_open') {
+      patch('slot_release_mode', 'weekly')
+    }
+  }
+
   return (
     <TabShell>
       <TabIntro>
-        Choose when future dates become bookable — open immediately or released in recurring batches.
+        Set when customers can book and how new dates open up.
       </TabIntro>
 
       {error && (
@@ -180,7 +209,40 @@ export default function ReleaseStrategyPanel({ onChange }: { onChange?: () => vo
         </div>
       )}
 
-      {/* Release strategy — mode picker + cadence sub-fields */}
+      {/* Booking window — orthogonal to release mode. */}
+      <div className="border border-hairline-soft bg-white px-5 py-4 space-y-3">
+        <p className="text-sm font-bold text-near-black">Booking window</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Field
+            label="Minimum notice (minutes)"
+            hint="How far ahead a customer must book (e.g. 120 = 2 hours)."
+          >
+            <input
+              type="number"
+              min={0}
+              max={10080}
+              value={settings.minimum_notice_minutes}
+              onChange={e => patch('minimum_notice_minutes', Math.max(0, parseInt(e.target.value || '0', 10)))}
+              className={inputCls}
+            />
+          </Field>
+          <Field
+            label="Max days ahead"
+            hint="How far in the future bookings can be made."
+          >
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={settings.max_days_ahead}
+              onChange={e => patch('max_days_ahead', Math.max(1, parseInt(e.target.value || '1', 10)))}
+              className={inputCls}
+            />
+          </Field>
+        </div>
+      </div>
+
+      {/* Release strategy — two-step: always open or custom schedule */}
       <div className="border border-hairline-soft bg-white">
         {/* Custom header with action button using the section chrome manually
             so the save button doesn't trigger the accordion toggle */}
@@ -194,10 +256,10 @@ export default function ReleaseStrategyPanel({ onChange }: { onChange?: () => vo
             onClick={() => setOpenSection(o => o === 'strategy' ? null : 'strategy')}
             className="flex-1 min-w-0 text-left"
           >
-            <p className="text-sm font-bold text-near-black">Release strategy</p>
+            <p className="text-sm font-bold text-near-black">How dates open</p>
             {openSection !== 'strategy' && (
               <p className="text-xs text-muted-text mt-0.5 truncate">
-                {MODE_LABELS[settings.slot_release_mode]}
+                {step1IsCustom ? `Custom · ${MODE_LABELS[settings.slot_release_mode]}` : MODE_LABELS.always_open}
               </p>
             )}
           </button>
@@ -205,23 +267,46 @@ export default function ReleaseStrategyPanel({ onChange }: { onChange?: () => vo
         </div>
         {openSection === 'strategy' && (
           <div className="px-5 pb-5 pt-1 space-y-4">
-            {/* Mode picker */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
-              {(['always_open', 'weekly', 'biweekly', 'monthly', 'custom'] as ReleaseMode[]).map(m => (
-                <ModePill
-                  key={m}
-                  active={settings.slot_release_mode === m}
-                  onClick={() => patch('slot_release_mode', m)}
-                  label={MODE_LABELS[m]}
-                />
-              ))}
+            {/* Step 1: always open or custom schedule */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              <ModePill
+                active={! step1IsCustom}
+                onClick={selectAlwaysOpen}
+                label="Always open"
+              />
+              <ModePill
+                active={step1IsCustom}
+                onClick={selectCustomSchedule}
+                label="Custom schedule"
+              />
             </div>
 
-            {/* Cadence-specific controls */}
-            {settings.slot_release_mode === 'always_open' && (
+            {/* Always-open branch: just a hint, nothing else to configure. */}
+            {! step1IsCustom && (
               <p className="text-2xs text-muted-text inline-flex items-center gap-1.5">
-                <Info size={11} /> Dates open immediately, capped by your max-days-ahead setting on the Weekly tab.
+                <Info size={11} /> Every future date inside your booking window is bookable right away.
               </p>
+            )}
+
+            {/* Step 2: custom schedule cadence picker (only when Custom). */}
+            {step1IsCustom && (
+              <>
+                <div className="pt-2 border-t border-hairline-soft">
+                  <p className="text-eyebrow tracking-eyebrow uppercase font-bold text-muted-text mb-2">
+                    Release cadence
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                    {(['weekly', 'biweekly', 'monthly', 'custom'] as ReleaseMode[]).map(m => (
+                      <ModePill
+                        key={m}
+                        active={settings.slot_release_mode === m}
+                        onClick={() => patch('slot_release_mode', m)}
+                        label={MODE_LABELS[m]}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
 
             {settings.slot_release_mode === 'weekly' && (

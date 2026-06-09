@@ -645,8 +645,9 @@ function BookingSettingsPanel() {
       const payload: BookingSettingsPayload = {
         booking_enabled:                   draft.booking_enabled,
         auto_confirm_bookings:             draft.auto_confirm_bookings,
-        minimum_notice_minutes:            draft.minimum_notice_minutes,
-        max_days_ahead:                    draft.max_days_ahead,
+        // minimum_notice_minutes + max_days_ahead intentionally NOT sent.
+        // Availability > Date Drops is the single writer for those fields
+        // (same single-source-of-truth treatment as slot_release_*).
         slot_interval_minutes:             draft.slot_interval_minutes,
         // slot_release_mode + slot_release_window_days intentionally NOT sent.
         // Availability > Date Drops is the single writer for those columns
@@ -755,47 +756,24 @@ function BookingSettingsPanel() {
         </div>
       </section>
 
-      {/* Booking window */}
+      {/* Booking spacing — slot interval lives here because it's a global
+          appointment-rhythm setting, not a release-window thing. Minimum
+          notice + max days ahead moved to Availability > Date Drops where
+          owners think about them alongside release cadence. */}
       <section className="bg-white border border-hairline-soft p-3.5 space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <NumberField
-            label="Minimum notice"
-            suffix="minutes"
-            min={0}
-            max={10080}
-            value={draft.minimum_notice_minutes}
-            onChange={v => patch({ minimum_notice_minutes: v })}
-            hint="How far ahead a customer must book (e.g. 120 = 2 hours)."
-          />
-          <NumberField
-            label="Max days ahead"
-            suffix="days"
-            min={1}
-            max={365}
-            value={draft.max_days_ahead}
-            onChange={v => patch({ max_days_ahead: v })}
-            hint="How far in the future bookings can be made."
-          />
-        </div>
-        <div className="border-t border-hairline-soft pt-3">
-          <SelectField
-            label="Time between appointment start times"
-            value={String(draft.slot_interval_minutes)}
-            onChange={v => patch({ slot_interval_minutes: Number(v) })}
-            options={SLOT_INTERVALS.map(n => ({ value: String(n), label: `${n} minutes` }))}
-            hint="Spacing between available start times."
-          />
-        </div>
-        {/* Date Drops (release strategy + release window) used to live here.
-            Availability 2.0 moved them to a dedicated Date Drops tab so the
-            release controls and the calendar view sit side-by-side. Pointer
-            stays here so owners reading their settings find the new home. */}
+        <SelectField
+          label="Time between appointment start times"
+          value={String(draft.slot_interval_minutes)}
+          onChange={v => patch({ slot_interval_minutes: Number(v) })}
+          options={SLOT_INTERVALS.map(n => ({ value: String(n), label: `${n} minutes` }))}
+          hint="Spacing between available start times."
+        />
         <div className="border-t border-hairline-soft pt-3">
           <p className="text-eyebrow tracking-eyebrow uppercase font-bold text-muted-text mb-1">
-            When new dates open
+            Booking window and release schedule
           </p>
           <p className="text-[13px] text-muted-text leading-snug">
-            How and when new dates open for booking lives in{' '}
+            Minimum notice, max days ahead, and how new dates open for booking now live in{' '}
             <Link href="/editor/availability?tab=drops" className="text-near-black font-semibold underline underline-offset-2 decoration-hairline hover:decoration-near-black">
               Availability &rsaquo; Date Drops
             </Link>
