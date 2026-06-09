@@ -30,7 +30,7 @@
 | - | --------------------------- | ------------------------------------------- | ----------- |
 | 1 | Theme tokens                | `--brk-booking-*` variables + Lush parity   | shipped     |
 | 2 | Rename + Lush owns tokens   | Engine consumes `--brk-booking-*`; Lush defines `--lush-*` | **active**  |
-| 3 | TFR re-paint                | TFR override file drops `!important` calls  | pending     |
+| 3 | TFR re-paint                | TFR override file drops `!important` calls  | shipped     |
 | 4 | VT (+ 4 more) re-paint      | Bottega / Petale / Opaline / Blackline / VT | pending     |
 | 5 | Template shell deduplication| `<TemplateBookingShell>` shared component   | pending     |
 | 6 | Smoke tests                 | Playwright happy-path against staging tenant| pending     |
@@ -194,6 +194,34 @@ override either name; the engine's aliases connect them.
 The `.tfr-template a` cascade-fight bug we shipped a fix for on
 2026-06-09 should be solvable without the TFR-side `!important`
 override; Phase 3 will verify by deleting that override.
+
+---
+
+## The size-vs-style contract (locked 2026-06-09)
+
+Founder direction, applied from Phase 3 forward:
+
+| What                       | Owner    | Examples                                  |
+| -------------------------- | -------- | ----------------------------------------- |
+| Layout dimensions          | Engine   | padding, margin, gap, width, max-width    |
+| Typography sizing          | Engine   | font-size, line-height, letter-spacing    |
+| Component sizing           | Engine   | button padding, input padding, card padding |
+| Structure                  | Engine   | display, flex/grid, layout direction      |
+| Border radius              | Template | sharp / soft / pill per surface           |
+| Button shape               | Template | rect, soft, pill                          |
+| Colors + backgrounds       | Template | every fg/bg/border-color                  |
+| Fonts                      | Template | font-family + font-weight                 |
+| Decorations                | Template | text-shadow, box-shadow, transitions      |
+
+The engine exposes radius tokens (`--brk-booking-radius-card / -cta / -input`)
+so templates pick their shape without duplicating padding/font-size in
+override rules. If a template rule sets `font-size`, `padding`, `gap`,
+`margin`, `width`, or `line-height` on a `.brk-booking-*` selector, it
+violates the contract and should be removed.
+
+The outer chrome (the wrapper that POSITIONS the booking inside the
+template's page — e.g., `.tfr-booking-frame { padding: ... }`) is outside
+this contract and stays template-driven.
 
 ---
 

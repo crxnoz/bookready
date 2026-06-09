@@ -58,6 +58,15 @@ export const LUSH_CSS = `
   /* Reserved "ink" — used by a couple of post-booking confirmation
      surfaces that want a deeper near-black than the main text color. */
   --brk-booking-ink:       var(--lush-ink,       #16131a);
+  /* Component RADIUS — template-driven per the booking-architecture
+     contract (docs/booking-architecture.md). Templates can pick sharp /
+     soft / pill independently for cards, primary CTAs, and inputs. The
+     defaults below match Lush; TFR / VT / etc. override at their wrapper.
+     SIZES (padding, font-size, gap) stay engine-owned — only the shape
+     is template's call. */
+  --brk-booking-radius-card:  var(--lush-radius-card,  6px);
+  --brk-booking-radius-cta:   var(--lush-radius-cta,   999px);
+  --brk-booking-radius-input: var(--lush-radius-input, 6px);
   /* Font stacks. Templates override these to swap typography. */
   --brk-booking-font-script: var(--lush-script, "Cookie", cursive);
   --brk-booking-font-molle:  var(--lush-molle,  "Molle",  cursive);
@@ -729,7 +738,7 @@ export const LUSH_CSS = `
   background:var(--brk-booking-card);
   border:1px solid var(--brk-booking-rule);
   border-left:2px solid var(--brk-booking-accent);
-  border-radius:6px; padding:18px 18px 16px;
+  border-radius:var(--brk-booking-radius-card); padding:18px 18px 16px;
   display:flex; flex-direction:column; gap:8px;
   transition:border-color .2s ease;
 }
@@ -1156,7 +1165,7 @@ export const LUSH_CSS = `
 .brk-booking-fields input,
 .brk-booking-textarea {
   background:var(--brk-booking-card); border:1px solid var(--brk-booking-rule);
-  border-radius:6px; padding:12px 14px; color:var(--brk-booking-text);
+  border-radius:var(--brk-booking-radius-input); padding:12px 14px; color:var(--brk-booking-text);
   font-family:var(--brk-booking-font-ui); font-size:14px; width:100%;
   transition:border-color .2s ease;
 }
@@ -1223,7 +1232,7 @@ export const LUSH_CSS = `
 .brk-booking-next,
 .brk-booking-confirm-btn {
   background:transparent; border:1px solid var(--brk-booking-rule);
-  color:var(--brk-booking-text); padding:13px 20px; border-radius:999px;
+  color:var(--brk-booking-text); padding:13px 20px; border-radius:var(--brk-booking-radius-cta);
   font-size:11px; letter-spacing:0.16em; text-transform:uppercase;
   font-weight:600; cursor:pointer;
   display:inline-flex; gap:8px; align-items:center;

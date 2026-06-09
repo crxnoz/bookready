@@ -69,12 +69,11 @@ const TFR_BOOKING_CSS = `
    neon halo every other section title carries. The h2 lives inside
    .brk-booking-head from the platform shim — we don't control the
    markup, but we own the cascade. */
+/* Phase 3 contract: engine owns SIZE (font-size, line-height); template
+   owns APPEARANCE (font-family, color, text-shadow). */
 .tfr-booking-inner.lush-template .brk-booking-head h2 {
   font-family: 'Dancing Script', 'Pacifico', cursive !important;
   font-weight: 700 !important;
-  font-size: clamp(40px, 5vw, 64px) !important;
-  line-height: 1.05 !important;
-  letter-spacing: 0 !important;
   color: #fff !important;
   text-shadow:
     0 0 6px var(--tfr-accent),
@@ -82,12 +81,6 @@ const TFR_BOOKING_CSS = `
     0 0 30px var(--tfr-accent),
     0 0 56px color-mix(in srgb, var(--tfr-accent) 80%, transparent) !important;
   text-transform: none !important;
-}
-
-/* Auth widgets — tight to the form body. */
-.tfr-booking-inner.lush-template .lush-account-widget,
-.tfr-booking-inner.lush-template .brk-booking-auth-thin {
-  margin-bottom: 20px !important;
 }
 
 /* Auth strips + summary need full-strength text on midnight canvas. */
@@ -192,7 +185,9 @@ const TFR_BOOKING_CSS = `
   border: 1px solid var(--tfr-accent) !important;
 }
 
-/* Lush-variable re-skin — paint embedded booking in TFR neon tokens. */
+/* Lush-variable re-skin — paint embedded booking in TFR neon tokens.
+   Phase 3 contract: radius is template-driven (set per-component below);
+   sizes/padding/typography remain engine-owned. */
 .tfr-booking-inner.lush-template {
   --lush-bg:          transparent;
   --lush-card:        rgba(240, 239, 245, 0.04);
@@ -206,6 +201,10 @@ const TFR_BOOKING_CSS = `
   --lush-serif:       var(--tfr-display);
   --lush-sans:        var(--tfr-body);
   --lush-ui:          var(--tfr-body);
+  /* Radius — TFR runs softer than Lush's 6px default. CTA pills (999px)
+     match the engine default; only override card + input. */
+  --brk-booking-radius-card:  8px;
+  --brk-booking-radius-input: 8px;
   color: var(--lush-text);
   background: transparent;
 }
@@ -223,7 +222,6 @@ const TFR_BOOKING_CSS = `
   border-color: var(--tfr-rule) !important;
   box-shadow: none !important;
   color: var(--tfr-fg) !important;
-  border-radius: 8px !important;
 }
 /* Service CARDS keep the dark card surface — the feedback was the
    *container* around them had an unwanted box, not the cards. Service
@@ -233,15 +231,13 @@ const TFR_BOOKING_CSS = `
   border: 1px solid var(--tfr-rule) !important;
   box-shadow: none !important;
   color: var(--tfr-fg) !important;
-  border-radius: 8px !important;
 }
 /* The wrapping .brk-booking-services grid is pure layout — no border,
-   no background, no padding. Services sit directly on the page. */
+   no background. Padding/gap are engine-owned (Phase 3 contract). */
 .tfr-booking-inner.lush-template .brk-booking-services {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  padding: 0 !important;
 }
 /* Inner name+price row (.brk-booking-service-top) was inheriting the
    border from the old substring-match rule. Strip it. */
@@ -251,14 +247,14 @@ const TFR_BOOKING_CSS = `
   box-shadow: none !important;
 }
 
-/* Form fields — dark surface, accent focus glow. */
+/* Form fields — dark surface, accent focus glow. Radius is driven by
+   --brk-booking-radius-input from the variable block above. */
 .tfr-booking-inner.lush-template input,
 .tfr-booking-inner.lush-template textarea,
 .tfr-booking-inner.lush-template select {
   background: rgba(240, 239, 245, 0.04) !important;
   border: 1px solid var(--tfr-rule) !important;
   color: var(--tfr-fg) !important;
-  border-radius: 8px !important;
 }
 .tfr-booking-inner.lush-template input:focus,
 .tfr-booking-inner.lush-template textarea:focus,
@@ -281,32 +277,30 @@ const TFR_BOOKING_CSS = `
   letter-spacing: -0.015em !important;
 }
 
-/* Eyebrow labels — tracked uppercase accent with subtle glow. */
+/* Eyebrow labels — tracked uppercase accent with subtle glow. Engine owns
+   font-size + letter-spacing (typography sizing); template owns font-
+   family + color + decoration. */
 .tfr-booking-inner.lush-template .brk-booking-block-label,
 .tfr-booking-inner.lush-template .brk-booking-eyebrow,
 .tfr-booking-inner.lush-template .brk-booking-step-num {
   font-family: var(--tfr-body) !important;
-  font-size: 10px !important;
-  letter-spacing: 0.32em !important;
   text-transform: uppercase !important;
   color: var(--tfr-accent) !important;
   text-shadow: 0 0 8px color-mix(in srgb, var(--tfr-accent) 36%, transparent);
 }
 
-/* Primary CTA — pill button, neon fill, glow on hover. */
+/* Primary CTA — neon fill, glow on hover. Engine owns SIZE (padding,
+   font-size, letter-spacing) and SHAPE (radius via --brk-booking-radius-
+   cta). Template owns APPEARANCE (color, font-family, glow). */
 .tfr-booking-inner.lush-template .brk-booking-cta,
 .tfr-booking-inner.lush-template button[class*="brk-booking-next"],
 .tfr-booking-inner.lush-template button[class*="brk-booking-submit"] {
   background: var(--tfr-accent) !important;
   color: var(--tfr-bg) !important;
   border: 1px solid var(--tfr-accent) !important;
-  border-radius: 999px !important;
   font-family: var(--tfr-body) !important;
   font-weight: 700 !important;
-  letter-spacing: 0.18em !important;
   text-transform: uppercase !important;
-  font-size: 11px !important;
-  padding: 16px 32px !important;
   transition: box-shadow 220ms ease !important;
 }
 .tfr-booking-inner.lush-template .brk-booking-cta:hover,
@@ -314,18 +308,14 @@ const TFR_BOOKING_CSS = `
   box-shadow: 0 0 24px color-mix(in srgb, var(--tfr-accent) 55%, transparent) !important;
 }
 
-/* Secondary / back — outlined pill. */
+/* Secondary / back — outlined pill, same size contract. */
 .tfr-booking-inner.lush-template button[class*="brk-booking-back"],
 .tfr-booking-inner.lush-template button[class*="brk-booking-secondary"] {
   background: transparent !important;
   color: var(--tfr-accent) !important;
   border: 1px solid var(--tfr-accent) !important;
-  border-radius: 999px !important;
   font-family: var(--tfr-body) !important;
-  letter-spacing: 0.18em !important;
   text-transform: uppercase !important;
-  font-size: 11px !important;
-  padding: 16px 28px !important;
 }
 
 /* Active/selected service or slot — soft accent fill + glow ring. */
