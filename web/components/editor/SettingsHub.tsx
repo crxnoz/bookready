@@ -648,8 +648,10 @@ function BookingSettingsPanel() {
         minimum_notice_minutes:            draft.minimum_notice_minutes,
         max_days_ahead:                    draft.max_days_ahead,
         slot_interval_minutes:             draft.slot_interval_minutes,
-        slot_release_mode:                 draft.slot_release_mode,
-        slot_release_window_days:          draft.slot_release_mode === 'always_open' ? null : draft.slot_release_window_days,
+        // slot_release_mode + slot_release_window_days intentionally NOT sent.
+        // Availability > Date Drops is the single writer for those columns
+        // post Availability 2.0. Sending them here would race a concurrent
+        // Date Drops edit and revert it.
         cancellation_window_hours:         draft.cancellation_window_hours,
         reschedule_window_hours:           draft.reschedule_window_hours,
         prevent_duplicate_client_bookings: draft.prevent_duplicate_client_bookings,
@@ -693,8 +695,6 @@ function BookingSettingsPanel() {
       </div>
     )
   }
-
-  const releaseHasWindow = draft.slot_release_mode !== 'always_open'
 
   return (
     <div className="space-y-3">
@@ -765,7 +765,7 @@ function BookingSettingsPanel() {
             hint="How far in the future bookings can be made."
           />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-hairline-soft pt-3">
+        <div className="border-t border-hairline-soft pt-3">
           <SelectField
             label="Time between appointment start times"
             value={String(draft.slot_interval_minutes)}
@@ -773,32 +773,23 @@ function BookingSettingsPanel() {
             options={SLOT_INTERVALS.map(n => ({ value: String(n), label: `${n} minutes` }))}
             hint="Spacing between available start times."
           />
-          <SelectField
-            label="When new dates open for booking"
-            value={draft.slot_release_mode}
-            onChange={v => patch({ slot_release_mode: v as SlotReleaseMode })}
-            options={[
-              { value: 'always_open', label: 'Always open' },
-              { value: 'weekly',      label: 'Weekly' },
-              { value: 'biweekly',    label: 'Biweekly' },
-              { value: 'monthly',     label: 'Monthly' },
-            ]}
-            hint="When new dates open up for booking."
-          />
         </div>
-        {releaseHasWindow && (
-          <div className="border-t border-hairline-soft pt-3">
-            <NumberField
-              label="Release window"
-              suffix="days"
-              min={1}
-              max={365}
-              value={draft.slot_release_window_days ?? 14}
-              onChange={v => patch({ slot_release_window_days: v })}
-              hint="How many days customers can book ahead at one time."
-            />
-          </div>
-        )}
+        {/* Date Drops (release strategy + release window) used to live here.
+            Availability 2.0 moved them to a dedicated Date Drops tab so the
+            release controls and the calendar view sit side-by-side. Pointer
+            stays here so owners reading their settings find the new home. */}
+        <div className="border-t border-hairline-soft pt-3">
+          <p className="text-eyebrow tracking-eyebrow uppercase font-bold text-muted-text mb-1">
+            When new dates open
+          </p>
+          <p className="text-[13px] text-muted-text leading-snug">
+            How and when new dates open for booking lives in{' '}
+            <Link href="/editor/availability?tab=drops" className="text-near-black font-semibold underline underline-offset-2 decoration-hairline hover:decoration-near-black">
+              Availability &rsaquo; Date Drops
+            </Link>
+            .
+          </p>
+        </div>
       </section>
 
       {/* Cancellation / reschedule */}
