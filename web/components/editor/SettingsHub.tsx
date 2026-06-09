@@ -13,14 +13,13 @@ function useScrollResetOnTab(tab: string) {
   }, [tab])
 }
 import { useRouter } from 'next/navigation'
-import { clearAuth } from '@/lib/auth'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
 import Switch from '@/components/ui/Toggle'
 import {
   Building2, Calendar, CalendarClock, CreditCard, Bell, UserCircle,
   Plug, ChevronRight, ChevronDown, Loader2, Check, AlertCircle,
   DollarSign, Download, Instagram, Mail, MapPin, MessageSquare, Phone,
-  Percent, Lock, ExternalLink, RefreshCw, ShieldCheck, Send, Trash2, Webhook,
+  Percent, Lock, ExternalLink, RefreshCw, ShieldCheck, Send, Webhook,
   X,
 } from 'lucide-react'
 import {
@@ -40,7 +39,6 @@ import {
   getEditorPolicies,
   updateEditorPolicies,
   downloadEditorExport,
-  deleteEditorAccount,
 } from '@/lib/api'
 import type {
   AccountProfile,
@@ -2241,8 +2239,6 @@ function SubscriptionPanel() {
       </Link>
 
       <BillingHub />
-
-      <DeleteAccountCard />
     </div>
   )
 }
@@ -2302,42 +2298,6 @@ function ExportDataCard() {
   )
 }
 
-// Delete-account card — lives in Subscription. Self-contained confirm flow.
-function DeleteAccountCard() {
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  return (
-    <>
-      <section className="bg-white border border-danger/30 p-3.5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0">
-            <span className="w-9 h-9 flex items-center justify-center border bg-danger-bg border-danger/30 text-danger flex-shrink-0">
-              <Trash2 size={15} strokeWidth={1.8} />
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-danger">Delete BookReady account</p>
-              <p className="text-2xs text-muted-text mt-0.5 leading-snug">
-                Permanently deletes your booking site, every appointment, your customer list, and your owner login. Stripe transaction history is preserved in Stripe.
-                This cannot be undone. Export your data first.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowDeleteModal(true)}
-            className="text-2xs font-bold tracking-[0.08em] uppercase border border-danger/40 bg-white text-danger px-3 py-1.5 hover:bg-danger-bg transition-colors flex-shrink-0"
-          >
-            Delete account
-          </button>
-        </div>
-      </section>
-
-      {showDeleteModal && (
-        <DeleteAccountDialog onClose={() => setShowDeleteModal(false)} />
-      )}
-    </>
-  )
-}
-
 function ExportCard({
   label, description, busy, onClick,
 }: {
@@ -2369,152 +2329,6 @@ function ExportCard({
         {busy ? 'Exporting…' : 'CSV ↓'}
       </span>
     </button>
-  )
-}
-
-/**
- * Multi-step "type your slug + password" deletion dialog. Reads the tenant
- * slug from localStorage (where setTenantId() stored it at login). On
- * success: clears local auth, redirects to /login with a deleted=1 flag.
- */
-function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
-  const router = useRouter()
-  const [slug, setSlug]         = useState<string | null>(null)
-  const [typedSlug, setTyped]   = useState('')
-  const [password, setPassword] = useState('')
-  const [busy, setBusy]         = useState(false)
-  const [err,  setErr]          = useState<string | null>(null)
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setSlug(localStorage.getItem('br_tenant_id'))
-    }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !busy) onClose() }
-    document.body.style.overflow = 'hidden'
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.body.style.overflow = ''
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [onClose, busy])
-
-  const slugMatches = slug !== null && typedSlug === slug
-  const canSubmit   = slugMatches && password.length > 0 && !busy
-
-  async function handleDelete() {
-    if (!canSubmit || !slug) return
-    setBusy(true); setErr(null)
-    try {
-      await deleteEditorAccount({ password, confirm_slug: slug })
-      clearAuth()
-      router.push('/login?deleted=1')
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Delete failed')
-      setBusy(false)
-    }
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-near-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={() => { if (!busy) onClose() }}
-    >
-      <div
-        className="w-full sm:max-w-[460px] bg-white border-t sm:border border-[rgba(180,40,40,0.30)] flex flex-col max-h-[92vh]"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(180,40,40,0.20)]">
-          <div>
-            <p className="text-eyebrow font-bold tracking-[0.18em] uppercase text-danger mb-1">
-              Permanent deletion
-            </p>
-            <h2 className="text-base font-bold text-near-black tracking-tight">
-              Delete your BookReady account
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={() => { if (!busy) onClose() }}
-            disabled={busy}
-            className="p-1.5 hover:bg-[rgba(18,18,18,0.05)] transition-colors disabled:opacity-40"
-            aria-label="Close"
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          <div className="bg-danger-bg border border-danger/30 px-3.5 py-3 text-xs leading-relaxed text-danger">
-            <p className="font-semibold mb-1.5">This will permanently:</p>
-            <ul className="list-disc list-outside pl-4 space-y-0.5">
-              <li>Cancel your BookReady subscription (no more charges)</li>
-              <li>Delete your booking site at <span className="font-mono text-2xs">{slug ?? '…'}.bkrdy.me</span></li>
-              <li>Delete all appointments, customers, services, staff, and gallery items</li>
-              <li>Delete your owner login and every active session</li>
-              <li>Disconnect your Stripe Connect link (Stripe history + balance stays in Stripe)</li>
-            </ul>
-            <p className="mt-2 font-semibold">There is no undo. Export your data first if you need it.</p>
-          </div>
-
-          <div>
-            <label className="block text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text mb-1.5">
-              Type your site address to confirm
-            </label>
-            <input
-              type="text"
-              value={typedSlug}
-              onChange={e => setTyped(e.target.value)}
-              placeholder={slug ?? 'yoursite'}
-              autoComplete="off"
-              className="w-full bg-white border border-hairline-strong px-3 py-2.5 text-sm text-near-black font-mono placeholder:text-faint-text focus:outline-none focus:border-danger transition-colors"
-            />
-            {typedSlug && slug && !slugMatches && (
-              <p className="text-2xs text-danger mt-1">
-                That doesn&rsquo;t match. Type <span className="font-mono">{slug}</span> exactly.
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-eyebrow font-bold tracking-[0.18em] uppercase text-muted-text mb-1.5">
-              Your current password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              autoComplete="current-password"
-              className="w-full bg-white border border-hairline-strong px-3 py-2.5 text-sm text-near-black focus:outline-none focus:border-danger transition-colors"
-            />
-          </div>
-
-          {err && (
-            <div className="px-3 py-2 bg-danger-bg border border-danger text-xs text-danger flex items-center gap-2">
-              <AlertCircle size={12} /> {err}
-            </div>
-          )}
-        </div>
-
-        <div className="flex gap-2 p-5 border-t border-[rgba(180,40,40,0.20)]">
-          <button
-            type="button"
-            onClick={() => { if (!busy) onClose() }}
-            disabled={busy}
-            className="flex-1 border border-hairline-strong bg-white text-2xs font-bold tracking-[0.18em] uppercase py-3 text-near-black hover:border-near-black transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={!canSubmit}
-            className="flex-1 bg-danger text-white text-2xs font-bold tracking-[0.18em] uppercase py-3 hover:bg-[#8a1d1d] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {busy ? 'Deleting…' : 'Delete forever'}
-          </button>
-        </div>
-      </div>
-    </div>
   )
 }
 
