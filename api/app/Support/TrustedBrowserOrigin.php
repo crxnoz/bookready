@@ -64,6 +64,13 @@ class TrustedBrowserOrigin
         if (preg_match('#^https://[a-z0-9][a-z0-9-]{0,62}\.bkrdy\.me$#', $origin)) {
             return true;
         }
+        // Staging tenant subdomains (*.staging.bkrdy.me) used by the
+        // tenant-side TfrAuthModal. Mirror of the cors.php pattern so
+        // the customer-route branch above accepts e.g.
+        // https://lushstudio.staging.bkrdy.me.
+        if (preg_match('#^https://[a-z0-9][a-z0-9-]{0,62}\.staging\.bkrdy\.me$#', $origin)) {
+            return true;
+        }
         if (preg_match('#^https?://[a-z0-9][a-z0-9-]{0,62}\.daysbookings\.site$#', $origin)) {
             return true;
         }
