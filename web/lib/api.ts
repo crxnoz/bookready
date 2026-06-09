@@ -344,6 +344,42 @@ export async function getPublicAvailability(
   return res.json() as Promise<PublicAvailabilityResponse>
 }
 
+/**
+ * Customer-facing booking calendar: per-date state for the visible month
+ * so cells render with the right visual cue at a glance. Returns one of:
+ * 'open' | 'closed' | 'not_released' | 'waitlist' | 'squeeze_in' | 'past'.
+ *
+ * Cheap on the server (one batch query per data source, ~7 total), and
+ * the response is small so a fresh call per month change is fine.
+ */
+export type CalendarDateState =
+  | 'open' | 'closed' | 'not_released' | 'waitlist' | 'squeeze_in' | 'past'
+
+export interface PublicAvailabilityOverviewResponse {
+  dates: Record<string, CalendarDateState>
+}
+
+export async function getPublicAvailabilityOverview(
+  slug:      string,
+  from:      string,
+  to:        string,
+  serviceId: number | null,
+): Promise<PublicAvailabilityOverviewResponse> {
+  const base   = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
+  const params: Record<string, string> = { from, to }
+  if (serviceId != null) params.service_id = String(serviceId)
+  const qs   = new URLSearchParams(params).toString()
+  const res  = await fetch(`${base}/public/sites/${slug}/availability/overview?${qs}`, {
+    headers: { Accept: 'application/json' },
+    cache:   'no-store',
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }))
+    throw new Error(err.message ?? 'Failed to load availability overview')
+  }
+  return res.json() as Promise<PublicAvailabilityOverviewResponse>
+}
+
 export async function createPublicAppointment(
   slug: string,
   data: PublicBookingPayload,

@@ -113,6 +113,11 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:60,1');
     Route::get('public/sites/{slug}/availability',        [PublicAvailabilityController::class, 'show'])
         ->middleware('throttle:60,1');
+    // Per-date state for the booking calendar (open/closed/not_released/
+    // waitlist/squeeze_in/past). Cheap pure-array compute; one request per
+    // month per service. Same throttle as the per-date slot endpoint.
+    Route::get('public/sites/{slug}/availability/overview', [PublicAvailabilityController::class, 'overview'])
+        ->middleware('throttle:60,1');
     // Phase S5 — booking POST throttled to 10/min per IP. Tight enough
     // to deter scripted abuse, loose enough that a real client retrying
     // a flaky network does not lock themselves out.

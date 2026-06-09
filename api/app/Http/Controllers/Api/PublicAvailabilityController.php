@@ -345,4 +345,205 @@ class PublicAvailabilityController extends Controller
             'fee'       => round((int) ($config->fee_cents ?? 0) / 100, 2),
         ];
     }
+
+    /**
+     * GET /api/v1/public/sites/{slug}/availability/overview?from=YYYY-MM-DD&to=YYYY-MM-DD&service_id=N
+     *
+     * Returns a per-date state for the customer-facing booking calendar so
+     * cells render with the right visual cue at a glance:
+     *
+     *   past         – date < today
+     *   closed       – weekly schedule closed, override closed, or
+     *                  inside a tenant-wide blocked_dates range
+     *   not_released – beyond the current release window (Date Drops)
+     *   open         – has hours and room
+     *   waitlist     – open but at-or-over capacity; customer can join the
+     *                  waitlist (waitlist is the universal fallback)
+     *   squeeze_in   – open but at-or-over capacity AND the tenant has
+     *                  squeeze-ins enabled (replaces waitlist for those
+     *                  tenants)
+     *
+     * Performance: one batch query per data source (~7 total), then a pure
+     * O(days) loop. Service-aware via the optional service_id filter so a
+     * date that's blocked for one service but open for another reads
+     * correctly per the customer's chosen service.
+     *
+     * Range capped at 62 days so a single request can't enumerate the year.
+     */
+    public function overview(Request $request, string $slug): JsonResponse
+    {
+        $request->validate([
+            'from'       => 'required|date_format:Y-m-d',
+            'to'         => 'required|date_format:Y-m-d|after_or_equal:from',
+            'service_id' => 'sometimes|integer',
+        ]);
+
+        $tenant = Tenant::where('id', $slug)->first();
+        if (! $tenant) {
+            return response()->json(['message' => 'Site not found'], 404);
+        }
+
+        $from = Carbon::parse($request->input('from'));
+        $to   = Carbon::parse($request->input('to'));
+        if ($from->diffInDays($to) > 62) {
+            return response()->json(['message' => 'Range too wide.'], 422);
+        }
+
+        $serviceId = $request->integer('service_id') ?: null;
+        $fromStr   = $from->toDateString();
+        $toStr     = $to->toDateString();
+        $today     = Carbon::today()->toDateString();
+
+        tenancy()->initialize($tenant);
+
+        $dates = [];
+        try {
+            // Weekly fallback hours keyed by day_of_week.
+            $weeklyByDow = [];
+            if (\Illuminate\Support\Facades\Schema::hasTable('hours')) {
+                foreach (DB::table('hours')->get() as $h) {
+                    $weeklyByDow[(int) $h->day_of_week] = $h;
+                }
+            }
+
+            // Per-date overrides indexed by ISO date.
+            $overridesByDate = [];
+            if (\Illuminate\Support\Facades\Schema::hasTable('calendar_overrides')) {
+                $rows = DB::table('calendar_overrides')
+                    ->whereBetween('date', [$fromStr, $toStr])
+                    ->get();
+                foreach ($rows as $r) $overridesByDate[$r->date] = $r;
+            }
+
+            // Tenant-wide blocked ranges that overlap our window.
+            $blockedRanges = [];
+            if (\Illuminate\Support\Facades\Schema::hasTable('blocked_dates')) {
+                $blockedRanges = DB::table('blocked_dates')
+                    ->where('start_date', '<=', $toStr)
+                    ->where(function ($q) use ($fromStr) {
+                        $q->where('end_date', '>=', $fromStr)->orWhereNull('end_date');
+                    })
+                    ->get(['start_date', 'end_date'])
+                    ->all();
+            }
+
+            // Booking settings (capacity default).
+            $settings = DB::table('booking_settings')->first();
+
+            // Release window cutoff.
+            $drops = \Illuminate\Support\Facades\Schema::hasTable('slot_release_drops')
+                ? DB::table('slot_release_drops')->get()->all()
+                : [];
+            $releasedUntil = \App\Services\ReleaseWindowResolver::releasedUntil($settings, $drops, Carbon::now());
+
+            // Appointment counts per date (excludes cancelled).
+            $apptCountByDate = [];
+            $apptQuery = DB::table('appointments')
+                ->whereBetween('appointment_date', [$fromStr, $toStr])
+                ->whereNotIn('status', ['cancelled']);
+            // service_id filter only when the column exists AND the caller
+            // selected one. Without it, the overview reflects whole-day
+            // capacity regardless of service.
+            if ($serviceId !== null && \Illuminate\Support\Facades\Schema::hasColumn('appointments', 'service_id')) {
+                $apptQuery->where('service_id', $serviceId);
+            }
+            $rows = $apptQuery->selectRaw('appointment_date, COUNT(*) AS c')
+                ->groupBy('appointment_date')
+                ->get();
+            foreach ($rows as $r) $apptCountByDate[$r->appointment_date] = (int) $r->c;
+
+            // Squeeze-in feature toggle.
+            $squeezeEnabled = false;
+            if (\Illuminate\Support\Facades\Schema::hasTable('squeeze_in_config')) {
+                $cfg = DB::table('squeeze_in_config')->first();
+                $squeezeEnabled = (bool) ($cfg->enabled ?? false);
+            }
+
+            // Per-date override-row capacity (Av2.0 P3 column).
+            $overrideCapacityCol = \Illuminate\Support\Facades\Schema::hasColumn('calendar_overrides', 'max_appointments');
+            $globalCap = $settings->max_appointments_per_day ?? null;
+
+            // Walk the range.
+            $loop = $from->copy();
+            while ($loop->lte($to)) {
+                $ds = $loop->toDateString();
+                $dates[$ds] = $this->computeOverviewState(
+                    $ds, $today, $loop->dayOfWeek,
+                    $weeklyByDow, $overridesByDate, $blockedRanges,
+                    $apptCountByDate, $globalCap, $overrideCapacityCol,
+                    $releasedUntil, $squeezeEnabled, $serviceId,
+                );
+                $loop->addDay();
+            }
+        } finally {
+            tenancy()->end();
+        }
+
+        return response()->json(['dates' => $dates]);
+    }
+
+    /**
+     * Pure resolver, no DB calls. All lookups happen via pre-built indexes
+     * passed in from overview(). Order matches the spec's precedence:
+     * past > not_released > closed > full(squeeze_in|waitlist) > open.
+     */
+    private function computeOverviewState(
+        string  $date,
+        string  $today,
+        int     $dayOfWeek,
+        array   $weeklyByDow,
+        array   $overridesByDate,
+        array   $blockedRanges,
+        array   $apptCountByDate,
+        ?int    $globalCap,
+        bool    $overrideCapacityCol,
+        ?Carbon $releasedUntil,
+        bool    $squeezeEnabled,
+        ?int    $serviceId,
+    ): string {
+        if ($date < $today) return 'past';
+
+        if ($releasedUntil !== null && $date > $releasedUntil->toDateString()) {
+            return 'not_released';
+        }
+
+        // Tenant-wide block overlap.
+        foreach ($blockedRanges as $b) {
+            $start = (string) $b->start_date;
+            $end   = (string) ($b->end_date ?? $b->start_date);
+            if ($date >= $start && $date <= $end) return 'closed';
+        }
+
+        // Override wins over weekly. Service filter on an override closes
+        // the date for that customer's service selection only.
+        $override = $overridesByDate[$date] ?? null;
+        $weekly   = $weeklyByDow[$dayOfWeek] ?? null;
+
+        if ($override !== null) {
+            if (! $override->is_available) return 'closed';
+            if ($serviceId !== null && ! empty($override->service_ids)) {
+                $allowed = json_decode((string) $override->service_ids, true);
+                if (is_array($allowed) && ! in_array($serviceId, $allowed, true)) {
+                    return 'closed';
+                }
+            }
+        } else {
+            if (! $weekly || $weekly->is_closed) return 'closed';
+        }
+
+        // Capacity: override wins over global default.
+        $cap = null;
+        if ($override !== null && $overrideCapacityCol && $override->max_appointments !== null) {
+            $cap = (int) $override->max_appointments;
+        } elseif ($globalCap !== null) {
+            $cap = (int) $globalCap;
+        }
+
+        $count = (int) ($apptCountByDate[$date] ?? 0);
+        if ($cap !== null && $count >= $cap) {
+            return $squeezeEnabled ? 'squeeze_in' : 'waitlist';
+        }
+
+        return 'open';
+    }
 }

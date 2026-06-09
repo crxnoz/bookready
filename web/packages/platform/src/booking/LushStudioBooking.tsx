@@ -7,7 +7,8 @@ import {
 } from 'lucide-react'
 import { loadStripe } from '@stripe/stripe-js'
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from '@stripe/react-stripe-js'
-import { getPublicAvailability, createPublicAppointment, createAppointmentHostedFallback, previewPublicCoupon, uploadBookingAnswerImage, joinPublicWaitlist, submitPublicSqueezeIn } from '@/lib/api'
+import { getPublicAvailability, getPublicAvailabilityOverview, createPublicAppointment, createAppointmentHostedFallback, previewPublicCoupon, uploadBookingAnswerImage, joinPublicWaitlist, submitPublicSqueezeIn } from '@/lib/api'
+import type { CalendarDateState } from '@/lib/api'
 import type {
   AvailableSlot, PaymentChoice, PublicBookingPayload, Service,
   AvailabilityData, PublicPaymentSettings,
@@ -478,6 +479,10 @@ export default function LushStudioBooking({
   today.setHours(0, 0, 0, 0)
   const [viewYear,  setViewYear]  = useState(today.getFullYear())
   const [viewMonth, setViewMonth] = useState(today.getMonth())
+  // Per-date state for the visible calendar month. Drives cell coloring
+  // (open / closed / not_released / waitlist / squeeze_in / past). Fetched
+  // from /availability/overview when the month or chosen service changes.
+  const [dateStates, setDateStates] = useState<Record<string, CalendarDateState>>({})
 
   // Availability helpers — day_of_week: 0=Sunday matches JS Date.getDay()
   const openByDow: Record<number, boolean> = (() => {
@@ -529,6 +534,28 @@ export default function LushStudioBooking({
         setSlotState({ status: 'error', message: err instanceof Error ? err.message : 'Failed to load times.' })
       })
   }, [serviceId, date, slug, effectiveStaffId, authedUser?.email])
+
+  // Per-date state for the calendar grid (open/closed/not_released/
+  // waitlist/squeeze_in/past). Refetches on month change or when the
+  // customer picks a different service (a service-restricted override
+  // can flip a date from open to closed for that service only). Silent
+  // failure: on error we leave dateStates empty so the calendar still
+  // renders with the old fallback isDateBlocked logic.
+  useEffect(() => {
+    if (!serviceId) {
+      setDateStates({})
+      return
+    }
+    const first = new Date(viewYear, viewMonth, 1)
+    const last  = new Date(viewYear, viewMonth + 1, 0)
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    let cancelled = false
+    getPublicAvailabilityOverview(slug, fmt(first), fmt(last), serviceId)
+      .then(res => { if (!cancelled) setDateStates(res.dates) })
+      .catch(() => { if (!cancelled) setDateStates({}) })
+    return () => { cancelled = true }
+  }, [slug, serviceId, viewYear, viewMonth])
 
   // Reset add-on + staff picks whenever the chosen service changes — the
   // available set depends on the service's links/assignment list and we
@@ -1433,10 +1460,26 @@ export default function LushStudioBooking({
                 <div className="lush-calendar-grid" role="grid">
                   {cells.map((c, i) => {
                     if (!c) return <span key={i} className="lush-calendar-day lush-calendar-day--empty" aria-hidden="true" />
-                    const blocked  = isDateBlocked(c.d)
                     const isToday  = isSameDay(c.d, today)
                     const key      = dateKey(c.d)
                     const selected = date === key
+                    // Server-driven state when we have it for this date;
+                    // fall back to the older isDateBlocked heuristic so
+                    // pre-overview-endpoint deploys still render a calendar.
+                    const serverState = dateStates[key]
+                    const blocked = serverState
+                      ? (serverState === 'closed' || serverState === 'past' || serverState === 'not_released')
+                      : isDateBlocked(c.d)
+                    const stateClass =
+                        serverState === 'not_released' ? ' lush-calendar-day--unreleased'
+                      : serverState === 'waitlist'     ? ' lush-calendar-day--waitlist'
+                      : serverState === 'squeeze_in'   ? ' lush-calendar-day--squeeze-in'
+                      : ''
+                    const stateLabel =
+                        serverState === 'not_released' ? ' (not yet open for booking)'
+                      : serverState === 'waitlist'     ? ' (fully booked, waitlist available)'
+                      : serverState === 'squeeze_in'   ? ' (fully booked, squeeze-in available)'
+                      : (blocked ? ' (closed)' : '')
                     return (
                       <button
                         key={i}
@@ -1445,11 +1488,12 @@ export default function LushStudioBooking({
                         className={
                           'lush-calendar-day'
                           + (blocked  ? ' lush-calendar-day--blocked'  : '')
+                          + stateClass
                           + (isToday  ? ' lush-calendar-day--today'    : '')
                           + (selected ? ' lush-calendar-day--selected' : '')
                         }
                         disabled={blocked}
-                        aria-label={c.d.toDateString() + (blocked ? ' (closed)' : '')}
+                        aria-label={c.d.toDateString() + stateLabel}
                         onClick={() => { if (!blocked) setDate(key) }}
                       >
                         {c.d.getDate()}

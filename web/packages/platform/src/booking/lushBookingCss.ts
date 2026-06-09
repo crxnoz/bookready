@@ -838,6 +838,31 @@ export const LUSH_CSS = `
 .lush-calendar-day--empty {
   background:transparent; border:0; cursor:default; visibility:hidden;
 }
+/* Date not yet released for booking (Date Drops). Disabled but visually
+   distinct from a hard close: dashed outline + dimmed copy. */
+.lush-calendar-day--unreleased {
+  background:transparent; border-color:rgba(14,17,17,0.18); border-style:dashed;
+  color:rgba(14,17,17,0.35); cursor:not-allowed;
+}
+.lush-calendar-day--unreleased:hover { transform:none; border-style:dashed; }
+/* Full but waitlist is open. Clickable; warm amber tint signals 'busy'
+   without reading as closed. */
+.lush-calendar-day--waitlist {
+  background:rgba(201,168,118,0.18); border-color:rgba(201,168,118,0.55);
+  color:var(--lush-text);
+}
+.lush-calendar-day--waitlist:hover:not(:disabled) {
+  border-color:rgba(201,168,118,0.85); transform:translateY(-1px);
+}
+/* Full but squeeze-in is offered. Distinct lavender shade so a tenant
+   with squeeze-ins enabled reads differently from a waitlist-only day. */
+.lush-calendar-day--squeeze-in {
+  background:rgba(155,118,201,0.18); border-color:rgba(155,118,201,0.55);
+  color:var(--lush-text);
+}
+.lush-calendar-day--squeeze-in:hover:not(:disabled) {
+  border-color:rgba(155,118,201,0.85); transform:translateY(-1px);
+}
 .brk-booking-times { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:8px; }
 .brk-booking-time {
   background:var(--lush-card); border:1px solid var(--lush-dark-border);
