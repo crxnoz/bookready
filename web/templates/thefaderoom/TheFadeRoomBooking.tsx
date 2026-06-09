@@ -118,6 +118,24 @@ const TFR_BOOKING_CSS = `
   color: var(--tfr-fg) !important;
 }
 
+/* Post-booking "All set / Go to dashboard" CTA. The card sits on a light
+   Lush surface that bleeds through the TFR re-skin (no card-bg override),
+   so the eyebrow/title/sub text stays readable on its own. The CTA anchor,
+   though, is a dark-fill button with white text — and TFR's
+   .tfr-template a { color: inherit } wins the cascade against the Lush
+   .brk-booking-account-followup-cta { color:#FFF }, so the anchor
+   inherits the card's dark color and renders invisibly. Force the dark
+   button + white text back. */
+.tfr-booking-inner.lush-template .brk-booking-account-followup-cta {
+  background: #121212 !important;
+  color: #FFFFFF !important;
+  border-color: #121212 !important;
+}
+.tfr-booking-inner.lush-template .brk-booking-account-followup-cta:hover {
+  background: #2a2a2a !important;
+  color: #FFFFFF !important;
+}
+
 /* Step pills — active = filled neon w/ glow, done = outlined, upcoming = muted. */
 .tfr-booking-inner.lush-template .brk-booking-step.is-active .brk-booking-step-num {
   background: var(--tfr-accent) !important;

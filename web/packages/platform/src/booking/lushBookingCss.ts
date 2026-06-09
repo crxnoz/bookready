@@ -1063,14 +1063,14 @@ export const LUSH_CSS = `
 .brk-booking-account-followup {
   display:flex; gap:14px;
   padding:16px;
-  margin:12px 0 0;
+  margin:12px 0 24px;
   background:#F8F6F2; color:#121212;
   border:1px solid rgba(18,18,18,0.10);
   font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   text-align:left;
 }
 .brk-booking-account-followup--success {
-  margin:20px auto 0; max-width:520px;
+  margin:20px auto 24px; max-width:520px;
 }
 .brk-booking-account-followup-icon {
   width:36px; height:36px; flex-shrink:0;
