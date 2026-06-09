@@ -65,12 +65,6 @@ const PETALE_BOOKING_FRAME_CSS = `
   padding: 0;
 }
 
-/* Auth widgets — tight rhythm with the other booking blocks. */
-.petale-booking-inner.lush-template .lush-account-widget,
-.petale-booking-inner.lush-template .brk-booking-auth-thin {
-  margin-bottom: 20px !important;
-}
-
 /* Auth strips + summary blocks — dark ink at full opacity on pink. */
 .petale-booking-inner.lush-template .lush-account-widget,
 .petale-booking-inner.lush-template .lush-account-widget *,
@@ -211,7 +205,6 @@ const PETALE_BOOKING_FRAME_CSS = `
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  padding: 0 !important;
 }
 /* Inner name+price row — strip borders the substring rule may inherit. */
 .petale-booking-inner.lush-template .brk-booking-service-top {
@@ -227,7 +220,6 @@ const PETALE_BOOKING_FRAME_CSS = `
   background: rgba(255,255,255,0.55) !important;
   border: 1px solid rgba(201,168,118,0.36) !important;
   color: var(--petale-ink) !important;
-  border-radius: 4px !important;
 }
 .petale-booking-inner.lush-template input:focus,
 .petale-booking-inner.lush-template textarea:focus,
@@ -251,31 +243,27 @@ const PETALE_BOOKING_FRAME_CSS = `
   letter-spacing: -0.005em !important;
 }
 
-/* Eyebrow labels — gold uppercase tracked Inter (matches main template). */
+/* Eyebrow labels — engine owns font-size + letter-spacing; template
+   owns font-family + color (Phase 3 contract). */
 .petale-booking-inner.lush-template .brk-booking-block-label,
 .petale-booking-inner.lush-template .brk-booking-eyebrow,
 .petale-booking-inner.lush-template .brk-booking-step-num {
   font-family: 'Inter', sans-serif !important;
-  font-size: 10px !important;
-  letter-spacing: 0.32em !important;
   text-transform: uppercase !important;
   color: var(--petale-accent) !important;
 }
 
-/* Primary CTA — gold fill, ink text, soft radius, tracked uppercase. */
+/* Primary CTA — engine owns SIZE (padding, font-size, letter-spacing);
+   template owns APPEARANCE (color, font-family, radius via wildcard). */
 .petale-booking-inner.lush-template .brk-booking-cta,
 .petale-booking-inner.lush-template button[class*="brk-booking-next"],
 .petale-booking-inner.lush-template button[class*="brk-booking-submit"] {
   background: var(--petale-accent) !important;
   color: var(--petale-ink) !important;
   border: 1px solid var(--petale-accent) !important;
-  border-radius: 4px !important;
   font-family: 'Inter', sans-serif !important;
   font-weight: 600 !important;
-  letter-spacing: 0.18em !important;
   text-transform: uppercase !important;
-  font-size: 11px !important;
-  padding: 16px 28px !important;
 }
 .petale-booking-inner.lush-template .brk-booking-cta:hover,
 .petale-booking-inner.lush-template button[class*="brk-booking-next"]:hover {
@@ -288,12 +276,8 @@ const PETALE_BOOKING_FRAME_CSS = `
   background: transparent !important;
   color: var(--petale-accent) !important;
   border: 1px solid var(--petale-accent) !important;
-  border-radius: 4px !important;
   font-family: 'Inter', sans-serif !important;
-  letter-spacing: 0.18em !important;
   text-transform: uppercase !important;
-  font-size: 11px !important;
-  padding: 16px 24px !important;
 }
 
 /* Active/selected state on slots, services, addons — subtle gold wash. */

@@ -31,7 +31,7 @@
 | 1 | Theme tokens                | `--brk-booking-*` variables + Lush parity   | shipped     |
 | 2 | Rename + Lush owns tokens   | Engine consumes `--brk-booking-*`; Lush defines `--lush-*` | **active**  |
 | 3 | TFR re-paint                | TFR override file drops `!important` calls  | shipped     |
-| 4 | VT (+ 4 more) re-paint      | Bottega / Petale / Opaline / Blackline / VT | pending     |
+| 4 | VT (+ 4 more) re-paint      | Bottega / Petale / Opaline / Blackline / VT | shipped     |
 | 5 | Template shell deduplication| `<TemplateBookingShell>` shared component   | pending     |
 | 6 | Smoke tests                 | Playwright happy-path against staging tenant| pending     |
 | 7 | Split the engine            | Per-step components under `BookingSteps/`   | deferred    |

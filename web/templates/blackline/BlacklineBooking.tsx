@@ -66,12 +66,6 @@ const BLACKLINE_BOOKING_CSS = `
   padding: 0;
 }
 
-/* Auth widgets — keep close to the form body. */
-.blackline-booking-inner.lush-template .lush-account-widget,
-.blackline-booking-inner.lush-template .brk-booking-auth-thin {
-  margin-bottom: 20px !important;
-}
-
 /* Auth strips need bone text at full opacity — the bone-at-62% from the
    global override is too low-contrast on onyx. */
 .blackline-booking-inner.lush-template .lush-account-widget,
@@ -205,7 +199,6 @@ const BLACKLINE_BOOKING_CSS = `
   background: rgba(232,226,215,0.06) !important;
   border: 1px solid rgba(184,150,107,0.32) !important;
   color: var(--blackline-fg) !important;
-  border-radius: 0 !important;
 }
 .blackline-booking-inner.lush-template input:focus,
 .blackline-booking-inner.lush-template textarea:focus,
@@ -227,31 +220,27 @@ const BLACKLINE_BOOKING_CSS = `
   letter-spacing: -0.01em !important;
 }
 
-/* Eyebrow labels. */
+/* Eyebrow labels — engine owns font-size + letter-spacing; template
+   owns font-family + color (Phase 3 contract). */
 .blackline-booking-inner.lush-template .brk-booking-block-label,
 .blackline-booking-inner.lush-template .brk-booking-eyebrow,
 .blackline-booking-inner.lush-template .brk-booking-step-num {
   font-family: 'Inter', sans-serif !important;
-  font-size: 10px !important;
-  letter-spacing: 0.32em !important;
   text-transform: uppercase !important;
   color: var(--blackline-accent) !important;
 }
 
-/* Primary CTA — brass fill, onyx text, sharp, tracked uppercase. */
+/* Primary CTA — engine owns SIZE (padding, font-size, letter-spacing);
+   template owns APPEARANCE (color, font-family, radius via wildcard). */
 .blackline-booking-inner.lush-template .brk-booking-cta,
 .blackline-booking-inner.lush-template button[class*="brk-booking-next"],
 .blackline-booking-inner.lush-template button[class*="brk-booking-submit"] {
   background: var(--blackline-accent) !important;
   color: var(--blackline-bg) !important;
   border: 1px solid var(--blackline-accent) !important;
-  border-radius: 0 !important;
   font-family: 'Inter', sans-serif !important;
   font-weight: 600 !important;
-  letter-spacing: 0.18em !important;
   text-transform: uppercase !important;
-  font-size: 11px !important;
-  padding: 16px 28px !important;
 }
 .blackline-booking-inner.lush-template .brk-booking-cta:hover,
 .blackline-booking-inner.lush-template button[class*="brk-booking-next"]:hover {
@@ -264,12 +253,8 @@ const BLACKLINE_BOOKING_CSS = `
   background: transparent !important;
   color: var(--blackline-accent) !important;
   border: 1px solid var(--blackline-accent) !important;
-  border-radius: 0 !important;
   font-family: 'Inter', sans-serif !important;
-  letter-spacing: 0.18em !important;
   text-transform: uppercase !important;
-  font-size: 11px !important;
-  padding: 16px 24px !important;
 }
 
 /* Active / selected state on slots, services, addons — soft brass fill. */

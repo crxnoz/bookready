@@ -59,12 +59,6 @@ const BOTTEGA_BOOKING_FRAME_CSS = `
   padding: 0;
 }
 
-/* Auth widgets — tight rhythm with the other booking blocks. */
-.bottega-booking-inner.lush-template .lush-account-widget,
-.bottega-booking-inner.lush-template .brk-booking-auth-thin {
-  margin-bottom: 20px !important;
-}
-
 /* Auth strips + summary blocks — dark ink at full opacity on cream. */
 .bottega-booking-inner.lush-template .lush-account-widget,
 .bottega-booking-inner.lush-template .lush-account-widget *,
@@ -207,7 +201,6 @@ const BOTTEGA_BOOKING_FRAME_CSS = `
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  padding: 0 !important;
 }
 /* Inner name+price row — strip borders the substring rule may inherit. */
 .bottega-booking-inner.lush-template .brk-booking-service-top {
@@ -223,7 +216,6 @@ const BOTTEGA_BOOKING_FRAME_CSS = `
   background: rgba(255,255,255,0.65) !important;
   border: 1px solid color-mix(in srgb, var(--bottega-accent) 32%, transparent) !important;
   color: var(--bottega-ink) !important;
-  border-radius: 6px !important;
 }
 .bottega-booking-inner.lush-template input:focus,
 .bottega-booking-inner.lush-template textarea:focus,
@@ -247,31 +239,27 @@ const BOTTEGA_BOOKING_FRAME_CSS = `
   letter-spacing: -0.005em !important;
 }
 
-/* Eyebrow labels — accent uppercase tracked Inter (matches main template). */
+/* Eyebrow labels — engine owns font-size + letter-spacing; template
+   owns font-family + color (Phase 3 contract). */
 .bottega-booking-inner.lush-template .brk-booking-block-label,
 .bottega-booking-inner.lush-template .brk-booking-eyebrow,
 .bottega-booking-inner.lush-template .brk-booking-step-num {
   font-family: 'Inter', sans-serif !important;
-  font-size: 10px !important;
-  letter-spacing: 0.32em !important;
   text-transform: uppercase !important;
   color: var(--bottega-accent) !important;
 }
 
-/* Primary CTA — accent fill, on-accent text, mid-radius, tracked uppercase. */
+/* Primary CTA — engine owns SIZE (padding, font-size, letter-spacing);
+   template owns APPEARANCE (color, font-family, radius via wildcard). */
 .bottega-booking-inner.lush-template .brk-booking-cta,
 .bottega-booking-inner.lush-template button[class*="brk-booking-next"],
 .bottega-booking-inner.lush-template button[class*="brk-booking-submit"] {
   background: var(--bottega-accent) !important;
   color: var(--bottega-on-accent) !important;
   border: 1px solid var(--bottega-accent) !important;
-  border-radius: 6px !important;
   font-family: 'Inter', sans-serif !important;
   font-weight: 600 !important;
-  letter-spacing: 0.18em !important;
   text-transform: uppercase !important;
-  font-size: 11px !important;
-  padding: 16px 28px !important;
 }
 .bottega-booking-inner.lush-template .brk-booking-cta:hover,
 .bottega-booking-inner.lush-template button[class*="brk-booking-next"]:hover {
@@ -284,12 +272,8 @@ const BOTTEGA_BOOKING_FRAME_CSS = `
   background: transparent !important;
   color: var(--bottega-accent) !important;
   border: 1px solid var(--bottega-accent) !important;
-  border-radius: 6px !important;
   font-family: 'Inter', sans-serif !important;
-  letter-spacing: 0.18em !important;
   text-transform: uppercase !important;
-  font-size: 11px !important;
-  padding: 16px 24px !important;
 }
 
 /* Active/selected state on slots, services, addons — subtle accent wash. */

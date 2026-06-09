@@ -82,13 +82,6 @@ const VT_BOOKING_FRAME_CSS = `
   padding: 0;
 }
 
-/* Auth widgets — 20px consistent with the rest of the site's small-gap
-   rhythm. The 36px we had earlier felt too separated. */
-.vt-booking-inner.lush-template .lush-account-widget,
-.vt-booking-inner.lush-template .brk-booking-auth-thin {
-  margin-bottom: 20px !important;
-}
-
 /* Auth strips + summary blocks (sit DIRECTLY on burgundy page bg) need
    bone text at full opacity — the bone-at-62% from the global --lush-muted
    override was too low-contrast. */
@@ -256,7 +249,6 @@ const VT_BOOKING_FRAME_CSS = `
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  padding: 0 !important;
 }
 /* Inner name+price row — strip any border the substring rule may have
    inherited. */
@@ -273,7 +265,6 @@ const VT_BOOKING_FRAME_CSS = `
   background: rgba(245,239,230,0.06) !important;
   border: 1px solid rgba(201,168,118,0.32) !important;
   color: var(--vt-fg) !important;
-  border-radius: 0 !important;
 }
 .vt-booking-inner.lush-template input:focus,
 .vt-booking-inner.lush-template textarea:focus,
@@ -295,31 +286,27 @@ const VT_BOOKING_FRAME_CSS = `
   letter-spacing: -0.01em !important;
 }
 
-/* Eyebrow labels (e.g. "Your Appointment", "Step 1 of 5"). */
+/* Eyebrow labels — engine owns font-size + letter-spacing; template owns
+   font-family + color (Phase 3 contract). */
 .vt-booking-inner.lush-template .brk-booking-block-label,
 .vt-booking-inner.lush-template .brk-booking-eyebrow,
 .vt-booking-inner.lush-template .brk-booking-step-num {
   font-family: 'Inter', sans-serif !important;
-  font-size: 10px !important;
-  letter-spacing: 0.32em !important;
   text-transform: uppercase !important;
   color: var(--vt-accent) !important;
 }
 
-/* Primary CTA: gold fill, burgundy text, sharp, tracked uppercase. */
+/* Primary CTA — engine owns SIZE (padding, font-size, letter-spacing);
+   template owns APPEARANCE (color, font-family, radius via wildcard). */
 .vt-booking-inner.lush-template .brk-booking-cta,
 .vt-booking-inner.lush-template button[class*="brk-booking-next"],
 .vt-booking-inner.lush-template button[class*="brk-booking-submit"] {
   background: var(--vt-accent) !important;
   color: var(--vt-bg) !important;
   border: 1px solid var(--vt-accent) !important;
-  border-radius: 0 !important;
   font-family: 'Inter', sans-serif !important;
   font-weight: 600 !important;
-  letter-spacing: 0.18em !important;
   text-transform: uppercase !important;
-  font-size: 11px !important;
-  padding: 16px 28px !important;
 }
 .vt-booking-inner.lush-template .brk-booking-cta:hover,
 .vt-booking-inner.lush-template button[class*="brk-booking-next"]:hover {
@@ -332,12 +319,8 @@ const VT_BOOKING_FRAME_CSS = `
   background: transparent !important;
   color: var(--vt-accent) !important;
   border: 1px solid var(--vt-accent) !important;
-  border-radius: 0 !important;
   font-family: 'Inter', sans-serif !important;
-  letter-spacing: 0.18em !important;
   text-transform: uppercase !important;
-  font-size: 11px !important;
-  padding: 16px 24px !important;
 }
 
 /* Active/selected state on slots, services, addons — subtle gold fill. */

@@ -82,14 +82,14 @@ const OPALINE_BOOKING_CSS = `
   --lush-serif:       'Cormorant Garamond', Georgia, serif;
   --lush-sans:        'Jost', system-ui, -apple-system, sans-serif;
   --lush-ui:          'Jost', system-ui, -apple-system, sans-serif;
+  /* Radius — Opaline is mid-radius (3px cards, 2px buttons). Token
+     overrides replace the per-rule border-radius statements stripped
+     below (Phase 4 of the booking-architecture refactor). */
+  --brk-booking-radius-card:  3px;
+  --brk-booking-radius-cta:   2px;
+  --brk-booking-radius-input: 3px;
   color: var(--lush-text);
   background: transparent;
-}
-
-/* Auth widgets — tight to the form body. */
-.opaline-booking-inner.lush-template .lush-account-widget,
-.opaline-booking-inner.lush-template .brk-booking-auth-thin {
-  margin-bottom: 20px !important;
 }
 
 /* Auth strips + summary blocks need full-strength ink on the pearl page. */
@@ -104,21 +104,17 @@ const OPALINE_BOOKING_CSS = `
   opacity: 1 !important;
 }
 
-/* The "Reserve Your Appointment" h2 the platform hard-codes inside
-   .brk-booking-head — pull it into Cormorant so it reads as Opaline. */
+/* Booking H2 — engine owns font-size + letter-spacing; template owns
+   font-family + color (Phase 3 contract). */
 .opaline-booking-inner.lush-template .brk-booking-head h2 {
   font-family: 'Cormorant Garamond', Georgia, serif !important;
   font-weight: 500 !important;
-  font-size: clamp(38px, 5vw, 56px) !important;
-  letter-spacing: 0.005em !important;
   color: var(--opaline-ink) !important;
 }
 .opaline-booking-inner.lush-template .brk-booking-eyebrow,
 .opaline-booking-inner.lush-template .brk-booking-block-label {
   font-family: 'Jost', sans-serif !important;
-  font-size: 11px !important;
   font-weight: 500 !important;
-  letter-spacing: 0.32em !important;
   text-transform: uppercase !important;
   color: var(--opaline-accent) !important;
 }
@@ -135,7 +131,6 @@ const OPALINE_BOOKING_CSS = `
 .opaline-booking-inner.lush-template [class*="brk-booking-cat"] {
   background: var(--opaline-surface) !important;
   border: 1px solid var(--opaline-rule) !important;
-  border-radius: 3px !important;
   box-shadow: none !important;
   color: var(--opaline-ink) !important;
 }
@@ -144,7 +139,6 @@ const OPALINE_BOOKING_CSS = `
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  padding: 0 !important;
 }
 /* Inner name + price row — transparent. */
 .opaline-booking-inner.lush-template .brk-booking-service-top {
@@ -159,7 +153,6 @@ const OPALINE_BOOKING_CSS = `
 .opaline-booking-inner.lush-template select {
   background: var(--opaline-surface) !important;
   border: 1px solid var(--opaline-rule) !important;
-  border-radius: 3px !important;
   color: var(--opaline-ink) !important;
   font-family: 'Jost', sans-serif !important;
 }
@@ -231,20 +224,17 @@ const OPALINE_BOOKING_CSS = `
   letter-spacing: 0.005em !important;
 }
 
-/* Primary CTA — champagne fill, tracked uppercase Jost. */
+/* Primary CTA — engine owns SIZE (padding, font-size, letter-spacing);
+   template owns APPEARANCE (color, font-family, radius via token). */
 .opaline-booking-inner.lush-template .brk-booking-cta,
 .opaline-booking-inner.lush-template button[class*="brk-booking-next"],
 .opaline-booking-inner.lush-template button[class*="brk-booking-submit"] {
   background: var(--opaline-accent) !important;
   color: var(--opaline-on-accent) !important;
   border: 1px solid var(--opaline-accent) !important;
-  border-radius: 2px !important;
   font-family: 'Jost', sans-serif !important;
   font-weight: 500 !important;
-  letter-spacing: 0.2em !important;
   text-transform: uppercase !important;
-  font-size: 11px !important;
-  padding: 16px 30px !important;
 }
 .opaline-booking-inner.lush-template .brk-booking-cta:hover,
 .opaline-booking-inner.lush-template button[class*="brk-booking-next"]:hover {
@@ -257,12 +247,8 @@ const OPALINE_BOOKING_CSS = `
   background: transparent !important;
   color: var(--opaline-accent) !important;
   border: 1px solid var(--opaline-rule) !important;
-  border-radius: 2px !important;
   font-family: 'Jost', sans-serif !important;
-  letter-spacing: 0.2em !important;
   text-transform: uppercase !important;
-  font-size: 11px !important;
-  padding: 16px 26px !important;
 }
 
 /* Selected slot / service / addon — soft champagne wash. */
