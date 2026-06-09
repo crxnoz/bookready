@@ -649,6 +649,7 @@ export default function ServicesEditor() {
               {groupServicesByCategory(services, categories).map(group => (
                 <div key={group.key} className="space-y-2">
                   <div className="flex items-center gap-2 px-1">
+                    {/* ui-guardrails: allow-rounded — intentional color-category swatch (reads as "color dot", not a UI shape) */}
                     {group.color && (
                       <span
                         aria-hidden
@@ -842,6 +843,7 @@ function CategoryRow({
           : <div className="w-full h-full flex items-center justify-center text-muted-text"><ImageIcon size={13} /></div>
         }
       </div>
+      {/* ui-guardrails: allow-rounded — intentional color-category swatch (reads as "color dot", not a UI shape) */}
       {category.color && (
         <span
           aria-hidden
