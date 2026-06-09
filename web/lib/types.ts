@@ -139,6 +139,9 @@ export interface ServiceCategory {
   id: number
   name: string
   description: string | null
+  // Hex tag color (#RRGGBB) for visual organization in the services
+  // editor. Null = no color set. Mirrors customer_tags.color.
+  color: string | null
   image_url: string | null
   is_active: boolean
   sort_order: number
@@ -149,6 +152,7 @@ export interface ServiceCategory {
 export interface ServiceCategoryPayload {
   name: string
   description?: string | null
+  color?: string | null
   image_url?: string | null
   is_active?: boolean
   sort_order?: number

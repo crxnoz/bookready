@@ -30,6 +30,19 @@ import { ComingSoonCard } from '@/components/editor/ComingSoonPanel'
 import { SectionHeader } from '@/components/editor/AvailabilitySections'
 import IconBox from '@/components/ui/IconBox'
 import SubTabNav, { type SubTab } from '@/components/editor/SubTabNav'
+import { cn } from '@/lib/cn'
+
+// Small fixed palette so categories feel branded without a full color
+// picker. Mirrors the customer-tag palette to keep the editor visually
+// coherent across surfaces.
+const CATEGORY_PALETTE: { name: string; hex: string }[] = [
+  { name: 'Pink',     hex: '#E8C7DA' },
+  { name: 'Lavender', hex: '#C9B4E6' },
+  { name: 'Blush',    hex: '#F4D9CE' },
+  { name: 'Ink',      hex: '#121212' },
+  { name: 'Forest',   hex: '#0F6F3D' },
+  { name: 'Clay',     hex: '#B45F3A' },
+]
 
 type ServiceSubTab = 'services' | 'categories' | 'addons' | 'packages'
 
@@ -627,27 +640,51 @@ export default function ServicesEditor() {
               />
             )}
 
-            <div className="space-y-2">
-              {services.map((s, i) => (
-                <ServiceRow
-                  key={s.id}
-                  service={s}
-                  categories={categories}
-                  staff={staff}
-                  addons={addons}
-                  index={i}
-                  total={services.length}
-                  isDragging={dragIndex === i}
-                  isDragOver={dragOver === i && dragIndex !== i}
-                  onSaved={handleSaved}
-                  onDeleted={handleDeleted}
-                  onMoveUp={() => reorder(i, i - 1)}
-                  onMoveDown={() => reorder(i, i + 1)}
-                  onDragStart={() => setDragIndex(i)}
-                  onDragOver={e => { e.preventDefault(); setDragOver(i) }}
-                  onDrop={() => { reorder(dragIndex ?? i, i); setDragIndex(null); setDragOver(null) }}
-                  onDragEnd={() => { setDragIndex(null); setDragOver(null) }}
-                />
+            {/* Group services by category for visual organization. Each
+                row passes its ORIGINAL index in the services array so
+                drag-reorder still mutates the right element. Categories
+                render in their sort_order; an "Uncategorized" group
+                trails at the bottom for services with category_id=null. */}
+            <div className="space-y-4">
+              {groupServicesByCategory(services, categories).map(group => (
+                <div key={group.key} className="space-y-2">
+                  <div className="flex items-center gap-2 px-1">
+                    {group.color && (
+                      <span
+                        aria-hidden
+                        className="w-2 h-2 rounded-full border border-hairline-strong flex-shrink-0"
+                        style={{ backgroundColor: group.color }}
+                      />
+                    )}
+                    <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
+                      {group.label}
+                    </p>
+                    <span className="text-eyebrow text-muted-text tabular-nums">
+                      {group.items.length}
+                    </span>
+                  </div>
+                  {group.items.map(({ service: s, index: i }) => (
+                    <ServiceRow
+                      key={s.id}
+                      service={s}
+                      categories={categories}
+                      staff={staff}
+                      addons={addons}
+                      index={i}
+                      total={services.length}
+                      isDragging={dragIndex === i}
+                      isDragOver={dragOver === i && dragIndex !== i}
+                      onSaved={handleSaved}
+                      onDeleted={handleDeleted}
+                      onMoveUp={() => reorder(i, i - 1)}
+                      onMoveDown={() => reorder(i, i + 1)}
+                      onDragStart={() => setDragIndex(i)}
+                      onDragOver={e => { e.preventDefault(); setDragOver(i) }}
+                      onDrop={() => { reorder(dragIndex ?? i, i); setDragIndex(null); setDragOver(null) }}
+                      onDragEnd={() => { setDragIndex(null); setDragOver(null) }}
+                    />
+                  ))}
+                </div>
               ))}
             </div>
 
@@ -805,6 +842,14 @@ function CategoryRow({
           : <div className="w-full h-full flex items-center justify-center text-muted-text"><ImageIcon size={13} /></div>
         }
       </div>
+      {category.color && (
+        <span
+          aria-hidden
+          className="w-2.5 h-2.5 rounded-full border border-hairline-strong flex-shrink-0"
+          style={{ backgroundColor: category.color }}
+          title="Color tag"
+        />
+      )}
       <div className="min-w-0 flex-1">
         <p className="text-xs font-semibold text-near-black truncate">{category.name}</p>
         {category.description && (
@@ -842,6 +887,7 @@ function CategoryDialog({
 }) {
   const [name,        setName]        = useState(category?.name        ?? '')
   const [description, setDescription] = useState(category?.description ?? '')
+  const [color,       setColor]       = useState<string | null>(category?.color ?? null)
   const [imageUrl,    setImageUrl]    = useState(category?.image_url   ?? '')
   const [isActive,    setIsActive]    = useState(category?.is_active   ?? true)
   const [saving,      setSaving]      = useState(false)
@@ -856,6 +902,7 @@ function CategoryDialog({
       const payload = {
         name: n,
         description: description.trim() || null,
+        color,
         image_url:   imageUrl.trim()    || null,
         is_active:   isActive,
       }
@@ -893,6 +940,35 @@ function CategoryDialog({
             onChange={e => setName(e.target.value)}
             placeholder="Haircuts, Lashes, Nails…"
           />
+          <div>
+            <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text block mb-1.5">
+              Color tag
+            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setColor(null)}
+                className={cn(
+                  'w-6 h-6 border border-hairline-strong flex items-center justify-center text-eyebrow font-bold',
+                  color === null && 'ring-2 ring-near-black',
+                )}
+                title="No color"
+              >×</button>
+              {CATEGORY_PALETTE.map(p => (
+                <button
+                  key={p.hex}
+                  type="button"
+                  onClick={() => setColor(p.hex)}
+                  style={{ backgroundColor: p.hex }}
+                  className={cn(
+                    'w-6 h-6 border border-hairline-strong',
+                    color === p.hex && 'ring-2 ring-near-black',
+                  )}
+                  title={p.name}
+                />
+              ))}
+            </div>
+          </div>
           <Textarea
             label="Description (optional)"
             value={description}
@@ -1419,4 +1495,41 @@ function AddonDialog({
       </div>
     </div>
   )
+}
+
+/**
+ * Bucket services by category for the grouped list render. Each item
+ * carries its ORIGINAL index in `services` so the existing
+ * reorder()/drag handlers continue to address the right element.
+ *
+ * Group order: categories by sort_order; an "Uncategorized" bucket at
+ * the end for services with category_id=null. Categories with zero
+ * services are omitted so the list stays scannable.
+ */
+function groupServicesByCategory(
+  services: Service[],
+  categories: ServiceCategory[],
+): { key: string; label: string; color: string | null; items: { service: Service; index: number }[] }[] {
+  const indexed = services.map((s, index) => ({ service: s, index }))
+  const groups: { key: string; label: string; color: string | null; items: { service: Service; index: number }[] }[] = []
+  for (const cat of categories) {
+    const items = indexed.filter(({ service }) => service.category_id === cat.id)
+    if (items.length === 0) continue
+    groups.push({
+      key:   `cat-${cat.id}`,
+      label: cat.name,
+      color: cat.color ?? null,
+      items,
+    })
+  }
+  const uncategorized = indexed.filter(({ service }) => service.category_id == null)
+  if (uncategorized.length > 0) {
+    groups.push({
+      key:   'cat-none',
+      label: 'Uncategorized',
+      color: null,
+      items: uncategorized,
+    })
+  }
+  return groups
 }

@@ -28,6 +28,9 @@ class ServiceCategoriesController extends Controller
             'id'          => (int)  $row->id,
             'name'        =>        $row->name,
             'description' =>        $row->description ?? null,
+            // Owner-set hex tag for visual organization in the services
+            // editor. Matches the customer_tags.color shape (#RRGGBB).
+            'color'       =>        $row->color       ?? null,
             'image_url'   =>        $row->image_url   ?? null,
             'is_active'   => (bool) ($row->is_active ?? true),
             'sort_order'  => (int)  $row->sort_order,
@@ -64,6 +67,7 @@ class ServiceCategoriesController extends Controller
         $validated = $request->validate([
             'name'        => 'required|string|max:120',
             'description' => 'sometimes|nullable|string|max:2000',
+            'color'       => 'sometimes|nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
             'image_url'   => 'sometimes|nullable|string|max:1000',
             'is_active'   => 'sometimes|boolean',
             'sort_order'  => 'sometimes|integer',
@@ -85,7 +89,7 @@ class ServiceCategoriesController extends Controller
         }
 
         $nextOrder = (int) DB::table('service_categories')->max('sort_order') + 1;
-        $id = DB::table('service_categories')->insertGetId([
+        $insert = [
             'name'        => trim($validated['name']),
             'description' => $validated['description'] ?? null,
             'image_url'   => $validated['image_url']   ?? null,
@@ -93,7 +97,13 @@ class ServiceCategoriesController extends Controller
             'sort_order'  => $validated['sort_order']  ?? $nextOrder,
             'created_at'  => now(),
             'updated_at'  => now(),
-        ]);
+        ];
+        // Only set color when the column exists, in case a tenant predates
+        // the 2026_06_09 migration (Schema::hasTable / hasColumn pattern).
+        if (Schema::hasColumn('service_categories', 'color')) {
+            $insert['color'] = $validated['color'] ?? null;
+        }
+        $id = DB::table('service_categories')->insertGetId($insert);
 
         $row = DB::table('service_categories')->find($id);
 
@@ -107,6 +117,7 @@ class ServiceCategoriesController extends Controller
         $validated = $request->validate([
             'name'        => 'sometimes|required|string|max:120',
             'description' => 'sometimes|nullable|string|max:2000',
+            'color'       => 'sometimes|nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
             'image_url'   => 'sometimes|nullable|string|max:1000',
             'is_active'   => 'sometimes|boolean',
             'sort_order'  => 'sometimes|integer',
@@ -132,6 +143,9 @@ class ServiceCategoriesController extends Controller
         if (array_key_exists('image_url',   $validated))          $data['image_url']   = $validated['image_url'];
         if (array_key_exists('is_active',   $validated))          $data['is_active']   = $validated['is_active'];
         if (array_key_exists('sort_order',  $validated))          $data['sort_order']  = $validated['sort_order'];
+        if (array_key_exists('color',       $validated) && Schema::hasColumn('service_categories', 'color')) {
+            $data['color'] = $validated['color'];
+        }
 
         DB::table('service_categories')->where('id', $id)->update($data);
         $updated = DB::table('service_categories')->find($id);
