@@ -175,6 +175,50 @@ class AdminDashboardController extends Controller
                 ->values()
                 ->all();
 
+            // ── #153 operator focus: today's signups + trialing list +
+            //     abandoned (trial_expired / cancelled) over the last 30
+            //     days. All derived from the same tenants pull — no
+            //     additional DB queries.
+            //
+            //     "Abandoned checkouts" sources from subscription_state
+            //     rather than Cashier's `subscriptions` table because the
+            //     latter is empty in the current data model (states are
+            //     written directly to tenants.subscription_state by the
+            //     billing flow; see the 2026_06_03 migration). When
+            //     Cashier history starts populating, that source can be
+            //     joined in for finer-grained abandonment-stage detail.
+            $todayStart    = $now->copy()->startOfDay();
+            $thirtyDaysAgo = $now->copy()->subDays(30);
+
+            $signupsToday = $tenants
+                ->filter(fn ($t) => $t->created_at && $t->created_at->gte($todayStart))
+                ->count();
+
+            $trialingList = $trialTenants
+                ->sortByDesc(fn ($t) => $t->created_at?->getTimestamp() ?? 0)
+                ->take(10)
+                ->map(fn ($t) => [
+                    'slug'       => (string) $t->id,
+                    'plan'       => $t->plan,
+                    'created_at' => $t->created_at?->toIso8601String(),
+                ])
+                ->values()
+                ->all();
+
+            $abandonedList = $tenants
+                ->filter(fn ($t) => in_array($t->subscription_state, ['trial_expired', 'cancelled'], true))
+                ->filter(fn ($t) => $t->created_at && $t->created_at->gte($thirtyDaysAgo))
+                ->sortByDesc(fn ($t) => $t->created_at?->getTimestamp() ?? 0)
+                ->take(10)
+                ->map(fn ($t) => [
+                    'slug'       => (string) $t->id,
+                    'plan'       => $t->plan,
+                    'state'      => $t->subscription_state,
+                    'created_at' => $t->created_at?->toIso8601String(),
+                ])
+                ->values()
+                ->all();
+
             return [
                 'kpis' => [
                     'active_tenants'    => $activeTenants->count(),
@@ -189,6 +233,11 @@ class AdminDashboardController extends Controller
                 'mrr_series'    => $mrrSeries,
                 'growth_series' => $growthSeries,
                 'activity'      => $activity,
+                'operator_focus' => [
+                    'signups_today' => $signupsToday,
+                    'trialing'      => $trialingList,
+                    'abandoned'     => $abandonedList,
+                ],
                 'plan_catalog'  => $this->planCatalog(),
                 'computed_at'   => $now->toIso8601String(),
             ];

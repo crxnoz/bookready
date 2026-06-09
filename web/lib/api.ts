@@ -1400,6 +1400,22 @@ export interface AdminDashboardSummary {
     plan:   string | null
     state:  string | null
   }[]
+  /** #153 operator-focus payload. Optional for backward compatibility
+   *  with any cached payload missing the key. */
+  operator_focus?: {
+    /** Tenants that signed up since 00:00 server-time. */
+    signups_today: number
+    /** Currently-trialing tenants, newest first, capped at 10. */
+    trialing: { slug: string; plan: string | null; created_at: string | null }[]
+    /** Tenants in trial_expired / cancelled state from the last 30 days,
+     *  newest first, capped at 10. The "abandoned checkouts" surface. */
+    abandoned: {
+      slug: string
+      plan: string | null
+      state: string | null
+      created_at: string | null
+    }[]
+  }
   plan_catalog: Record<string, { label: string; monthly_cents: number }>
   computed_at: string
 }
