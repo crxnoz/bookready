@@ -108,7 +108,7 @@ price, deliverability, and how cleanly it drops into the existing provider-shape
 
 ---
 
-## 4. Security runs ☐
+## 4. Security runs ◐ (Round 2 audit shipped 2026-06-09; residual items below)
 **What:** A focused pre-launch security pass before real customer + payment data
 flows.
 
@@ -116,15 +116,27 @@ flows.
 was done earlier (`#32` — 7 vuln classes); re-run against the current, larger
 surface.
 
-**Concrete steps:**
-- Re-run the 7-vuln-class review on everything added since (customer accounts, identities, Twilio webhook, health endpoint, the public `check-subdomain` + `leads` endpoints).
-- `composer audit` + `npm audit` for new CVEs; bump anything critical.
-- Verify rate limits on every public/auth endpoint (booking, login, register, password reset, leads, check-subdomain, verify-code, switch-role).
-- Re-grep for secret/`APP_DEBUG`/dev leaks; confirm `APP_DEBUG=false` in prod.
-- Confirm CSP, HSTS, COOP/CORP headers still correct after the recent additions.
-- ☑ Realip-vs-allow/deny nginx ordering bug fixed 2026-06-09 (`#31`) — root cause was the `cloudflare-realip.conf` include missing from `/etc/nginx/nginx.conf`, so `$remote_addr` was never rewritten and Laravel saw Cloudflare edge IPs in every per-IP throttle. README updated to call out both required includes.
-- Pen-test the booking + manage-booking token flow (token entropy, IDOR on appointment IDs, tenant isolation — can tenant A read tenant B's data via any endpoint?).
-- Confirm tenant DB isolation holds on every editor controller (the `tenancy()->end()` + plain-array pattern).
+**Round 2 audit — closed 2026-06-09 (`#189`):**
+- ☑ Realip-vs-allow/deny nginx ordering bug fixed (`#31`) — root cause was the `cloudflare-realip.conf` include missing from `/etc/nginx/nginx.conf`, so `$remote_addr` was never rewritten and Laravel saw Cloudflare edge IPs in every per-IP throttle. README updated to call out both required includes.
+- ☑ APP_DEBUG flipped from `true` to `false` and APP_ENV from `staging` to `production` in prod `.env` + `optimize:clear`. Error pages no longer leak stack traces or config.
+- ☑ Customer/BookingsController cross-tenant IDOR (CRITICAL): the index walked `Tenant::all()` and matched clients by email or phone as a "self-heal" fallback, then silently stamped matched rows with the authed `customer_user_id`. An attacker registering a fresh customer under a victim's email could absorb every anonymous booking ever placed under that email at every tenant. Fix: pivot-only scan + strict `customer_user_id` match in both `index` and `loadContext`, no self-heal. Claim flow + booking-time stamp (now exact-email-gated) are the only paths that establish the link.
+- ☑ PublicBookingController booking-time auto-stamp (HIGH): now only stamps when (a) `clients.customer_user_id` is NULL and (b) the booking's `customer_email` exactly matches the authed customer's email (case-insensitive, trimmed). Prevents both overwriting another customer's link and absorbing a third party's history when a single device handles bookings for a family.
+- ☑ DangerController identity-hash mismatch (MEDIUM): `deleteAccount` now reads `identities.password` first (canonical per #159), falling back to the legacy `customer_users.password` mirror — same pattern as `ProfileController::changePassword`. Asymmetric password checks across the two controllers would have let a stale-mirror attacker nuke an account they couldn't log in to.
+- ☑ PublicBookingController after-hours email lookup (MEDIUM): normalized to `LOWER(email) = LOWER(trim(input))` on both sides. The prior raw `==` lookup let casing typos pass through unevenly.
+- ☑ Marketing `/leads` throttle tightened from `5,1` to `2,1`. No captcha + no honeypot on that endpoint.
+- ☑ Public/auth route throttle audit (every public route verified): all non-webhook public routes have an explicit `throttle:` middleware; webhooks gate on signature verification before any DB lookup.
+- ☑ Security headers verified on `app.bkrdy.me` and tenant sites (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, COOP, CORP, Permissions-Policy, Referrer-Policy). `api.bkrdy.me` is JSON-only and ships just HSTS, which is correct.
+
+**Residual risk — defer to post-launch (none are launch-blockers):**
+- Token entropy / hash-at-rest (HIGH-rated by audit, low realistic exploit): manage-booking / tip / waitlist-claim / availability-request tokens are 40-char `Str::random` (strong entropy) but compared with MySQL `=` (not constant-time) and stored plaintext. Plan: store SHA-256(token) and `hash_equals` compare. Needs a migration per token surface.
+- Claim flow single-use enforcement (HIGH): HMAC + 7-day TTL but stateless. A leaked claim URL is replayable inside the window if the user deletes + re-registers. Plan: add a `claim_tokens` table keyed on `SHA256(token)` with `used_at`.
+- `AuthFromCookie` promotes the customer cookie on `/api/v1/public/*` (MEDIUM, data integrity): a signed-in customer's cookie travels with every booking-form / availability / tip / waitlist call, so the now-fixed auto-stamp narrowing (above) is the only thing preventing them from being silently linked to bookings for someone else. Plan: skip cookie promotion on public booking POST, or require explicit acknowledgement in the booking form.
+- `Tenant::all()` walks still in `ClaimController::suggestName` + `linkExistingClients` (MEDIUM, scaling): same pattern as the fixed `BookingsController::index`. Will be unusable at 1k+ tenants. Plan: bound to the customer's existing pivot tenants (which require an existing link). Fold into the Scale roadmap.
+- `composer audit`: 3 advisories (Laravel CRLF in email rule, symfony/http-foundation IpUtils SSRF, symfony/routing UrlGenerator). All require BookReady-specific usage to be exploitable; none reachable on the current surface as far as I can see. Plan: bump symfony minor; document Laravel patch lineage.
+- `npm audit`: 5 advisories on Next.js 14.2.29 (image optimization, middleware redirect, server-component DoS, cache poisoning). Fix is `next@16` preview — breaking change. Plan: assess whether a stable 14.x or 15.x patch covers these; otherwise schedule a controlled Next 15 upgrade post-launch.
+- LOW items (`ClaimController::suggestName` name disclosure to anyone holding the claim token, manage-booking reschedule blocked-dates UX, no Turnstile on customer register): cleanup, not security blockers.
+
+Track residual items as follow-ups; they don't gate launch.
 
 ---
 
