@@ -5,6 +5,7 @@ import { resolveTemplate } from '@/templates/registry'
 import PublicBookingForm from '@/components/public/PublicBookingForm'
 import SiteLockScreen from '@/components/public/SiteLockScreen'
 import SiteComingSoonScreen from '@/components/public/SiteComingSoonScreen'
+import { buildLocalBusinessSchema, buildSiteDescription } from './seo'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,7 +27,9 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     }
   }
 
-  const title = `${site.business_name ?? site.slug} — BookReady`
+  const displayName = site.business_name ?? site.slug
+  const title       = `${displayName} — BookReady`
+  const url         = `https://${params.slug}.${baseDomain}/`
 
   // Phase S1 privacy gate: locked / coming-soon are private to the
   // owner. Don't surface them in SERPs. Same for any request carrying
@@ -49,15 +52,34 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
       : base
   }
 
-  // Active site, no unlock token. Canonical points at the subdomain
-  // root (NOT the internal /site/{slug} rewrite target, NOT the
-  // current URL which may carry tracking params or future ?unlock=).
-  // This consolidates link-equity on the marketing-facing URL.
+  // Active site, no unlock token. SEO-rich metadata: canonical to the
+  // subdomain root (NOT the internal /site/{slug} rewrite target, NOT
+  // the current URL which may carry tracking params or future ?unlock=),
+  // a real description pulled from the business profile so SERPs read
+  // naturally instead of using Google's first-paragraph snippet, and
+  // open-graph + twitter-card tags so link shares (iMessage, Slack,
+  // Twitter, Facebook) render with the business name + description.
+  const description = buildSiteDescription(site)
+
   return {
     title,
+    description,
     robots: { index: true, follow: true },
     alternates: {
-      canonical: `https://${params.slug}.${baseDomain}/`,
+      canonical: url,
+    },
+    openGraph: {
+      type:     'website',
+      title,
+      description,
+      url,
+      siteName: 'BookReady',
+      locale:   'en_US',
+    },
+    twitter: {
+      card:        'summary_large_image',
+      title,
+      description,
     },
   }
 }
@@ -85,13 +107,41 @@ export default async function PublicSitePage({ params, searchParams }: Props) {
     )
   }
 
+  // Build LocalBusiness JSON-LD once, inject as a sibling of whichever
+  // body element renders. Returns null for non-active sites; we wrap
+  // the inject in a null-check so locked / coming-soon paths don't
+  // emit a schema (they've already returned above, this is just
+  // defensive). Google parses JSON-LD anywhere in the document, so
+  // inlining as a body sibling is equivalent to head injection.
+  const schema = buildLocalBusinessSchema(site)
+  const schemaScript = schema ? (
+    <script
+      type="application/ld+json"
+      // Stringify on the server, raw-inject. Next adds no quoting/escape
+      // here; that's intentional — JSON inside a script tag is the
+      // schema.org spec. dangerouslySetInnerHTML is the only Next/React
+      // path that doesn't HTML-escape the JSON braces.
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  ) : null
+
   const loader = resolveTemplate(site)
   if (loader) {
     const { default: Template } = await loader()
-    return <Template site={site} slug={params.slug} />
+    return (
+      <>
+        {schemaScript}
+        <Template site={site} slug={params.slug} />
+      </>
+    )
   }
 
-  return <DefaultSitePage site={site} slug={params.slug} baseDomain={baseDomain} />
+  return (
+    <>
+      {schemaScript}
+      <DefaultSitePage site={site} slug={params.slug} baseDomain={baseDomain} />
+    </>
+  )
 }
 
 // ── Fallback default template ─────────────────────────────────────────────────
