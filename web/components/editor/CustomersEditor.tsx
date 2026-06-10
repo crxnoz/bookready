@@ -48,6 +48,7 @@ import type {
 import { cn } from '@/lib/cn'
 import StatusBadge from '@/components/ui/StatusBadge'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { usePlan } from '@/components/editor/PlanContext'
 import { useToast } from '@/components/ui/Toast'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1248,6 +1249,11 @@ function PreferencesForm({
   staff:    ApiStaffMember[]
   onApply:  (c: Customer) => void
 }) {
+  // Phase 3 plan gate: hide the "Preferred staff" dropdown on Solo
+  // (one staff member, nothing to prefer between). The preferred_staff_id
+  // value still round-trips through the form so a Studio→Solo downgrade
+  // doesn't lose the data.
+  const plan = usePlan()
   const p = customer.preferences
   const initial = {
     preferred_service_id:     p.preferred_service_id     ?? '',
@@ -1317,12 +1323,14 @@ function PreferencesForm({
         onChange={v => setForm(f => ({ ...f, preferred_service_id: v }))}
         options={[{ value: '', label: 'No preference' }, ...services.map(s => ({ value: String(s.id), label: s.name }))]}
       />
-      <PrefDropdown
-        label="Preferred staff"
-        value={String(form.preferred_staff_id)}
-        onChange={v => setForm(f => ({ ...f, preferred_staff_id: v }))}
-        options={[{ value: '', label: 'No preference' }, ...staff.map(s => ({ value: String(s.id), label: s.name }))]}
-      />
+      {! plan.isSolo() && (
+        <PrefDropdown
+          label="Preferred staff"
+          value={String(form.preferred_staff_id)}
+          onChange={v => setForm(f => ({ ...f, preferred_staff_id: v }))}
+          options={[{ value: '', label: 'No preference' }, ...staff.map(s => ({ value: String(s.id), label: s.name }))]}
+        />
+      )}
       <PrefDropdown
         label="Preferred time of day"
         value={form.preferred_time_of_day}

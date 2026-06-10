@@ -51,6 +51,7 @@ import { safeHref } from '@/lib/safeHref'
 import { PaymentPill, PaymentSummary } from '@/components/editor/AppointmentPaymentStatus'
 import StatusBadge from '@/components/ui/StatusBadge'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { usePlan } from '@/components/editor/PlanContext'
 import { useToast } from '@/components/ui/Toast'
 import RefundDialog from '@/components/editor/RefundDialog'
 import MarkPaidDialog from '@/components/editor/MarkPaidDialog'
@@ -240,6 +241,12 @@ type Filter = 'today' | 'week' | 'month' | 'pending' | 'upcoming' | 'all'
 const VALID_FILTERS: Filter[] = ['today', 'week', 'month', 'pending', 'upcoming', 'all']
 
 export default function AppointmentsEditor() {
+  // Phase 3 plan gate: hide team-oriented UI (staff picker on the
+  // appointment form) for Solo plans. usePlan() returns Solo defaults
+  // until the snapshot loads, so the staff picker is hidden during
+  // initial mount and reveals if the tenant is Studio/Salon.
+  const plan = usePlan()
+
   // Allow deep-linking from the Bookings Overview cards (and anywhere
   // else that wants to land owners on a specific filter view).
   const searchParams = useSearchParams()
@@ -853,8 +860,9 @@ export default function AppointmentsEditor() {
 
               {/* Phase 7 — Staff picker. When the service has assigned_staff_ids,
                   filter the dropdown to those only. Otherwise show every active
-                  staff member. Empty string = "any staff" (server stores null). */}
-              {selectedService && (() => {
+                  staff member. Empty string = "any staff" (server stores null).
+                  Hidden entirely on Solo plans (one staff = nothing to pick). */}
+              {selectedService && ! plan.isSolo() && (() => {
                 const assigned = selectedService.assigned_staff_ids ?? []
                 const options  = assigned.length > 0
                   ? staff.filter(s => assigned.includes(s.id))
