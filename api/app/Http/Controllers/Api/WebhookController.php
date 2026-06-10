@@ -59,6 +59,18 @@ class WebhookController extends CashierWebhookController
             Tenant::where('id', $tenantId)->update(['stripe_id' => $customerId]);
         }
 
+        // Phase 6 plan gates: stamp tenants.plan from the metadata we set
+        // at checkout. This is the cheapest sync we can do (no Stripe API
+        // call) and makes PlanFeatures::planOf accurate within the same
+        // request the webhook fires on. A subsequent subscription.updated
+        // event re-syncs from lookup_key, which is the authoritative path
+        // for plan switches via the Stripe Customer Portal where there's
+        // no checkout session.
+        $bookreadyPlan = $metadata['bookready_plan'] ?? null;
+        if ($bookreadyPlan !== null && $bookreadyPlan !== 'legacy') {
+            $this->setTenantPlan($tenantId, $bookreadyPlan);
+        }
+
         // #155 — flip tenants.subscription_state. For the trial flow
         // the startTrial endpoint already set 'trialing' optimistically;
         // this is a no-op in that case. For the non-trial checkout path
@@ -216,7 +228,43 @@ class WebhookController extends CashierWebhookController
             if ($state !== null) {
                 $this->setTenantState($sub->tenant_id, $state);
             }
+
+            // Phase 6 plan gates: parse the lookup_key on the subscription's
+            // active price (br_{plan}_{cycle}_{mult}x) and mirror the plan
+            // slug onto tenants.plan. This is the canonical sync path —
+            // anything that changes the subscription's price (the editor
+            // Billing picker, the Stripe Customer Portal, manual edits in
+            // Stripe's dashboard) fires customer.subscription.updated and
+            // lands here. Tenants.plan drives every gate via
+            // PlanFeatures::planOf, so keeping it fresh is what makes the
+            // editor accurate immediately after a plan change.
+            $plan = $this->resolvePlanFromSubscription($subscription);
+            if ($plan !== null) {
+                $this->setTenantPlan($sub->tenant_id, $plan);
+            }
         }
+    }
+
+    /**
+     * Parse the BookReady plan slug from a Stripe subscription's first
+     * recurring item. Convention from config/plans.php:
+     *   lookup_key = br_{plan}_{cycle}_{mult}x   (e.g. br_studio_monthly_1x)
+     * Returns null if the lookup_key is missing or doesn't match, so
+     * the caller can decide whether to leave tenants.plan alone.
+     */
+    private function resolvePlanFromSubscription(array $subscription): ?string
+    {
+        $items = $subscription['items']['data'] ?? [];
+        foreach ($items as $item) {
+            $lookup = $item['price']['lookup_key'] ?? null;
+            if (! is_string($lookup) || $lookup === '') {
+                continue;
+            }
+            if (preg_match('/^br_(solo|studio|salon)_(monthly|annual)_(\d+)x$/', $lookup, $m)) {
+                return $m[1];
+            }
+        }
+        return null;
     }
 
     /**
@@ -230,5 +278,24 @@ class WebhookController extends CashierWebhookController
             return;
         }
         Tenant::where('id', $tenantId)->update(['subscription_state' => $state]);
+    }
+
+    /**
+     * Centralised writer for tenants.plan. Mirrors setTenantState's
+     * schema-missing guard so a webhook burst during deploy can't crash
+     * the listener, and validates the slug against the plan catalog so a
+     * malformed lookup_key (or a future Stripe price using a renamed
+     * key) can't store gibberish.
+     */
+    private function setTenantPlan(string $tenantId, string $plan): void
+    {
+        if (! Schema::hasColumn('tenants', 'plan')) {
+            return;
+        }
+        if (! array_key_exists($plan, (array) config('plans.plans', []))) {
+            Log::warning("Webhook: refusing to set unknown plan '{$plan}' for tenant {$tenantId}");
+            return;
+        }
+        Tenant::where('id', $tenantId)->update(['plan' => $plan]);
     }
 }
