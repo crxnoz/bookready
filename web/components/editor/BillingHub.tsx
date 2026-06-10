@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   CreditCard, ExternalLink, Loader2, RefreshCw, AlertCircle, Check, Sparkles,
   PauseCircle, PlayCircle, XCircle,
@@ -39,6 +40,43 @@ type PlanKey = 'solo' | 'studio' | 'salon'
 type SmsMult = 1 | 2 | 3
 type Cycle   = 'monthly' | 'annual'
 
+/**
+ * Contextual upgrade banner copy. Driven by `?from=X` query params left
+ * behind by upgrade CTAs scattered around the editor. Each entry is the
+ * "why the user is here" hint plus the plan tier we should pre-select on
+ * the picker so they don't have to hunt for it. New entries are cheap —
+ * keep the headlines benefit-led (what the owner gets) rather than
+ * limit-led (what Solo doesn't do).
+ *
+ * Sources currently wired:
+ *   - staff_limit          → StaffEditor (Solo seat cap reached)
+ *   - team_dashboard       → reserved for a "see by-staff totals" CTA
+ *   - appointment_staff    → reserved for AppointmentsEditor upsell
+ *   - customer_preferred   → reserved for CustomersEditor upsell
+ */
+const UPGRADE_REASONS: Record<string, { headline: string; body: string; suggested: PlanKey }> = {
+  staff_limit: {
+    headline:  'Add more staff seats with Studio',
+    body:      'Your current plan includes 1 staff seat. Studio unlocks 5 seats — enough for most small teams. Salon goes up to 20.',
+    suggested: 'studio',
+  },
+  team_dashboard: {
+    headline:  'See your team at a glance',
+    body:      'Studio adds the by-staff revenue and appointment rollup to your dashboard, so you always know who is driving the week.',
+    suggested: 'studio',
+  },
+  appointment_staff: {
+    headline:  'Assign appointments to the right staff',
+    body:      'Studio unlocks the staff picker on new appointments, so your calendar and customer notifications carry the right name.',
+    suggested: 'studio',
+  },
+  customer_preferred: {
+    headline:  'Match customers with their favourite staff',
+    body:      'Studio lets each customer record carry a preferred staff member, so rebookings can match them automatically.',
+    suggested: 'studio',
+  },
+}
+
 export default function BillingHub() {
   const [plans, setPlans] = useState<BillingPlansResponse | null>(null)
   const [sub,   setSub]   = useState<BillingSubscription | null>(null)
@@ -59,6 +97,16 @@ export default function BillingHub() {
   const [lifecycleLoading, setLifecycleLoading] = useState(false)
 
   const confirm = useConfirm()
+
+  // Contextual upgrade prompt. When an upgrade CTA elsewhere in the
+  // editor sends the owner here with ?from=staff_limit (or similar), the
+  // banner above the picker explains the "why" in their own words and
+  // the picker auto-jumps to the suggested tier so they don't have to
+  // hunt for it. Falls through to the regular billing experience when
+  // the param is absent or unknown.
+  const searchParams = useSearchParams()
+  const fromKey = searchParams?.get('from') ?? ''
+  const upgrade = fromKey && fromKey in UPGRADE_REASONS ? UPGRADE_REASONS[fromKey] : null
 
   async function refresh() {
     setErr(null)
@@ -82,6 +130,19 @@ export default function BillingHub() {
   }
 
   useEffect(() => { void refresh() }, [])
+
+  // Once plans + subscription have loaded, jump the picker to the
+  // suggested tier so the upgrade banner reads as "click checkout"
+  // rather than "find the right plan." Solo-on-staff-cap is the common
+  // case; an existing Studio owner hitting the same banner is a no-op
+  // because their picker is already on Studio from the refresh sync.
+  useEffect(() => {
+    if (! upgrade || ! plans) return
+    setPickedPlan(upgrade.suggested)
+    // We deliberately only react to the `from` query param + loaded
+    // plans. Reacting to pickedPlan would create an infinite loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromKey, plans])
 
   async function openPortal() {
     setPortalLoading(true)
@@ -218,6 +279,22 @@ export default function BillingHub() {
 
   return (
     <div className="space-y-6">
+      {upgrade && (
+        <section className="bg-cream border border-hairline p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 bg-white border border-hairline-soft flex items-center justify-center flex-shrink-0">
+              <Sparkles size={16} className="text-near-black" strokeWidth={2} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">Upgrade prompt</p>
+              <h2 className="text-sm sm:text-base font-bold text-near-black mt-0.5">{upgrade.headline}</h2>
+              <p className="text-xs sm:text-sm text-near-black/80 mt-1 leading-snug">{upgrade.body}</p>
+              <p className="text-2xs text-muted-text mt-2">We have the <span className="font-semibold text-near-black">{capitalize(upgrade.suggested)}</span> plan selected for you below. You can switch any time.</p>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* ── Current subscription ──────────────────────────────────── */}
       <section className="bg-white border border-hairline-soft p-5">
         <header className="flex items-start justify-between gap-3 mb-3 flex-wrap">
