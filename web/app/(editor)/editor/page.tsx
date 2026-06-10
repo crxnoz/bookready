@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import EditorShell from '@/components/editor/EditorShell'
 import WelcomeTour from '@/components/editor/WelcomeTour'
+import { usePlan } from '@/components/editor/PlanContext'
 import { cn } from '@/lib/cn'
 import StatusBadge from '@/components/ui/StatusBadge'
 import { getTenantId } from '@/lib/auth'
@@ -68,6 +69,10 @@ export default function DashboardPage() {
 
 function DashboardBody() {
   const router = useRouter()
+  // Plan gate: Studio/Salon unlocks team-aware surfaces (per-staff revenue
+  // breakdown, multi-staff calendar callouts). Solo skips the staff-grouped
+  // sections because every row would just be the owner.
+  const plan = usePlan()
   // #130 — when a fresh tenant has never completed the onboarding wizard
   // (onboarding_completed_at is null), redirect into it on first dashboard
   // load. `redirecting` holds the full-page spinner so the dashboard never
@@ -210,6 +215,9 @@ function DashboardBody() {
   const health         = useMemo(() => computeHealth(appts),                      [appts])
   const weekendAppts   = useMemo(() => findWeekendAppts(appts),                   [appts])
   const growthOpps     = useMemo(() => computeGrowth(appts),                      [appts])
+  // Per-staff this-week breakdown. Empty on Solo (every row would be the
+  // owner) and on Studio/Salon tenants that haven't booked anything yet.
+  const teamWeek       = useMemo(() => computeTeamWeek(appts),                    [appts])
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -341,6 +349,12 @@ function DashboardBody() {
       </div>
       <WeekStrip days={weekStrip} />
       <MoneySnapshot buckets={moneyBuckets} />
+
+      {/* Team-this-week breakdown. Studio+ only — on Solo, this would
+          collapse to a single row of the owner and add no value. */}
+      {!plan.isSolo() && teamWeek.length > 0 && (
+        <TeamThisWeekSection rows={teamWeek} currency={moneyBuckets.currency} />
+      )}
 
       {/* ════════ LAYER 4 — BUSINESS HEALTH ════════ */}
       {/* Server metrics swap in when the dashboard/metrics endpoint resolves
@@ -2387,4 +2401,89 @@ function initials(name: string): string {
   if (parts.length === 0) return '·'
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Team-this-week breakdown (Studio/Salon only)
+// ────────────────────────────────────────────────────────────────────────────
+
+interface TeamWeekRow {
+  staffId:  number
+  name:     string
+  appts:    number
+  revenue:  number
+}
+
+/**
+ * Per-staff breakdown for the current week (Mon-Sun, same window as
+ * computeRevenueWeek). Rows without an assigned staff_id are skipped —
+ * on a Studio account these usually represent legacy "any staff" rows
+ * before the team was set up, and rolling them into a single ghost row
+ * would mislead. Sorted by revenue descending so the biggest performer
+ * is on top.
+ *
+ * Revenue is bucketed by `appointment_date` (when the work happens), not
+ * `created_at` (when it was booked). For a per-staff "this week" view,
+ * the owner wants to see which staff are filling the week ahead, not
+ * which staff happened to take a booking that landed this week. Matches
+ * how a staff member would read their own schedule.
+ */
+function computeTeamWeek(appts: Appointment[]): TeamWeekRow[] {
+  // Monday..Sunday of this week. Same calculation as computeRevenueWeek
+  // so the totals reconcile.
+  const today  = new Date()
+  today.setHours(0, 0, 0, 0)
+  const dow    = today.getDay()
+  const back   = (dow + 6) % 7
+  const monday = new Date(today); monday.setDate(today.getDate() - back)
+  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6)
+  const mondayISO = isoDate(monday)
+  const sundayISO = isoDate(sunday)
+
+  const rows: Record<number, TeamWeekRow> = {}
+  for (const a of appts) {
+    if (! a.staff_id) continue
+    if (a.status === 'cancelled' || a.status === 'no_show') continue
+    if (a.appointment_date < mondayISO || a.appointment_date > sundayISO) continue
+    const id   = a.staff_id
+    const name = a.staff_name?.trim() || `Staff #${id}`
+    if (! rows[id]) rows[id] = { staffId: id, name, appts: 0, revenue: 0 }
+    rows[id].appts  += 1
+    rows[id].revenue += (a.deposit_paid_amount ?? 0) + (a.balance_paid_amount ?? 0)
+  }
+  return Object.values(rows)
+    .map(r => ({ ...r, revenue: round2(r.revenue) }))
+    .sort((a, b) => b.revenue - a.revenue || b.appts - a.appts)
+}
+
+function TeamThisWeekSection({ rows, currency }: { rows: TeamWeekRow[]; currency: string }) {
+  const totalAppts   = rows.reduce((s, r) => s + r.appts,   0)
+  const totalRevenue = rows.reduce((s, r) => s + r.revenue, 0)
+  return (
+    <section>
+      <SectionHeader
+        icon={Users}
+        label="By staff this week"
+        subtitle={`${rows.length} ${rows.length === 1 ? 'person' : 'people'} on the floor · ${totalAppts} appointment${totalAppts === 1 ? '' : 's'} · ${money(totalRevenue, currency)} booked`}
+        cta={{ label: 'Manage staff', href: '/editor/staff' }}
+      />
+      <div className="bg-white border border-hairline-soft divide-y divide-[rgba(18,18,18,0.06)]">
+        {rows.map(r => (
+          <Link
+            key={r.staffId}
+            href={`/editor/appointments?staff_id=${r.staffId}`}
+            className="flex items-center gap-3 px-4 py-3 hover:bg-cream/60 transition-colors"
+          >
+            <div className="w-8 h-8 bg-cream border border-hairline-soft flex items-center justify-center flex-shrink-0">
+              <span className="text-eyebrow font-bold text-near-black">{initials(r.name)}</span>
+            </div>
+            <p className="flex-1 text-sm font-semibold text-near-black truncate">{r.name}</p>
+            <p className="text-2xs text-muted-text whitespace-nowrap">{r.appts} appt{r.appts === 1 ? '' : 's'}</p>
+            <p className="text-sm font-bold tabular-nums text-near-black whitespace-nowrap">{money(r.revenue, currency)}</p>
+            <ChevronRight size={13} className="text-muted-text flex-shrink-0" />
+          </Link>
+        ))}
+      </div>
+    </section>
+  )
 }
