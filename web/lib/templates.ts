@@ -19,6 +19,7 @@ export const SITE_TEMPLATES: TemplateChoice[] = [
   { slug: 'petale',       label: 'Pétale',        desc: 'Soft pink bridal — wedding-paper romantic',       color: '#F4DDE0' },
   { slug: 'bottega',      label: 'Bottega',       desc: 'Earthy nail / lash / brow — Italian-artisanal',   color: '#C9692C' },
   { slug: 'inkhouse',     label: 'Inkhouse',      desc: 'Dark editorial tattoo studio, brutalist serif on charcoal', color: '#0A0A0A' },
+  { slug: 'clarity',      label: 'Clarity',       desc: 'Minimalist clinical luxury, type-led with a muted accent', color: '#FAFAFA' },
 ]
 
 export const DEFAULT_TEMPLATE_SLUG = 'thefaderoom'

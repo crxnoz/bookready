@@ -19,7 +19,7 @@ class TemplateDefaults
      * outside this set is not a real template and must fall back to the
      * default rather than seeding a tenant with a broken slug.
      */
-    public const KNOWN_SLUGS = ['thefaderoom', 'lushstudio', 'velvettheory', 'blackline', 'opaline', 'petale', 'bottega', 'inkhouse'];
+    public const KNOWN_SLUGS = ['thefaderoom', 'lushstudio', 'velvettheory', 'blackline', 'opaline', 'petale', 'bottega', 'inkhouse', 'clarity'];
 
     /**
      * Map any signup/registry template value to a canonical, KNOWN slug.
@@ -47,6 +47,7 @@ class TemplateDefaults
             'petale'       => self::petaleSettings(),
             'bottega'      => self::bottegaSettings(),
             'inkhouse'     => self::inkhouseSettings(),
+            'clarity'      => self::claritySettings(),
             default        => self::theFadeRoomSettings(),
         };
     }
@@ -62,6 +63,7 @@ class TemplateDefaults
             'petale'       => self::petaleSections(),
             'bottega'      => self::bottegaSections(),
             'inkhouse'     => self::inkhouseSections(),
+            'clarity'      => self::claritySections(),
             default        => self::theFadeRoomSections(),
         };
     }
@@ -676,6 +678,92 @@ class TemplateDefaults
         // Aftercare + Process, with House rules tucked at the end.
         $sections = self::theFadeRoomSections();
         $order = ['gallery' => 3, 'about' => 4, 'results' => 5, 'advice' => 6, 'timeline' => 7, 'policy' => 8];
+        foreach ($sections as &$s) {
+            if (isset($order[$s['section_key']])) $s['sort_order'] = $order[$s['section_key']];
+        }
+        unset($s);
+        return $sections;
+    }
+
+    // ─── Clarity ───────────────────────────────────────────────────────────────
+    //
+    // Minimalist clinical luxury. Targets medspas, fine-line + micro-tattoo
+    // studios, premium nail + lash studios that want to read as luxury. The
+    // aesthetic is ultra-clean Apple Newsroom: type-led, photo-light,
+    // generous whitespace, fine Inter throughout, a single muted accent.
+    // Sharp not rounded.
+
+    private static function claritySettings(): array
+    {
+        // brief named this "clarity_accent"; implementation uses the standard
+        // settings.theme.accent_color path so the existing editor color picker
+        // drives it.
+        $base = self::theFadeRoomSettings();
+        $base['header']['announcement_text'] = 'Booking by appointment. New patients welcome.';
+        $base['tabs'] = [
+            'book_label'     => 'Book',
+            'gallery_label'  => 'Work',
+            'policy_label'   => 'Notes',
+            'about_label'    => 'About',
+            'results_label'  => 'Results',
+            'advice_label'   => 'Aftercare',
+            'timeline_label' => 'Your visit',
+        ];
+        $base['about'] = [
+            'heading'    => 'Considered. Quiet. Yours.',
+            'eyebrow'    => 'About',
+            'body'       => "Tell visitors who you are, the care you take with the work, and the kind of customer you build your best results with. A few sentences about your training, your approach, and the room you keep, anything that makes the practice feel like yours.\n\nThe room is unhurried by design. Every booking gets a full one-on-one consultation, the recovery time the work deserves, and a results-led product line we curate ourselves. We see fewer customers each day so yours gets the time and attention the result needs.",
+            'highlights' => [
+                ['title' => 'One-on-one consultation',        'body' => 'Every booking begins with a real conversation. Skin, history, goals, expectations. We design the plan with you, not at you.'],
+                ['title' => 'Results-led product line',       'body' => 'The products we recommend are the ones we use. Considered for outcomes that last, not for the shelf they came off.'],
+                ['title' => 'Recovery time built in',         'body' => 'Aftercare, follow-up windows, and a clear path back to us if something needs review. The work is not done when you leave the chair.'],
+            ],
+            'images'     => [null, null, null],
+        ];
+        $base['advice'] = [
+            'heading'     => 'Aftercare',
+            'card_kicker' => '',
+            'items'       => [
+                ['title' => 'Sun protection',     'body' => 'Avoid direct sunlight for the first two weeks. After that, SPF 30 or higher every day on the treated area. Sun is the fastest path to early fading and pigment change.'],
+                ['title' => 'Gentle skincare',    'body' => 'Switch to fragrance-free cleanser and a calm, simple routine for ten days. Skip retinol, acids, and exfoliants until we clear them at the follow-up.'],
+                ['title' => 'No soaking',         'body' => 'Skip the pool, the ocean, hot tubs, saunas, and long baths for two weeks. Quick lukewarm showers are fine, just keep direct spray off the treated area.'],
+                ['title' => 'When to follow up',  'body' => 'A little redness or tightness is expected. Spreading warmth, weeping, or anything that feels off is not. Send a photo and we will guide you, no judgement.'],
+            ],
+        ];
+        $base['timeline'] = [
+            'heading'     => 'Your visit',
+            'card_kicker' => '',
+            'items'       => [
+                ['title' => 'Consultation',         'body' => 'Book a complimentary consult to walk through your goals, your history, and the plan that fits the result you want.'],
+                ['title' => 'Reserve your time',    'body' => 'A small deposit holds your appointment. We send a clear prep sheet so the morning of feels calm.'],
+                ['title' => 'Arrival',              'body' => 'Come a few minutes early. The room is set, the tools are ready, and we take it from there. No rush, no overlap with other customers.'],
+                ['title' => 'Results review',       'body' => 'After every treatment we walk through aftercare and book the follow-up. You leave with a written plan and a way to reach us if you have questions.'],
+            ],
+        ];
+        $base['gallery'] = [ 'heading' => 'Selected work' ];
+        $base['results'] = [ 'heading' => 'Results' ];
+        $base['policy']  = [ 'heading' => 'Notes' ];
+        $base['additionals']['thank_you_eyebrow'] = 'A note';
+        $base['additionals']['thank_you_title']   = 'Thank you';
+        $base['additionals']['thank_you_body']    = 'Thank you for trusting us with the work. We look forward to seeing you.';
+        $base['footer']['brand_label'] = 'The Studio';
+        $base['footer']['subtext']     = 'By appointment. Consultations always complimentary.';
+        // The Clarity accent default (muted sage). The owner can pick from
+        // Sage / Dusty Rose / Mauve / Stone in the editor color picker; the
+        // chosen value flows in via settings.theme.accent_color (same as
+        // Opaline / Inkhouse).
+        $base['theme']['accent_color'] = '#9EAD9C';
+        return $base;
+    }
+
+    private static function claritySections(): array
+    {
+        // Clarity's designed tab order: Work, Results, About, Aftercare,
+        // Your visit, Notes. The visual proof comes first, then About,
+        // then the practical care + visit guidance, with Notes tucked
+        // at the end.
+        $sections = self::theFadeRoomSections();
+        $order = ['gallery' => 3, 'results' => 4, 'about' => 5, 'advice' => 6, 'timeline' => 7, 'policy' => 8];
         foreach ($sections as &$s) {
             if (isset($order[$s['section_key']])) $s['sort_order'] = $order[$s['section_key']];
         }
