@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { EditorProvider } from '@/lib/editorContext'
+import { PlanProvider }  from '@/components/editor/PlanContext'
 import EditorInnerNav    from '@/components/editor/layout/EditorInnerNav'
 import EditorPageHeader  from '@/components/editor/layout/EditorPageHeader'
 import SectionTopBar     from '@/components/editor/layout/SectionTopBar'
@@ -85,24 +86,26 @@ export default function EditorShell({
 
   return (
     <EditorProvider>
-      {topBar    && <SectionTopBar label={section.label} />}
-      {innerNav  && <EditorInnerNav section={section} activeId={activeId} />}
-      {pageHeader && (
-        <EditorPageHeader
-          title={resolvedTitle}
-          subtitle={resolvedSubtitle}
-          backHref={showBack ? section.hubPath : undefined}
-          backLabel={showBack ? section.label : undefined}
-          actions={actions}
-        />
-      )}
+      <PlanProvider>
+        {topBar    && <SectionTopBar label={section.label} />}
+        {innerNav  && <EditorInnerNav section={section} activeId={activeId} />}
+        {pageHeader && (
+          <EditorPageHeader
+            title={resolvedTitle}
+            subtitle={resolvedSubtitle}
+            backHref={showBack ? section.hubPath : undefined}
+            backLabel={showBack ? section.label : undefined}
+            actions={actions}
+          />
+        )}
 
-      {/* Page content — full width, cream background, internal scroll */}
-      <div className="flex flex-col flex-1 min-h-0">
-        <div className="flex-1 overflow-y-auto bg-cream">
-          {children}
+        {/* Page content — full width, cream background, internal scroll */}
+        <div className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 overflow-y-auto bg-cream">
+            {children}
+          </div>
         </div>
-      </div>
+      </PlanProvider>
     </EditorProvider>
   )
 }

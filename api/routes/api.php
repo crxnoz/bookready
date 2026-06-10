@@ -538,6 +538,11 @@ Route::prefix('v1')->group(function () {
         // SmsService.send → SmsQuotaService.canSend.
         Route::get('sms/usage',                        [\App\Http\Controllers\Api\Editor\SmsUsageController::class, 'show']);
 
+        // Plan + feature snapshot — the editor's PlanProvider fetches
+        // this once on mount and binds against the shape exactly. See
+        // App\Services\PlanFeatures for the values + add-a-feature rules.
+        Route::get('plan/features',                    [\App\Http\Controllers\Api\Editor\PlanFeaturesController::class, 'show']);
+
         // ── Account (central User, no tenancy init) ─────────────────────────
         Route::get   ('account',                              [AccountController::class, 'show']);
         Route::patch ('account',                              [AccountController::class, 'update']);
