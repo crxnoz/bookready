@@ -68,7 +68,30 @@ class StaffController extends Controller
         ]);
 
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
+
+        // Plan gate: refuse if the tenant is at their staff seats cap.
+        // Counts only ACTIVE staff so deactivating frees a seat without
+        // a hard delete. PlanFeatures returns the most-restrictive
+        // default (Solo's 1) when the plan is missing or unrecognized,
+        // so this never accidentally lets a misconfigured tenant past
+        // the gate. Frontend reads `code` + `limit` + `upgrade_to` to
+        // render the "Upgrade to Studio" CTA in place of the add button.
+        $seatLimit = \App\Services\PlanFeatures::staffSeatsFor($tenant);
+
         tenancy()->initialize($tenant);
+
+        $activeCount = (int) DB::table('staff')->where('is_active', 1)->count();
+        if ($activeCount >= $seatLimit) {
+            tenancy()->end();
+            $currentPlan = \App\Services\PlanFeatures::planOf($tenant);
+            return response()->json([
+                'message'    => 'Your plan includes ' . $seatLimit . ' staff seat' . ($seatLimit === 1 ? '' : 's') . '. Upgrade your plan to add more.',
+                'code'       => 'plan_limit_reached',
+                'limit'      => $seatLimit,
+                'current'    => $activeCount,
+                'upgrade_to' => $currentPlan === 'solo' ? 'studio' : 'salon',
+            ], 422);
+        }
 
         $nextOrder = (int) DB::table('staff')->max('sort_order') + 1;
 

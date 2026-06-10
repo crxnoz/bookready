@@ -1,10 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import {
   UserPlus, Users, Edit2, Mail, Phone, CheckCircle, XCircle, X,
   ChevronDown, ChevronUp, Calendar, Clock, Plus, Trash2, AlertCircle, Loader2,
+  Sparkles,
 } from 'lucide-react'
+import { usePlan } from '@/components/editor/PlanContext'
 import {
   createEditorStaff,
   getEditorStaff,
@@ -70,6 +73,7 @@ function isPlaceholderEmail(email: string | null): boolean {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function StaffEditor() {
+  const plan = usePlan()
   const [staff,         setStaff]         = useState<ApiStaffMember[]>([])
   const [loading,       setLoading]       = useState(true)
   const [loadError,     setLoadError]     = useState<string | null>(null)
@@ -186,12 +190,25 @@ export default function StaffEditor() {
               : `${active.length} active${inactive.length ? ` · ${inactive.length} inactive` : ''} · set schedules and block dates from each card.`
           }
           action={
-            <button
-              onClick={openCreate}
-              className="flex items-center gap-1.5 bg-near-black text-white px-3 py-1.5 text-2xs font-bold tracking-[0.06em] uppercase hover:opacity-90 transition-colors"
-            >
-              <UserPlus size={12} /> Add Staff Member
-            </button>
+            // Phase 2 plan gate: when the tenant is at their staff seats
+            // cap, swap the add button for an upgrade CTA. Reads from
+            // PlanContext so the cap value tracks whatever plan the
+            // tenant is on (Solo=1, Studio=5, Salon=25).
+            active.length >= plan.staffSeatsLimit() ? (
+              <Link
+                href="/editor/billing?from=staff_limit"
+                className="flex items-center gap-1.5 bg-blush text-near-black border border-near-black px-3 py-1.5 text-2xs font-bold tracking-[0.06em] uppercase hover:opacity-90 transition-colors"
+              >
+                <Sparkles size={12} /> Upgrade to add more staff
+              </Link>
+            ) : (
+              <button
+                onClick={openCreate}
+                className="flex items-center gap-1.5 bg-near-black text-white px-3 py-1.5 text-2xs font-bold tracking-[0.06em] uppercase hover:opacity-90 transition-colors"
+              >
+                <UserPlus size={12} /> Add Staff Member
+              </button>
+            )
           }
         />
 
