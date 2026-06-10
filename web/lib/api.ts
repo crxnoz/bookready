@@ -1798,6 +1798,25 @@ export async function getEditorSmsUsage(): Promise<SmsUsageSnapshot> {
   return request<SmsUsageSnapshot>('/editor/sms/usage')
 }
 
+// ── Plan + feature snapshot (Phase 1 of plan gates) ────────────────────────
+//
+// Backend mirror: api/app/Services/PlanFeatures.php (single source of
+// truth for plan-tier gates). Powers the editor's PlanContext / usePlan()
+// hook, which any editor surface can consume to branch on the tenant's
+// plan. Read-only.
+
+export interface PlanFeaturesSnapshot {
+  plan:                 'solo' | 'studio' | 'salon' | string
+  plan_label:           string
+  staff_seats:          number
+  dashboard_surface:    'solo' | 'team'
+  allows_custom_domain: boolean
+}
+
+export async function getEditorPlanFeatures(): Promise<PlanFeaturesSnapshot> {
+  return request<PlanFeaturesSnapshot>('/editor/plan/features')
+}
+
 // ── Settings: Bookings ──────────────────────────────────────────────────────
 
 export async function getEditorBookingSettings(): Promise<BookingSettings> {

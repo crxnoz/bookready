@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { request } from '@/lib/api'
+import { getEditorPlanFeatures } from '@/lib/api'
 
 /**
  * Frontend mirror of the backend PlanFeatures snapshot.
@@ -70,7 +70,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    request<PlanSnapshot>('/editor/plan/features')
+    getEditorPlanFeatures()
       .then(d => { if (! cancelled) setPlan(d) })
       .catch(() => {
         // Network/auth error — keep loading=false so the editor renders
