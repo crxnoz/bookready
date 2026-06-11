@@ -298,8 +298,8 @@ export default function PrivacyPage() {
       </p>
       <ul>
         <li>
-          &ldquo;See, edit, share, and permanently delete all the calendars
-          you can access using Google Calendar&rdquo; — requested as the{' '}
+          &ldquo;See, create, change, and delete events on Google calendars
+          you own&rdquo; — requested as the{' '}
           <em>Calendar Events Owned</em> scope
           (<code>https://www.googleapis.com/auth/calendar.events.owned</code>).
           Used <em>only</em> to create, update, and delete the calendar
