@@ -94,6 +94,10 @@ class TemplateDefaults
                 'tiktok_button_url'       => null,
                 'facebook_button_url'     => null,
                 'message_button_url'      => null,
+                // Owner-defined extra header links. Each entry: {id, label,
+                // url}. Empty list default — deepMerge treats non-assoc
+                // arrays as values, so stored lists replace this wholesale.
+                'custom_links'            => [],
                 'announcement_text'       => 'Now booking for the season — limited weekend slots.',
                 'show_announcement'       => true,
                 'cover_image_url'         => null,
@@ -150,8 +154,12 @@ class TemplateDefaults
             // each section without changing the tab label (which doubles as
             // the eyebrow). Empty/null falls back to the template's hardcoded
             // default in JSX, so existing tenants render unchanged.
-            'gallery' => [ 'heading' => 'Gallery' ],
-            'results' => [ 'heading' => 'Before & After' ],
+            // 'layout' is the owner's opt-in grid-arrangement override for
+            // the section; null = the template's designed default. Template
+            // branches override these blocks key-by-key (never wholesale) so
+            // the layout default survives in every branch.
+            'gallery' => [ 'heading' => 'Gallery', 'layout' => null ],
+            'results' => [ 'heading' => 'Before & After', 'layout' => null ],
             'policy'  => [ 'heading' => 'House Rules' ],
             'additionals' => [
                 'show_thank_you'    => true,
@@ -505,8 +513,8 @@ class TemplateDefaults
                 ['title' => 'Arrive and exhale',    'body' => 'On the day, the room is set, the tools are warm, and we take it from there.'],
             ],
         ];
-        $base['gallery'] = [ 'heading' => 'Lookbook' ];
-        $base['results'] = [ 'heading' => 'Before & After' ];
+        $base['gallery']['heading'] = 'Lookbook';
+        $base['results']['heading'] = 'Before & After';
         $base['policy']  = [ 'heading' => 'The fine print' ];
         $base['additionals']['thank_you_eyebrow'] = 'With love';
         $base['additionals']['thank_you_title']   = 'Thank you, truly';
@@ -585,8 +593,8 @@ class TemplateDefaults
                 ['title' => 'Sit, and let us begin','body' => 'We take it from here — focused, unhurried, and entirely on you.'],
             ],
         ];
-        $base['gallery'] = [ 'heading' => 'Portfolio' ];
-        $base['results'] = [ 'heading' => 'Before & After' ];
+        $base['gallery']['heading'] = 'Portfolio';
+        $base['results']['heading'] = 'Before & After';
         $base['policy']  = [ 'heading' => 'House Notes' ];
         $base['additionals']['thank_you_eyebrow'] = 'A note';
         $base['additionals']['thank_you_title']   = 'Grazie';
@@ -660,8 +668,8 @@ class TemplateDefaults
                 ['title' => 'Session day',      'body' => 'We tape up, dial in the machine, and get to work. You set the pace for breaks. The line is steady, the studio is quiet.'],
             ],
         ];
-        $base['gallery'] = [ 'heading' => 'Flash + portfolio' ];
-        $base['results'] = [ 'heading' => 'Healed work' ];
+        $base['gallery']['heading'] = 'Flash + portfolio';
+        $base['results']['heading'] = 'Healed work';
         $base['policy']  = [ 'heading' => 'House rules' ];
         $base['additionals']['thank_you_eyebrow'] = 'A note';
         $base['additionals']['thank_you_title']   = 'Thank you';
@@ -740,8 +748,8 @@ class TemplateDefaults
                 ['title' => 'Results review',       'body' => 'After every treatment we walk through aftercare and book the follow-up. You leave with a written plan and a way to reach us if you have questions.'],
             ],
         ];
-        $base['gallery'] = [ 'heading' => 'Selected work' ];
-        $base['results'] = [ 'heading' => 'Results' ];
+        $base['gallery']['heading'] = 'Selected work';
+        $base['results']['heading'] = 'Results';
         $base['policy']  = [ 'heading' => 'Notes' ];
         $base['additionals']['thank_you_eyebrow'] = 'A note';
         $base['additionals']['thank_you_title']   = 'Thank you';

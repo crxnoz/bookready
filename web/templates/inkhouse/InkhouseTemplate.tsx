@@ -137,6 +137,15 @@ function CalendarGlyph({ size = 14 }: { size?: number }) {
     </svg>
   )
 }
+function LinkGlyph({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 17H7A5 5 0 0 1 7 7h2" />
+      <path d="M15 7h2a5 5 0 1 1 0 10h-2" />
+      <path d="M8 12h8" />
+    </svg>
+  )
+}
 
 interface Props {
   site: PublicSite
@@ -317,6 +326,7 @@ export default function InkhouseTemplate({ site, slug }: Props) {
             <GallerySection
               items={site.gallery}
               groups={site.gallery_groups}
+              layout={settings.gallery?.layout ?? null}
               heading={settings.gallery?.heading || 'Flash + portfolio'}
               eyebrow={tabs.gallery_label ?? 'Flash'}
               displayName={display}
@@ -368,6 +378,7 @@ export default function InkhouseTemplate({ site, slug }: Props) {
             <BeforeAfterSection
               items={site.results ?? site.before_after}
               groups={site.results_groups ?? site.before_after_groups}
+              layout={settings.results?.layout ?? null}
               heading={settings.results?.heading || 'Healed work'}
               eyebrow={tabs.results_label ?? 'Healed work'}
               separator="|"
@@ -517,7 +528,12 @@ function SocialButtons({ header, profile, goBook }: { header: any; profile: any;
     { key: 'directions', href: header.directions_button_url || null, label: 'Directions', icon: <DirectionsGlyph /> },
   ]
   const visible = btns.filter(b => header[`show_${b.key}_button`] !== false && b.href)
-  if (visible.length === 0) return null
+  // Owner-defined custom links render after the platform buttons in the same
+  // neutral bordered chrome. Allowlist https/http/mailto/tel only.
+  const customLinks: { id: string; label: string; url: string }[] =
+    (Array.isArray(header.custom_links) ? header.custom_links : [])
+      .filter((l: any) => l && typeof l.url === 'string' && typeof l.label === 'string' && l.label.trim() && /^(https?:\/\/|mailto:|tel:)/i.test(l.url))
+  if (visible.length === 0 && customLinks.length === 0) return null
   return (
     <nav className="inkhouse-social" aria-label="Contact">
       {visible.map(b => {
@@ -537,6 +553,21 @@ function SocialButtons({ header, profile, goBook }: { header: any; profile: any;
           >
             <span className="inkhouse-social-ico" aria-hidden="true">{b.icon}</span>
             {b.label}
+          </a>
+        )
+      })}
+      {customLinks.map(l => {
+        const isWeb = /^https?:/i.test(l.url)
+        return (
+          <a
+            key={l.id}
+            href={safeHref(l.url)}
+            target={isWeb ? '_blank' : undefined}
+            rel={isWeb ? 'noopener noreferrer' : undefined}
+            className="inkhouse-social-btn inkhouse-social-btn--custom"
+          >
+            <span className="inkhouse-social-ico" aria-hidden="true"><LinkGlyph /></span>
+            {l.label}
           </a>
         )
       })}

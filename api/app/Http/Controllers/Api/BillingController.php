@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
+use App\Models\TenantSubscription;
 use App\Support\TemplateDefaults;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Laravel\Cashier\Cashier;
 
@@ -100,7 +102,9 @@ class BillingController extends Controller
             $priceId = $priceMap[$cycle] ?? null;
         }
 
-        if (! $priceId) {
+        // The bypass path (below) never touches Stripe, so it must not be
+        // blocked by a missing/unreachable price either.
+        if (! $priceId && ! $this->bypassCheckoutActive()) {
             return response()->json([
                 'message' => "No Stripe price configured for plan='{$plan}' cycle='{$cycle}' mult='{$mult}'.",
             ], 500);
@@ -119,6 +123,16 @@ class BillingController extends Controller
         $frontendUrl = rtrim(env('FRONTEND_URL', 'http://app.daysbookings.site'), '/');
         $successUrl  = "{$frontendUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}";
         $cancelUrl   = "{$frontendUrl}/checkout?cancelled=1";
+
+        // Staging-only bypass — grant the plan without Stripe Checkout.
+        // Gated on BILLING_BYPASS_CHECKOUT AND a hard non-production
+        // check inside bypassCheckoutActive(), so the flag leaking into
+        // the prod .env can never skip payment for a real tenant.
+        if ($this->bypassCheckoutActive()) {
+            return $this->grantBypassSubscription(
+                $request, $tenant, $plan, $cycle, $priceId, $data['template_slug'], $frontendUrl, trial: false,
+            );
+        }
 
         $session = $tenant->newSubscription('default', $priceId)
             ->checkout([
@@ -198,7 +212,9 @@ class BillingController extends Controller
             ]);
         }
 
-        if (! $priceId) {
+        // Same bypass carve-out as checkout() — no Stripe price needed
+        // when the staging bypass grants the trial directly.
+        if (! $priceId && ! $this->bypassCheckoutActive()) {
             return response()->json([
                 'message' => "No Stripe price configured for plan='{$plan}' cycle='{$cycle}' mult='{$mult}'.",
             ], 500);
@@ -217,6 +233,14 @@ class BillingController extends Controller
         $frontendUrl = rtrim(env('FRONTEND_URL', 'https://app.bkrdy.me'), '/');
         $successUrl  = "{$frontendUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}&trial=1";
         $cancelUrl   = "{$frontendUrl}/checkout/trial?cancelled=1";
+
+        // Staging-only bypass — same short-circuit as checkout(), landing
+        // in the trialing state instead of active.
+        if ($this->bypassCheckoutActive()) {
+            return $this->grantBypassSubscription(
+                $request, $tenant, $plan, $cycle, $priceId, $data['template_slug'], $frontendUrl, trial: true,
+            );
+        }
 
         // Cashier's trialDays() on the subscription builder threads
         // trial_period_days through to the Stripe Checkout session.
@@ -258,6 +282,18 @@ class BillingController extends Controller
         if (\Illuminate\Support\Facades\Schema::hasColumn('tenants', 'subscription_state')) {
             $tenant->subscription_state = Tenant::STATE_TRIALING;
             $tenant->trial_ends_at      = now()->addDays($trialDays);
+            $tenant->save();
+        }
+
+        // Plan gates — stamp the intended tier optimistically too,
+        // mirroring WebhookController::setTenantPlan (validated slug +
+        // schema guard). Without this a Studio or Salon trial signup
+        // stays gated as Solo until the checkout webhook lands, and
+        // never gets stamped at all if the owner bails on Stripe's
+        // card-capture page.
+        if (\Illuminate\Support\Facades\Schema::hasColumn('tenants', 'plan')
+            && array_key_exists($plan, (array) config('plans.plans', []))) {
+            $tenant->plan = $plan;
             $tenant->save();
         }
 
@@ -328,6 +364,22 @@ class BillingController extends Controller
      */
     public function checkoutSession(Request $request, string $sessionId): JsonResponse
     {
+        // Staging bypass — cs_bypass_* sessions never existed on Stripe.
+        // Fake the completed shape the success page reads (same keys as
+        // the real return below). Gated on the same flag + non-production
+        // guard as the grant itself; in production a fake id falls through
+        // to the real Stripe lookup, which 404s it.
+        if (str_starts_with($sessionId, 'cs_bypass_') && $this->bypassCheckoutActive()) {
+            $tenantId = (string) ($request->user()->tenant_id ?? '');
+            return response()->json([
+                'id'             => $sessionId,
+                'status'         => 'complete',
+                'payment_status' => 'paid',
+                'customer'       => 'cus_bypass_' . $tenantId,
+                'subscription'   => 'sub_bypass_' . $tenantId,
+            ]);
+        }
+
         $stripe = Cashier::stripe();
 
         try {
@@ -547,6 +599,12 @@ class BillingController extends Controller
             return response()->json(['message' => 'No active workspace for this account.'], 400);
         }
 
+        // Staging bypass — sub_bypass_* ids don't exist on Stripe; skip
+        // the update call and return the normal success shape.
+        if ($this->isBypassSubscription($tenant)) {
+            return $this->subscription($request);
+        }
+
         $stripeSub = $this->findStripeSubscription($tenant);
         if (! $stripeSub || ! in_array($stripeSub->status, ['active', 'trialing', 'past_due'], true)) {
             return response()->json(['message' => 'No active subscription.'], 422);
@@ -573,6 +631,12 @@ class BillingController extends Controller
         $tenant = $this->resolveTenant($request);
         if (! $tenant) {
             return response()->json(['message' => 'No active workspace for this account.'], 400);
+        }
+
+        // Staging bypass — sub_bypass_* ids don't exist on Stripe; skip
+        // the update call and return the normal success shape.
+        if ($this->isBypassSubscription($tenant)) {
+            return $this->subscription($request);
         }
 
         $stripeSub = $this->findStripeSubscription($tenant);
@@ -604,6 +668,12 @@ class BillingController extends Controller
             return response()->json(['message' => 'No active workspace for this account.'], 400);
         }
 
+        // Staging bypass — sub_bypass_* ids don't exist on Stripe; skip
+        // the update call and return the normal success shape.
+        if ($this->isBypassSubscription($tenant)) {
+            return $this->subscription($request);
+        }
+
         $stripeSub = $this->findStripeSubscription($tenant);
         if (! $stripeSub || ! in_array($stripeSub->status, ['active', 'trialing', 'past_due'], true)) {
             return response()->json(['message' => 'No active subscription.'], 422);
@@ -632,6 +702,12 @@ class BillingController extends Controller
             return response()->json(['message' => 'No active workspace for this account.'], 400);
         }
 
+        // Staging bypass — sub_bypass_* ids don't exist on Stripe; skip
+        // the update call and return the normal success shape.
+        if ($this->isBypassSubscription($tenant)) {
+            return $this->subscription($request);
+        }
+
         $stripeSub = $this->findStripeSubscription($tenant);
         if (! $stripeSub) {
             return response()->json(['message' => 'No active subscription.'], 422);
@@ -646,5 +722,114 @@ class BillingController extends Controller
         }
 
         return $this->subscription($request);
+    }
+
+    // ── Staging checkout bypass ─────────────────────────────────────────────
+
+    /**
+     * True when the staging checkout bypass is on. Two gates, both
+     * required: the BILLING_BYPASS_CHECKOUT env flag (config/services.php
+     * 'billing.bypass_checkout') AND a hard non-production check, so the
+     * flag leaking into the prod .env can never skip payment.
+     */
+    private function bypassCheckoutActive(): bool
+    {
+        return (bool) config('services.billing.bypass_checkout')
+            && ! app()->environment('production');
+    }
+
+    /**
+     * True when this tenant's subscription was granted by the bypass
+     * (fake sub_bypass_* id). The lifecycle endpoints skip the Stripe
+     * call entirely for these so staging testing never 500s on an id
+     * Stripe has never heard of.
+     */
+    private function isBypassSubscription(Tenant $tenant): bool
+    {
+        if (! $this->bypassCheckoutActive()) {
+            return false;
+        }
+
+        $stored = TenantSubscription::where('tenant_id', $tenant->id)->value('stripe_subscription_id');
+
+        return is_string($stored) && str_starts_with($stored, 'sub_bypass_');
+    }
+
+    /**
+     * Grant a plan without Stripe (staging bypass). Mirrors the exact
+     * writes WebhookController performs after a real checkout —
+     * handleCheckoutSessionCompleted's tenant_subscriptions upsert keyed
+     * by tenant_id, setTenantPlan's validated tenants.plan stamp, and
+     * setTenantState's subscription_state flip — with fake Stripe ids
+     * (cus_bypass_/sub_bypass_/cs_bypass_) so nothing here ever
+     * round-trips to Stripe. Returns the same {checkout_url} shape as
+     * the real endpoints; the success page resolves the fake session id
+     * via the cs_bypass_ branch in checkoutSession().
+     */
+    private function grantBypassSubscription(
+        Request $request,
+        Tenant $tenant,
+        ?string $plan,
+        string $cycle,
+        ?string $priceId,
+        ?string $templateSlug,
+        string $frontendUrl,
+        bool $trial,
+    ): JsonResponse {
+        // Validate the slug against the catalog (mirrors setTenantPlan);
+        // fall back to solo so the gates always land on a real tier.
+        if (! is_string($plan) || ! array_key_exists($plan, (array) config('plans.plans', []))) {
+            $plan = 'solo';
+        }
+
+        Log::warning('Billing: BYPASS_CHECKOUT active - granting plan without payment', [
+            'tenant_id' => $tenant->id,
+            'plan'      => $plan,
+            'cycle'     => $cycle,
+            'price'     => $priceId,
+            'trial'     => $trial,
+        ]);
+
+        $trialDays = (int) config('plans.trial_days', 14);
+        $sessionId = 'cs_bypass_' . time();
+
+        TenantSubscription::updateOrCreate(
+            ['tenant_id' => $tenant->id],
+            [
+                'user_id'                    => $request->user()->id,
+                'stripe_customer_id'         => 'cus_bypass_' . $tenant->id,
+                'stripe_subscription_id'     => 'sub_bypass_' . $tenant->id,
+                'stripe_checkout_session_id' => $sessionId,
+                'billing_cycle'              => $cycle,
+                'template_slug'              => $templateSlug,
+                'status'                     => $trial ? 'trialing' : 'active',
+                'current_period_ends_at'     => $trial ? now()->addDays($trialDays) : now()->addDays(30),
+            ]
+        );
+
+        // Schema guards mirror the webhook's so a staging deploy caught
+        // mid-migration can't crash here.
+        if (Schema::hasColumn('tenants', 'plan')) {
+            Tenant::where('id', $tenant->id)->update(['plan' => $plan]);
+        }
+        if (Schema::hasColumn('tenants', 'subscription_state')) {
+            Tenant::where('id', $tenant->id)->update([
+                'subscription_state' => $trial ? Tenant::STATE_TRIALING : Tenant::STATE_ACTIVE,
+                'trial_ends_at'      => $trial ? now()->addDays($trialDays) : null,
+            ]);
+        }
+        // Trial flow also stamps the acknowledgement the post-login
+        // redirect checks, same as the real startTrial path.
+        if ($trial && Schema::hasColumn('tenants', 'trial_acknowledged_at')) {
+            Tenant::where('id', $tenant->id)->update(['trial_acknowledged_at' => now()]);
+        }
+
+        $suffix   = $trial ? '&trial=1&bypass=1' : '&bypass=1';
+        $response = ['checkout_url' => "{$frontendUrl}/checkout/success?session_id={$sessionId}{$suffix}"];
+        if ($trial) {
+            $response['trial_ends_at'] = now()->addDays($trialDays)->toIso8601String();
+        }
+
+        return response()->json($response);
     }
 }

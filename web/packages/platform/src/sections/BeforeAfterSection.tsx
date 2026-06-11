@@ -1,6 +1,9 @@
 'use client'
 
+import { Maximize2 } from 'lucide-react'
 import { useState } from 'react'
+
+import { LightboxOverlay, type LightboxItem } from './LightboxOverlay'
 
 /**
  * BeforeAfterSection — shared, theme-tokenized results diptych.
@@ -16,8 +19,15 @@ import { useState } from 'react'
  * tap (or keyboard activation) reveals it; tap again to hide. Templates skin
  * via `.brk-ba*` and may tune blur intensity via `.brk-ba-reveal img filter`.
  *
+ * Tapping the before pane opens LightboxOverlay; a revealed after pane gains
+ * a corner expand chip that does the same. A pair's lightbox set is
+ * [before, after] so prev/next flips between the two shots. An editor-picked
+ * `layout` ('2x1' side by side at every breakpoint | '1x2' stacked) forces
+ * the pair columns over both the responsive default and any template skin
+ * (triple-class override in SECTIONS_CSS); null keeps today's behavior.
+ *
  * Returns null when there are no items, unless an `emptyText` is given.
- * Client component (the reveal state is per-item).
+ * Client component (the reveal + lightbox state is per-item).
  */
 export interface BeforeAfterItem {
   id: number
@@ -47,6 +57,10 @@ export interface BeforeAfterSectionProps {
   separator?: string
   /** Show the corner "Before"/"After" caption tags. */
   labels?: boolean
+  /** Forced pair columns from the editor's layout picker: '2x1' keeps the
+   *  panes side by side at every breakpoint (separator visible), '1x2'
+   *  stacks them (separator hidden). null keeps today's behavior. */
+  layout?: '2x1' | '1x2' | null
   /** Placeholder shown (with the header) when there are no items. */
   emptyText?: string
   ariaLabel?: string
@@ -65,6 +79,7 @@ export function BeforeAfterSection({
   eyebrow = 'Results',
   separator,
   labels = true,
+  layout,
   emptyText,
   ariaLabel,
 }: BeforeAfterSectionProps) {
@@ -76,6 +91,17 @@ export function BeforeAfterSection({
       const next = new Set(prev)
       if (next.has(id)) next.delete(id); else next.add(id)
       return next
+    })
+  // Lightbox state — a pair opens as [before, after] so prev/next flips
+  // between the two shots.
+  const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null)
+  const openLightbox = (it: BeforeAfterItem, index: number) =>
+    setLightbox({
+      items: [
+        { url: it.before_image_url, alt: it.before_alt_text ?? it.title ?? 'Before' },
+        { url: it.after_image_url, alt: it.after_alt_text ?? it.title ?? 'After' },
+      ],
+      index,
     })
   const all = (items ?? []).filter(
     it => (it.before_image_url ?? '').trim() && (it.after_image_url ?? '').trim(),
@@ -123,16 +149,29 @@ export function BeforeAfterSection({
             <div className="brk-ba-stack">
               {bucket.items.map(it => (
                 <article key={it.id} className="brk-ba">
-                  <div className="brk-ba-pair">
+                  <div className={`brk-ba-pair${layout ? ` brk-ba-pair--${layout}` : ''}`}>
                     <figure className="brk-ba-pane brk-ba-before">
                       {labels && <figcaption className="brk-ba-label">Before</figcaption>}
-                      <img
-                        src={it.before_image_url}
-                        alt={it.before_alt_text ?? it.title ?? 'Before'}
-                        loading="lazy"
-                      />
+                      <button
+                        type="button"
+                        className="brk-gallery-zoom"
+                        aria-label="View before image fullscreen"
+                        onClick={() => openLightbox(it, 0)}
+                      >
+                        <img
+                          src={it.before_image_url}
+                          alt={it.before_alt_text ?? it.title ?? 'Before'}
+                          loading="lazy"
+                        />
+                      </button>
                     </figure>
-                    {separator && <span className="brk-ba-sep" aria-hidden="true">{separator}</span>}
+                    {/* With layout '2x1' the sep span must exist even when no
+                        glyph was given — it occupies the center `auto` track
+                        so the after pane lands in the third column. An empty
+                        span collapses to zero width. */}
+                    {(separator || layout === '2x1') && (
+                      <span className="brk-ba-sep" aria-hidden="true">{separator}</span>
+                    )}
                     <figure className="brk-ba-pane brk-ba-after">
                       {labels && <figcaption className="brk-ba-label">After</figcaption>}
                       <button
@@ -149,6 +188,16 @@ export function BeforeAfterSection({
                         />
                         <span className="brk-ba-reveal-hint" aria-hidden="true">Tap to reveal</span>
                       </button>
+                      {revealed.has(it.id) && (
+                        <button
+                          type="button"
+                          className="brk-ba-expand"
+                          aria-label="View after image fullscreen"
+                          onClick={() => openLightbox(it, 1)}
+                        >
+                          <Maximize2 size={14} aria-hidden="true" />
+                        </button>
+                      )}
                     </figure>
                   </div>
                   {(it.caption ?? '').trim() && <p className="brk-ba-caption">{it.caption}</p>}
@@ -157,6 +206,13 @@ export function BeforeAfterSection({
             </div>
           </div>
         ))
+      )}
+      {lightbox && (
+        <LightboxOverlay
+          items={lightbox.items}
+          startIndex={lightbox.index}
+          onClose={() => setLightbox(null)}
+        />
       )}
     </section>
   )

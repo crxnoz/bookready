@@ -6,17 +6,19 @@ import type { TemplateManifest } from '@bkrdy/platform'
  * For brides, makeup artists, lash artists who serve brides, hair-for-events
  * stylists, and boutique studios in the wedding + special-occasion lane.
  * Vibe: airy editorial-feminine — Playfair italic over pink canvases, a
- * single champagne-gold accent that never moves, scalloped hairlines, and
+ * warm metallic-to-wine accent tuned per canvas, scalloped hairlines, and
  * a Pinyon Script flourish at the moments that matter (signature lines).
  *
  * color_role: 'background' — the palette swatches paint the canvas (Blush,
- * Rose Quartz, Peach, Mauve, Dusty Rose, Cream); the champagne accent
- * (#C9A876) stays constant across variants. The editor labels the picker
- * "Background variant" for this template.
+ * Rose Quartz, Peach, Mauve, Dusty Rose, Cream); each variant pairs the
+ * canvas with its own accent — champagne gold (#C9A876) on the light
+ * canvases (Blush, Cream), deepened wine/copper tones (deep wine, burnt
+ * copper, oxblood, claret) on the darker pinks where gold loses contrast.
+ * The editor labels the picker "Background variant" for this template.
  *
  * Differentiation from Opaline (the other editorial-feminine option):
  *   - Opaline keeps the cream canvas constant and swaps the accent.
- *     Pétale swaps the canvas and keeps the gold constant.
+ *     Pétale swaps the canvas, with the accent following the canvas.
  *   - Opaline reads as restrained marble-pearl. Pétale reads as
  *     romantic-wedding-paper.
  *   - Opaline = Cormorant + Jost. Pétale = Playfair Display + Inter +

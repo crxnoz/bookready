@@ -34,6 +34,16 @@ return [
         'test_site_key' => '1x00000000000000000000AA',
     ],
 
+    // Staging-only checkout bypass. When true, BillingController grants
+    // the selected plan without going through Stripe Checkout so QA can
+    // exercise the plan gates end-to-end without a card. The controller
+    // additionally hard-refuses to bypass in production regardless of
+    // this flag (see BillingController::bypassCheckoutActive). Never set
+    // BILLING_BYPASS_CHECKOUT in the production .env.
+    'billing' => [
+        'bypass_checkout' => filter_var(env('BILLING_BYPASS_CHECKOUT', false), FILTER_VALIDATE_BOOLEAN),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

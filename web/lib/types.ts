@@ -1313,6 +1313,15 @@ export interface AuthResponse {
 
 // ── Website / Template system ────────────────────────────────────────────────
 
+/** Owner-defined header link. Renders as a button in the site header next
+ *  to the social buttons. `id` is a client-generated UUID used as the
+ *  stable React key while the owner edits the list. */
+export interface TemplateHeaderCustomLink {
+  id: string
+  label: string
+  url: string
+}
+
 export interface TemplateHeaderSettings {
   /** @deprecated tagline now lives on the business profile */
   tagline?: string
@@ -1343,6 +1352,8 @@ export interface TemplateHeaderSettings {
   show_announcement?: boolean
   cover_image_url?: string | null
   avatar_image_url?: string | null
+  /** Owner-defined header buttons (max 8), shown next to the social buttons. */
+  custom_links?: TemplateHeaderCustomLink[]
 }
 
 export interface TemplateTabLabels {
@@ -1445,8 +1456,18 @@ export interface TemplateAdditionalsSettings {
  * doubles as the small eyebrow above it). Empty/null in any field
  * falls back to the template's default heading.
  */
-export interface TemplateGallerySettings  { heading?: string | null }
-export interface TemplateResultsSettings  { heading?: string | null }
+export interface TemplateGallerySettings  {
+  heading?: string | null
+  /** Grid override for every gallery group. Null = follow the template's
+   * own layout; '1x6' | '2x3' | '3x2' force columns x rows. */
+  layout?: '1x6' | '2x3' | '3x2' | null
+}
+export interface TemplateResultsSettings  {
+  heading?: string | null
+  /** Pair layout override. Null = follow the template; '2x1' = side by
+   * side, '1x2' = stacked. */
+  layout?: '2x1' | '1x2' | null
+}
 export interface TemplatePolicySettings   { heading?: string | null }
 
 export interface TemplateThemeSettings {

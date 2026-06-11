@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Phone, Mail, Instagram, MapPin, MessageSquare, Youtube, Facebook } from 'lucide-react'
+import { Phone, Mail, Instagram, MapPin, MessageSquare, Youtube, Facebook, Link2 } from 'lucide-react'
 import VelvetTheoryBooking from './VelvetTheoryBooking'
 import type { PublicSite, Service } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
@@ -358,6 +358,18 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
                   <li><a href={href} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><WhatsAppGlyph size={18} /></a></li>
                 ) : null
               })()}
+              {(header.custom_links ?? []).map(link => {
+                const href = safeHref(link.url)
+                if (!href || !/^(https?:\/\/|mailto:|tel:)/i.test(href)) return null
+                const isWeb = /^https?:/i.test(href)
+                return (
+                  <li key={link.id}>
+                    <a href={href} target={isWeb ? '_blank' : undefined} rel={isWeb ? 'noopener noreferrer' : undefined} aria-label={link.label} title={link.label}>
+                      <Link2 size={18} />
+                    </a>
+                  </li>
+                )
+              })}
             </ul>
           </div>
         </section>
@@ -427,7 +439,8 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
             heading={settings.gallery?.heading || 'Work, on file.'}
             eyebrow={tabLabels.gallery_label}
             displayName={displayName}
-            variant="strips"
+            variant={settings.gallery?.layout ? 'grid' : 'strips'}
+            layout={settings.gallery?.layout ?? null}
             emptyText="No work on file yet."
             ariaLabel={tabLabels.gallery_label}
           />
@@ -475,6 +488,7 @@ export default function VelvetTheoryTemplate({ site, slug }: { site: PublicSite;
             heading={settings.results?.heading || 'Then, and now.'}
             eyebrow={tabLabels.results_label}
             labels
+            layout={settings.results?.layout ?? null}
             emptyText="No transformations on file yet."
             ariaLabel={tabLabels.results_label}
           />
@@ -890,6 +904,7 @@ const VT_CSS = `
   gap: 8px;
   padding: 0 24px;
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }

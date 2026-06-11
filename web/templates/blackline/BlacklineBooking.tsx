@@ -262,4 +262,19 @@ const BLACKLINE_BOOKING_CSS = `
   border-color: var(--blackline-accent) !important;
   background: rgba(184,150,107,0.10) !important;
 }
+
+/* Staff picker tiles — the engine paints these with inline white-card
+   styles, so force onyx vocabulary (the !important beats inline):
+   transparent base with brass hairline; selected = brass border + soft
+   brass fill, matching the slot/service selected treatment above. */
+.blackline-booking-inner.lush-template .brk-booking-staff-pick {
+  background: transparent !important;
+  border-color: rgba(184,150,107,0.28) !important;
+  color: var(--blackline-fg) !important;
+}
+.blackline-booking-inner.lush-template .brk-booking-staff-pick.is-selected {
+  background: rgba(184,150,107,0.10) !important;
+  border-color: var(--blackline-accent) !important;
+  color: var(--blackline-fg) !important;
+}
 `

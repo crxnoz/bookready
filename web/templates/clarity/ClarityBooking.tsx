@@ -273,7 +273,8 @@ const CLARITY_BOOKING_CSS = `
 .clarity-booking-inner.lush-template [class*="brk-booking-slot"][class*="selected"],
 .clarity-booking-inner.lush-template [class*="brk-booking-slot"][class*="active"],
 .clarity-booking-inner.lush-template .brk-booking-service-card[class*="selected"],
-.clarity-booking-inner.lush-template .brk-booking-addon[class*="selected"] {
+.clarity-booking-inner.lush-template .brk-booking-addon[class*="selected"],
+.clarity-booking-inner.lush-template .brk-booking-staff-pick.is-selected {
   border-color: var(--clarity-accent) !important;
   background: color-mix(in srgb, var(--clarity-accent) 10%, var(--clarity-surface)) !important;
 }

@@ -140,6 +140,17 @@ function EmailGlyph({ size = 14 }: { size?: number }) {
     </svg>
   )
 }
+function LinkGlyph({ size = 14 }: { size?: number }) {
+  // Lucide Link2 geometry, redrawn at Bottega's 1.8 stroke — for owner-defined
+  // custom hero links.
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 17H7A5 5 0 0 1 7 7h2" />
+      <path d="M15 7h2a5 5 0 1 1 0 10h-2" />
+      <line x1="8" y1="12" x2="16" y2="12" />
+    </svg>
+  )
+}
 
 interface Props {
   site: PublicSite
@@ -211,19 +222,19 @@ export default function BottegaTemplate({ site, slug }: Props) {
   // reads (ceramic / marble at .88-.90 → ~10% so dense color reads as
   // backdrop; floral linework at .50 → ~50% since the source is mostly
   // white space and would otherwise vanish), and the tile dimensions.
-  // Each pattern has its own per-asset overlay tuning. Dense-color sources
-  // (ceramic, marble) take a high opacity (.88-.92, pattern shows at
-  // ~8-12%) so they read as backdrop; white-backed linework sources
-  // (flowers, leaves) take a lower opacity (.50-.55, pattern shows at
-  // ~45-50%) because they'd otherwise dissolve into the cream canvas;
-  // the mid-density oceanic motif lands between. Tile sizes are picked
+  // Each pattern has its own per-asset overlay tuning. Most sources take a
+  // high opacity (.88-.95, pattern shows at ~5-12%) so they read as
+  // backdrop — including the busy leaves and oceanic motifs, which got too
+  // loud at lower values; only the white-backed floral linework (flowers)
+  // takes a low opacity (.50, pattern shows at ~50%) because it would
+  // otherwise dissolve into the cream canvas. Tile sizes are picked
   // per artwork's natural aspect.
   const PATTERNS: Record<string, { url: string; overlay: number; tileW: string; tileH: string }> = {
     ceramic:  { url: '/templates/bottega/ceramic.jpeg',        overlay: 0.95, tileW: '720px', tileH: 'auto' },
     flowers:  { url: '/templates/bottega/flowers.png',         overlay: 0.50, tileW: '720px', tileH: 'auto' },
-    leaves:   { url: '/templates/bottega/leaves.jpeg',         overlay: 0.72, tileW: '600px', tileH: 'auto' },
+    leaves:   { url: '/templates/bottega/leaves.jpeg',         overlay: 0.88, tileW: '600px', tileH: 'auto' },
     marble:   { url: '/templates/bottega/marble.jpeg',         overlay: 0.88, tileW: '900px', tileH: 'auto' },
-    oceanic:  { url: '/templates/bottega/oceanic-pattern.jpg', overlay: 0.86, tileW: '700px', tileH: 'auto' },
+    oceanic:  { url: '/templates/bottega/oceanic-pattern.jpg', overlay: 0.94, tileW: '700px', tileH: 'auto' },
   }
   const patternKey = (settings?.theme?.pattern_motif as string) || 'ceramic'
   const pattern = PATTERNS[patternKey] ?? PATTERNS.ceramic
@@ -388,6 +399,7 @@ export default function BottegaTemplate({ site, slug }: Props) {
             <GallerySection
               items={site.gallery}
               groups={site.gallery_groups}
+              layout={settings.gallery?.layout ?? null}
               heading={settings.gallery?.heading || 'Portfolio'}
               eyebrow={tabs.gallery_label ?? 'Portfolio'}
               displayName={display}
@@ -404,6 +416,7 @@ export default function BottegaTemplate({ site, slug }: Props) {
             <BeforeAfterSection
               items={site.results ?? site.before_after}
               groups={site.results_groups ?? site.before_after_groups}
+              layout={settings.results?.layout ?? null}
               heading={settings.results?.heading || 'Before & After'}
               eyebrow={tabs.results_label ?? 'Before & After'}
               separator="·"
@@ -607,7 +620,9 @@ function SocialButtons({ header, profile, goBook }: { header: any; profile: any;
     { key: 'directions', href: header.directions_button_url || null, label: 'Directions', icon: <DirectionsGlyph /> },
   ]
   const visible = btns.filter(b => header[`show_${b.key}_button`] !== false && b.href)
-  if (visible.length === 0) return null
+  const customLinks: any[] = (Array.isArray(header.custom_links) ? header.custom_links : [])
+    .filter((l: any) => typeof l?.url === 'string' && /^(https?:\/\/|mailto:|tel:)/i.test(l.url))
+  if (visible.length === 0 && customLinks.length === 0) return null
   return (
     <nav className="bottega-social" aria-label="Contact">
       {visible.map(b => {
@@ -629,6 +644,22 @@ function SocialButtons({ header, profile, goBook }: { header: any; profile: any;
             title={b.label}
           >
             {isPrimary ? b.label : (b.icon && <span className="bottega-social-ico" aria-hidden="true">{b.icon}</span>)}
+          </a>
+        )
+      })}
+      {customLinks.map((l: any) => {
+        const isWeb = /^https?:/i.test(l.url)
+        return (
+          <a
+            key={`custom-${l.id}`}
+            href={safeHref(l.url)}
+            target={isWeb ? '_blank' : undefined}
+            rel={isWeb ? 'noopener noreferrer' : undefined}
+            className="bottega-social-btn bottega-social-btn--custom"
+            aria-label={l.label}
+            title={l.label}
+          >
+            <span className="bottega-social-ico" aria-hidden="true"><LinkGlyph /></span>
           </a>
         )
       })}
@@ -1143,12 +1174,23 @@ const BOTTEGA_CSS = `
   font-family: var(--bottega-display);
 }
 
-/* Reviews — italic blockquote, accent terrazzo cluster as the rating dots,
-   transparent fill + visible accent border (no surface card, the pattern
-   shows through). */
+/* Reviews — frosted-glass panel over the terrazzo. The whole section gets
+   a translucent cream surface with a backdrop blur so the pattern reads
+   through softly; each card sits on a lighter white glass pane. The shared
+   .brk-section shell already provides container padding, so only the glass
+   surface lives here. */
+.bottega-template .brk-reviews-section {
+  background: rgba(251, 248, 241, 0.55);
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+          backdrop-filter: blur(14px) saturate(1.05);
+  border: 1px solid var(--bottega-rule);
+  box-shadow: 0 8px 40px rgba(42, 31, 24, 0.06);
+}
 .bottega-template .brk-review {
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--bottega-accent) 55%, transparent);
+  background: rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  -webkit-backdrop-filter: blur(6px);
+          backdrop-filter: blur(6px);
 }
 .bottega-template .brk-review blockquote {
   font-family: var(--bottega-display);
@@ -1179,7 +1221,7 @@ const BOTTEGA_CSS = `
 
 /* Surface cards on the OTHER shared sections — FAQ etc keep the soft
    cream fill so they read against the terrazzo. Reviews override above
-   forces transparent + border (no fill). */
+   uses the lighter white glass pane instead. */
 .bottega-template .brk-card {
   background: rgba(251,248,241,0.85);
 }

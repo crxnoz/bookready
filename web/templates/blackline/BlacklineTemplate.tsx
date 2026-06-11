@@ -237,6 +237,7 @@ export default function BlacklineTemplate({ site, slug }: Props) {
               eyebrow={tabLabel.gallery}
               displayName={display}
               variant="grid"
+              layout={settings.gallery?.layout ?? null}
               emptyText="No gallery items yet."
               ariaLabel={tabs.gallery_label ?? 'Gallery'}
             />
@@ -256,6 +257,7 @@ export default function BlacklineTemplate({ site, slug }: Props) {
               groups={site.results_groups ?? site.before_after_groups}
               heading={settings.results?.heading || (tabs.results_label ?? 'Results')}
               eyebrow={tabLabel.results}
+              layout={settings.results?.layout ?? null}
               emptyText="No results yet."
               ariaLabel={tabs.results_label ?? 'Results'}
             />
@@ -448,7 +450,14 @@ function SocialButtons({ header, profile, goBook }: { header: any; profile: any;
     { key: 'directions', href: header.directions_button_url || null, label: 'Directions' },
   ]
   const visible = btns.filter(b => header[`show_${b.key}_button`] !== false && b.href)
-  if (visible.length === 0) return null
+  // Owner-defined custom links (settings.header.custom_links, max 8). Schemes
+  // are validated server-side; re-check the allowlist at render so a stale
+  // payload can never emit an unsafe href. http(s) opens a new tab,
+  // tel:/mailto: stay in-page. Same neutral brass-hairline chrome as the
+  // platform buttons (the rail is label-only, no icons).
+  const customLinks: any[] = (Array.isArray(header.custom_links) ? header.custom_links : [])
+    .filter((l: any) => l && l.label && typeof l.url === 'string' && /^(https?:\/\/|mailto:|tel:)/i.test(l.url.trim()))
+  if (visible.length === 0 && customLinks.length === 0) return null
   return (
     <nav className="blackline-social" aria-label="Contact">
       {visible.map(b => {
@@ -462,6 +471,21 @@ function SocialButtons({ header, profile, goBook }: { header: any; profile: any;
         return (
           <a key={b.key} href={safeHref(b.href!)} className="blackline-social-btn" onClick={onClick}>
             {b.label}
+          </a>
+        )
+      })}
+      {customLinks.map((l: any) => {
+        const url = l.url.trim()
+        const external = /^https?:\/\//i.test(url)
+        return (
+          <a
+            key={`custom-${l.id ?? url}`}
+            href={safeHref(url)}
+            className="blackline-social-btn"
+            target={external ? '_blank' : undefined}
+            rel={external ? 'noopener noreferrer' : undefined}
+          >
+            {l.label}
           </a>
         )
       })}

@@ -281,7 +281,8 @@ const PETALE_BOOKING_FRAME_CSS = `
 .petale-booking-inner.lush-template [class*="brk-booking-slot"][class*="active"],
 .petale-booking-inner.lush-template [class*="brk-booking-slot"][class*="selected"],
 .petale-booking-inner.lush-template [class*="brk-booking-service"][class*="active"],
-.petale-booking-inner.lush-template [class*="brk-booking-service"][class*="selected"] {
+.petale-booking-inner.lush-template [class*="brk-booking-service"][class*="selected"],
+.petale-booking-inner.lush-template .brk-booking-staff-pick.is-selected {
   border-color: var(--petale-accent) !important;
   background: rgba(201,168,118,0.12) !important;
 }

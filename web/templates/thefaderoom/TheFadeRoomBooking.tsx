@@ -319,7 +319,8 @@ const TFR_BOOKING_CSS = `
 .tfr-booking-inner.lush-template [class*="brk-booking-slot"][class*="active"],
 .tfr-booking-inner.lush-template [class*="brk-booking-slot"][class*="selected"],
 .tfr-booking-inner.lush-template [class*="brk-booking-service"][class*="active"],
-.tfr-booking-inner.lush-template [class*="brk-booking-service"][class*="selected"] {
+.tfr-booking-inner.lush-template [class*="brk-booking-service"][class*="selected"],
+.tfr-booking-inner.lush-template .brk-booking-staff-pick.is-selected {
   border-color: var(--tfr-accent) !important;
   background: color-mix(in srgb, var(--tfr-accent) 10%, var(--tfr-card)) !important;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--tfr-accent) 22%, transparent) !important;

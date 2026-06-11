@@ -25,6 +25,7 @@ export type EditorSectionKey =
   | 'customers'
   | 'payments'
   | 'integrations'
+  | 'ecommerce'
   | 'settings'
 
 export type InnerNavMode = 'query-tab' | 'route'
@@ -148,6 +149,16 @@ export const EDITOR_SECTIONS: EditorSectionConfig[] = [
     innerNav:     [],                     // single catalog page — no sub-tabs
     defaultTitle:    'Integrations',
     defaultSubtitle: 'Connect BookReady to the tools you already use — payments, calendars, marketing, and more.',
+  },
+  {
+    key:          'ecommerce',
+    label:        'Ecommerce',
+    hubPath:      '/editor/ecommerce',
+    pathPrefixes: ['/editor/ecommerce'],
+    innerNavMode: 'query-tab',
+    innerNav:     [],                     // coming-soon teaser page — no sub-tabs
+    defaultTitle:    'Ecommerce',
+    defaultSubtitle: 'Sell products, gift cards, and packages alongside your bookings.',
   },
   {
     key:          'settings',

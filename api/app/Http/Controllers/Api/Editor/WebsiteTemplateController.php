@@ -63,9 +63,28 @@ class WebsiteTemplateController extends Controller
      */
     public function update(Request $request): JsonResponse
     {
-        $validated = $request->validate([
+        $request->validate([
             'settings' => 'required|array',
+            // Optional per-section layout overrides. null clears the
+            // override back to the template's designed default.
+            'settings.gallery.layout' => 'nullable|string|in:1x6,2x3,3x2',
+            'settings.results.layout' => 'nullable|string|in:2x1,1x2',
+            // Owner-defined header links: a list of {id, label, url}.
+            // The url regex is a scheme allowlist (https/http/mailto/tel)
+            // so javascript: and data: URIs can never be stored.
+            'settings.header.custom_links' => 'sometimes|array|max:8',
+            'settings.header.custom_links.*.id' => 'required|string|max:64',
+            'settings.header.custom_links.*.label' => 'required|string|max:80',
+            'settings.header.custom_links.*.url' => ['required', 'string', 'max:500', 'regex:~^(https?://|mailto:|tel:)~i'],
         ]);
+
+        // Read the patch from input(), NOT from validate()'s return value.
+        // Once nested rules exist for an array attribute, Laravel's
+        // excludeUnvalidatedArrayKeys behaviour strips every key under
+        // 'settings' that lacks an explicit rule from the validated
+        // payload — older partial payloads (tabs, about, footer, ...)
+        // would be silently ignored.
+        $incoming = $request->input('settings');
 
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
@@ -87,7 +106,7 @@ class WebsiteTemplateController extends Controller
         // server response. applyPartial fixes that while still preserving
         // untouched sibling keys on nested objects.
         $existingFull = TemplateDefaults::mergeWithDefaults($slug, $existing);
-        $merged = TemplateDefaults::applyPartial($existingFull, $validated['settings']);
+        $merged = TemplateDefaults::applyPartial($existingFull, $incoming);
 
         DB::table('template_settings')
             ->where('id', $row->id)

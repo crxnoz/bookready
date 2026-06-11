@@ -324,7 +324,8 @@ const VT_BOOKING_FRAME_CSS = `
 .vt-booking-inner.lush-template [class*="brk-booking-slot"][class*="active"],
 .vt-booking-inner.lush-template [class*="brk-booking-slot"][class*="selected"],
 .vt-booking-inner.lush-template [class*="brk-booking-service"][class*="active"],
-.vt-booking-inner.lush-template [class*="brk-booking-service"][class*="selected"] {
+.vt-booking-inner.lush-template [class*="brk-booking-service"][class*="selected"],
+.vt-booking-inner.lush-template .brk-booking-staff-pick.is-selected {
   border-color: var(--vt-accent) !important;
   background: rgba(201,168,118,0.10) !important;
 }

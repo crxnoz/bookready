@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import {
   AlertTriangle,
@@ -451,11 +451,46 @@ export default function AppointmentsEditor() {
 
   // ── Form helpers ──────────────────────────────────────────────────────────
 
+  // "New appointment" click feedback — the form panel mounts below the
+  // stats strip and callouts, off-screen on most viewports, so opening
+  // it has to visibly move the page or the click reads as dead.
+  // scroll-mt-20 on the panel keeps the sticky topbar from covering it.
+  const formRef = useRef<HTMLDivElement>(null)
+  const firstFieldRef = useRef<HTMLInputElement>(null)
+
+  function scrollFormIntoView(focusFirstField = true) {
+    requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      // Skip focus on touch devices so the keyboard doesn't pop over
+      // the freshly scrolled-to panel.
+      if (focusFirstField && ! window.matchMedia('(hover: none)').matches) {
+        firstFieldRef.current?.focus({ preventScroll: true })
+      }
+    })
+  }
+
+  useEffect(() => {
+    if (showForm) scrollFormIntoView()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showForm])
+
   function openCreate() {
+    if (showForm && editId === null) {
+      // Second click while the create form is already open means the
+      // owner never saw the panel. Point them at it instead of wiping
+      // anything they may have typed.
+      toast.info('The new appointment form is open below.')
+      scrollFormIntoView()
+      return
+    }
+    const wasOpen = showForm
     setEditId(null)
     setForm(emptyForm())
     setFormError(null)
     setShowForm(true)
+    // Switching from edit to create keeps showForm true, so the
+    // showForm effect won't re-fire. Scroll explicitly.
+    if (wasOpen) scrollFormIntoView()
   }
 
   function openEdit(a: Appointment) {
@@ -479,6 +514,7 @@ export default function AppointmentsEditor() {
     e.preventDefault()
     if (!form.customer_name.trim() || !form.service_id || !form.appointment_date || !form.start_time) {
       setFormError('Add the client name, service, date, and time to continue.')
+      scrollFormIntoView(false)
       return
     }
     setSaving(true)
@@ -523,6 +559,11 @@ export default function AppointmentsEditor() {
       closeForm()
     } catch {
       setFormError("Couldn't save this appointment. Try again, or check your connection.")
+      // The error banner renders at the top of the form, which can sit
+      // above the fold after scrolling down to the submit button. Bring
+      // it back into view so the failure is never silent; skip the
+      // focus so we don't yank the owner's cursor.
+      scrollFormIntoView(false)
     } finally {
       setSaving(false)
     }
@@ -710,7 +751,7 @@ export default function AppointmentsEditor() {
 
         {/* Create / edit form */}
         {showForm && (
-          <div className="bg-white border border-hairline">
+          <div ref={formRef} className="scroll-mt-20 bg-white border border-hairline">
             <div className="flex items-center justify-between px-5 py-4 border-b border-hairline-soft">
               <h2 className="text-sm font-bold text-near-black tracking-tight">
                 {editId !== null ? 'Edit appointment' : 'New appointment'}
@@ -726,6 +767,7 @@ export default function AppointmentsEditor() {
               <div className="space-y-3">
                 <p className="text-eyebrow font-bold tracking-[0.16em] uppercase text-muted-text">Client</p>
                 <input
+                  ref={firstFieldRef}
                   type="text" placeholder="Full name *" required
                   value={form.customer_name} onChange={e => setField('customer_name', e.target.value)}
                   className="w-full border border-hairline-strong bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-muted-text focus:outline-none focus:border-near-black"

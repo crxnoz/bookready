@@ -277,7 +277,8 @@ const BOTTEGA_BOOKING_FRAME_CSS = `
 .bottega-booking-inner.lush-template [class*="brk-booking-slot"][class*="active"],
 .bottega-booking-inner.lush-template [class*="brk-booking-slot"][class*="selected"],
 .bottega-booking-inner.lush-template [class*="brk-booking-service"][class*="active"],
-.bottega-booking-inner.lush-template [class*="brk-booking-service"][class*="selected"] {
+.bottega-booking-inner.lush-template [class*="brk-booking-service"][class*="selected"],
+.bottega-booking-inner.lush-template .brk-booking-staff-pick.is-selected {
   border-color: var(--bottega-accent) !important;
   background: color-mix(in srgb, var(--bottega-accent) 12%, rgba(255,255,255,0.6)) !important;
 }

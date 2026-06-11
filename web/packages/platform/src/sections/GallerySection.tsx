@@ -1,3 +1,9 @@
+'use client'
+
+import { useState } from 'react'
+
+import { LightboxOverlay, type LightboxItem } from './LightboxOverlay'
+
 /**
  * GallerySection — shared, theme-tokenized portfolio gallery.
  *
@@ -9,7 +15,13 @@
  *
  * `variant="strips"` swaps the responsive grid for full-width rows. The look
  * is Opaline's neutral base (champagne hairline cards, 4/5 tiles); a template
- * adds signature flourishes via its own scoped `.brk-gallery*` skin.
+ * adds signature flourishes via its own scoped `.brk-gallery*` skin. An
+ * editor-picked `layout` ('1x6' | '2x3' | '3x2') forces the column count
+ * over both the responsive default and any template skin (triple-class
+ * override in SECTIONS_CSS); null keeps today's behavior.
+ *
+ * Every tile is a tap target that opens LightboxOverlay fullscreen — prev/
+ * next walks the tile's bucket. Client component (lightbox state).
  *
  * Returns null when there are no items, unless an `emptyText` is given (then
  * the header + a `.brk-empty` hint render, e.g. inside a tab panel).
@@ -40,6 +52,9 @@ export interface GallerySectionProps {
   displayName?: string
   /** 'grid' (default, responsive tiles) or 'strips' (full-width rows). */
   variant?: 'grid' | 'strips'
+  /** Forced column count from the editor's layout picker — overrides the
+   *  responsive default + template skins. null keeps today's behavior. */
+  layout?: '1x6' | '2x3' | '3x2' | null
   /** Placeholder shown (with the header) when there are no items. */
   emptyText?: string
   ariaLabel?: string
@@ -58,9 +73,13 @@ export function GallerySection({
   eyebrow = 'Gallery',
   displayName,
   variant = 'grid',
+  layout,
   emptyText,
   ariaLabel,
 }: GallerySectionProps) {
+  // Lightbox state — the open bucket's images plus which one is showing.
+  const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null)
+
   const all = (items ?? []).filter(it => (it.image_url ?? '').trim())
   if (all.length === 0 && !emptyText) return null
 
@@ -90,7 +109,8 @@ export function GallerySection({
     })
   }
 
-  const gridClass = `brk-gallery-grid${variant === 'strips' ? ' brk-gallery-grid--strips' : ''}`
+  const layoutClass = layout ? ` brk-gallery-grid--${layout}` : ''
+  const gridClass = `brk-gallery-grid${variant === 'strips' ? ' brk-gallery-grid--strips' : ''}${layoutClass}`
 
   return (
     <section className="brk-section brk-gallery-section" aria-label={ariaLabel ?? heading}>
@@ -101,22 +121,43 @@ export function GallerySection({
       {buckets.length === 0 ? (
         <p className="brk-empty">{emptyText}</p>
       ) : (
-        buckets.map(bucket => (
-          <div key={bucket.key} className="brk-gallery-group">
-            {bucket.heading && <h3 className="brk-gallery-group-heading">{bucket.heading}</h3>}
-            <div className={gridClass}>
-              {bucket.items.map(it => (
-                <figure key={it.id} className="brk-gallery-item">
-                  <img
-                    src={it.image_url}
-                    alt={it.alt_text ?? it.title ?? displayName ?? ''}
-                    loading="lazy"
-                  />
-                </figure>
-              ))}
+        buckets.map(bucket => {
+          // The lightbox set is the whole bucket, so prev/next walks the
+          // tapped tile's group.
+          const lightboxItems: LightboxItem[] = bucket.items.map(it => ({
+            url: it.image_url,
+            alt: it.alt_text ?? it.title ?? displayName ?? null,
+          }))
+          return (
+            <div key={bucket.key} className="brk-gallery-group">
+              {bucket.heading && <h3 className="brk-gallery-group-heading">{bucket.heading}</h3>}
+              <div className={gridClass}>
+                {bucket.items.map((it, idx) => {
+                  const alt = it.alt_text ?? it.title ?? displayName ?? ''
+                  return (
+                    <figure key={it.id} className="brk-gallery-item">
+                      <button
+                        type="button"
+                        className="brk-gallery-zoom"
+                        aria-label={alt ? `View ${alt} fullscreen` : 'View image fullscreen'}
+                        onClick={() => setLightbox({ items: lightboxItems, index: idx })}
+                      >
+                        <img src={it.image_url} alt={alt} loading="lazy" />
+                      </button>
+                    </figure>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        ))
+          )
+        })
+      )}
+      {lightbox && (
+        <LightboxOverlay
+          items={lightbox.items}
+          startIndex={lightbox.index}
+          onClose={() => setLightbox(null)}
+        />
       )}
     </section>
   )

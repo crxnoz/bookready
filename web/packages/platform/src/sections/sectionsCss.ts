@@ -354,6 +354,34 @@ export const SECTIONS_CSS = `
 /* Strips variant — full-width rows regardless of breakpoint. */
 .brk-gallery-grid--strips { grid-template-columns: 1fr; gap: 22px; }
 .brk-gallery-grid--strips .brk-gallery-item { aspect-ratio: 16/9; }
+/* Editor-picked gallery layouts. Each class is TRIPLED so the selector
+   weighs (0,3,0) — enough to beat the per-template scoped skins (2-class
+   selectors like .lush-template .brk-gallery-grid, (0,2,0)) and the
+   responsive defaults above at ANY breakpoint, without !important. */
+.brk-gallery-grid--1x6.brk-gallery-grid--1x6.brk-gallery-grid--1x6 { grid-template-columns: 1fr; }
+.brk-gallery-grid--2x3.brk-gallery-grid--2x3.brk-gallery-grid--2x3 { grid-template-columns: repeat(2, 1fr); }
+.brk-gallery-grid--3x2.brk-gallery-grid--3x2.brk-gallery-grid--3x2 { grid-template-columns: repeat(3, 1fr); }
+/* Tap-for-fullscreen: transparent button wrapped around an image (gallery
+   tiles + the before pane in Before & After) — inherits the pane's sizing
+   exactly and opens the lightbox. */
+.brk-gallery-zoom {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: zoom-in;
+}
+.brk-gallery-zoom:focus-visible {
+  outline: 2px solid var(--brk-color-accent, currentColor);
+  outline-offset: 2px;
+}
 
 /* ── Before & After — center-separated diptych (Opaline base metrics) ── */
 .brk-ba-group + .brk-ba-group { margin-top: clamp(48px, 6vw, 72px); }
@@ -479,6 +507,40 @@ export const SECTIONS_CSS = `
   .brk-ba-pair { grid-template-columns: 1fr; }
   .brk-ba-sep { display: none; }
 }
+/* Editor-picked before/after layouts — same TRIPLED-class trick as the
+   gallery: (0,3,0) beats the template skins (0,2,0) and the mobile-stack
+   media query above at any breakpoint, no !important needed. '2x1' keeps
+   the panes side by side (separator visible so it occupies the center
+   auto track); '1x2' stacks them and hides the separator. */
+.brk-ba-pair--2x1.brk-ba-pair--2x1.brk-ba-pair--2x1 { grid-template-columns: 1fr auto 1fr; }
+.brk-ba-pair--2x1.brk-ba-pair--2x1.brk-ba-pair--2x1 .brk-ba-sep { display: inline; }
+.brk-ba-pair--1x2.brk-ba-pair--1x2.brk-ba-pair--1x2 { grid-template-columns: 1fr; }
+.brk-ba-pair--1x2.brk-ba-pair--1x2.brk-ba-pair--1x2 .brk-ba-sep { display: none; }
+/* Corner expand chip on a revealed "after" pane — opens the lightbox.
+   Sits above the corner label (z-index 1). */
+.brk-ba-expand {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  cursor: zoom-in;
+  transition: background 180ms ease;
+}
+.brk-ba-expand:hover { background: rgba(0,0,0,0.72); }
+.brk-ba-expand:focus-visible {
+  outline: 2px solid var(--brk-color-accent, currentColor);
+  outline-offset: 2px;
+}
 
 /* ── Policies — hairline-divided ledger, no boxes (Opaline base metrics) ── */
 .brk-policy-group + .brk-policy-group,
@@ -537,5 +599,80 @@ export const SECTIONS_CSS = `
   .brk-faq summary::after,
   .brk-footer-book,
   .brk-footer-contact a { transition: none !important; }
+}
+
+/* ── Lightbox — fullscreen image viewer (Gallery + Before & After) ── */
+.brk-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.88);
+}
+.brk-lightbox-stage {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 95vw;
+  max-height: 95vh;
+}
+.brk-lightbox-img {
+  display: block;
+  max-width: 95vw;
+  max-height: 95vh;
+  /* Lets the image shrink inside the flex column when a caption is below. */
+  min-height: 0;
+  object-fit: contain;
+}
+.brk-lightbox-caption {
+  margin: 0;
+  max-width: 70ch;
+  text-align: center;
+  font-family: var(--brk-family-body, sans-serif);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.85);
+}
+.brk-lightbox-close,
+.brk-lightbox-nav {
+  position: absolute;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  cursor: pointer;
+  transition: background 180ms ease;
+}
+.brk-lightbox-close:hover,
+.brk-lightbox-nav:hover { background: rgba(255,255,255,0.24); }
+.brk-lightbox-close:focus-visible,
+.brk-lightbox-nav:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.brk-lightbox-close {
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+}
+.brk-lightbox-nav {
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+}
+.brk-lightbox-prev { left: 14px; }
+.brk-lightbox-next { right: 14px; }
+@media (prefers-reduced-motion: reduce) {
+  .brk-lightbox-close,
+  .brk-lightbox-nav,
+  .brk-ba-expand { transition: none; }
 }
 `

@@ -9,8 +9,10 @@
  * Visual vocabulary:
  *   - Pink canvas (background-role); palette swatches paint the page
  *     (Blush default → Rose Quartz / Peach / Mauve / Dusty Rose / Cream
- *     exit). Champagne gold (#C9A876) stays constant across variants —
- *     drives CTAs, eyebrows, ornaments, and the scalloped active marker.
+ *     exit). Each variant carries its own accent — champagne gold
+ *     (#C9A876) on the light canvases, deepened wine/copper tones on the
+ *     darker pinks — driving CTAs, eyebrows, ornaments, and the scalloped
+ *     active marker.
  *   - Playfair Display (italic emphasis on headings) + Inter body +
  *     Pinyon Script (the brand-name hero treatment + all section
  *     eyebrows + the Thank You note signature).
@@ -131,6 +133,16 @@ function EmailGlyph({ size = 14 }: { size?: number }) {
     </svg>
   )
 }
+function LinkGlyph({ size = 14 }: { size?: number }) {
+  // lucide Link2, inlined to match the rail's glyph system.
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 17H7A5 5 0 0 1 7 7h2" />
+      <path d="M15 7h2a5 5 0 1 1 0 10h-2" />
+      <line x1="8" y1="12" x2="16" y2="12" />
+    </svg>
+  )
+}
 
 interface Props {
   site: PublicSite
@@ -157,17 +169,19 @@ const SECTION_KEY_TO_TAB: Record<string, TabId> = {
 
 // ── Background variants ──────────────────────────────────────────────────────
 //
-// Pétale swaps BACKGROUND across variants while the champagne gold accent
-// stays constant. The editor reuses theme.accent_color to pick a variant
-// (treated as a canvas hex here). Unknown values fall back to Blush.
-interface Variant { bg: string; ink: string; muted: string; rule: string; surface: string }
+// Pétale swaps BACKGROUND across variants. The editor reuses
+// theme.accent_color to pick a variant (treated as a canvas hex here).
+// Unknown values fall back to Blush. Each variant carries its own accent:
+// champagne gold on the light canvases (Blush, Cream), deepened wine/copper
+// tones on the darker pinks where gold loses contrast.
+interface Variant { bg: string; ink: string; muted: string; rule: string; surface: string; accent: string; onAccent: string }
 const VARIANTS: Record<string, Variant> = {
-  '#F4DDE0': { bg: '#F4DDE0', ink: '#3D2027', muted: 'rgba(61,32,39,0.58)', rule: 'rgba(61,32,39,0.14)', surface: 'rgba(255,255,255,0.55)' }, // Blush
-  '#EAC4CB': { bg: '#EAC4CB', ink: '#3D2027', muted: 'rgba(61,32,39,0.58)', rule: 'rgba(61,32,39,0.16)', surface: 'rgba(255,255,255,0.50)' }, // Rose Quartz
-  '#F5D5C0': { bg: '#F5D5C0', ink: '#3F2618', muted: 'rgba(63,38,24,0.58)', rule: 'rgba(63,38,24,0.16)', surface: 'rgba(255,255,255,0.52)' }, // Peach
-  '#E0B5C4': { bg: '#E0B5C4', ink: '#3A1A25', muted: 'rgba(58,26,37,0.58)', rule: 'rgba(58,26,37,0.16)', surface: 'rgba(255,255,255,0.50)' }, // Mauve
-  '#D9A8B0': { bg: '#D9A8B0', ink: '#3A1820', muted: 'rgba(58,24,32,0.58)', rule: 'rgba(58,24,32,0.18)', surface: 'rgba(255,255,255,0.50)' }, // Dusty Rose
-  '#F5EFE6': { bg: '#F5EFE6', ink: '#3D2A20', muted: 'rgba(61,42,32,0.58)', rule: 'rgba(61,42,32,0.14)', surface: 'rgba(255,255,255,0.55)' }, // Cream exit
+  '#F4DDE0': { bg: '#F4DDE0', ink: '#3D2027', muted: 'rgba(61,32,39,0.58)', rule: 'rgba(61,32,39,0.14)', surface: 'rgba(255,255,255,0.55)', accent: '#C9A876', onAccent: '#3D2027' }, // Blush — champagne gold
+  '#EAC4CB': { bg: '#EAC4CB', ink: '#3D2027', muted: 'rgba(61,32,39,0.58)', rule: 'rgba(61,32,39,0.16)', surface: 'rgba(255,255,255,0.50)', accent: '#7A3848', onAccent: '#F8F1EA' }, // Rose Quartz — deep wine
+  '#F5D5C0': { bg: '#F5D5C0', ink: '#3F2618', muted: 'rgba(63,38,24,0.58)', rule: 'rgba(63,38,24,0.16)', surface: 'rgba(255,255,255,0.52)', accent: '#8A4A2E', onAccent: '#F8F1EA' }, // Peach — burnt copper
+  '#E0B5C4': { bg: '#E0B5C4', ink: '#3A1A25', muted: 'rgba(58,26,37,0.58)', rule: 'rgba(58,26,37,0.16)', surface: 'rgba(255,255,255,0.50)', accent: '#6B2D3D', onAccent: '#F8F1EA' }, // Mauve — oxblood
+  '#D9A8B0': { bg: '#D9A8B0', ink: '#3A1820', muted: 'rgba(58,24,32,0.58)', rule: 'rgba(58,24,32,0.18)', surface: 'rgba(255,255,255,0.50)', accent: '#5C1F2C', onAccent: '#F8F1EA' }, // Dusty Rose — claret
+  '#F5EFE6': { bg: '#F5EFE6', ink: '#3D2A20', muted: 'rgba(61,42,32,0.58)', rule: 'rgba(61,42,32,0.14)', surface: 'rgba(255,255,255,0.55)', accent: '#C9A876', onAccent: '#3D2027' }, // Cream exit — champagne gold
 }
 const DEFAULT_VARIANT_HEX = '#F4DDE0'
 function resolveVariant(raw: string | null | undefined): Variant {
@@ -198,6 +212,8 @@ export default function PetaleTemplate({ site, slug }: Props) {
     ['--petale-muted' as any]:   variant.muted,
     ['--petale-rule' as any]:    variant.rule,
     ['--petale-surface' as any]: variant.surface,
+    ['--petale-accent' as any]:    variant.accent,
+    ['--petale-on-accent' as any]: variant.onAccent,
     backgroundColor: variant.bg,
     color:           variant.ink,
   }
@@ -371,6 +387,7 @@ export default function PetaleTemplate({ site, slug }: Props) {
             <GallerySection
               items={site.gallery}
               groups={site.gallery_groups}
+              layout={settings.gallery?.layout ?? null}
               heading={settings.gallery?.heading || 'Lookbook'}
               eyebrow={tabs.gallery_label ?? 'Gallery'}
               displayName={display}
@@ -388,6 +405,7 @@ export default function PetaleTemplate({ site, slug }: Props) {
             <BeforeAfterSection
               items={site.results ?? site.before_after}
               groups={site.results_groups ?? site.before_after_groups}
+              layout={settings.results?.layout ?? null}
               heading={settings.results?.heading || 'Before & After'}
               eyebrow={tabs.results_label ?? 'Transformations'}
               separator="✦︎"
@@ -570,6 +588,15 @@ function SocialButtons({ header, profile, goBook }: { header: any; profile: any;
     { key: 'whatsapp',   href: safeHref(header.whatsapp_button_url) ?? null, label: 'WhatsApp', icon: <WhatsAppGlyph /> },
     { key: 'directions', href: header.directions_button_url || null, label: 'Directions', icon: <DirectionsGlyph /> },
   ]
+  // Owner-defined custom links render after the platform buttons in the
+  // same accent-aware neutral circle chrome. Only explicit https/http/
+  // mailto/tel URLs pass — anything else is dropped at render time.
+  const customLinks: any[] = Array.isArray(header.custom_links) ? header.custom_links : []
+  for (const link of customLinks) {
+    const url = typeof link?.url === 'string' ? link.url.trim() : ''
+    if (!/^(https?:\/\/|mailto:|tel:)/i.test(url)) continue
+    btns.push({ key: `custom-${link.id}`, href: url, label: link.label || url, icon: <LinkGlyph /> })
+  }
   const visible = btns.filter(b => header[`show_${b.key}_button`] !== false && b.href)
   if (visible.length === 0) return null
   return (

@@ -80,6 +80,15 @@ function FacebookSolid({ size = 18 }: { size?: number }) {
     </svg>
   )
 }
+// Generic link glyph for owner-defined custom header links — solid chain
+// link so it sits with the filled icon family above.
+function LinkSolid({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>
+    </svg>
+  )
+}
 // Solid versions of the info-row icons (filled, no outline). Used in
 // the hero's location + service-menu rows.
 function MapPinSolid({ size = 22 }: { size?: number }) {
@@ -577,6 +586,25 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                   </a>
                 )
               })()}
+              {/* Owner-defined custom links (settings.header.custom_links,
+                  max 8, validated server-side). Neutral chrome: the base
+                  .lush-header-btn pill with no per-platform tint. Schemes
+                  are re-filtered here and funneled through safeHref like
+                  every other header button; web links open in a new tab,
+                  tel:/mailto: stay in-tab. */}
+              {(Array.isArray((header as any).custom_links) ? (header as any).custom_links : [])
+                .filter((l: any) => l && typeof l.url === 'string' && /^(https?:\/\/|mailto:|tel:)/i.test(l.url) && l.label)
+                .slice(0, 8)
+                .map((l: any) => {
+                  const href = safeHref(l.url)
+                  if (!href) return null
+                  const isWeb = /^https?:\/\//i.test(href)
+                  return (
+                    <a key={l.id ?? href} className="lush-header-btn lush-header-btn-custom" href={href} target={isWeb ? '_blank' : undefined} rel={isWeb ? 'noopener noreferrer' : undefined}>
+                      <LinkSolid size={18} /><span>{l.label}</span>
+                    </a>
+                  )
+                })}
             </div>
           </div>
         </section>
@@ -644,6 +672,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 eyebrow={tabLabelById.gallery}
                 displayName={displayName}
                 variant="grid"
+                layout={(site.template?.settings as any)?.gallery?.layout ?? null}
                 emptyText="A gallery of recent work will appear here."
                 ariaLabel={tabLabelById.gallery ?? 'Gallery'}
               />
@@ -662,6 +691,7 @@ export default function LushStudioTemplate({ site, slug }: { site: PublicSite; s
                 eyebrow={tabLabelById.results}
                 separator={'✦︎'}
                 labels
+                layout={(site.template?.settings as any)?.results?.layout ?? null}
                 emptyText="Before-and-after results will be shown here."
                 ariaLabel={tabLabelById.results ?? 'Results'}
               />

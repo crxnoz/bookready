@@ -783,6 +783,13 @@ export const LUSH_CSS = `
   display:block; font-size:11px; letter-spacing:0.18em;
   text-transform:uppercase; color:var(--brk-booking-muted); margin-bottom:12px; font-weight:600;
 }
+/* Staff picker tiles (Step 3). Surface + border stay inline in the
+   engine markup; text color lives here so dark templates can override
+   it (the old hardcoded #0E1111 inline color was unreadable on
+   charcoal/onyx pages). The fallback keeps pixel parity for any
+   consumer that does not define the token. */
+.brk-booking-staff-pick { color: var(--brk-booking-text, #0E1111); }
+.brk-booking-staff-pick.is-selected { color: var(--brk-booking-text, #0E1111); }
 .brk-booking-days { display:flex; flex-wrap:wrap; gap:8px; }
 .brk-booking-day {
   flex:1 1 72px; min-width:68px; max-width:100px;

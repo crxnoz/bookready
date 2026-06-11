@@ -252,7 +252,8 @@ const OPALINE_BOOKING_CSS = `
 .opaline-booking-inner.lush-template [class*="brk-booking-slot"][class*="selected"],
 .opaline-booking-inner.lush-template [class*="brk-booking-slot"][class*="active"],
 .opaline-booking-inner.lush-template .brk-booking-service-card[class*="selected"],
-.opaline-booking-inner.lush-template .brk-booking-addon[class*="selected"] {
+.opaline-booking-inner.lush-template .brk-booking-addon[class*="selected"],
+.opaline-booking-inner.lush-template .brk-booking-staff-pick.is-selected {
   border-color: var(--opaline-accent) !important;
   background: color-mix(in srgb, var(--opaline-accent) 10%, var(--opaline-surface)) !important;
 }

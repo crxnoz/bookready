@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import ImageUploadField from '@/components/editor/ImageUploadField'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { SegmentedControl, type SegmentedOption } from '@/components/ui/SegmentedControl'
 import {
   ComingSoonPanel as ComingSoonHero,
   ComingSoonCard,
@@ -51,6 +52,7 @@ import { SITE_TEMPLATES } from '@/lib/templates'
 import type {
   TemplateSettings,
   TemplateHeaderSettings,
+  TemplateHeaderCustomLink,
   TemplateFooterSettings,
   TemplateAdditionalsSettings,
   TemplateAboutSettings,
@@ -1096,6 +1098,16 @@ function CoreLink({ href, label, hint }: { href: string; label: string; hint: st
 
 // ── Header / Hero ────────────────────────────────────────────────────────────
 
+const HEADER_CUSTOM_LINKS_MAX = 8
+
+// Custom-link URLs must be absolute so they work from any tenant
+// subdomain — http(s) pages, mailto: and tel: are the supported schemes.
+function customLinkUrlInvalid(url: string): boolean {
+  const v = url.trim()
+  if (!v) return false
+  return !/^(https?:\/\/|mailto:|tel:)/i.test(v)
+}
+
 function HeaderPanel({
   settings, onSave, manifest,
 }: {
@@ -1112,6 +1124,33 @@ function HeaderPanel({
     settings.header,
     async (next) => { await onSave({ header: next }) },
   )
+
+  // Custom links — owner-defined header buttons, saved alongside the rest
+  // of the header settings via the same SaveBar.
+  const customLinks = form.value.custom_links ?? []
+
+  function setCustomLinks(next: TemplateHeaderCustomLink[]) {
+    form.patch({ custom_links: next })
+  }
+
+  function addCustomLink() {
+    if (customLinks.length >= HEADER_CUSTOM_LINKS_MAX) return
+    setCustomLinks([...customLinks, { id: crypto.randomUUID(), label: '', url: '' }])
+  }
+
+  function updateCustomLink(i: number, partial: Partial<TemplateHeaderCustomLink>) {
+    setCustomLinks(customLinks.map((l, idx) => idx === i ? { ...l, ...partial } : l))
+  }
+
+  function removeCustomLink(i: number) {
+    setCustomLinks(customLinks.filter((_, idx) => idx !== i))
+  }
+
+  // Validation: every link needs a label + a URL with a supported scheme.
+  const invalidLinkIndexes: number[] = customLinks
+    .map((l, i) => (!l.label.trim() || !l.url.trim() || customLinkUrlInvalid(l.url)) ? i : -1)
+    .filter(i => i >= 0)
+  const hasLinkValidationError = invalidLinkIndexes.length > 0
 
   return (
     <Panel
@@ -1286,9 +1325,90 @@ function HeaderPanel({
         />
       </div>
 
+      {/* Custom links */}
+      <div className="space-y-2 pt-2 border-t border-hairline-soft">
+        <div>
+          <p className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
+            Custom links
+          </p>
+          <p className="text-2xs text-muted-text mt-0.5">
+            Add up to {HEADER_CUSTOM_LINKS_MAX} of your own links. They render as buttons in your site header next to the social buttons.
+          </p>
+        </div>
+
+        {customLinks.map((link, i) => {
+          const urlBad  = customLinkUrlInvalid(link.url)
+          const invalid = invalidLinkIndexes.includes(i)
+          return (
+            <div
+              key={link.id}
+              className={cn(
+                'bg-white border p-3 space-y-2',
+                invalid ? 'border-danger' : 'border-hairline-soft',
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-eyebrow font-bold tracking-[0.14em] uppercase text-muted-text">
+                  Link {i + 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeCustomLink(i)}
+                  className="w-7 h-7 ml-auto inline-flex items-center justify-center border border-hairline-soft bg-white text-near-black hover:border-danger hover:text-danger flex-shrink-0"
+                  title="Delete"
+                >
+                  <Trash2 size={11} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={link.label}
+                  onChange={e => updateCustomLink(i, { label: e.target.value })}
+                  placeholder="Label (e.g. Gift Cards)"
+                  maxLength={40}
+                  className="w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+                />
+                <input
+                  type="text"
+                  value={link.url}
+                  onChange={e => updateCustomLink(i, { url: e.target.value })}
+                  placeholder="https://…"
+                  maxLength={500}
+                  className="w-full bg-white border border-hairline-strong px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black"
+                />
+              </div>
+
+              {invalid && (
+                <p className="text-2xs text-danger flex items-center gap-1.5">
+                  <AlertCircle size={11} />
+                  {urlBad
+                    ? 'URL must start with http://, https://, mailto: or tel:.'
+                    : 'Label and URL are required.'}
+                </p>
+              )}
+            </div>
+          )
+        })}
+
+        <button
+          type="button"
+          onClick={addCustomLink}
+          disabled={customLinks.length >= HEADER_CUSTOM_LINKS_MAX}
+          className="inline-flex items-center gap-1.5 text-2xs font-semibold tracking-[0.08em] uppercase border border-hairline-strong bg-white text-near-black px-3 py-2 hover:border-near-black disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Plus size={12} /> Add Link
+          {customLinks.length >= HEADER_CUSTOM_LINKS_MAX && ` (max ${HEADER_CUSTOM_LINKS_MAX})`}
+        </button>
+      </div>
+
       <SaveBar
-        dirty={form.dirty} saving={form.saving} saved={form.saved}
-        error={form.error} onSave={form.doSave}
+        dirty={form.dirty && !hasLinkValidationError}
+        saving={form.saving}
+        saved={form.saved}
+        error={form.error ?? (form.dirty && hasLinkValidationError ? 'Fix the highlighted links before saving.' : null)}
+        onSave={form.doSave}
       />
     </Panel>
   )
@@ -2475,6 +2595,17 @@ function PreviewPanel({ url, refreshKey }: { url: string; refreshKey: number }) 
 const GALLERY_MAX_GROUPS         = 3
 const GALLERY_MAX_ITEMS_PER_GROUP = 6
 
+// Layout picker — 'auto' maps to null in settings.gallery.layout (follow
+// the template's own grid); the rest force columns x rows on every group.
+type GalleryLayoutChoice = 'auto' | '1x6' | '2x3' | '3x2'
+
+const GALLERY_LAYOUT_OPTIONS: SegmentedOption<GalleryLayoutChoice>[] = [
+  { value: 'auto', label: 'Auto'  },
+  { value: '1x6',  label: '1 x 6' },
+  { value: '2x3',  label: '2 x 3' },
+  { value: '3x2',  label: '3 x 2' },
+]
+
 function GalleryManagerPanel({ settings, onSaveSettings }: {
   settings: TemplateSettings
   onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
@@ -2490,9 +2621,17 @@ function GalleryManagerPanel({ settings, onSaveSettings }: {
   // it was so the new item is created with the right group_id pre-filled.
   const [addingForGroup, setAddingForGroup] = useState<number | null | 'none'>(null)
   const [addingGroup, setAddingGroup]       = useState(false)
-  const headingForm = useSettingsForm<{ heading: string }>(
-    { heading: settings.gallery?.heading ?? '' },
-    async (next) => { await onSaveSettings({ gallery: { heading: next.heading || null } }) },
+  const headingForm = useSettingsForm<{ heading: string; layout: GalleryLayoutChoice }>(
+    {
+      heading: settings.gallery?.heading ?? '',
+      layout:  settings.gallery?.layout ?? 'auto',
+    },
+    async (next) => {
+      await onSaveSettings({ gallery: {
+        heading: next.heading || null,
+        layout:  next.layout === 'auto' ? null : next.layout,
+      } })
+    },
   )
 
   useEffect(() => {
@@ -2616,6 +2755,19 @@ function GalleryManagerPanel({ settings, onSaveSettings }: {
         placeholder="Recent work"
         maxLength={80}
       />
+      <div className="space-y-1.5">
+        <FieldLabel>Layout</FieldLabel>
+        <SegmentedControl
+          options={GALLERY_LAYOUT_OPTIONS}
+          value={headingForm.value.layout}
+          onChange={v => headingForm.patch({ layout: v })}
+          ariaLabel="Gallery layout"
+          size="sm"
+        />
+        <p className="text-2xs text-muted-text">
+          Auto follows the template design. Pick a grid to override it on every group.
+        </p>
+      </div>
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-xs text-muted-text">
           {loading
@@ -3059,6 +3211,16 @@ function GalleryItemDialog({
 const BA_MAX_GROUPS         = 3
 const BA_MAX_ITEMS_PER_GROUP = 6
 
+// Layout picker — 'auto' maps to null in settings.results.layout (follow
+// the template); '2x1' = before and after side by side, '1x2' = stacked.
+type ResultsLayoutChoice = 'auto' | '2x1' | '1x2'
+
+const RESULTS_LAYOUT_OPTIONS: SegmentedOption<ResultsLayoutChoice>[] = [
+  { value: 'auto', label: 'Auto' },
+  { value: '2x1',  label: 'Side by side' },
+  { value: '1x2',  label: 'Stacked' },
+]
+
 function ResultsManagerPanel({ settings, onSaveSettings }: {
   settings: TemplateSettings
   onSaveSettings: (p: Partial<TemplateSettings>) => Promise<void>
@@ -3072,9 +3234,17 @@ function ResultsManagerPanel({ settings, onSaveSettings }: {
   const confirm = useConfirm()
   const [addingForGroup, setAddingForGroup] = useState<number | null | 'none'>(null)
   const [addingGroup, setAddingGroup]       = useState(false)
-  const headingForm = useSettingsForm<{ heading: string }>(
-    { heading: settings.results?.heading ?? '' },
-    async (next) => { await onSaveSettings({ results: { heading: next.heading || null } }) },
+  const headingForm = useSettingsForm<{ heading: string; layout: ResultsLayoutChoice }>(
+    {
+      heading: settings.results?.heading ?? '',
+      layout:  settings.results?.layout ?? 'auto',
+    },
+    async (next) => {
+      await onSaveSettings({ results: {
+        heading: next.heading || null,
+        layout:  next.layout === 'auto' ? null : next.layout,
+      } })
+    },
   )
 
   useEffect(() => {
@@ -3197,6 +3367,19 @@ function ResultsManagerPanel({ settings, onSaveSettings }: {
         placeholder="Before & After"
         maxLength={80}
       />
+      <div className="space-y-1.5">
+        <FieldLabel>Layout</FieldLabel>
+        <SegmentedControl
+          options={RESULTS_LAYOUT_OPTIONS}
+          value={headingForm.value.layout}
+          onChange={v => headingForm.patch({ layout: v })}
+          ariaLabel="Before and after layout"
+          size="sm"
+        />
+        <p className="text-2xs text-muted-text">
+          Auto follows the template design. Pick one to override how every pair is arranged.
+        </p>
+      </div>
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-xs text-muted-text">
           {loading

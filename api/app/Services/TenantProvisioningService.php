@@ -25,7 +25,14 @@ class TenantProvisioningService
         $tenant = DB::transaction(function () use ($data, $slug) {
             $tenant = Tenant::create([
                 'id'            => $slug,
-                'plan'          => 'trial',
+                // Plan gates (PlanFeatures::planOf) key off this slug, so it
+                // must be a real config/plans.php tier from day one. The old
+                // 'trial' placeholder wasn't in the catalog and silently fell
+                // through to solo, gating trialing Studio/Salon signups as
+                // Solo. Trial-ness is carried separately in
+                // subscription_state='trialing'; callers that know the
+                // selected tier pass data['plan'], legacy paths default solo.
+                'plan'          => $this->resolvePlanSlug($data['plan'] ?? null),
                 'business_name' => $data['business_name'], // stored in tenants.data JSON
             ]);
 
@@ -311,6 +318,18 @@ class TenantProvisioningService
         // unknown value like "cleanbeauty" degrades to the default instead
         // of seeding a tenant with a slug no registry/template can render).
         return TemplateDefaults::normalizeSlug($slug);
+    }
+
+    /**
+     * Validate a signup plan slug against the catalog. Unknown or missing
+     * values default to 'solo' — never 'trial', which isn't a key in
+     * config/plans.php and made PlanFeatures::planOf silently fall back.
+     */
+    private function resolvePlanSlug(mixed $plan): string
+    {
+        return is_string($plan) && array_key_exists($plan, (array) config('plans.plans', []))
+            ? $plan
+            : 'solo';
     }
 
     /**

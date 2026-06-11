@@ -9,6 +9,7 @@ import {
   Users,
   CreditCard,
   Plug,
+  ShoppingBag,
   Settings,
   Eye,
   Copy,
@@ -42,6 +43,7 @@ const MAIN_NAV = [
   { href: '/editor/customers',    label: 'Customers',    icon: Users },
   { href: '/editor/payments',     label: 'Payments',     icon: CreditCard },
   { href: '/editor/integrations', label: 'Integrations', icon: Plug },
+  { href: '/editor/ecommerce',    label: 'Ecommerce',    icon: ShoppingBag, soon: true },
   { href: '/editor/settings',     label: 'Settings',     icon: Settings },
 ] as const
 
@@ -176,22 +178,30 @@ function SidebarNav({
       <p className="px-4 pt-1 pb-1.5 text-eyebrow font-bold tracking-[0.2em] uppercase text-muted-text">
         Menu
       </p>
-      {navItems.map(({ item, active, Icon }) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          onClick={onItemClick}
-          className={cn(
-            'flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap',
-            active
-              ? 'bg-near-black text-white'
-              : 'text-[rgba(18,18,18,0.7)] hover:bg-[rgba(18,18,18,0.04)] hover:text-near-black',
-          )}
-        >
-          <Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
-          <span>{item.label}</span>
-        </Link>
-      ))}
+      {navItems.map(({ item, active, Icon }) => {
+        const soon = 'soon' in item && item.soon
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onItemClick}
+            className={cn(
+              'flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap',
+              active
+                ? 'bg-near-black text-white'
+                : 'text-[rgba(18,18,18,0.7)] hover:bg-[rgba(18,18,18,0.04)] hover:text-near-black',
+            )}
+          >
+            <Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
+            <span className={soon && !active ? 'text-faint-text' : undefined}>{item.label}</span>
+            {soon && (
+              <span className="ml-1 text-eyebrow font-bold tracking-eyebrow uppercase text-muted-text border border-hairline-strong bg-cream px-1 py-px">
+                Soon
+              </span>
+            )}
+          </Link>
+        )
+      })}
     </nav>
   )
 }

@@ -65,6 +65,11 @@ class RegisterController extends Controller
             // re-validates via TemplateDefaults::normalizeSlug, so an unknown
             // value still degrades safely to the default.
             'template'       => ['sometimes', 'string', 'in:the-fade-room,thefaderoom,lushstudio,velvettheory,blackline,opaline'],
+            // Selected tier from the marketing CTA (?plan=...). Optional;
+            // provisioning validates against config/plans.php and defaults
+            // to solo when absent. The Stripe webhook re-stamps tenants.plan
+            // on real checkout, so this only seeds the pre-checkout gates.
+            'plan'           => ['sometimes', 'string', 'in:solo,studio,salon'],
             // Explicit ToS acceptance — must be a truthy (1/true/yes/on)
             // boolean. Laravel's "accepted" rule covers all of these.
             'terms_accepted' => ['required', 'accepted'],

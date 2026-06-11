@@ -258,6 +258,20 @@ const INKHOUSE_BOOKING_CSS = `
   background: color-mix(in srgb, var(--inkhouse-accent) 14%, var(--inkhouse-surface)) !important;
 }
 
+/* Staff picker tiles: the engine paints these with inline white-card
+   styles, so force the charcoal surface (the !important beats inline).
+   Selected gets a rust wash + rust border like the other pick cards. */
+.inkhouse-booking-inner.lush-template .brk-booking-staff-pick {
+  background: var(--inkhouse-surface) !important;
+  border-color: var(--inkhouse-rule) !important;
+  color: var(--inkhouse-text) !important;
+}
+.inkhouse-booking-inner.lush-template .brk-booking-staff-pick.is-selected {
+  background: color-mix(in srgb, var(--inkhouse-accent) 18%, var(--inkhouse-surface)) !important;
+  border-color: var(--inkhouse-accent) !important;
+  color: var(--inkhouse-text) !important;
+}
+
 @media (max-width: 640px) {
   .inkhouse-booking-frame { padding: 0; }
 }

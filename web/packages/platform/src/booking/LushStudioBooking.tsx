@@ -1325,13 +1325,13 @@ export default function LushStudioBooking({
                 <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
                   <button
                     type="button"
+                    className={'brk-booking-staff-pick' + (staffId == null ? ' is-selected' : '')}
                     onClick={() => setStaffId(null)}
                     style={{
                       padding: '12px 14px',
                       textAlign: 'left',
                       border: '1.5px solid ' + (staffId == null ? 'var(--lush-pink)' : 'rgba(14,17,17,0.12)'),
                       background: staffId == null ? 'rgba(var(--lush-pink-rgb), 0.10)' : '#FFFFFF',
-                      color: '#0E1111',
                       cursor: 'pointer',
                       borderRadius: 12,
                     }}
@@ -1345,13 +1345,13 @@ export default function LushStudioBooking({
                     <button
                       key={s.id}
                       type="button"
+                      className={'brk-booking-staff-pick' + (staffId === s.id ? ' is-selected' : '')}
                       onClick={() => setStaffId(s.id)}
                       style={{
                         padding: '12px 14px',
                         textAlign: 'left',
                         border: '1.5px solid ' + (staffId === s.id ? 'var(--lush-pink)' : 'rgba(14,17,17,0.12)'),
                         background: staffId === s.id ? 'rgba(var(--lush-pink-rgb), 0.10)' : '#FFFFFF',
-                        color: '#0E1111',
                         cursor: 'pointer',
                         borderRadius: 12,
                         display: 'flex',

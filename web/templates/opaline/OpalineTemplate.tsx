@@ -116,6 +116,17 @@ function DirectionsGlyph({ size = 14 }: { size?: number }) {
     </svg>
   )
 }
+function LinkGlyph({ size = 14 }: { size?: number }) {
+  // Chain-link glyph (lucide Link2 geometry) for owner-defined custom links —
+  // same stroke weight as the Instagram + Directions glyphs above.
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 17H7A5 5 0 0 1 7 7h2" />
+      <path d="M15 7h2a5 5 0 1 1 0 10h-2" />
+      <line x1="8" x2="16" y1="12" y2="12" />
+    </svg>
+  )
+}
 
 interface Props {
   site: PublicSite
@@ -301,6 +312,7 @@ export default function OpalineTemplate({ site, slug }: Props) {
             <GallerySection
               items={site.gallery}
               groups={site.gallery_groups}
+              layout={settings.gallery?.layout ?? null}
               heading={settings.gallery?.heading || 'Portfolio'}
               eyebrow={tabs.gallery_label ?? 'Gallery'}
               displayName={display}
@@ -317,6 +329,7 @@ export default function OpalineTemplate({ site, slug }: Props) {
             <BeforeAfterSection
               items={site.results ?? site.before_after}
               groups={site.results_groups ?? site.before_after_groups}
+              layout={settings.results?.layout ?? null}
               heading={settings.results?.heading || 'Before & After'}
               eyebrow={tabs.results_label ?? 'Results'}
               separator="◆"
@@ -506,7 +519,13 @@ function SocialButtons({ header, profile, goBook }: { header: any; profile: any;
     { key: 'directions', href: header.directions_button_url || null, label: 'Directions', icon: <DirectionsGlyph /> },
   ]
   const visible = btns.filter(b => header[`show_${b.key}_button`] !== false && b.href)
-  if (visible.length === 0) return null
+  // Owner-defined custom links (settings.header.custom_links). Validated
+  // server-side; re-checked here against the same scheme allowlist so a
+  // stale row can never render a javascript:/data: href.
+  const customLinks: { id: string; label: string; url: string }[] =
+    (Array.isArray(header.custom_links) ? header.custom_links : [])
+      .filter((l: any) => l && typeof l.url === 'string' && /^(https?:\/\/|mailto:|tel:)/i.test(l.url) && l.label)
+  if (visible.length === 0 && customLinks.length === 0) return null
   return (
     <nav className="opaline-social" aria-label="Contact">
       {visible.map(b => {
@@ -526,6 +545,21 @@ function SocialButtons({ header, profile, goBook }: { header: any; profile: any;
           >
             {b.icon && <span className="opaline-social-ico" aria-hidden="true">{b.icon}</span>}
             {b.label}
+          </a>
+        )
+      })}
+      {customLinks.map(l => {
+        const isWeb = /^https?:/i.test(l.url)
+        return (
+          <a
+            key={l.id}
+            href={safeHref(l.url)}
+            target={isWeb ? '_blank' : undefined}
+            rel={isWeb ? 'noopener noreferrer' : undefined}
+            className="opaline-social-btn opaline-social-btn--custom"
+          >
+            <span className="opaline-social-ico" aria-hidden="true"><LinkGlyph /></span>
+            {l.label}
           </a>
         )
       })}

@@ -21,7 +21,7 @@
  */
 
 import { useState, useRef, type ComponentType } from 'react'
-import { CalendarPlus, Phone, Mail, Instagram, MapPin, MessageSquare, Youtube, Facebook } from 'lucide-react'
+import { CalendarPlus, Phone, Mail, Instagram, MapPin, MessageSquare, Youtube, Facebook, Link2 } from 'lucide-react'
 import type { PublicSite } from '@/lib/types'
 import { safeHref } from '@/lib/safeHref'
 import { tokensToCss } from '@bkrdy/platform'
@@ -260,6 +260,7 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
               eyebrow={tabLabel.gallery}
               displayName={display}
               variant="grid"
+              layout={settings.gallery?.layout ?? null}
               emptyText="No gallery items yet."
               ariaLabel={tabs.gallery_label ?? 'Work'}
             />
@@ -279,6 +280,7 @@ export default function TheFadeRoomTemplate({ site, slug }: Props) {
               groups={site.results_groups ?? site.before_after_groups}
               heading={settings.results?.heading || (tabs.results_label ?? 'Results')}
               eyebrow={tabLabel.results}
+              layout={settings.results?.layout ?? null}
               emptyText="No results yet."
               ariaLabel={tabs.results_label ?? 'Results'}
             />
@@ -518,7 +520,13 @@ function SocialButtons({ header, profile, goBook }: { header: any; profile: any;
     { key: 'directions', href: header.directions_button_url || null, label: 'Directions' },
   ]
   const visible = btns.filter(b => header[`show_${b.key}_button`] !== false && b.href)
-  if (visible.length === 0) return null
+  // Owner-defined custom links (settings.header.custom_links, validated
+  // server-side to https/http/mailto/tel). Scheme re-checked here as
+  // defense in depth; tel:/mailto: open in place so target/rel stay off.
+  const customLinks: { id: string; label: string; url: string }[] =
+    (Array.isArray(header.custom_links) ? header.custom_links : [])
+      .filter((l: any) => l && typeof l.url === 'string' && /^(https?:\/\/|mailto:|tel:)/i.test(l.url))
+  if (visible.length === 0 && customLinks.length === 0) return null
   return (
     <nav className="tfr-social" aria-label="Contact">
       {visible.map(b => {
@@ -539,6 +547,24 @@ function SocialButtons({ header, profile, goBook }: { header: any; profile: any;
           >
             {style?.Icon && <style.Icon size={14} strokeWidth={2.4} />}
             <span>{b.label}</span>
+          </a>
+        )
+      })}
+      {customLinks.map(l => {
+        // Custom links get the pill chrome on the flat card surface —
+        // no brand gradient, those are reserved for known platforms.
+        const newTab = /^https?:\/\//i.test(l.url)
+        return (
+          <a
+            key={l.id}
+            href={safeHref(l.url)}
+            className="tfr-social-btn"
+            style={{ background: 'var(--tfr-card)' }}
+            target={newTab ? '_blank' : undefined}
+            rel={newTab ? 'noopener noreferrer' : undefined}
+          >
+            <Link2 size={14} strokeWidth={2.4} />
+            <span>{l.label}</span>
           </a>
         )
       })}
