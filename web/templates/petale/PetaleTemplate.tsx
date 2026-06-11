@@ -935,7 +935,13 @@ const PETALE_CSS = `
 
 /* Reserve CTA — keeps the wide italic Playfair gold pill. Sits inside
    the strip but visually breaks pattern, leading the row. */
-.petale-social-btn--primary {
+/* Scoped under .petale-template so this color declaration outranks the
+   ".petale-template a { color: inherit }" reset (specificity 0,1,1).
+   Without the extra class the 0,1,0 selector loses and the button
+   inherits --petale-ink, which only equals --petale-on-accent on the
+   light variants. That coincidence is why Blush and Cream read fine but
+   the dark variants showed near-black text on a dark accent. */
+.petale-template .petale-social-btn--primary {
   width: auto;
   height: auto;
   padding: 13px 28px;
@@ -949,7 +955,7 @@ const PETALE_CSS = `
   letter-spacing: 0;
   box-shadow: 0 6px 18px rgba(201,168,118,0.22);
 }
-.petale-social-btn--primary:hover {
+.petale-template .petale-social-btn--primary:hover {
   color: var(--petale-on-accent);
   background: var(--petale-accent);
   filter: brightness(1.04);
