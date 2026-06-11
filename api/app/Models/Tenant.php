@@ -45,12 +45,19 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         // A5 refinement — trial_acknowledged_at gates the post-login
         // redirect; without it, signing back in after closing Stripe
         // mid-flow would bypass the trial-info page.
-        return ['id', 'plan', 'subscription_state', 'stripe_id', 'trial_ends_at', 'trial_acknowledged_at', 'created_at', 'updated_at'];
+        // Wave D — staff_login_enabled is a real tenants column (the
+        // master kill switch for staff logins), so it must be listed
+        // here or stancl/tenancy would treat it as a virtual data-JSON
+        // attribute and fail to read/write the actual column.
+        return ['id', 'plan', 'subscription_state', 'stripe_id', 'trial_ends_at', 'trial_acknowledged_at', 'staff_login_enabled', 'created_at', 'updated_at'];
     }
 
     protected $casts = [
         'trial_ends_at'         => 'datetime',
         'trial_acknowledged_at' => 'datetime',
+        // Wave D — master kill switch for staff logins. Default FALSE;
+        // when false the feature is entirely off for the tenant.
+        'staff_login_enabled'   => 'boolean',
     ];
 
     public function users()

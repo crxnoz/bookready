@@ -52,6 +52,7 @@ import { PaymentPill, PaymentSummary } from '@/components/editor/AppointmentPaym
 import StatusBadge from '@/components/ui/StatusBadge'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
 import { usePlan } from '@/components/editor/PlanContext'
+import { useRole } from '@/components/app/RoleContext'
 import { useToast } from '@/components/ui/Toast'
 import RefundDialog from '@/components/editor/RefundDialog'
 import MarkPaidDialog from '@/components/editor/MarkPaidDialog'
@@ -246,6 +247,10 @@ export default function AppointmentsEditor() {
   // until the snapshot loads, so the staff picker is hidden during
   // initial mount and reveals if the tenant is Studio/Salon.
   const plan = usePlan()
+  // Wave D — a staff login sees ONLY their own bookings (enforced server-
+  // side; the index returns just their rows). Owner-only bulk actions like
+  // "New appointment" are hidden for them.
+  const { isStaff } = useRole()
 
   // Allow deep-linking from the Bookings Overview cards (and anywhere
   // else that wants to land owners on a specific filter view).
@@ -657,15 +662,19 @@ export default function AppointmentsEditor() {
     <div className="flex flex-col min-h-full bg-cream">
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
 
-        {/* Inline action bar — page title now lives in EditorShell */}
-        <div className="flex items-center justify-end">
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-1.5 bg-near-black text-white px-3 py-1.5 text-eyebrow font-bold tracking-[0.08em] uppercase hover:opacity-90 transition-colors"
-          >
-            <Plus size={11} /> New appointment
-          </button>
-        </div>
+        {/* Inline action bar — page title now lives in EditorShell.
+            Wave D: "New appointment" is an owner-only action; staff manage
+            only their existing bookings, so it's hidden for them. */}
+        {! isStaff && (
+          <div className="flex items-center justify-end">
+            <button
+              onClick={openCreate}
+              className="flex items-center gap-1.5 bg-near-black text-white px-3 py-1.5 text-eyebrow font-bold tracking-[0.08em] uppercase hover:opacity-90 transition-colors"
+            >
+              <Plus size={11} /> New appointment
+            </button>
+          </div>
+        )}
 
         {/* Phase 13 — when arriving via a Customer drawer link, surface
             the active customer filter so the owner knows the list is
@@ -1097,12 +1106,14 @@ export default function AppointmentsEditor() {
             <p className="text-sm font-semibold text-near-black mb-1">No appointments</p>
             <p className="text-xs text-muted-text">
               {filter === 'upcoming'
-                ? 'No upcoming appointments. Create one to get started.'
+                ? isStaff
+                  ? 'No upcoming appointments on your schedule.'
+                  : 'No upcoming appointments. Create one to get started.'
                 : filter === 'today'
                 ? `Nothing scheduled for ${dayNavLabel(selectedDay).split(' · ').pop()}.`
                 : `No ${filter} appointments yet.`}
             </p>
-            {filter === 'upcoming' && (
+            {filter === 'upcoming' && ! isStaff && (
               <button
                 onClick={openCreate}
                 className="mt-4 inline-flex items-center gap-1.5 bg-near-black text-white px-4 py-2 text-xs font-bold tracking-[0.08em] uppercase hover:opacity-90 transition-colors"

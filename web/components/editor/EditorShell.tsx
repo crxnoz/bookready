@@ -7,6 +7,7 @@ import { PlanProvider }  from '@/components/editor/PlanContext'
 import EditorInnerNav    from '@/components/editor/layout/EditorInnerNav'
 import EditorPageHeader  from '@/components/editor/layout/EditorPageHeader'
 import SectionTopBar     from '@/components/editor/layout/SectionTopBar'
+import { useRole }       from '@/components/app/RoleContext'
 import {
   EDITOR_SECTIONS,
   sectionForPath,
@@ -50,6 +51,10 @@ export default function EditorShell({
 }) {
   const path = usePathname()
   const sp   = useSearchParams()
+  // Wave D — staff get a chrome-free shell (no owner section nav strip).
+  // The page header + content still render; only the owner-oriented
+  // SectionTopBar / EditorInnerNav are suppressed.
+  const { isStaff } = useRole()
 
   const section: EditorSectionConfig = useMemo(() => sectionForPath(path), [path])
 
@@ -84,11 +89,15 @@ export default function EditorShell({
   const resolvedTitle    = title    ?? section.defaultTitle
   const resolvedSubtitle = subtitle ?? section.defaultSubtitle
 
+  // Staff never see the owner section nav, regardless of the per-page props.
+  const showTopBar   = topBar   && ! isStaff
+  const showInnerNav = innerNav && ! isStaff
+
   return (
     <EditorProvider>
       <PlanProvider>
-        {topBar    && <SectionTopBar label={section.label} />}
-        {innerNav  && <EditorInnerNav section={section} activeId={activeId} />}
+        {showTopBar   && <SectionTopBar label={section.label} />}
+        {showInnerNav && <EditorInnerNav section={section} activeId={activeId} />}
         {pageHeader && (
           <EditorPageHeader
             title={resolvedTitle}

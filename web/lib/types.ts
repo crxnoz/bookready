@@ -446,6 +446,11 @@ export interface ApiStaffMember {
   sort_order: number
   created_at: string
   updated_at: string
+  /** Wave D — derived login status for the StaffEditor pill + invite
+   *  affordances. 'active' = bound to a login; 'invited' = a single-use
+   *  invite token is pending; 'none' = no login. Optional for backward
+   *  compat with any cached payload that predates the column. */
+  login_status?: 'none' | 'invited' | 'active'
 }
 
 export interface StaffMemberPayload {
@@ -1251,6 +1256,15 @@ export interface AuthUser {
   tenant_id: string
   is_owner: boolean
   is_admin?: boolean
+  /** Wave D — central users.role. Drives the role-aware editor: 'staff'
+   *  renders the scoped staff view (my schedule / hours / profile only),
+   *  'owner'/'admin' get the full editor. Optional + defaults to 'owner'
+   *  for backward compat with any payload that predates the column. */
+  role?: 'owner' | 'staff' | 'admin'
+  /** Wave D — the tenant staff.id this login is bound to (null for owners).
+   *  The scoped staff view uses it to default the appointments + profile
+   *  views to "their own" rows. */
+  staff_id?: number | null
   // Phase S6 part 2 — ISO 8601 string when the user has verified, or
   // null/undefined for unverified accounts. Drives the dashboard nag.
   email_verified_at?: string | null

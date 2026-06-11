@@ -42,8 +42,28 @@ class StaffHoursController extends Controller
         return $t ? substr($t, 0, 5) : null;
     }
 
+    /**
+     * Wave D — when the caller is a logged-in staff member, force the
+     * {staff} route param to equal their own staff_id (resolved from the
+     * central users row). Returns a 404 response when a staff user targets
+     * any other staff row (or has a null staff_id); null when allowed
+     * (owner, or staff targeting self). Call BEFORE tenancy init.
+     */
+    private function selfMatchGuard(Request $request, int $staff): ?JsonResponse
+    {
+        $user = $request->user();
+        if (($user->role ?? null) !== 'staff') return null; // owner — no scope
+        $ownStaffId = $user->staff_id !== null ? (int) $user->staff_id : null;
+        if ($ownStaffId === null || $ownStaffId !== $staff) {
+            return response()->json(['message' => 'Staff member not found'], 404);
+        }
+        return null;
+    }
+
     public function index(Request $request, int $staff): JsonResponse
     {
+        if ($guard = $this->selfMatchGuard($request, $staff)) return $guard;
+
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
@@ -103,6 +123,8 @@ class StaffHoursController extends Controller
             'hours.*.break_start' => 'nullable|date_format:H:i',
             'hours.*.break_end'   => 'nullable|date_format:H:i',
         ]);
+
+        if ($guard = $this->selfMatchGuard($request, $staff)) return $guard;
 
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);

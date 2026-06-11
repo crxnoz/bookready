@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Mail\FirstBookingOwnerMail;
+use App\Mail\StaffInviteMail;
 use App\Mail\WelcomeToBookReadyMail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -59,6 +60,33 @@ class PlatformMailer
             // Never let a celebration email block anything.
             Log::error('[BookReady] FirstBookingOwnerMail failed', [
                 'owner_email' => $ownerEmail,
+                'error'       => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Wave D — staff accept-invite email. Sent from BookReady (platform
+     * framing) because it's about account access, but names the business
+     * so the staff member knows who invited them. Best-effort: a send
+     * failure logs but never blocks the invite write (the owner can
+     * resend).
+     */
+    public static function sendStaffInvite(
+        string $staffEmail,
+        string $staffName,
+        string $businessName,
+        string $acceptUrl,
+    ): void {
+        try {
+            Mail::to($staffEmail)->send(new StaffInviteMail(
+                staffName:    $staffName,
+                businessName: $businessName,
+                acceptUrl:    $acceptUrl,
+            ));
+        } catch (\Throwable $e) {
+            Log::error('[BookReady] StaffInviteMail failed', [
+                'staff_email' => $staffEmail,
                 'error'       => $e->getMessage(),
             ]);
         }

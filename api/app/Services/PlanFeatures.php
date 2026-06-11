@@ -87,6 +87,12 @@ class PlanFeatures
             'staff_seats'          => self::staffSeatsFor($tenant),
             'dashboard_surface'    => self::dashboardSurface($tenant),
             'allows_custom_domain' => self::allowsCustomDomain($tenant),
+            // Wave D — per-tenant staff-login master switch (NOT a plan
+            // gate; it's a tenants column). Surfaced here so the editor's
+            // PlanContext can hide the StaffEditor login affordances when
+            // the feature is off. Defaults to false so a tenant that
+            // predates the column never accidentally shows the UI.
+            'staff_login_enabled'  => (bool) ($tenant->staff_login_enabled ?? false),
         ];
     }
 }

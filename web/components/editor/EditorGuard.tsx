@@ -2,14 +2,19 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { isLoggedIn, getTenantId, clearAuth } from '@/lib/auth'
+import { isLoggedIn, clearAuth } from '@/lib/auth'
 import { getCurrentUser } from '@/lib/api'
 import AppShell from '@/components/app/AppShell'
+import { RoleProvider } from '@/components/app/RoleContext'
+import { staffCanAccess } from '@/lib/editorNav'
 
 export default function EditorGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const [slug, setSlug] = useState<string | null>(null)
+  // Wave D — resolved role + staff_id from /auth/me, shared via RoleProvider.
+  const [role, setRole]       = useState<'owner' | 'staff' | 'admin'>('owner')
+  const [staffId, setStaffId] = useState<number | null>(null)
 
   useEffect(() => {
     // Phase S6 — session auth is now cookie-based. We can't read the
@@ -40,6 +45,20 @@ export default function EditorGuard({ children }: { children: React.ReactNode })
           router.replace(user.redirect_url)
           return
         }
+
+        // Wave D — role-aware gate. A staff login may only view its own
+        // scoped surfaces (schedule / hours / profile). Any owner-only
+        // path bounces to their schedule. Enforced here in addition to
+        // the backend's per-row scoping so staff never even render an
+        // owner page shell. Owners/admins are unaffected.
+        const resolvedRole = user.role ?? 'owner'
+        if (resolvedRole === 'staff' && pathname && ! staffCanAccess(pathname)) {
+          router.replace('/editor/appointments?scope=mine')
+          return
+        }
+
+        setRole(resolvedRole)
+        setStaffId(user.staff_id ?? null)
         setSlug(user.tenant_id)
       })
       .catch(() => {
@@ -58,5 +77,9 @@ export default function EditorGuard({ children }: { children: React.ReactNode })
     )
   }
 
-  return <AppShell slug={slug}>{children}</AppShell>
+  return (
+    <RoleProvider role={role} staffId={staffId}>
+      <AppShell slug={slug}>{children}</AppShell>
+    </RoleProvider>
+  )
 }

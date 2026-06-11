@@ -4,9 +4,13 @@ namespace App\Http\Controllers\Api\Editor;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
+use App\Models\User;
+use App\Services\PlatformMailer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class StaffController extends Controller
 {
@@ -24,7 +28,35 @@ class StaffController extends Controller
             'sort_order' => (int)   $row->sort_order,
             'created_at' =>         $row->created_at,
             'updated_at' =>         $row->updated_at,
+            // Wave D — derived login status drives the StaffEditor pill +
+            // invite/revoke affordances. 'active' once linked to a central
+            // users row; 'invited' while a single-use token is pending and
+            // unexpired; otherwise 'none'. Guarded against the pre-migration
+            // schema (Wave D tenant migration adds these columns) so the
+            // staff list never crashes if a tenant hasn't migrated yet.
+            'login_status' => $this->loginStatusOf($row),
         ];
+    }
+
+    // Resolve the Wave D login status for a staff row. Defensive against
+    // the columns not existing yet (tenants:migrate may not have run).
+    private function loginStatusOf(object $row): string
+    {
+        if (! Schema::hasColumn('staff', 'user_id')) {
+            return 'none';
+        }
+        if (! empty($row->user_id)) {
+            return 'active';
+        }
+        // A pending invite: token still set AND not past its expiry.
+        $hasToken = ! empty($row->invite_token ?? null);
+        if ($hasToken) {
+            $expires = $row->invite_token_expires_at ?? null;
+            if ($expires === null || strtotime((string) $expires) > time()) {
+                return 'invited';
+            }
+        }
+        return 'none';
     }
 
     // GET /editor/staff
@@ -116,6 +148,37 @@ class StaffController extends Controller
         return response()->json($result, 201);
     }
 
+    // GET /editor/staff/{staff}
+    //
+    // In the tenant_member group: owners can read any staff row; a staff
+    // login can read ONLY its own (the "My profile" view). Cross-staff
+    // access 404s (not 403) so other rows aren't enumerable.
+    public function show(Request $request, int $staff): JsonResponse
+    {
+        $user       = $request->user();
+        $isStaff    = ($user->role ?? null) === 'staff';
+        $ownStaffId = $user->staff_id !== null ? (int) $user->staff_id : null;
+
+        if ($isStaff && ($ownStaffId === null || $ownStaffId !== $staff)) {
+            return response()->json(['message' => 'Staff member not found'], 404);
+        }
+
+        $tenant = Tenant::findOrFail($user->tenant_id);
+        tenancy()->initialize($tenant);
+
+        $row = DB::table('staff')->find($staff);
+        if (! $row) {
+            tenancy()->end();
+            return response()->json(['message' => 'Staff member not found'], 404);
+        }
+
+        $result = $this->format($row);
+
+        tenancy()->end();
+
+        return response()->json($result);
+    }
+
     // PATCH /editor/staff/{staff}
     public function update(Request $request, int $staff): JsonResponse
     {
@@ -131,6 +194,26 @@ class StaffController extends Controller
             'is_active'  => 'sometimes|boolean',
             'sort_order' => 'sometimes|integer',
         ]);
+
+        // Wave D — a logged-in staff member may edit ONLY their own profile
+        // and ONLY bio/phone/photo_url. name/role/email/is_active/
+        // sort_order stay owner-controlled (email especially, since it
+        // would drift from the central users identity). Resolve role +
+        // staff_id from the central users row BEFORE tenancy.
+        $user      = $request->user();
+        $isStaff   = ($user->role ?? null) === 'staff';
+        $ownStaffId = $user->staff_id !== null ? (int) $user->staff_id : null;
+
+        if ($isStaff) {
+            // Self-match: a staff user can only target their own row. 404
+            // (not 403) so other staff rows aren't enumerable. A null
+            // staff_id can never match.
+            if ($ownStaffId === null || $ownStaffId !== $staff) {
+                return response()->json(['message' => 'Staff member not found'], 404);
+            }
+            // Restrict the editable field set.
+            $validated = array_intersect_key($validated, array_flip(['bio', 'phone', 'photo_url']));
+        }
 
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
@@ -192,6 +275,170 @@ class StaffController extends Controller
         $result  = $this->format($updated);
 
         tenancy()->end();
+
+        return response()->json($result);
+    }
+
+    // POST /editor/staff/{staff}/invite
+    //
+    // Owner-only (route is in the tenant_owner group). Generates a
+    // single-use accept-invite token, stores its HASH + 24h expiry on the
+    // staff row, and emails the staff member a link to set a password.
+    //
+    // Wave D refusals:
+    //   - 403 when the tenant's staff_login_enabled master switch is off.
+    //   - 422 when the staff row has no real email to send to.
+    //   - 422 when that email already belongs to ANY central user (owner
+    //     OR staff). v1 is single-identity-per-email: multi-tenant staff
+    //     identity is v2, so we refuse rather than silently re-link.
+    public function sendInvite(Request $request, int $staff): JsonResponse
+    {
+        $tenant = Tenant::findOrFail($request->user()->tenant_id);
+
+        // Master kill switch — read from the central tenants row before
+        // initializing tenancy.
+        if (! (bool) ($tenant->staff_login_enabled ?? false)) {
+            return response()->json([
+                'message' => 'Staff logins are turned off for this business.',
+                'code'    => 'staff_login_disabled',
+            ], 403);
+        }
+
+        tenancy()->initialize($tenant);
+
+        if (! Schema::hasColumn('staff', 'invite_token')) {
+            tenancy()->end();
+            return response()->json(['message' => 'Staff logins are not available yet.'], 409);
+        }
+
+        $row = DB::table('staff')->find($staff);
+        if (! $row) {
+            tenancy()->end();
+            return response()->json(['message' => 'Staff member not found'], 404);
+        }
+
+        $email = strtolower(trim((string) ($row->email ?? '')));
+        // Guard against the legacy placeholder backfill (no '@') and empty.
+        if ($email === '' || ! str_contains($email, '@')) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'Add a real email to this staff member before inviting them.',
+                'code'    => 'staff_email_missing',
+            ], 422);
+        }
+
+        // Already linked to a login? Nothing to do.
+        if (! empty($row->user_id)) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'This staff member already has a login.',
+                'code'    => 'already_linked',
+            ], 422);
+        }
+
+        // v1 single-identity refusal: the email must not already be ANY
+        // central user. This check spans every tenant (users is central),
+        // which is exactly the multi-tenant collision we punt to v2.
+        if (User::where('email', $email)->exists()) {
+            tenancy()->end();
+            return response()->json([
+                'message' => 'Someone already has an account with this email. They cannot be invited as staff yet.',
+                'code'    => 'email_already_user',
+            ], 422);
+        }
+
+        // Single-use token: send the PLAIN value in the email, store only
+        // its hash. 24h expiry.
+        $plain  = Str::random(48);
+        $expires = now()->addHours(24);
+
+        DB::table('staff')->where('id', $staff)->update([
+            'invite_token'            => hash('sha256', $plain),
+            'invite_token_expires_at' => $expires,
+            'invited_at'              => now(),
+            'updated_at'              => now(),
+        ]);
+
+        // Flatten everything we need for the email BEFORE ending tenancy.
+        $staffName    = (string) ($row->name ?? 'there');
+        $businessName = (string) (
+            (Schema::hasTable('business_profiles')
+                ? DB::table('business_profiles')->value('business_name')
+                : null)
+            ?: $tenant->id
+        );
+
+        tenancy()->end();
+
+        $acceptUrl = 'https://app.bkrdy.me/staff/accept-invite?'
+            . http_build_query(['token' => $plain, 'tenant' => $tenant->id]);
+
+        PlatformMailer::sendStaffInvite(
+            staffEmail:   $email,
+            staffName:    $staffName,
+            businessName: $businessName,
+            acceptUrl:    $acceptUrl,
+        );
+
+        return response()->json([
+            'message'    => 'Invite sent.',
+            'invited_at' => now()->toAtomString(),
+            'expires_at' => $expires->toAtomString(),
+        ]);
+    }
+
+    // POST /editor/staff/{staff}/revoke-login
+    //
+    // Owner-only. Severs a staff member's login: clears the soft pointer +
+    // invite columns on the tenant staff row, then deletes the linked
+    // central users row and revokes its Sanctum tokens. NULL (never 0) is
+    // written to user_id so the UNIQUE index allows multiple revoked rows.
+    public function revokeLogin(Request $request, int $staff): JsonResponse
+    {
+        $tenant = Tenant::findOrFail($request->user()->tenant_id);
+        tenancy()->initialize($tenant);
+
+        if (! Schema::hasColumn('staff', 'user_id')) {
+            tenancy()->end();
+            return response()->json(['message' => 'Staff logins are not available yet.'], 409);
+        }
+
+        $row = DB::table('staff')->find($staff);
+        if (! $row) {
+            tenancy()->end();
+            return response()->json(['message' => 'Staff member not found'], 404);
+        }
+
+        $linkedUserId = $row->user_id !== null ? (int) $row->user_id : null;
+
+        DB::table('staff')->where('id', $staff)->update([
+            'user_id'                 => null,
+            'invite_token'            => null,
+            'invite_token_expires_at' => null,
+            'invited_at'              => null,
+            'updated_at'              => now(),
+        ]);
+
+        // Flatten staff snapshot before leaving tenant scope so we can
+        // return it, then operate on the central users table.
+        $updated = DB::table('staff')->find($staff);
+        $result  = $this->format($updated);
+
+        tenancy()->end();
+
+        // Central-DB cleanup: revoke tokens + delete the staff login row.
+        // Only touch a user that is actually a staff login for THIS tenant
+        // — never an owner row, never a cross-tenant row.
+        if ($linkedUserId !== null) {
+            $user = User::where('id', $linkedUserId)
+                ->where('tenant_id', $tenant->id)
+                ->where('role', 'staff')
+                ->first();
+            if ($user) {
+                $user->tokens()->delete();
+                $user->delete();
+            }
+        }
 
         return response()->json($result);
     }

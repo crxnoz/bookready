@@ -16,7 +16,7 @@ export type StatusTone =
   | 'neutral' | 'info' | 'success' | 'warning' | 'danger' | 'accent'
 
 export type StatusDomain =
-  | 'appointment' | 'payment' | 'connect' | 'entity' | 'waitlist' | 'request' | 'customer' | 'payout' | 'integration'
+  | 'appointment' | 'payment' | 'connect' | 'entity' | 'waitlist' | 'request' | 'customer' | 'payout' | 'integration' | 'staff_login'
 
 export interface StatusDef {
   label: string
@@ -93,6 +93,12 @@ const REGISTRY: Record<StatusDomain, Record<string, StatusDef>> = {
     not_connected:   { label: 'Not connected', tone: 'neutral' },
     action_required: { label: 'Action needed', tone: 'warning' },
     coming_soon:     { label: 'Coming soon',   tone: 'neutral' },
+  },
+  // Wave D — per-staff login state in the StaffEditor.
+  staff_login: {
+    none:    { label: 'No login', tone: 'neutral' },
+    invited: { label: 'Invited',  tone: 'accent'  },
+    active:  { label: 'Login on', tone: 'success' },
   },
 }
 

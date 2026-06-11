@@ -192,15 +192,52 @@ class AppointmentsController extends Controller
         return null;
     }
 
+    /**
+     * Wave D — when the caller is a logged-in STAFF member (role==='staff'),
+     * return the staff_id their queries must be constrained to, or null
+     * when they must see nothing. Owners (role!=='staff') return null and
+     * are NOT scoped (the caller skips the where()).
+     *
+     * Read from the central users row — must be called BEFORE tenancy is
+     * initialized. A staff user with a null staff_id can never match any
+     * appointment, so the boolean second return flags "forbidden".
+     *
+     * @return array{0:bool,1:?int}  [isStaffScoped, staffId]
+     */
+    private function staffScope(Request $request): array
+    {
+        $user = $request->user();
+        if (($user->role ?? null) !== 'staff') {
+            return [false, null]; // owner — no scoping
+        }
+        // Staff: scope to their own staff_id. Null means "forbidden" — a
+        // staff login with no linked staff row matches nothing.
+        return [true, $user->staff_id !== null ? (int) $user->staff_id : null];
+    }
+
     // GET /editor/appointments
     public function index(Request $request): JsonResponse
     {
+        // Resolve staff scope from the CENTRAL users row before tenancy.
+        [$isStaff, $staffId] = $this->staffScope($request);
+
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
         $query = DB::table('appointments')
             ->orderBy('appointment_date', 'asc')
             ->orderBy('start_time', 'asc');
+
+        // Wave D — staff see ONLY their own appointments. A null staff_id
+        // (unlinked staff login) or a tenant whose appointments table
+        // predates the staff_id column matches nothing.
+        if ($isStaff) {
+            if ($staffId === null || ! Schema::hasColumn('appointments', 'staff_id')) {
+                tenancy()->end();
+                return response()->json([]);
+            }
+            $query->where('staff_id', $staffId);
+        }
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -388,15 +425,44 @@ class AppointmentsController extends Controller
         return $exists ? $requestedStaffId : null;
     }
 
+    /**
+     * Wave D — own-row gate for a staff caller. Returns true when this
+     * appointment row may NOT be touched by the caller (so the caller
+     * 404s). Owners always pass (false). A staff caller with a null
+     * staff_id, an appointment with a null staff_id, or a staff_id
+     * mismatch is forbidden. Must be called inside tenant scope (it reads
+     * the appointment row's staff_id), with $isStaff/$staffId resolved
+     * from the central user beforehand.
+     */
+    private function staffRowForbidden(bool $isStaff, ?int $staffId, object $row): bool
+    {
+        if (! $isStaff) return false; // owner
+        if ($staffId === null) return true;
+        if (! Schema::hasColumn('appointments', 'staff_id')) return true;
+        $rowStaffId = property_exists($row, 'staff_id') && $row->staff_id !== null
+            ? (int) $row->staff_id
+            : null;
+        return $rowStaffId !== $staffId;
+    }
+
     // GET /editor/appointments/{appointment}
     public function show(Request $request, int $appointment): JsonResponse
     {
+        [$isStaff, $staffId] = $this->staffScope($request);
+
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
         $row = DB::table('appointments')->find($appointment);
 
         if (! $row) {
+            tenancy()->end();
+            return response()->json(['message' => 'Appointment not found'], 404);
+        }
+
+        // Wave D — staff may only view their own appointment. 404 (not 403)
+        // so the existence of other staff's appointments isn't leaked.
+        if ($this->staffRowForbidden($isStaff, $staffId, $row)) {
             tenancy()->end();
             return response()->json(['message' => 'Appointment not found'], 404);
         }
@@ -426,6 +492,9 @@ class AppointmentsController extends Controller
             'staff_id'         => 'sometimes|nullable|integer',
         ]);
 
+        // Wave D — resolve staff scope from the central user before tenancy.
+        [$isStaff, $staffId] = $this->staffScope($request);
+
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
@@ -433,6 +502,22 @@ class AppointmentsController extends Controller
         if (! $appt) {
             tenancy()->end();
             return response()->json(['message' => 'Appointment not found'], 404);
+        }
+
+        // Wave D — staff may only mutate their OWN appointment (this is the
+        // single path for complete/no-show/cancel/reschedule). 404 on a
+        // cross-staff row so other staff's appointments aren't leaked.
+        if ($this->staffRowForbidden($isStaff, $staffId, $appt)) {
+            tenancy()->end();
+            return response()->json(['message' => 'Appointment not found'], 404);
+        }
+
+        // Wave D — a staff member can't reassign their appointment to
+        // another staff member (would let them hand off their own work or
+        // poach another's). Drop staff_id from the validated payload for
+        // staff callers; owners keep full control.
+        if ($isStaff) {
+            unset($validated['staff_id']);
         }
 
         $oldStatus    = $appt->status;
@@ -639,11 +724,20 @@ class AppointmentsController extends Controller
     // Soft cancel rather than hard delete — preserves audit history
     public function destroy(Request $request, int $appointment): JsonResponse
     {
+        // Wave D — resolve staff scope from the central user before tenancy.
+        [$isStaff, $staffId] = $this->staffScope($request);
+
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
         $appt = DB::table('appointments')->find($appointment);
         if (! $appt) {
+            tenancy()->end();
+            return response()->json(['message' => 'Appointment not found'], 404);
+        }
+
+        // Wave D — staff may only soft-cancel their OWN appointment.
+        if ($this->staffRowForbidden($isStaff, $staffId, $appt)) {
             tenancy()->end();
             return response()->json(['message' => 'Appointment not found'], 404);
         }

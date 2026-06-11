@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\Auth\GoogleAuthController;
 use App\Http\Controllers\Api\Auth\IdentityController;
 use App\Http\Controllers\Api\Auth\PasswordResetController;
 use App\Http\Controllers\Api\Auth\RegisterController;
+use App\Http\Controllers\Api\Auth\StaffInviteController;
 use App\Http\Controllers\Api\Customer\AuthController                as CustomerAuthController;
 use App\Http\Controllers\Api\Customer\BookingsController            as CustomerBookingsController;
 use App\Http\Controllers\Api\Customer\ClaimController               as CustomerClaimController;
@@ -254,6 +255,15 @@ Route::prefix('v1')->group(function () {
         Route::post('google/exchange',         [GoogleAuthController::class, 'exchange'])
             ->middleware(['trusted_origin', 'throttle:30,1']);
 
+        // Wave D — public staff accept-invite. The owner mints the
+        // single-use token (StaffController::sendInvite); this is the
+        // bootstrap path that turns it into a staff login, so it can't be
+        // behind tenant_owner / tenant_member. Throttled like the other
+        // credential endpoints (a leaked token is single-use + 24h-bound,
+        // but we still don't want it brute-forceable).
+        Route::post('staff/accept-invite', [StaffInviteController::class, 'accept'])
+            ->middleware(['trusted_origin', 'throttle:10,1']);
+
         // Forgot / reset password. #161 — Turnstile on the forgot
         // endpoint (it triggers an email send + DB write per request,
         // a great abuse target). Reset itself is token-gated already.
@@ -406,11 +416,12 @@ Route::prefix('v1')->group(function () {
         // deltas, capacity-resolved % full).
         Route::get('dashboard/metrics', [DashboardMetricsController::class, 'show']);
 
-        Route::get('appointments',                   [AppointmentsController::class, 'index']);
+        // Wave D — appointments index/show/update/destroy are MOVED to the
+        // tenant_member group below (staff manage their OWN appointments:
+        // view, complete/no-show, cancel/reschedule). The money + create
+        // actions stay owner-only here. Owners still pass tenant_member,
+        // so owner behavior is unchanged.
         Route::post('appointments',                  [AppointmentsController::class, 'store']);
-        Route::get('appointments/{appointment}',     [AppointmentsController::class, 'show']);
-        Route::patch('appointments/{appointment}',         [AppointmentsController::class, 'update']);
-        Route::delete('appointments/{appointment}',        [AppointmentsController::class, 'destroy']);
         Route::post('appointments/{appointment}/refund',            [AppointmentsController::class, 'refund']);
         Route::post('appointments/{appointment}/mark-paid',         [AppointmentsController::class, 'markPaid']);
         Route::post('appointments/{appointment}/charge-balance',    [AppointmentsController::class, 'chargeBalance']);
@@ -434,8 +445,17 @@ Route::prefix('v1')->group(function () {
 
         Route::get('staff',              [StaffController::class, 'index']);
         Route::post('staff',             [StaffController::class, 'store']);
-        Route::patch('staff/{staff}',    [StaffController::class, 'update']);
         Route::delete('staff/{staff}',   [StaffController::class, 'destroy']);
+        // PATCH staff/{staff} is MOVED to the tenant_member group below
+        // (staff edit their own bio/phone/photo). Owners still pass that
+        // group, so this is not a narrowing.
+
+        // Wave D — owner-only invite lifecycle. Only an owner can invite a
+        // staff member to a login or revoke one. The accept side is public
+        // (POST /auth/staff/accept-invite). Both no-op safely when the
+        // tenant's staff_login_enabled master switch is off.
+        Route::post('staff/{staff}/invite',       [StaffController::class, 'sendInvite']);
+        Route::post('staff/{staff}/revoke-login', [StaffController::class, 'revokeLogin']);
 
         // Customer booking coupons (Connect rail).
         Route::get   ('coupons',         [CouponsController::class, 'index']);
@@ -457,14 +477,11 @@ Route::prefix('v1')->group(function () {
         Route::get ('integrations/google-calendar/calendars', [GoogleCalendarController::class, 'listCalendars']);
         Route::post('integrations/google-calendar/calendar',  [GoogleCalendarController::class, 'setCalendar']);
         Route::post('integrations/google-calendar/disconnect',[GoogleCalendarController::class, 'disconnect']);
-        // Per-staff hours + blocked dates. Same /{staff}/* shape Laravel
-        // would generate via apiResource, but kept flat for consistency
-        // with the rest of the editor namespace.
-        Route::get  ('staff/{staff}/hours',                    [StaffHoursController::class,        'index']);
-        Route::patch('staff/{staff}/hours',                    [StaffHoursController::class,        'update']);
-        Route::get   ('staff/{staff}/blocked-dates',           [StaffBlockedDatesController::class, 'index']);
-        Route::post  ('staff/{staff}/blocked-dates',           [StaffBlockedDatesController::class, 'store']);
-        Route::delete('staff/{staff}/blocked-dates/{id}',      [StaffBlockedDatesController::class, 'destroy']);
+        // Wave D — per-staff hours + blocked dates are MOVED to the
+        // tenant_member group below (staff edit their OWN hours + block
+        // their OWN dates). Controller self-match scoping forces
+        // {staff} === user.staff_id when role==='staff'. Owners pass that
+        // group too, so this is not a narrowing.
 
         // Groups routes MUST come before /{item} so the static 'groups'
         // segment isn't swallowed by the dynamic {item} matcher.
@@ -572,6 +589,44 @@ Route::prefix('v1')->group(function () {
         Route::post('website/sections',               [WebsiteSectionsController::class, 'store']);
         Route::patch('website/sections/{section}',    [WebsiteSectionsController::class, 'update']);
         Route::delete('website/sections/{section}',   [WebsiteSectionsController::class, 'destroy']);
+    });
+
+    // ── Wave D — tenant MEMBER surface (owner OR logged-in staff) ────────
+    //
+    // EnsureTenantMember passes when user.tenant_id && (user.is_owner ||
+    // user.role==='staff'). This group holds ONLY the audited staff-allowed
+    // subset MOVED out of the tenant_owner group above. Owners pass this
+    // group too (is_owner true), so owner behavior is identical to before
+    // the split — nothing was narrowed.
+    //
+    // Per-staff ROW scoping (a staff member can only touch their OWN
+    // appointments / hours / blocked-dates / profile) is enforced INSIDE
+    // each controller when role==='staff' (404/403 on cross-staff access),
+    // never only here. write_gate still applies (read-through, 402 on
+    // mutations for trial_expired/cancelled tenants), same as tenant_owner.
+    Route::middleware(['auth:sanctum', 'tenant_member', 'write_gate'])->prefix('editor')->group(function () {
+        // Appointments — staff manage their OWN. update() is the single
+        // path for complete/no-show/cancel/reschedule (status + date/time);
+        // destroy() is soft-cancel. store() + the money actions stayed in
+        // tenant_owner. Customer contact is visible only on own rows.
+        Route::get   ('appointments',                [AppointmentsController::class, 'index']);
+        Route::get   ('appointments/{appointment}',  [AppointmentsController::class, 'show']);
+        Route::patch ('appointments/{appointment}',  [AppointmentsController::class, 'update']);
+        Route::delete('appointments/{appointment}',  [AppointmentsController::class, 'destroy']);
+
+        // Own staff profile (bio/phone/photo only when role==='staff';
+        // owner can edit any field). Self-match enforced in the controller.
+        // GET feeds the staff "My profile" view; PATCH saves it.
+        Route::get  ('staff/{staff}',                [StaffController::class, 'show']);
+        Route::patch('staff/{staff}',                [StaffController::class, 'update']);
+
+        // Own hours + own blocked dates. Self-match ({staff}===staff_id)
+        // enforced in each controller when role==='staff'.
+        Route::get   ('staff/{staff}/hours',               [StaffHoursController::class,        'index']);
+        Route::patch ('staff/{staff}/hours',               [StaffHoursController::class,        'update']);
+        Route::get   ('staff/{staff}/blocked-dates',       [StaffBlockedDatesController::class, 'index']);
+        Route::post  ('staff/{staff}/blocked-dates',       [StaffBlockedDatesController::class, 'store']);
+        Route::delete('staff/{staff}/blocked-dates/{id}',  [StaffBlockedDatesController::class, 'destroy']);
     });
 
     // ── BookReady platform admin (super-admin only) ──────────────────────

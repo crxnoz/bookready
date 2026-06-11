@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   UserPlus, Users, Edit2, Mail, Phone, CheckCircle, XCircle, X,
   ChevronDown, ChevronUp, Calendar, Clock, Plus, Trash2, AlertCircle, Loader2,
-  Sparkles,
+  Sparkles, KeyRound, Send,
 } from 'lucide-react'
 import { usePlan } from '@/components/editor/PlanContext'
 import {
@@ -17,6 +17,8 @@ import {
   getEditorStaffBlockedDates,
   createEditorStaffBlockedDate,
   deleteEditorStaffBlockedDate,
+  inviteStaffMember,
+  revokeStaffLogin,
 } from '@/lib/api'
 import type {
   ApiStaffMember,
@@ -26,6 +28,8 @@ import type {
 } from '@/lib/types'
 import { cn } from '@/lib/cn'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { useToast } from '@/components/ui/Toast'
+import StatusBadge from '@/components/ui/StatusBadge'
 import ImageUploadField from '@/components/editor/ImageUploadField'
 import { SectionHeader } from '@/components/editor/AvailabilitySections'
 
@@ -74,6 +78,10 @@ function isPlaceholderEmail(email: string | null): boolean {
 
 export default function StaffEditor() {
   const plan = usePlan()
+  const toast = useToast()
+  // Wave D — whether the staff-login feature is on for this tenant. When
+  // off, the StaffCard hides the invite/revoke affordances entirely.
+  const loginEnabled = plan.staffLoginEnabled()
   const [staff,         setStaff]         = useState<ApiStaffMember[]>([])
   const [loading,       setLoading]       = useState(true)
   const [loadError,     setLoadError]     = useState<string | null>(null)
@@ -167,6 +175,12 @@ export default function StaffEditor() {
     } finally {
       setActionLoading(null)
     }
+  }
+
+  // Wave D — patch a single field (e.g. login_status) on one staff row in
+  // place. Used by the login affordances so the pill flips without a refetch.
+  function patchMember(id: number, patch: Partial<ApiStaffMember>) {
+    setStaff(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s))
   }
 
   const active   = staff.filter(s =>  s.is_active)
@@ -424,6 +438,9 @@ export default function StaffEditor() {
                   member={member}
                   actionLoading={actionLoading === member.id}
                   expanded={expandedId === member.id}
+                  loginEnabled={loginEnabled}
+                  toast={toast}
+                  onLoginChanged={patch => patchMember(member.id, patch)}
                   onToggleExpand={() => setExpandedId(id => id === member.id ? null : member.id)}
                   onEdit={() => openEdit(member)}
                   onToggleActive={() => handleToggleActive(member)}
@@ -446,6 +463,9 @@ export default function StaffEditor() {
                   member={member}
                   actionLoading={actionLoading === member.id}
                   expanded={expandedId === member.id}
+                  loginEnabled={loginEnabled}
+                  toast={toast}
+                  onLoginChanged={patch => patchMember(member.id, patch)}
                   onToggleExpand={() => setExpandedId(id => id === member.id ? null : member.id)}
                   onEdit={() => openEdit(member)}
                   onToggleActive={() => handleToggleActive(member)}
@@ -465,6 +485,9 @@ function StaffCard({
   member,
   actionLoading,
   expanded,
+  loginEnabled,
+  toast,
+  onLoginChanged,
   onToggleExpand,
   onEdit,
   onToggleActive,
@@ -472,11 +495,15 @@ function StaffCard({
   member: ApiStaffMember
   actionLoading: boolean
   expanded: boolean
+  loginEnabled: boolean
+  toast: ReturnType<typeof useToast>
+  onLoginChanged: (patch: Partial<ApiStaffMember>) => void
   onToggleExpand: () => void
   onEdit: () => void
   onToggleActive: () => void
 }) {
   const placeholder = isPlaceholderEmail(member.email)
+  const loginStatus = member.login_status ?? 'none'
   return (
     <div className={cn(
       'bg-white border transition-opacity',
@@ -578,6 +605,18 @@ function StaffCard({
             }
           </button>
         </div>
+
+        {/* Staff login affordance (Wave D) — only when the tenant has the
+            feature switched on. Pill + invite/resend/revoke. */}
+        {loginEnabled && (
+          <StaffLoginRow
+            member={member}
+            loginStatus={loginStatus}
+            placeholder={placeholder}
+            toast={toast}
+            onLoginChanged={onLoginChanged}
+          />
+        )}
       </div>
 
       {/* Schedule panel */}
@@ -586,6 +625,108 @@ function StaffCard({
           <StaffHoursPanel staffId={member.id} />
           <StaffBlockedDatesPanel staffId={member.id} />
         </div>
+      )}
+    </div>
+  )
+}
+
+// ── Staff login row (Wave D) ─────────────────────────────────────────────────
+//
+// Renders the login-status pill + the relevant action. The whole row is
+// already gated by the tenant's staff_login_enabled flag at the StaffCard
+// level, so here we only branch on the per-staff status. Invite/resend are
+// disabled (with an explanatory hint) when the staff row has no real email.
+
+function StaffLoginRow({
+  member,
+  loginStatus,
+  placeholder,
+  toast,
+  onLoginChanged,
+}: {
+  member: ApiStaffMember
+  loginStatus: 'none' | 'invited' | 'active'
+  placeholder: boolean
+  toast: ReturnType<typeof useToast>
+  onLoginChanged: (patch: Partial<ApiStaffMember>) => void
+}) {
+  const confirm = useConfirm()
+  const [busy, setBusy] = useState(false)
+
+  // An invite needs a real, non-placeholder email to send to.
+  const emailMissing = placeholder || !member.email || !member.email.trim()
+
+  async function handleInvite() {
+    setBusy(true)
+    try {
+      await inviteStaffMember(member.id)
+      onLoginChanged({ login_status: 'invited' })
+      toast.success(loginStatus === 'invited' ? 'Invite resent.' : 'Login invite sent.')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not send the invite.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleRevoke() {
+    const ok = await confirm({
+      title:        'Revoke this login?',
+      message:      `${member.name} will lose access to the editor. You can invite them again later.`,
+      confirmLabel: 'Revoke login',
+      tone:         'danger',
+    })
+    if (!ok) return
+    setBusy(true)
+    try {
+      const updated = await revokeStaffLogin(member.id)
+      onLoginChanged({ login_status: updated.login_status ?? 'none' })
+      toast.success('Login revoked.')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not revoke the login.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-hairline-soft flex-wrap">
+      <span className="inline-flex items-center gap-1.5 text-2xs font-semibold text-muted-text">
+        <KeyRound size={11} /> Login
+      </span>
+      <StatusBadge domain="staff_login" status={loginStatus} />
+
+      <div className="flex items-center gap-2 ml-auto flex-wrap">
+        {loginStatus === 'active' ? (
+          <button
+            type="button"
+            onClick={handleRevoke}
+            disabled={busy}
+            className="flex items-center gap-1.5 text-2xs font-semibold text-muted-text border border-hairline-soft px-3 py-1.5 hover:text-danger hover:border-danger transition-colors disabled:opacity-40"
+          >
+            {busy ? <Loader2 size={11} className="animate-spin" /> : <XCircle size={11} />} Revoke login
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleInvite}
+            disabled={busy || emailMissing}
+            title={emailMissing ? 'Add a real email address first.' : undefined}
+            className="flex items-center gap-1.5 text-2xs font-semibold text-near-black border border-hairline-strong px-3 py-1.5 hover:border-near-black transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {busy
+              ? <Loader2 size={11} className="animate-spin" />
+              : loginStatus === 'invited' ? <Send size={11} /> : <UserPlus size={11} />
+            }
+            {loginStatus === 'invited' ? 'Resend' : 'Send login invite'}
+          </button>
+        )}
+      </div>
+
+      {emailMissing && loginStatus !== 'active' && (
+        <p className="w-full text-eyebrow text-muted-text mt-1">
+          Add a real email address before sending a login invite.
+        </p>
       )}
     </div>
   )

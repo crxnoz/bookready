@@ -30,6 +30,10 @@ export interface PlanSnapshot {
   /** 'solo' renders the "your day" surface; 'team' renders the team grid. */
   dashboard_surface:    'solo' | 'team'
   allows_custom_domain: boolean
+  /** Wave D — per-tenant staff-login master switch. Gates the StaffEditor
+   *  invite/revoke affordances. Optional for backward compat with any
+   *  cached snapshot that predates the key. */
+  staff_login_enabled?: boolean
 }
 
 interface PlanContextValue {
@@ -43,6 +47,8 @@ interface PlanContextValue {
   staffSeatsLimit():   number
   dashboardSurface():  'solo' | 'team'
   allowsCustomDomain(): boolean
+  /** Wave D — whether the tenant's staff-login feature is turned on. */
+  staffLoginEnabled(): boolean
 }
 
 const PlanContext = createContext<PlanContextValue | null>(null)
@@ -62,6 +68,7 @@ const SOLO_FALLBACK: PlanContextValue = {
   staffSeatsLimit:     () => 1,
   dashboardSurface:    () => 'solo',
   allowsCustomDomain:  () => false,
+  staffLoginEnabled:   () => false,
 }
 
 export function PlanProvider({ children }: { children: ReactNode }) {
@@ -91,6 +98,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
         staffSeatsLimit:    () => plan.staff_seats,
         dashboardSurface:   () => plan.dashboard_surface,
         allowsCustomDomain: () => plan.allows_custom_domain,
+        staffLoginEnabled:  () => plan.staff_login_enabled === true,
       }
     : { ...SOLO_FALLBACK, loading }
 

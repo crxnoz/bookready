@@ -35,6 +35,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin'                    => \App\Http\Middleware\EnsureAdmin::class,
             'verified_email'           => \App\Http\Middleware\EnsureEmailVerified::class,
             'tenant_owner'             => \App\Http\Middleware\EnsureTenantOwner::class,
+            // Wave D — wider gate: tenant owner OR a logged-in staff
+            // member. Owners pass both, so moving a route from
+            // tenant_owner to tenant_member never narrows owner access;
+            // staff gain access only to the explicitly-moved subset.
+            'tenant_member'            => \App\Http\Middleware\EnsureTenantMember::class,
             'trusted_origin'           => \App\Http\Middleware\EnsureTrustedBrowserOrigin::class,
             // #161 — Cloudflare Turnstile gate on signup + sensitive auth
             // endpoints. Reads turnstile_token from JSON body, 422s on

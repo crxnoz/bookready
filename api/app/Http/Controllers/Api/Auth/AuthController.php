@@ -110,6 +110,9 @@ class AuthController extends Controller
                     'tenant_id' => $user->tenant_id,
                     'is_owner'  => (bool) ($user->is_owner ?? false),
                     'is_admin'  => (bool) ($user->is_admin ?? false),
+                    // Wave D — role + staff_id for frontend branching.
+                    'role'      => $user->role ?? 'owner',
+                    'staff_id'  => $user->staff_id !== null ? (int) $user->staff_id : null,
                 ],
                 // #159 — available_roles drives the post-login role
                 // picker. Single-role users see no picker; multi-role
@@ -166,6 +169,11 @@ class AuthController extends Controller
             'tenant_id'          => $user->tenant_id,
             'is_owner'           => $user->is_owner,
             'is_admin'           => (bool) ($user->is_admin ?? false),
+            // Wave D — role + staff_id let the frontend branch between the
+            // full owner editor and the scoped staff view. role defaults
+            // to 'owner' (column default); staff_id is null for owners.
+            'role'               => $user->role ?? 'owner',
+            'staff_id'           => $user->staff_id !== null ? (int) $user->staff_id : null,
             // Phase S6 part 2 — frontend nag banner gates on this.
             'email_verified_at'  => $user->email_verified_at?->toAtomString(),
             // A5 — onboarding state. EditorGuard reads these to bounce

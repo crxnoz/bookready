@@ -18,6 +18,11 @@ class User extends Authenticatable
         'tenant_id',
         'is_owner',
         'is_admin',
+        // Wave D — staff logins. role is a plain string
+        // (owner | staff | admin); staff_id is a soft pointer to the
+        // tenant-DB staff.id for a logged-in staff member.
+        'role',
+        'staff_id',
         // #159 — FK to identities. Null for unmigrated legacy rows; the
         // create-identities migration backfills every existing user.
         'identity_id',
@@ -50,6 +55,25 @@ class User extends Authenticatable
     public function tenant()
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    /**
+     * Wave D — true when this user is a logged-in staff member (not the
+     * tenant owner). Staff are scoped to their own appointments / hours /
+     * profile inside each controller.
+     */
+    public function isStaff(): bool
+    {
+        return $this->role === 'staff';
+    }
+
+    /**
+     * Wave D — true when this user owns the tenant. Mirrors the legacy
+     * is_owner boolean; prefer the role-aware form going forward.
+     */
+    public function isOwnerRole(): bool
+    {
+        return $this->role === 'owner' || (bool) ($this->is_owner ?? false);
     }
 
     /**

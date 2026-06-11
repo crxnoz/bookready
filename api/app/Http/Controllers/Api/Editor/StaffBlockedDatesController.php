@@ -31,8 +31,27 @@ class StaffBlockedDatesController extends Controller
         ];
     }
 
+    /**
+     * Wave D — force a staff caller to their own staff_id (resolved from
+     * the central users row). 404 response when a staff user targets any
+     * other row or has a null staff_id; null when allowed. Call BEFORE
+     * tenancy init.
+     */
+    private function selfMatchGuard(Request $request, int $staff): ?JsonResponse
+    {
+        $user = $request->user();
+        if (($user->role ?? null) !== 'staff') return null; // owner — no scope
+        $ownStaffId = $user->staff_id !== null ? (int) $user->staff_id : null;
+        if ($ownStaffId === null || $ownStaffId !== $staff) {
+            return response()->json(['message' => 'Staff member not found'], 404);
+        }
+        return null;
+    }
+
     public function index(Request $request, int $staff): JsonResponse
     {
+        if ($guard = $this->selfMatchGuard($request, $staff)) return $guard;
+
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 
@@ -61,6 +80,8 @@ class StaffBlockedDatesController extends Controller
             'end_date'   => 'nullable|date_format:Y-m-d|after_or_equal:start_date',
             'reason'     => 'nullable|string|max:200',
         ]);
+
+        if ($guard = $this->selfMatchGuard($request, $staff)) return $guard;
 
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
@@ -95,6 +116,8 @@ class StaffBlockedDatesController extends Controller
 
     public function destroy(Request $request, int $staff, int $id): JsonResponse
     {
+        if ($guard = $this->selfMatchGuard($request, $staff)) return $guard;
+
         $tenant = Tenant::findOrFail($request->user()->tenant_id);
         tenancy()->initialize($tenant);
 

@@ -16,6 +16,7 @@
 import {
   LayoutDashboard, Info, Sparkles, FileText, Image as ImageIcon,
   Shield, Plus, Settings as SettingsIcon, Search,
+  Calendar, Clock, UserCircle,
 } from 'lucide-react'
 
 export type EditorSectionKey =
@@ -201,4 +202,55 @@ export function hrefForInnerTab(section: EditorSectionConfig, item: InnerNavItem
     return item.id === 'overview' ? section.hubPath : `${section.hubPath}?tab=${item.id}`
   }
   return section.hubPath
+}
+
+// ── Role-aware nav (Wave D) ──────────────────────────────────────────────────
+//
+// A logged-in staff member sees ONLY their own surfaces: their schedule,
+// their hours, their profile. Everything else (Dashboard / Website /
+// Bookings / Customers / Payments / Integrations / Settings / Billing /
+// Ecommerce) is owner-only and hidden. The sidebar consumes STAFF_NAV when
+// me.role === 'staff'; the editor guard uses STAFF_ALLOWED_PREFIXES to bounce
+// staff away from any owner-only path.
+
+export interface StaffNavItem {
+  href:  string
+  label: string
+  icon:  React.ElementType
+  /** Path prefixes that count as "this nav item is active". */
+  match: string[]
+}
+
+export const STAFF_NAV: StaffNavItem[] = [
+  {
+    href:  '/editor/appointments?scope=mine',
+    label: 'My schedule',
+    icon:  Calendar,
+    match: ['/editor/appointments'],
+  },
+  {
+    href:  '/editor/my-hours',
+    label: 'My hours',
+    icon:  Clock,
+    match: ['/editor/my-hours'],
+  },
+  {
+    href:  '/editor/my-profile',
+    label: 'My profile',
+    icon:  UserCircle,
+    match: ['/editor/my-profile'],
+  },
+]
+
+/** Path prefixes a staff member is allowed to view. Anything else bounces
+ *  to /editor/appointments?scope=mine via the editor guard. */
+export const STAFF_ALLOWED_PREFIXES: string[] = [
+  '/editor/appointments',
+  '/editor/my-hours',
+  '/editor/my-profile',
+]
+
+/** True when a staff member may view the given pathname. */
+export function staffCanAccess(path: string): boolean {
+  return STAFF_ALLOWED_PREFIXES.some(p => path === p || path.startsWith(p + '/'))
 }

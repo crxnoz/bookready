@@ -18,6 +18,8 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { clearAuth } from '@/lib/auth'
+import { useRole } from '@/components/app/RoleContext'
+import { STAFF_NAV } from '@/lib/editorNav'
 
 // Business Info, Policies, Gallery, etc. now live as tabs inside /editor/website.
 // Legacy /editor/business and /editor/policies routes redirect to the matching tab.
@@ -47,6 +49,17 @@ const MAIN_NAV = [
   { href: '/editor/settings',     label: 'Settings',     icon: Settings },
 ] as const
 
+// Normalized nav entry — owner MAIN_NAV and the Wave D staff subset both
+// map into this shape so SidebarNav + isActive stay role-agnostic.
+interface NavEntry {
+  href:        string
+  label:       string
+  icon:        React.ElementType
+  exact?:      boolean
+  matchPaths?: readonly string[]
+  soon?:       boolean
+}
+
 interface Props {
   slug:       string
   drawerOpen: boolean
@@ -56,13 +69,19 @@ interface Props {
 export default function AppSidebar({ slug, drawerOpen, onClose }: Props) {
   const path = usePathname()
   const router = useRouter()
+  // Wave D — staff logins see only their own surfaces. Everything else in
+  // MAIN_NAV is owner-only and hidden.
+  const { isStaff } = useRole()
 
-  function isActive(item: typeof MAIN_NAV[number]): boolean {
-    if ('exact' in item && item.exact) return path === item.href
-    if ('matchPaths' in item && item.matchPaths) {
+  function isActive(item: NavEntry): boolean {
+    if (item.exact) return path === item.href
+    if (item.matchPaths) {
       return item.matchPaths.some(p => path === p || path.startsWith(p + '/'))
     }
-    return path === item.href || path.startsWith(item.href + '/')
+    // Strip a query string off the href before prefix-matching (staff nav
+    // links carry ?scope=mine). usePathname() never includes the query.
+    const base = item.href.split('?')[0]
+    return path === base || path.startsWith(base + '/')
   }
 
   function handleCopy() {
@@ -85,7 +104,19 @@ export default function AppSidebar({ slug, drawerOpen, onClose }: Props) {
     router.push('/login')
   }
 
-  const navItems = MAIN_NAV.map(item => {
+  // Wave D — staff see only their own surfaces; owners see the full rail.
+  const entries: NavEntry[] = isStaff
+    ? STAFF_NAV.map(s => ({ href: s.href, label: s.label, icon: s.icon, matchPaths: s.match }))
+    : MAIN_NAV.map(item => ({
+        href:       item.href,
+        label:      item.label,
+        icon:       item.icon,
+        exact:      'exact' in item ? item.exact : undefined,
+        matchPaths: 'matchPaths' in item ? item.matchPaths : undefined,
+        soon:       'soon' in item ? item.soon : undefined,
+      }))
+
+  const navItems = entries.map(item => {
     const active = isActive(item)
     const Icon   = item.icon
     return { item, active, Icon }
@@ -169,7 +200,7 @@ function SidebarBrand({ slug, dense = false }: { slug: string; dense?: boolean }
 function SidebarNav({
   navItems, variant, onItemClick,
 }: {
-  navItems: { item: typeof MAIN_NAV[number]; active: boolean; Icon: React.ElementType }[]
+  navItems: { item: NavEntry; active: boolean; Icon: React.ElementType }[]
   variant:  'desktop' | 'drawer'
   onItemClick?: () => void
 }) {
@@ -179,7 +210,7 @@ function SidebarNav({
         Menu
       </p>
       {navItems.map(({ item, active, Icon }) => {
-        const soon = 'soon' in item && item.soon
+        const soon = item.soon === true
         return (
           <Link
             key={item.href}

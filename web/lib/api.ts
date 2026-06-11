@@ -1811,6 +1811,8 @@ export interface PlanFeaturesSnapshot {
   staff_seats:          number
   dashboard_surface:    'solo' | 'team'
   allows_custom_domain: boolean
+  /** Wave D — per-tenant staff-login master switch. */
+  staff_login_enabled?: boolean
 }
 
 export async function getEditorPlanFeatures(): Promise<PlanFeaturesSnapshot> {
@@ -2194,6 +2196,12 @@ export async function getEditorStaff(params?: { active?: boolean }): Promise<Api
   return request<ApiStaffMember[]>(`/editor/staff${qs}`)
 }
 
+/** Single staff row. Owners can read any; a staff login can read only their
+ *  own (tenant_member group, self-scoped). Feeds the staff "My profile" view. */
+export async function getEditorStaffMember(id: number): Promise<ApiStaffMember> {
+  return request<ApiStaffMember>(`/editor/staff/${id}`)
+}
+
 export async function createEditorStaff(data: StaffMemberPayload): Promise<ApiStaffMember> {
   return request<ApiStaffMember>('/editor/staff', {
     method: 'POST',
@@ -2210,6 +2218,51 @@ export async function updateEditorStaff(id: number, data: Partial<StaffMemberPay
 
 export async function archiveEditorStaff(id: number): Promise<ApiStaffMember> {
   return request<ApiStaffMember>(`/editor/staff/${id}`, { method: 'DELETE' })
+}
+
+// ── Staff logins (Wave D) ─────────────────────────────────────────────────────
+//
+// Owner-only. Gated server-side by the tenant's staff_login_enabled master
+// switch — sendInvite 403s with code 'staff_login_disabled' when off. The
+// StaffEditor reads that 403 to hide the affordance when no client-side flag
+// is plumbed.
+
+export interface StaffInviteResponse {
+  message:    string
+  invited_at: string
+  expires_at: string
+}
+
+/** Send (or resend) a single-use login invite to a staff member. The backend
+ *  emails the accept-invite link; this just kicks it off. */
+export async function inviteStaffMember(staffId: number): Promise<StaffInviteResponse> {
+  return request<StaffInviteResponse>(`/editor/staff/${staffId}/invite`, {
+    method: 'POST',
+    body:   JSON.stringify({}),
+  })
+}
+
+/** Revoke a staff member's login: nulls the link + invite columns and deletes
+ *  the central users row. Returns the refreshed staff row. */
+export async function revokeStaffLogin(staffId: number): Promise<ApiStaffMember> {
+  return request<ApiStaffMember>(`/editor/staff/${staffId}/revoke-login`, {
+    method: 'POST',
+    body:   JSON.stringify({}),
+  })
+}
+
+/** Public — a staff member accepts their invite and sets a password. On
+ *  success the server issues the same httpOnly Sanctum cookie as owner login
+ *  and returns the editor URL to land on. */
+export async function acceptStaffInvite(payload: {
+  token:    string
+  tenant:   string
+  password: string
+}): Promise<{ user: AuthUser; redirect_url: string }> {
+  return request<{ user: AuthUser; redirect_url: string }>('/auth/staff/accept-invite', {
+    method: 'POST',
+    body:   JSON.stringify(payload),
+  })
 }
 
 // ── Staff hours (Phase 2) ────────────────────────────────────────────────────
