@@ -336,30 +336,9 @@ class StaffController extends Controller
             ], 422);
         }
 
-        // v1 single-identity refusal: the email must not already be ANY
-        // central user. This check spans every tenant (users is central),
-        // which is exactly the multi-tenant collision we punt to v2.
-        if (User::where('email', $email)->exists()) {
-            tenancy()->end();
-            return response()->json([
-                'message' => 'Someone already has an account with this email. They cannot be invited as staff yet.',
-                'code'    => 'email_already_user',
-            ], 422);
-        }
-
-        // Single-use token: send the PLAIN value in the email, store only
-        // its hash. 24h expiry.
-        $plain  = Str::random(48);
-        $expires = now()->addHours(24);
-
-        DB::table('staff')->where('id', $staff)->update([
-            'invite_token'            => hash('sha256', $plain),
-            'invite_token_expires_at' => $expires,
-            'invited_at'              => now(),
-            'updated_at'              => now(),
-        ]);
-
-        // Flatten everything we need for the email BEFORE ending tenancy.
+        // Flatten everything we need (staff name + business name) BEFORE
+        // leaving tenant scope — the central-DB user check and the email
+        // both happen outside tenancy.
         $staffName    = (string) ($row->name ?? 'there');
         $businessName = (string) (
             (Schema::hasTable('business_profiles')
@@ -368,6 +347,34 @@ class StaffController extends Controller
             ?: $tenant->id
         );
 
+        tenancy()->end();
+
+        // v1 single-identity refusal: the email must not already be ANY
+        // central user. This check spans every tenant (users is central),
+        // which is exactly the multi-tenant collision we punt to v2. It
+        // MUST run with tenancy ENDED — `users` lives in the central DB, so
+        // querying it while the tenant connection is active 500s with
+        // "Table tenant_*.users doesn't exist". (Wave D bug: this ran in
+        // tenant scope and broke every invite send.)
+        if (User::where('email', $email)->exists()) {
+            return response()->json([
+                'message' => 'Someone already has an account with this email. They cannot be invited as staff yet.',
+                'code'    => 'email_already_user',
+            ], 422);
+        }
+
+        // Single-use token: send the PLAIN value in the email, store only
+        // its hash. 24h expiry. Re-enter tenant scope just to write it back.
+        $plain   = Str::random(48);
+        $expires = now()->addHours(24);
+
+        tenancy()->initialize($tenant);
+        DB::table('staff')->where('id', $staff)->update([
+            'invite_token'            => hash('sha256', $plain),
+            'invite_token_expires_at' => $expires,
+            'invited_at'              => now(),
+            'updated_at'              => now(),
+        ]);
         tenancy()->end();
 
         $acceptUrl = 'https://app.bkrdy.me/staff/accept-invite?'
