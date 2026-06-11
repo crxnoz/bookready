@@ -152,6 +152,13 @@ class AdminTenantsController extends Controller
             ]);
         }
 
+        // Capture the tenant DB name + owner emails BEFORE deletion so we can
+        // drop the database and clean orphaned identities afterward.
+        $tenantDbName = config('tenancy.database.prefix', 'tenant_')
+            . $tenant->id
+            . config('tenancy.database.suffix', '');
+        $ownerEmails = $tenant->users()->pluck('email')->filter()->all();
+
         // Delete the central User (owner) BEFORE the tenant — otherwise the
         // FK on users.tenant_id would dangle if we ever add a constraint.
         try {
@@ -163,7 +170,7 @@ class AdminTenantsController extends Controller
             ]);
         }
 
-        // Stancl's HasDatabase trait drops the tenant DB on delete.
+        // Delete the central tenant row.
         try {
             $tenant->delete();
         } catch (\Throwable $e) {
@@ -174,6 +181,44 @@ class AdminTenantsController extends Controller
             return response()->json([
                 'message' => 'Tenant database delete failed. Check logs.',
             ], 500);
+        }
+
+        // Explicitly DROP the tenant database. Stancl's DeleteDatabase event
+        // is NOT wired in this app, so $tenant->delete() leaves the database
+        // behind — a leftover tenant_<slug> DB then collides with CREATE
+        // DATABASE on any re-signup that resolves to the same slug (the 500
+        // "Can't create database; database exists" we hit on daysgraphic).
+        // Best-effort: the central row is already gone.
+        try {
+            DB::statement("DROP DATABASE IF EXISTS `{$tenantDbName}`");
+        } catch (\Throwable $e) {
+            Log::warning('Admin: dropping tenant database failed', [
+                'tenant'   => $snapshot['id'],
+                'database' => $tenantDbName,
+                'error'    => $e->getMessage(),
+            ]);
+        }
+
+        // Clean up now-orphaned identities. The shared identities row (one per
+        // email, holds the password) is NOT tenant-scoped, so deleting the
+        // tenant + its users leaves it behind — which then collides with
+        // identities.email_unique when the same person re-signs up. Delete each
+        // owner identity ONLY if no users reference it anymore (someone who
+        // also owns another tenant keeps their identity).
+        try {
+            if (Schema::hasTable('identities')) {
+                foreach ($ownerEmails as $em) {
+                    $ident = DB::table('identities')->where('email', $em)->first();
+                    if ($ident && DB::table('users')->where('identity_id', $ident->id)->count() === 0) {
+                        DB::table('identities')->where('id', $ident->id)->delete();
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Admin: orphaned identity cleanup failed', [
+                'tenant' => $snapshot['id'],
+                'error'  => $e->getMessage(),
+            ]);
         }
 
         Log::info('Admin: tenant deleted', [
