@@ -1174,20 +1174,12 @@ const BOTTEGA_CSS = `
   font-family: var(--bottega-display);
 }
 
-/* Reviews — frosted-glass panel over the terrazzo. The whole section gets
-   a translucent cream surface with a backdrop blur so the pattern reads
-   through softly; each card sits on a lighter white glass pane. The shared
-   .brk-section shell already provides container padding, so only the glass
-   surface lives here. */
-.bottega-template .brk-reviews-section {
-  background: rgba(251, 248, 241, 0.55);
-  -webkit-backdrop-filter: blur(14px) saturate(1.05);
-          backdrop-filter: blur(14px) saturate(1.05);
-  border: 1px solid var(--bottega-rule);
-  box-shadow: 0 8px 40px rgba(42, 31, 24, 0.06);
-}
+/* Reviews — frosted-glass cards over the terrazzo. The section itself stays
+   transparent so the terrazzo pattern shows through around and between the
+   cards; only each individual card carries the frosted glass. The alpha is
+   tuned so review text stays legible even over the densest pattern. */
 .bottega-template .brk-review {
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.5);
   -webkit-backdrop-filter: blur(6px);
           backdrop-filter: blur(6px);

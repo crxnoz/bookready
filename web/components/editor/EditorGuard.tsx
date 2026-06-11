@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Lock } from 'lucide-react'
 import { isLoggedIn, clearAuth } from '@/lib/auth'
 import { getCurrentUser } from '@/lib/api'
 import AppShell from '@/components/app/AppShell'
 import { RoleProvider } from '@/components/app/RoleContext'
+import EmptyState from '@/components/ui/EmptyState'
+import Button from '@/components/ui/Button'
 import { staffCanAccess } from '@/lib/editorNav'
 
 export default function EditorGuard({ children }: { children: React.ReactNode }) {
@@ -47,15 +51,13 @@ export default function EditorGuard({ children }: { children: React.ReactNode })
         }
 
         // Wave D — role-aware gate. A staff login may only view its own
-        // scoped surfaces (schedule / hours / profile). Any owner-only
-        // path bounces to their schedule. Enforced here in addition to
-        // the backend's per-row scoping so staff never even render an
-        // owner page shell. Owners/admins are unaffected.
+        // scoped surfaces (schedule / hours / profile). On an owner-only
+        // path we no longer hard-redirect (which stranded staff on a blank
+        // frame); instead we render an "Owner only" notice inside the shell
+        // with a clear link back to their schedule. Enforced here in
+        // addition to the backend's per-row scoping so staff never render
+        // an owner page's contents. Owners/admins are unaffected.
         const resolvedRole = user.role ?? 'owner'
-        if (resolvedRole === 'staff' && pathname && ! staffCanAccess(pathname)) {
-          router.replace('/editor/appointments?scope=mine')
-          return
-        }
 
         setRole(resolvedRole)
         setStaffId(user.staff_id ?? null)
@@ -77,9 +79,32 @@ export default function EditorGuard({ children }: { children: React.ReactNode })
     )
   }
 
+  // Wave D — staff hitting an owner-only path see a notice (not a blank
+  // frame) with a link back to their schedule. Rendered inside AppShell so
+  // the sidebar stays available and they're never stranded.
+  const staffBlocked = role === 'staff' && pathname != null && ! staffCanAccess(pathname)
+
   return (
     <RoleProvider role={role} staffId={staffId}>
-      <AppShell slug={slug}>{children}</AppShell>
+      <AppShell slug={slug}>
+        {staffBlocked ? (
+          <div className="bg-cream min-h-full p-6 flex items-start justify-center">
+            <EmptyState
+              icon={Lock}
+              title="Owner only"
+              description="This area is managed by the business owner."
+              className="mt-12 w-full max-w-md"
+              action={
+                <Link href="/editor/appointments?scope=mine">
+                  <Button>Go to my schedule</Button>
+                </Link>
+              }
+            />
+          </div>
+        ) : (
+          children
+        )}
+      </AppShell>
     </RoleProvider>
   )
 }

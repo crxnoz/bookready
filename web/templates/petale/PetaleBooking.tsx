@@ -93,10 +93,10 @@ const PETALE_BOOKING_FRAME_CSS = `
    identical to the current one. Differentiate: ONLY is-active gets a
    filled gold pill; is-done is outlined gold; upcoming is muted outline. */
 
-/* CURRENT step — gold fill, ink number visible inside */
+/* CURRENT step — gold/accent fill, on-accent number visible inside */
 .petale-booking-inner.lush-template .brk-booking-step.is-active .brk-booking-step-num {
   background: var(--petale-accent) !important;
-  color: var(--petale-ink) !important;
+  color: var(--petale-on-accent) !important;
   border: 1px solid var(--petale-accent) !important;
 }
 /* PAST steps — outlined gold, transparent fill */
@@ -144,7 +144,7 @@ const PETALE_BOOKING_FRAME_CSS = `
 .petale-booking-inner.lush-template [class*="brk-booking-day"][class*="selected"],
 .petale-booking-inner.lush-template [class*="brk-booking-day"][class*="active"] {
   background: var(--petale-accent) !important;
-  color: var(--petale-ink) !important;
+  color: var(--petale-on-accent) !important;
   border-color: var(--petale-accent) !important;
   font-weight: 600 !important;
 }
@@ -158,9 +158,9 @@ const PETALE_BOOKING_FRAME_CSS = `
   --lush-card:        rgba(255,255,255,0.42);  /* Soft warm overlay on the pink canvas */
   --lush-text:        var(--petale-ink);
   --lush-muted:       var(--petale-muted);
-  --lush-pink:        #C9A876;                 /* Champagne gold */
+  --lush-pink:        var(--petale-accent);    /* Variant accent (gold on light, wine/copper on dark) */
   --lush-pink-rgb:    201, 168, 118;
-  --lush-on-pink:     #3D2027;                 /* Warm dark ink on gold reads clean */
+  --lush-on-pink:     var(--petale-on-accent); /* Cream on dark variants, dark ink on light — pairs with the accent fill */
   --lush-pink-soft:   rgba(201,168,118,0.20);
   --lush-dark-border: var(--petale-rule);
   --lush-serif:       'Playfair Display', 'Cormorant Garamond', Georgia, serif;
@@ -256,7 +256,7 @@ const PETALE_BOOKING_FRAME_CSS = `
 .petale-booking-inner.lush-template button[class*="brk-booking-next"],
 .petale-booking-inner.lush-template button[class*="brk-booking-submit"] {
   background: var(--petale-accent) !important;
-  color: var(--petale-ink) !important;
+  color: var(--petale-on-accent) !important;
   border: 1px solid var(--petale-accent) !important;
   font-family: 'Inter', sans-serif !important;
   font-weight: 600 !important;
