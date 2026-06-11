@@ -924,14 +924,15 @@ const VT_CSS = `
 }
 .vt-tab:hover { opacity: 0.85; }
 .vt-tab.is-active { opacity: 1; }
-/* Underline sits flush with the parent's border-bottom (bottom: -1px lines
-   up exactly with the 1px hairline) and spans just the text area, not the
-   full padded tab — feels more like a typesetter's mark than a button
+/* Underline sits flush over the parent's border-bottom (bottom: 0 keeps it
+   inside the content box so .vt-tabs-inner's overflow-y: hidden never clips
+   it, while still landing on the 1px hairline) and spans just the text area,
+   not the full padded tab — feels more like a typesetter's mark than a button
    state. */
 .vt-tab.is-active::after {
   content: '';
   position: absolute;
-  bottom: -1px;
+  bottom: 0;
   left: 14px;
   right: 14px;
   height: 1px;

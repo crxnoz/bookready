@@ -1283,6 +1283,13 @@ export interface RegisterPayload {
   business_name: string
   template?: string
   /**
+   * Selected tier from the marketing CTA (?plan=...). Optional; backend
+   * validates against solo|studio|salon and defaults to solo when absent.
+   * Seeds the tenant with the correct tier so email signups don't land on
+   * solo and rely on startTrial to correct it later. Never send "trial".
+   */
+  plan?: 'solo' | 'studio' | 'salon'
+  /**
    * Pre-launch (#117): explicit ToS acceptance. Backend rejects signup
    * unless this is true. Tied to a ticked checkbox on /register.
    */

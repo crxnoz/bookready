@@ -178,6 +178,17 @@ function RegisterForm() {
     setConflict(null)
     setLoading(true)
     try {
+      // Seed the tenant with the tier the user picked on the marketing
+      // CTA (?plan=...). Only forward a recognized tier; an absent or
+      // unknown value is omitted so the backend default (solo) applies.
+      // Never send "trial" — that's a billing state, not a tier. The
+      // Stripe webhook re-stamps tenants.plan on real checkout, so this
+      // just makes the pre-checkout gates correct from signup.
+      const planRaw = (searchParams?.get('plan') ?? '').toLowerCase()
+      const plan =
+        planRaw === 'solo' || planRaw === 'studio' || planRaw === 'salon'
+          ? (planRaw as 'solo' | 'studio' | 'salon')
+          : undefined
       const res = await register({
         owner_name: form.owner_name,
         email: form.email,
@@ -189,6 +200,7 @@ function RegisterForm() {
         // selectActiveTemplate), but this makes the default correct when the
         // user came in from a template gallery link (?template=…).
         template: templateSlug,
+        ...(plan ? { plan } : {}),
         terms_accepted: termsAccepted,
         turnstile_token: turnstileToken,
       })
