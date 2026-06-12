@@ -243,6 +243,12 @@ function DashboardBody() {
   // the last 60 days. Drives "extend Saturday hours" / "take Tuesdays
   // off" decisions. Excludes cancelled + no-show statuses.
   const bookingHeatmap  = useMemo(() => computeBookingHeatmap(appts),             [appts])
+  // v2 Theme 8.6 — Auto-derived nudges. Card hides entirely when zero
+  // nudges fire, so empty / low-data tenants don't see noise.
+  const nudges          = useMemo(
+    () => computePredictiveNudges(appts, serviceRevenue),
+    [appts, serviceRevenue],
+  )
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -438,6 +444,11 @@ function DashboardBody() {
 
       {/* ════════ LAYER 5 — GROWTH OPPORTUNITIES ════════ */}
       <GrowthOpportunitiesCard items={growthOpps} />
+
+      {/* v2 Theme 8.6 — Predictive nudges. Auto-renders 1-3 short
+          actionable callouts from existing data. Card collapses to
+          nothing on empty tenants. */}
+      <PredictiveNudgesCard nudges={nudges} />
 
       {/* ── Recent activity (low priority) ── */}
       <section>
@@ -2403,6 +2414,134 @@ function heatmapColor(count: number, max: number): string {
   if (intensity > 0.66) return 'rgba(18,18,18,0.85)'
   if (intensity > 0.33) return 'rgba(18,18,18,0.55)'
   return 'rgba(18,18,18,0.25)'
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// v2 Theme 8.6 — Predictive nudges (light inference, no ML)
+// ────────────────────────────────────────────────────────────────────────────
+
+interface PredictiveNudge {
+  key:       string
+  text:      string
+  emphasis:  'positive' | 'neutral' | 'caution'
+}
+
+/**
+ * Generate up to 3 short actionable insights from the same data the
+ * rest of the dashboard already loads. Each rule has a guard so it
+ * only fires when the underlying signal is meaningful — at early-
+ * access tester scale with thin data, false positives would feel
+ * worse than silence. Returns empty array when nothing qualifies,
+ * which collapses the entire card.
+ */
+function computePredictiveNudges(
+  appts:          Appointment[],
+  serviceRevenue: ServiceRevenueRow[],
+): PredictiveNudge[] {
+  const out: PredictiveNudge[] = []
+  const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+  // 1. Tomorrow vs historical weekday average.
+  //    Look back 8 weeks of same-weekday occurrences; need at least
+  //    3 prior occurrences to compute a stable average.
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  tomorrow.setHours(0, 0, 0, 0)
+  const tomorrowISO = isoDate(tomorrow)
+  const tomorrowDow = tomorrow.getDay()
+  const tomorrowCount = appts.filter(a =>
+    a.appointment_date === tomorrowISO && a.status !== 'cancelled',
+  ).length
+
+  const lookbackStart = new Date(tomorrow.getTime() - 56 * 86_400_000)
+  const dailyCountsForDow: Record<string, number> = {}
+  for (const a of appts) {
+    if (a.status === 'cancelled' || a.status === 'no_show') continue
+    if (! a.appointment_date) continue
+    const d = new Date(a.appointment_date + 'T00:00:00')
+    if (isNaN(d.getTime())) continue
+    if (d < lookbackStart || d >= tomorrow) continue
+    if (d.getDay() !== tomorrowDow) continue
+    dailyCountsForDow[a.appointment_date] = (dailyCountsForDow[a.appointment_date] ?? 0) + 1
+  }
+  const occurrences = Object.keys(dailyCountsForDow).length
+  if (occurrences >= 3) {
+    const avg = Math.round(
+      Object.values(dailyCountsForDow).reduce((s, n) => s + n, 0) / occurrences,
+    )
+    if (avg >= 2 && tomorrowCount === 0) {
+      out.push({
+        key:      'tomorrow-quiet',
+        text:     `Tomorrow (${DAY_NAMES[tomorrowDow]}) has nothing on the books. Your usual ${DAY_NAMES[tomorrowDow]} runs ${avg}. Push a quick promo?`,
+        emphasis: 'caution',
+      })
+    } else if (avg >= 2 && tomorrowCount > Math.max(avg * 1.5, avg + 2)) {
+      out.push({
+        key:      'tomorrow-busy',
+        text:     `Tomorrow is heavier than usual — ${tomorrowCount} booked vs your typical ${avg}. Block prep time and confirm staff.`,
+        emphasis: 'positive',
+      })
+    }
+  }
+
+  // 2. Top growing service (>= 20% MoM, with > $100 of this-month
+  //    revenue so we don't shout about a $5 service that doubled).
+  const growing = serviceRevenue.find(s =>
+    s.changePct !== null && s.changePct >= 20 && s.thisMonth > 100,
+  )
+  if (growing) {
+    out.push({
+      key:      'growing-service',
+      text:     `${growing.serviceName} is up ${Math.round(growing.changePct ?? 0)}% this month. Worth a small price test on this line.`,
+      emphasis: 'positive',
+    })
+  }
+
+  // 3. Top shrinking service (<= -20% MoM, with > $100 of last-month
+  //    revenue so we only flag lines that mattered).
+  const shrinking = serviceRevenue.find(s =>
+    s.changePct !== null && s.changePct <= -20 && s.lastMonth > 100,
+  )
+  if (shrinking) {
+    out.push({
+      key:      'shrinking-service',
+      text:     `${shrinking.serviceName} is down ${Math.abs(Math.round(shrinking.changePct ?? 0))}% this month. Email recent ${shrinking.serviceName} customers a friendly rebook nudge?`,
+      emphasis: 'caution',
+    })
+  }
+
+  return out
+}
+
+function PredictiveNudgesCard({ nudges }: { nudges: PredictiveNudge[] }) {
+  if (nudges.length === 0) return null
+  return (
+    <section>
+      <SectionHeader
+        icon={Sparkles}
+        label="Predictive nudges"
+        subtitle="Quick reads from your recent patterns."
+      />
+      <div className="bg-white border border-hairline-soft divide-y divide-[rgba(18,18,18,0.06)]">
+        {nudges.map(n => {
+          const Icon = n.emphasis === 'positive' ? TrendingUp
+                     : n.emphasis === 'caution'  ? AlertCircle
+                     : Sparkles
+          const iconClass = n.emphasis === 'positive' ? 'text-success'
+                          : n.emphasis === 'caution'  ? 'text-warning-icon'
+                          : 'text-near-black'
+          return (
+            <div key={n.key} className="flex items-start gap-3 px-4 py-3">
+              <span className="w-6 h-6 bg-cream border border-hairline-soft flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Icon size={12} className={iconClass} strokeWidth={1.9} />
+              </span>
+              <p className="text-sm text-near-black leading-snug">{n.text}</p>
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
 }
 
 function computeRepeatRatio(appts: Appointment[]): RepeatRatio {
