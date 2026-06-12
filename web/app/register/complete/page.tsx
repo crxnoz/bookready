@@ -3,10 +3,11 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Check, X, Loader2, Sparkles, ExternalLink } from 'lucide-react'
+import { Check, X, Loader2 } from 'lucide-react'
 import { completeGoogleSignup, checkSubdomain, type SubdomainCheckResponse } from '@/lib/api'
 import { setToken, setTenantId } from '@/lib/auth'
-import { SITE_TEMPLATES, normalizeTemplateSlug } from '@/lib/templates'
+import { normalizeTemplateSlug } from '@/lib/templates'
+import CollapsibleTemplatePicker from '@/components/auth/CollapsibleTemplatePicker'
 import AuthShell from '@/components/auth/AuthShell'
 
 const TEMPLATE_KEY = 'br_template'
@@ -245,79 +246,13 @@ function CompleteInner() {
           />
         </Field>
 
-        {/* Template picker — lets Google signups choose their site look
-            here (the email flow picks it on /checkout). The selection is
-            sent to complete-signup, which seeds template_settings, and is
-            re-applied on /checkout via selectActiveTemplate.
-
-            #167b — mirror the /register IntentSummary "change" link and the
-            /templates page's featured showcase button. Both live HERE in
-            the Google flow too so users mid-signup never feel locked into
-            their choice and can always discover the deeper previews. */}
-        <div>
-          <div className="flex items-baseline justify-between gap-3 mb-1.5">
-            <label className={labelCls + ' mb-0'}>Template</label>
-            <Link
-              href="/templates"
-              className="text-[10px] font-semibold tracking-[0.06em] uppercase text-muted-text hover:text-near-black"
-            >
-              change ↗
-            </Link>
-          </div>
-
-          {/* Featured cross-link to the marketing showcase. Same blush
-              treatment as the /templates page so the affordance reads
-              the same across surfaces. */}
-          <a
-            href="https://mybookready.com/templates"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group flex items-center gap-3 bg-blush border border-[rgba(18,18,18,0.10)] hover:border-near-black p-3 mb-2 transition-colors"
-          >
-            <div className="w-8 h-8 flex items-center justify-center bg-white border border-[rgba(18,18,18,0.10)] flex-shrink-0">
-              <Sparkles size={13} className="text-near-black" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-bold text-near-black leading-tight">
-                See the full template showcase
-              </p>
-              <p className="text-[10px] text-muted-text mt-0.5">
-                Full previews + demos on mybookready.com
-              </p>
-            </div>
-            <ExternalLink size={13} className="text-muted-text group-hover:text-near-black flex-shrink-0" />
-          </a>
-
-          <div className="space-y-1.5">
-            {SITE_TEMPLATES.map(t => (
-              <button
-                key={t.slug}
-                type="button"
-                onClick={() => setTemplate(t.slug)}
-                className={`w-full text-left flex items-center gap-3 px-3 py-2.5 border transition-colors ${
-                  template === t.slug
-                    ? 'border-near-black bg-white'
-                    : 'border-[rgba(18,18,18,0.12)] bg-white hover:bg-cream'
-                }`}
-              >
-                <span
-                  className="w-6 h-6 flex-shrink-0 border border-[rgba(18,18,18,0.10)]"
-                  style={{ background: t.color }}
-                />
-                <span className="flex-1 min-w-0">
-                  <span className="block text-sm font-semibold text-near-black leading-tight">{t.label}</span>
-                  <span className="block text-[11px] text-muted-text truncate">{t.desc}</span>
-                </span>
-                {template === t.slug && (
-                  <span className="text-[9px] font-bold tracking-[0.06em] uppercase bg-near-black text-white px-1.5 py-0.5 flex-shrink-0">
-                    Selected
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-          <p className="mt-1.5 text-[11px] text-muted-text">You can change this anytime in the editor.</p>
-        </div>
+        {/* Collapsible template picker — shows the current selection
+            inline + an expand affordance for the others. Same component
+            as the email signup form, so both flows feel identical. */}
+        <CollapsibleTemplatePicker
+          value={template}
+          onChange={setTemplate}
+        />
 
         {/* Pre-launch (#117): explicit ToS checkbox on the Google
             deferred-name completion page. Mirrors the email signup

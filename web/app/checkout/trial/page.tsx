@@ -245,11 +245,10 @@ function Inner() {
         </div>
         {summary ? (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div className="grid grid-cols-3 gap-3 mb-4">
               <Stat label="Plan"     value={summary.planLabel} />
               <Stat label="Billing"  value={summary.cycleLabel} />
               <Stat label="SMS"      value={summary.smsLabel} />
-              <Stat label="Template" value={prettyTemplate(intent.template)} />
             </div>
             <div className="border-t border-[rgba(18,18,18,0.08)] pt-3 flex items-baseline justify-between">
               <p className="text-[11px] text-muted-text">After trial ({summary.cycleLabel.toLowerCase()})</p>
@@ -307,20 +306,9 @@ function Inner() {
                 ))}
               </select>
             </Picker>
-            <Picker label="Template">
-              <select
-                value={intent.template ?? 'thefaderoom'}
-                onChange={e => updateIntent({ template: e.target.value })}
-                className={selectCls}
-              >
-                <option value="thefaderoom">The Fade Room</option>
-                <option value="lushstudio">Lush Studio</option>
-                <option value="velvettheory">Velvet Theory</option>
-              </select>
-            </Picker>
           </div>
           <p className="text-[10px] text-muted-text mt-3 leading-relaxed">
-            Changes apply when you start the trial. You can also switch plans + templates later from your editor.
+            Changes apply when you start the trial. You can also switch plans later from your editor. Template was set during signup; change it from Website Editor &rsaquo; Template after launch.
           </p>
         </section>
       )}
@@ -440,14 +428,3 @@ function Picker({ label, children }: { label: string; children: React.ReactNode 
 
 const selectCls = 'w-full bg-white border border-[rgba(18,18,18,0.15)] px-3 py-2 text-sm text-near-black focus:outline-none focus:border-near-black appearance-none cursor-pointer'
 
-/** A9 — friendly template name for the summary card. The slug stays
- *  canonical (thefaderoom etc) so the picker + backend talk in slugs;
- *  this is purely cosmetic. */
-function prettyTemplate(slug?: string): string {
-  switch (slug) {
-    case 'thefaderoom':  return 'The Fade Room'
-    case 'lushstudio':   return 'Lush Studio'
-    case 'velvettheory': return 'Velvet Theory'
-    default:             return slug ?? '—'
-  }
-}

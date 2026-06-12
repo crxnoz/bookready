@@ -6,9 +6,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Check, X, Loader2 } from 'lucide-react'
 import { register, checkSubdomain, type SubdomainCheckResponse } from '@/lib/api'
 import { setToken, setTenantId } from '@/lib/auth'
-import { SITE_TEMPLATES } from '@/lib/templates'
+import { SITE_TEMPLATES, normalizeTemplateSlug } from '@/lib/templates'
 import AuthShell from '@/components/auth/AuthShell'
 import PasswordStrength from '@/components/auth/PasswordStrength'
+import CollapsibleTemplatePicker from '@/components/auth/CollapsibleTemplatePicker'
 import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/auth/TurnstileWidget'
 
 const TEMPLATE_KEY = 'br_template'
@@ -42,7 +43,24 @@ function buildIntent(
 function RegisterForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const templateSlug = searchParams.get('template') ?? 'thefaderoom'
+  // Template choice is now user-controllable via the in-form picker.
+  // Initial seed: ?template= (marketing site CTA) wins over localStorage
+  // (a previous in-flight signup), which wins over the default. The
+  // localStorage sync runs in a useEffect to keep the initial render
+  // SSR-safe.
+  const queryTemplate = searchParams.get('template')
+  const [templateSlug, setTemplateSlug] = useState<string>(
+    queryTemplate ? normalizeTemplateSlug(queryTemplate) : 'thefaderoom',
+  )
+  useEffect(() => {
+    if (queryTemplate) return
+    try {
+      const stored = localStorage.getItem(TEMPLATE_KEY)
+      if (stored) setTemplateSlug(normalizeTemplateSlug(stored))
+    } catch { /* localStorage disabled — keep the default */ }
+    // intentionally only on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const [form, setForm] = useState({
     owner_name: '',
@@ -414,6 +432,16 @@ function RegisterForm() {
             placeholder="Lush Studio"
           />
         </Field>
+
+        {/* Collapsible template picker — shows the current selection
+            inline + an expand affordance for the other 8 templates so
+            the email signup gets the same proper picker as the Google
+            flow (was previously hidden behind a limited 3-option
+            dropdown on /checkout/trial). */}
+        <CollapsibleTemplatePicker
+          value={templateSlug}
+          onChange={setTemplateSlug}
+        />
 
         {/* Pre-launch (#117): explicit ToS checkbox. Unchecked by
             default; submit stays disabled until ticked. Stronger CYA
