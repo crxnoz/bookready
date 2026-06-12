@@ -20,6 +20,7 @@ import {
   DollarSign, Activity, Sparkles, AlertCircle, ArrowUpRight,
   TrendingUp, Users, UserPlus, Crown, Repeat, Lightbulb, Inbox, BarChart3,
   X, Plus, CalendarOff, CreditCard, AlertTriangle, Zap, Receipt, ArrowRight,
+  Mail,
 } from 'lucide-react'
 import EditorShell from '@/components/editor/EditorShell'
 import WelcomeTour from '@/components/editor/WelcomeTour'
@@ -35,6 +36,7 @@ import {
   getEditorPolicies,
   getStripeConnectStatus,
   getEditorAppointments,
+  getEditorCustomers,
   getEditorDashboardMetrics,
   getEditorWaitlist,
   getPlatformAnnouncements,
@@ -43,7 +45,7 @@ import {
 } from '@/lib/api'
 import type {
   AuthUser, BusinessProfile, Service, HoursEntry, BusinessPolicy,
-  StripeConnectStatus, Appointment, PlatformAnnouncement,
+  StripeConnectStatus, Appointment, PlatformAnnouncement, Customer,
 } from '@/lib/types'
 
 // ── Root ────────────────────────────────────────────────────────────────────
@@ -85,6 +87,11 @@ function DashboardBody() {
   const [policies, setPolicies] = useState<BusinessPolicy | null>(null)
   const [stripe,   setStripe]   = useState<StripeConnectStatus | null>(null)
   const [appts,    setAppts]    = useState<Appointment[]>([])
+  // v2 Theme 8.1 — Customer roster powers the Lapsed Customers card.
+  // Fetched separately from appts (appts is the booking timeline; this
+  // is the full customer list with status='inactive' already computed
+  // server-side by CustomersController).
+  const [customers, setCustomers] = useState<Customer[]>([])
   const [announcements, setAnnouncements] = useState<PlatformAnnouncement[]>([])
   // Server-computed dashboard aggregates (all-time totals + period deltas
   // + capacity-resolved "% full"). Falls back to client-side approximations
@@ -108,6 +115,10 @@ function DashboardBody() {
       // Pull a generous window so we can compute today / week / month buckets
       // without paginating.
       getEditorAppointments({ limit: 200 }).catch(() => [] as Appointment[]),
+      // v2 Theme 8.1 — Full customer list for the Lapsed Customers card.
+      // Limit 500 covers our launch-cohort tenants comfortably; we'll add
+      // server-side filtering when a tenant pushes past this.
+      getEditorCustomers({ limit: 500 }).catch(() => [] as Customer[]),
       getPlatformAnnouncements().catch(() => [] as PlatformAnnouncement[]),
       // Server aggregates (5-minute cache per tenant). On older builds this
       // 404s; we treat the absence as "use client-side fallbacks" and don't
@@ -116,7 +127,7 @@ function DashboardBody() {
       // Availability 2.0 surface: waitlist queue. Can 404 on older builds.
       getEditorWaitlist().then(r => r.data).catch(() => [] as WaitlistEntry[]),
     ])
-      .then(([u, b, sv, hr, pol, st, ap, an, mx, wl]) => {
+      .then(([u, b, sv, hr, pol, st, ap, cu, an, mx, wl]) => {
         if (cancelled) return
         // First-run gate: send brand-new tenants to the onboarding wizard
         // before showing the dashboard. Skipping/finishing the wizard stamps
@@ -134,6 +145,7 @@ function DashboardBody() {
         setPolicies(pol as BusinessPolicy | null)
         setStripe(st as StripeConnectStatus | null)
         setAppts(Array.isArray(ap) ? (ap as Appointment[]) : [])
+        setCustomers(Array.isArray(cu) ? (cu as Customer[]) : [])
         setAnnouncements(Array.isArray(an) ? (an as PlatformAnnouncement[]) : [])
         setMetrics((mx as EditorDashboardMetrics | null) ?? null)
         setWaitlistEntries(Array.isArray(wl) ? (wl as WaitlistEntry[]) : [])
@@ -218,6 +230,11 @@ function DashboardBody() {
   // Per-staff this-week breakdown. Empty on Solo (every row would be the
   // owner) and on Studio/Salon tenants that haven't booked anything yet.
   const teamWeek       = useMemo(() => computeTeamWeek(appts),                    [appts])
+  // v2 Theme 8.1 — Inactive customers (status='inactive' = had at least
+  // one completed appointment, last booked > 90 days ago). Sorted by
+  // staleness (oldest last_appointment_at first) since those are the
+  // most at-risk.
+  const lapsedCustomers = useMemo(() => computeLapsed(customers),                 [customers])
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -392,6 +409,13 @@ function DashboardBody() {
         <NewCustomersCard customers={newCustomers} />
         <TopSpendersCard spenders={topSpenders} currency={moneyBuckets.currency} />
       </div>
+
+      {/* v2 Theme 8.1 — Lapsed customers. Full-width section because the
+          reach-out action is the value, and crammed rows make it less
+          tappable on mobile. Card shows top 5 lapsed; "See all" CTA
+          deep-links into the customers page with the inactive filter
+          pre-applied. */}
+      <LapsedCustomersCard customers={lapsedCustomers} businessName={businessName} />
 
       {/* ════════ LAYER 5 — GROWTH OPPORTUNITIES ════════ */}
       <GrowthOpportunitiesCard items={growthOpps} />
@@ -1976,6 +2000,105 @@ function computeTopSpenders(appts: Appointment[]): TopSpender[] {
     .sort((a, b) => b.total - a.total)
     .slice(0, 3)
     .map(t => ({ name: t.name, total: round2(t.total) }))
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// v2 Theme 8.1 — Lapsed customers (status='inactive' on the customer roster)
+// ────────────────────────────────────────────────────────────────────────────
+
+interface LapsedCustomer {
+  id:            number
+  name:          string
+  email:         string | null
+  lastBookedAt:  string
+}
+
+function computeLapsed(customers: Customer[]): LapsedCustomer[] {
+  const out: LapsedCustomer[] = []
+  for (const c of customers) {
+    if (c.status !== 'inactive') continue
+    if (! c.last_appointment_at) continue
+    out.push({
+      id:           c.id,
+      name:         c.name,
+      email:        c.email ?? null,
+      lastBookedAt: c.last_appointment_at,
+    })
+  }
+  // Oldest first — most stale customer is the highest priority for outreach.
+  return out.sort((a, b) => a.lastBookedAt.localeCompare(b.lastBookedAt))
+}
+
+function LapsedCustomersCard({
+  customers, businessName,
+}: {
+  customers:    LapsedCustomer[]
+  businessName: string
+}) {
+  const total = customers.length
+  const top   = customers.slice(0, 5)
+  return (
+    <section>
+      <SectionHeader
+        icon={Clock}
+        label="Lapsed customers"
+        subtitle={total === 0
+          ? "Nobody is lapsed. Everyone's booked recently."
+          : `${total} customer${total === 1 ? '' : 's'} who haven't booked in 90+ days.`}
+        cta={total > 0 ? { label: 'See all', href: '/editor/customers' } : undefined}
+      />
+      {total === 0 ? (
+        <div className="bg-white border border-hairline-soft p-4">
+          <p className="text-xs text-muted-text">
+            When customers stop booking for 90+ days, they&apos;ll show up here so you can reach out before they forget you.
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white border border-hairline-soft divide-y divide-[rgba(18,18,18,0.06)]">
+          {top.map(c => (
+            <div key={c.id} className="flex items-center gap-3 px-4 py-2.5">
+              <div className="w-7 h-7 bg-cream border border-hairline-soft flex items-center justify-center flex-shrink-0">
+                <span className="text-eyebrow font-bold text-near-black">{initials(c.name)}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-near-black truncate">{c.name}</p>
+                <p className="text-eyebrow text-muted-text">Last booked {relativeTime(c.lastBookedAt)}</p>
+              </div>
+              {c.email ? (
+                <a
+                  href={buildReachOutMailto(c, businessName)}
+                  className="inline-flex items-center gap-1.5 text-2xs font-semibold text-near-black border border-hairline-strong px-2.5 py-1 hover:border-near-black transition-colors flex-shrink-0"
+                >
+                  <Mail size={11} /> Reach out
+                </a>
+              ) : (
+                <span className="text-2xs text-muted-text flex-shrink-0">No email</span>
+              )}
+            </div>
+          ))}
+          {total > 5 && (
+            <Link href="/editor/customers" className="block px-4 py-2.5 text-xs font-semibold text-near-black hover:bg-cream/60">
+              + {total - 5} more lapsed
+            </Link>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
+/**
+ * v2 Theme 8.1 — Default mailto body for the lapsed-customer reach out.
+ * Owner-customizable later (Theme 8.3 will replace this with an in-app
+ * compose modal that supports proper template variables). For now, a
+ * sensible default that uses the first name + business name.
+ */
+function buildReachOutMailto(c: LapsedCustomer, businessName: string): string {
+  if (! c.email) return '#'
+  const firstName = c.name.trim().split(/\s+/)[0] || 'there'
+  const subject = `Hi from ${businessName}`
+  const body = `Hi ${firstName},\n\nIt's been a while since we last saw you. Wanted to reach out and let you know we'd love to have you back any time.\n\nLet me know if you'd like to book an appointment.\n\nThanks!`
+  return `mailto:${encodeURIComponent(c.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 }
 
 function computeRepeatRatio(appts: Appointment[]): RepeatRatio {
