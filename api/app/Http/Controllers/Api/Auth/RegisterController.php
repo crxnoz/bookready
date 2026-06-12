@@ -93,16 +93,43 @@ class RegisterController extends Controller
         // identity has a valid credential from day one. Guarded by
         // Schema check so the controller stays bootable on environments
         // where the create-identities migration hasn't run yet.
+        //
+        // Adopt orphan identities. The pre-check above refuses signups
+        // when an identity is LINKED to a user or customer_user, but it
+        // doesn't refuse unlinked orphans — those can land in the table
+        // when a prior signup attempt died after the identity insert but
+        // before the user link, or when a customer auth flow failed
+        // mid-write. If we treated orphans as hard blocks the user would
+        // be permanently locked out of their own email. Instead we
+        // upsert: if a row with this email exists, refresh it with the
+        // new owner's credentials and reuse its id; otherwise insert
+        // fresh. Defends against a real 500 we hit 2026-06-11 on
+        // RegisterController:97.
         if (Schema::hasTable('identities')) {
-            $identityId = DB::table('identities')->insertGetId([
-                'email'             => strtolower($owner->email),
-                'password'          => $owner->password, // already bcrypt-hashed by the User model
-                'name'              => $owner->name,
-                'phone'             => null,
-                'email_verified_at' => $owner->email_verified_at,
-                'created_at'        => now(),
-                'updated_at'        => now(),
-            ]);
+            $identityEmail = strtolower($owner->email);
+            $existingIdentityId = DB::table('identities')
+                ->where('email', $identityEmail)
+                ->value('id');
+
+            if ($existingIdentityId) {
+                DB::table('identities')->where('id', $existingIdentityId)->update([
+                    'password'          => $owner->password,
+                    'name'              => $owner->name,
+                    'email_verified_at' => $owner->email_verified_at,
+                    'updated_at'        => now(),
+                ]);
+                $identityId = $existingIdentityId;
+            } else {
+                $identityId = DB::table('identities')->insertGetId([
+                    'email'             => $identityEmail,
+                    'password'          => $owner->password,
+                    'name'              => $owner->name,
+                    'phone'             => null,
+                    'email_verified_at' => $owner->email_verified_at,
+                    'created_at'        => now(),
+                    'updated_at'        => now(),
+                ]);
+            }
             DB::table('users')->where('id', $owner->id)->update(['identity_id' => $identityId]);
         }
 
