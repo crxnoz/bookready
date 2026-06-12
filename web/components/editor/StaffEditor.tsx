@@ -19,6 +19,7 @@ import {
   deleteEditorStaffBlockedDate,
   inviteStaffMember,
   revokeStaffLogin,
+  getCurrentUser,
 } from '@/lib/api'
 import type {
   ApiStaffMember,
@@ -79,9 +80,17 @@ function isPlaceholderEmail(email: string | null): boolean {
 export default function StaffEditor() {
   const plan = usePlan()
   const toast = useToast()
-  // Wave D — whether the staff-login feature is on for this tenant. When
-  // off, the StaffCard hides the invite/revoke affordances entirely.
-  const loginEnabled = plan.staffLoginEnabled()
+  // Wave D refinement: master switch defaults ON for new tenants and is
+  // backfilled ON for existing ones (see migration
+  // 2026_06_11_000002_backfill_staff_login_enabled_default_on). The
+  // per-staff "Send login invite" button IS the consent — we no longer
+  // gate it behind a frontend toggle. The plan.staffLoginEnabled()
+  // predicate stays for the future "emergency revoke all" surface.
+  // Owner-self detection lets us hide the invite affordance on the
+  // owner's own staff card — they already have a login via the central
+  // users row, and a second credential under the same email would just
+  // shadow it.
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
   const [staff,         setStaff]         = useState<ApiStaffMember[]>([])
   const [loading,       setLoading]       = useState(true)
   const [loadError,     setLoadError]     = useState<string | null>(null)
@@ -99,6 +108,14 @@ export default function StaffEditor() {
   const [expandedId, setExpandedId] = useState<number | null>(null)
 
   useEffect(() => {
+    // Fire-and-forget. If the user fetch fails we just lose the
+    // owner-self detection on the staff cards — the worst case is the
+    // owner sees an invite button on their own row, which they
+    // shouldn't be able to act on anyway (the backend refuses to
+    // invite an email that already belongs to a central user).
+    getCurrentUser()
+      .then(u => setCurrentUserEmail(u?.email?.toLowerCase().trim() ?? null))
+      .catch(() => {})
     getEditorStaff()
       .then(data => setStaff([...data].sort(sortFn)))
       .catch(err => setLoadError(err instanceof Error ? err.message : 'Failed to load staff'))
@@ -438,7 +455,11 @@ export default function StaffEditor() {
                   member={member}
                   actionLoading={actionLoading === member.id}
                   expanded={expandedId === member.id}
-                  loginEnabled={loginEnabled}
+                  isOwnerSelf={
+                    !! currentUserEmail
+                    && !! member.email
+                    && member.email.toLowerCase().trim() === currentUserEmail
+                  }
                   toast={toast}
                   onLoginChanged={patch => patchMember(member.id, patch)}
                   onToggleExpand={() => setExpandedId(id => id === member.id ? null : member.id)}
@@ -463,7 +484,11 @@ export default function StaffEditor() {
                   member={member}
                   actionLoading={actionLoading === member.id}
                   expanded={expandedId === member.id}
-                  loginEnabled={loginEnabled}
+                  isOwnerSelf={
+                    !! currentUserEmail
+                    && !! member.email
+                    && member.email.toLowerCase().trim() === currentUserEmail
+                  }
                   toast={toast}
                   onLoginChanged={patch => patchMember(member.id, patch)}
                   onToggleExpand={() => setExpandedId(id => id === member.id ? null : member.id)}
@@ -485,7 +510,7 @@ function StaffCard({
   member,
   actionLoading,
   expanded,
-  loginEnabled,
+  isOwnerSelf,
   toast,
   onLoginChanged,
   onToggleExpand,
@@ -495,7 +520,7 @@ function StaffCard({
   member: ApiStaffMember
   actionLoading: boolean
   expanded: boolean
-  loginEnabled: boolean
+  isOwnerSelf: boolean
   toast: ReturnType<typeof useToast>
   onLoginChanged: (patch: Partial<ApiStaffMember>) => void
   onToggleExpand: () => void
@@ -606,9 +631,20 @@ function StaffCard({
           </button>
         </div>
 
-        {/* Staff login affordance (Wave D) — only when the tenant has the
-            feature switched on. Pill + invite/resend/revoke. */}
-        {loginEnabled && (
+        {/* Staff login affordance (Wave D refinement). The owner's own
+            staff row gets a small "your owner login" note instead of an
+            invite button — they already have a central User credential
+            and a second one under the same email would shadow it. */}
+        {isOwnerSelf ? (
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-hairline-soft">
+            <span className="inline-flex items-center gap-1.5 text-2xs font-semibold text-muted-text">
+              <KeyRound size={11} /> Login
+            </span>
+            <p className="text-2xs text-muted-text">
+              This is your owner login. Use it at <span className="font-semibold text-near-black">app.bkrdy.me/login</span>.
+            </p>
+          </div>
+        ) : (
           <StaffLoginRow
             member={member}
             loginStatus={loginStatus}

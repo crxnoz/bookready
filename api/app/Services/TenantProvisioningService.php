@@ -34,6 +34,15 @@ class TenantProvisioningService
                 // selected tier pass data['plan'], legacy paths default solo.
                 'plan'          => $this->resolvePlanSlug($data['plan'] ?? null),
                 'business_name' => $data['business_name'], // stored in tenants.data JSON
+                // Wave D refinement: master switch defaults ON. The real
+                // opt-in is the per-staff "Send login invite" button —
+                // clicking that IS the consent. A FALSE default added
+                // friction without safety because we shipped no UI to
+                // flip it on, so every new owner hit a dead end the
+                // first time they tried to invite staff. Kept as a
+                // column so a future "emergency revoke all" UX can use
+                // it as a kill switch.
+                'staff_login_enabled' => true,
             ]);
 
             $baseDomain = env('APP_DOMAIN', 'bookready.app');
