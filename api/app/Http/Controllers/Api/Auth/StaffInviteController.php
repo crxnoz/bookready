@@ -231,6 +231,22 @@ class StaffInviteController extends Controller
             ], 500);
         }
 
+        // v2 Theme 1 (task #233) — drop the central staff_invites row
+        // now that the invite is claimed. Best-effort: if the table
+        // doesn't exist (pre-migration) or the row's already gone, no
+        // problem; the inbox endpoint validates rows against the tenant
+        // staff row on read and prunes orphans lazily.
+        if (Schema::hasTable('staff_invites')) {
+            try {
+                DB::table('staff_invites')
+                    ->where('tenant_id', $tenant->id)
+                    ->where('staff_id', $staffId)
+                    ->delete();
+            } catch (\Throwable $e) {
+                // Ignore — orphan cleanup is best-effort.
+            }
+        }
+
         // Same httpOnly Sanctum cookie as owner login. Minted only after the
         // write-back succeeds so a failed link never hands out a session.
         $token = $user->createToken(

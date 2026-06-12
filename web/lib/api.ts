@@ -61,6 +61,7 @@ import {
   SignOutEverywhereResponse,
   PaymentSettings,
   PaymentSettingsPayload,
+  PendingInvite,
   StripeConnectStartResponse,
   StripeConnectStatusResponse,
   Service,
@@ -202,6 +203,30 @@ export async function switchTenant(tenantId: string): Promise<{
     method: 'POST',
     body:   JSON.stringify({ tenant_id: tenantId }),
   })
+}
+
+/**
+ * v2 Theme 1 (task #233) — pending invites for the authed identity.
+ * Returns empty when the user has no identity_id, when no invites are
+ * pending, or when the email's identity row is missing. Drives the
+ * inbox section of the sidebar dropdown.
+ */
+export async function getPendingInvites(): Promise<{ invites: PendingInvite[] }> {
+  return request<{ invites: PendingInvite[] }>('/auth/invites/pending')
+}
+
+/**
+ * v2 Theme 1 (task #233) — accept a specific pending invite while
+ * authed. No password re-entry needed. After success the caller
+ * should re-fetch /auth/me so the linked_tenants list picks up the
+ * newly joined tenant.
+ */
+export async function acceptInvite(inviteId: number): Promise<{
+  tenant_id:     string
+  business_name: string
+  redirect_url:  string
+}> {
+  return request(`/auth/invites/${inviteId}/accept`, { method: 'POST' })
 }
 
 // ── Image uploads ────────────────────────────────────────────────────────────

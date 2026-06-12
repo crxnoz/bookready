@@ -1265,6 +1265,21 @@ export interface LinkedTenant {
   is_current:    boolean
 }
 
+/**
+ * v2 Theme 1 (task #233) — one entry per pending staff invite for
+ * the authed identity. The sidebar dropdown renders these above the
+ * linked tenants list with an Accept button per row. Returned by
+ * GET /auth/invites/pending.
+ */
+export interface PendingInvite {
+  id:                  number
+  tenant_id:           string
+  business_name:       string
+  inviting_staff_name: string | null
+  expires_at:          string | null
+  created_at:          string | null
+}
+
 export interface AuthUser {
   id: number
   name: string

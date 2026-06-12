@@ -301,6 +301,13 @@ Route::prefix('v1')->group(function () {
             // if the identity has no User row at the target tenant.
             Route::post('switch-tenant',         [\App\Http\Controllers\Api\Auth\TenantSwitchController::class, 'switch'])
                 ->middleware('throttle:30,1');
+            // v2 Theme 1 (task #233) — in-editor invite inbox. List
+            // pending invites for the authed identity, and accept
+            // a specific one without re-entering the password.
+            Route::get ('invites/pending',       [\App\Http\Controllers\Api\Auth\InvitesController::class, 'pending']);
+            Route::post('invites/{id}/accept',   [\App\Http\Controllers\Api\Auth\InvitesController::class, 'accept'])
+                ->middleware('throttle:30,1')
+                ->whereNumber('id');
             Route::post('identity/link-customer', [IdentityController::class, 'linkCustomer'])
                 ->middleware('throttle:5,60');
             // Resend the verification email — authed so we don't expose

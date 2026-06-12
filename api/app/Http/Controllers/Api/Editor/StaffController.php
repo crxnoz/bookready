@@ -461,17 +461,40 @@ class StaffController extends Controller
 
         // Single-use token: send the PLAIN value in the email, store only
         // its hash. 24h expiry. Re-enter tenant scope just to write it back.
-        $plain   = Str::random(48);
-        $expires = now()->addHours(24);
+        $plain     = Str::random(48);
+        $tokenHash = hash('sha256', $plain);
+        $expires   = now()->addHours(24);
 
         tenancy()->initialize($tenant);
         DB::table('staff')->where('id', $staff)->update([
-            'invite_token'            => hash('sha256', $plain),
+            'invite_token'            => $tokenHash,
             'invite_token_expires_at' => $expires,
             'invited_at'              => now(),
             'updated_at'              => now(),
         ]);
         tenancy()->end();
+
+        // v2 Theme 1 (task #233) — also write a central staff_invites row
+        // so the in-editor invite inbox can list pending invites for an
+        // identity in one query. updateOrInsert handles resend cleanly
+        // (overwrites the prior token_hash + expires_at + updated_at).
+        // Schema-guarded so the controller stays bootable on
+        // pre-migration environments.
+        if (Schema::hasTable('staff_invites')) {
+            DB::table('staff_invites')->updateOrInsert(
+                ['tenant_id' => $tenant->id, 'staff_id' => $staff],
+                [
+                    'email'                  => $email,
+                    'token_hash'             => $tokenHash,
+                    'expires_at'             => $expires,
+                    'invited_by_user_id'     => $request->user()?->id,
+                    'inviting_business_name' => $businessName,
+                    'inviting_staff_name'    => $staffName,
+                    'updated_at'             => now(),
+                    'created_at'             => now(),
+                ]
+            );
+        }
 
         $acceptUrl = 'https://app.bkrdy.me/staff/accept-invite?'
             . http_build_query(['token' => $plain, 'tenant' => $tenant->id]);
