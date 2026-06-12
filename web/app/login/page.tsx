@@ -58,11 +58,25 @@ function LoginInner() {
         setPickerRoles(res.available_roles)
         return
       }
+      // v2 Theme 1 — honor ?next= when the user arrived here from a
+      // staff invite-accept page that detected an existing-identity
+      // password mismatch. After successful login the user lands back
+      // on the invite-accept URL where they can finish the flow. We
+      // only honor next URLs that start with "/" so an attacker can't
+      // craft a ?next=https://evil.example link.
+      const rawNext = searchParams?.get('next') ?? ''
+      const safeNext = rawNext.startsWith('/') && ! rawNext.startsWith('//') ? rawNext : null
       // A5 — backend is the canonical source of "where should they land".
       // Trust redirect_url over a hardcoded /editor so signing out and
       // back in can't bypass /verify-email or /checkout/trial. Falls
       // back to /editor for backward-compat with older API responses.
-      router.push(res.redirect_url || '/editor')
+      // ?next= only overrides the backend redirect when the backend
+      // wanted /editor (the post-onboarding default); if the backend
+      // wants /verify-email or /checkout/trial we always respect that
+      // because the user is missing a required step.
+      const backendRedirect = res.redirect_url || '/editor'
+      const finalRedirect = safeNext && backendRedirect === '/editor' ? safeNext : backendRedirect
+      router.push(finalRedirect)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed.')
     } finally {

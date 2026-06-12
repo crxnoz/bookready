@@ -7,6 +7,7 @@ import { KeyRound, Loader2 } from 'lucide-react'
 import { acceptStaffInvite } from '@/lib/api'
 import { setToken, setTenantId } from '@/lib/auth'
 import AuthShell from '@/components/auth/AuthShell'
+import PasswordStrength from '@/components/auth/PasswordStrength'
 
 /**
  * Wave D — staff login bootstrap. The invite email links here with
@@ -34,8 +35,17 @@ function AcceptInner() {
 
   const [password, setPassword]   = useState('')
   const [confirm,  setConfirm]    = useState('')
-  const [error,    setError]      = useState('')
+  // Errors carry an optional `code` so we can branch the UI when the
+  // backend says the email already has a BookReady account. In that
+  // case we want a clear "sign in to accept" affordance, not just
+  // a flat error message.
+  const [error, setError] = useState<{ message: string; code?: string }>({ message: '' })
   const [loading,  setLoading]    = useState(false)
+
+  // Pre-fill the "next" param so the sign-in link comes back to this
+  // exact accept-invite URL after the user signs in to their existing
+  // BookReady account.
+  const nextUrl = `/staff/accept-invite?token=${encodeURIComponent(token)}&tenant=${encodeURIComponent(tenant)}`
 
   // Missing token or tenant means a malformed / bookmarked link — show a
   // calm dead-end instead of a broken form.
@@ -65,14 +75,14 @@ function AcceptInner() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (password.length < 8) {
-      setError('Choose a password with at least 8 characters.')
+      setError({ message: 'Choose a password with at least 8 characters.' })
       return
     }
     if (password !== confirm) {
-      setError('Those passwords do not match.')
+      setError({ message: 'Those passwords do not match.' })
       return
     }
-    setError('')
+    setError({ message: '' })
     setLoading(true)
     try {
       const res = await acceptStaffInvite({ token, tenant, password })
@@ -83,7 +93,11 @@ function AcceptInner() {
       if (res.user?.tenant_id) setTenantId(res.user.tenant_id)
       router.push(res.redirect_url || '/editor/appointments?scope=mine')
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Could not finish setting up your login.')
+      const errCode = (err as { code?: string })?.code
+      const message = err instanceof Error
+        ? err.message
+        : 'Could not finish setting up your login.'
+      setError({ message, code: errCode })
     } finally {
       setLoading(false)
     }
@@ -103,10 +117,21 @@ function AcceptInner() {
         </p>
       </div>
 
-      {/* Error */}
-      {error && (
+      {/* Error. When the backend signals an existing BookReady account
+          (code=existing_identity_password_mismatch), render a prominent
+          sign-in link so the user can authenticate against their existing
+          credential and come back here to finish accepting the invite. */}
+      {error.message && (
         <div className="mb-4 px-4 py-3 bg-danger-bg border border-danger/30 text-xs text-danger">
-          {error}
+          <p>{error.message}</p>
+          {error.code === 'existing_identity_password_mismatch' && (
+            <Link
+              href={`/login?next=${encodeURIComponent(nextUrl)}`}
+              className="mt-2 inline-flex items-center gap-1.5 text-near-black font-semibold underline underline-offset-2 hover:opacity-75"
+            >
+              Sign in to accept this invite
+            </Link>
+          )}
         </div>
       )}
 
@@ -124,6 +149,7 @@ function AcceptInner() {
             className={inputCls}
             placeholder="At least 8 characters"
           />
+          {password.length > 0 && <PasswordStrength password={password} />}
         </div>
 
         <div>

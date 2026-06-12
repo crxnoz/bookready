@@ -8,6 +8,7 @@ import { register, checkSubdomain, type SubdomainCheckResponse } from '@/lib/api
 import { setToken, setTenantId } from '@/lib/auth'
 import { SITE_TEMPLATES } from '@/lib/templates'
 import AuthShell from '@/components/auth/AuthShell'
+import PasswordStrength from '@/components/auth/PasswordStrength'
 import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/auth/TurnstileWidget'
 
 const TEMPLATE_KEY = 'br_template'
@@ -533,41 +534,8 @@ export default function RegisterPage() {
  * Clamped to [0, 4]. Bands: 0 weak / 1 ok / 2 good / 3 strong / 4 very strong.
  * No regex backtracking risk — all character-class scans are O(n).
  */
-function PasswordStrength({ password }: { password: string }) {
-  const score = (() => {
-    let s = 0
-    if (password.length >= 8)  s++
-    if (password.length >= 12) s++
-    const variety = [
-      /\d/.test(password),
-      /[a-z]/.test(password) && /[A-Z]/.test(password),
-      /[^A-Za-z0-9]/.test(password),
-    ].filter(Boolean).length
-    s += variety
-    return Math.min(4, s)
-  })()
-  const label = ['Too short', 'Weak', 'OK', 'Good', 'Strong'][score]
-  const color = ['#b42828', '#b42828', '#c98a14', '#5d8a1c', '#1e7a3f'][score]
-  return (
-    <div className="mt-2">
-      <div className="flex gap-1.5 mb-1">
-        {[0, 1, 2, 3].map(i => (
-          <div
-            key={i}
-            className="flex-1 h-1"
-            style={{
-              backgroundColor: i < Math.max(1, score) ? color : 'rgba(18,18,18,0.10)',
-              opacity: i < Math.max(1, score) ? 1 : 1,
-            }}
-          />
-        ))}
-      </div>
-      <p className="text-[10px] font-semibold" style={{ color }}>
-        {label}
-      </p>
-    </div>
-  )
-}
+// PasswordStrength moved to web/components/auth/PasswordStrength.tsx on
+// 2026-06-12 so the staff invite-accept page can reuse the same meter.
 
 function Field({
   label,
