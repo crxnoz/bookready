@@ -12,7 +12,7 @@
  *   6. Recent activity — latest bookings by created_at
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -239,6 +239,10 @@ function DashboardBody() {
   // Bucketed by created_at to match the rest of the money-snapshot
   // family (consistent semantics). Sorted by this-month desc.
   const serviceRevenue  = useMemo(() => computeServiceRevenue(appts),             [appts])
+  // v2 Theme 8.4 — Hour-of-day × day-of-week appointment density over
+  // the last 60 days. Drives "extend Saturday hours" / "take Tuesdays
+  // off" decisions. Excludes cancelled + no-show statuses.
+  const bookingHeatmap  = useMemo(() => computeBookingHeatmap(appts),             [appts])
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -415,6 +419,11 @@ function DashboardBody() {
           />
         </div>
       </section>
+      {/* v2 Theme 8.4 — Booking heatmap. Sits after Business Health
+          because it's a distribution view (when bookings cluster) that
+          complements the aggregate metrics above. */}
+      <BookingHeatmapCard grid={bookingHeatmap} />
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <NewCustomersCard customers={newCustomers} />
         <TopSpendersCard spenders={topSpenders} currency={moneyBuckets.currency} />
@@ -2237,6 +2246,163 @@ function ServiceChangeBadge({ changePct, thisMonth }: { changePct: number | null
       <Icon size={11} /> {positive ? '+' : ''}{Math.round(changePct)}%
     </span>
   )
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// v2 Theme 8.4 — Booking heatmap (hour-of-day × day-of-week)
+// ────────────────────────────────────────────────────────────────────────────
+
+const HEATMAP_HOUR_START = 7   // 7am
+const HEATMAP_HOUR_END   = 22  // 10pm (exclusive — last cell is 9pm)
+const HEATMAP_LOOKBACK_DAYS = 60
+
+interface HeatmapCell { count: number }
+
+/**
+ * 2D grid: [dayOfWeek 0..6 = Sun..Sat][hourIndex 0..14 = 7am..9pm].
+ * Built from the appts that already power the rest of the dashboard,
+ * filtered to the last 60 days of appointment_date and excluding
+ * cancelled + no-show statuses (those don't represent demand).
+ */
+function computeBookingHeatmap(appts: Appointment[]): HeatmapCell[][] {
+  const grid: HeatmapCell[][] = []
+  for (let d = 0; d < 7; d++) {
+    const row: HeatmapCell[] = []
+    for (let h = HEATMAP_HOUR_START; h < HEATMAP_HOUR_END; h++) {
+      row.push({ count: 0 })
+    }
+    grid.push(row)
+  }
+
+  const now    = new Date()
+  const cutoff = new Date(now.getTime() - HEATMAP_LOOKBACK_DAYS * 86_400_000)
+
+  for (const a of appts) {
+    if (a.status === 'cancelled' || a.status === 'no_show') continue
+    if (! a.appointment_date) continue
+    const d = new Date(a.appointment_date + 'T00:00:00')
+    if (isNaN(d.getTime())) continue
+    if (d < cutoff) continue
+    const dow = d.getDay()
+    const hh  = parseInt((a.start_time ?? '00:00').split(':')[0] ?? '0', 10)
+    if (isNaN(hh) || hh < HEATMAP_HOUR_START || hh >= HEATMAP_HOUR_END) continue
+    grid[dow][hh - HEATMAP_HOUR_START].count++
+  }
+  return grid
+}
+
+function BookingHeatmapCard({ grid }: { grid: HeatmapCell[][] }) {
+  const max = (() => {
+    let m = 0
+    for (const row of grid) for (const cell of row) if (cell.count > m) m = cell.count
+    return m
+  })()
+  const total = (() => {
+    let s = 0
+    for (const row of grid) for (const cell of row) s += cell.count
+    return s
+  })()
+
+  const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const hours: number[] = []
+  for (let h = HEATMAP_HOUR_START; h < HEATMAP_HOUR_END; h++) hours.push(h)
+
+  if (total === 0) {
+    return (
+      <section>
+        <SectionHeader
+          icon={Calendar}
+          label="Booking heatmap"
+          subtitle="When bookings cluster across the week."
+        />
+        <div className="bg-white border border-hairline-soft p-4">
+          <p className="text-xs text-muted-text">
+            Once you have a few weeks of bookings, this heatmap shows you which hours and days are busiest.
+          </p>
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <section>
+      <SectionHeader
+        icon={Calendar}
+        label="Booking heatmap"
+        subtitle={`${total} appointment${total === 1 ? '' : 's'} in the last ${HEATMAP_LOOKBACK_DAYS} days.`}
+      />
+      <div className="bg-white border border-hairline-soft p-4">
+        <div
+          className="grid"
+          style={{
+            gridTemplateColumns: '36px repeat(7, minmax(0, 1fr))',
+            gap: '2px',
+          }}
+        >
+          {/* Header row: empty corner + day labels */}
+          <div />
+          {dayLabels.map(d => (
+            <div key={d} className="text-eyebrow font-bold tracking-[0.08em] uppercase text-muted-text text-center pb-1">
+              {d}
+            </div>
+          ))}
+
+          {/* Body: one (hour-label, ...7 cells) tuple per hour. */}
+          {hours.map(h => {
+            const hour12 = ((h + 11) % 12) + 1
+            const ampm   = h < 12 ? 'a' : 'p'
+            const label  = `${hour12}${ampm}`
+            return (
+              <Fragment key={h}>
+                <div className="text-2xs text-muted-text text-right pr-1 leading-[16px]">
+                  {label}
+                </div>
+                {dayLabels.map((dayName, di) => {
+                  const cell = grid[di][h - HEATMAP_HOUR_START]
+                  return (
+                    <div
+                      key={`${h}-${di}`}
+                      title={`${dayName} ${label}: ${cell.count} booking${cell.count === 1 ? '' : 's'}`}
+                      style={{
+                        backgroundColor: heatmapColor(cell.count, max),
+                        minHeight: '16px',
+                      }}
+                      className={cn(cell.count === 0 && 'border border-hairline-soft')}
+                    />
+                  )
+                })}
+              </Fragment>
+            )
+          })}
+        </div>
+
+        {/* Legend — calendar legend exemption (per design system rules
+            in CLAUDE.md) lets us use raw rgba for chart-style fills. */}
+        <div className="flex items-center gap-2 mt-3 text-2xs text-muted-text">
+          <span>Quieter</span>
+          <span className="inline-block w-3 h-3 border border-hairline-soft" />
+          <span className="inline-block w-3 h-3" style={{ backgroundColor: 'rgba(18,18,18,0.25)' }} />
+          <span className="inline-block w-3 h-3" style={{ backgroundColor: 'rgba(18,18,18,0.55)' }} />
+          <span className="inline-block w-3 h-3" style={{ backgroundColor: 'rgba(18,18,18,0.85)' }} />
+          <span>Busier</span>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/**
+ * Map a cell count to an alpha-banded near-black background. Empty
+ * cells render no fill (caller adds a hairline border). Three intensity
+ * bands match human perceptual thresholds for "light/medium/heavy"
+ * better than a continuous gradient does at small cell sizes.
+ */
+function heatmapColor(count: number, max: number): string {
+  if (count === 0 || max === 0) return 'transparent'
+  const intensity = count / max
+  if (intensity > 0.66) return 'rgba(18,18,18,0.85)'
+  if (intensity > 0.33) return 'rgba(18,18,18,0.55)'
+  return 'rgba(18,18,18,0.25)'
 }
 
 function computeRepeatRatio(appts: Appointment[]): RepeatRatio {
