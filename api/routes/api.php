@@ -454,7 +454,7 @@ Route::prefix('v1')->group(function () {
         // staff member to a login or revoke one. The accept side is public
         // (POST /auth/staff/accept-invite). Both no-op safely when the
         // tenant's staff_login_enabled master switch is off.
-        Route::post('staff/{staff}/invite',       [StaffController::class, 'sendInvite']);
+        Route::post('staff/{staff}/invite',       [StaffController::class, 'sendInvite'])->middleware('throttle:5,1');
         Route::post('staff/{staff}/revoke-login', [StaffController::class, 'revokeLogin']);
 
         // Customer booking coupons (Connect rail).

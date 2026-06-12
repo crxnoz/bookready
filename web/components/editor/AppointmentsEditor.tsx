@@ -330,9 +330,20 @@ export default function AppointmentsEditor() {
   const [filterCustomerId,   setFilterCustomerId]   = useState<number | null>(customerIdParam)
 
   useEffect(() => {
+    // FEGATE-1 — /editor/services is owner-only (tenant_owner), so it
+    // 403s for a staff login and rejects the whole Promise.all, flipping
+    // the page to its error banner. Staff reach this page at
+    // ?scope=mine and only need their schedule; the services list feeds
+    // the owner-only "New appointment" form (already hidden for staff),
+    // so an empty list is correct for them. isStaff comes from useRole(),
+    // which the EditorGuard resolves (alongside `slug`) BEFORE it renders
+    // this page, so `isStaff` is already the real value when this mount
+    // effect runs — no role race despite the empty deps. Owners still
+    // load services; the .catch keeps a transient services 500 from
+    // sinking the rest of the load.
     Promise.all([
       getEditorAppointments({ limit: 200 }),
-      getEditorServices(),
+      isStaff ? Promise.resolve([] as Service[]) : getEditorServices().catch(() => [] as Service[]),
       getEditorPaymentSettings().catch(() => null),
       getEditorStaff({ active: true }).catch(() => [] as ApiStaffMember[]),
       getEditorServiceAddons().catch(() => [] as ServiceAddon[]),
@@ -346,6 +357,10 @@ export default function AppointmentsEditor() {
       })
       .catch(() => setError("Couldn't load your appointments. Refresh the page to try again."))
       .finally(() => setLoading(false))
+    // Mount-only load. `isStaff` is already resolved by EditorGuard before
+    // this page renders (see comment above), so it's stable on first run —
+    // no re-fetch needed when it's read here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Phase 13 — when arriving via the Customers drawer, hydrate the

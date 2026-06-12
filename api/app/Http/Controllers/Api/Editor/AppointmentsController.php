@@ -207,11 +207,12 @@ class AppointmentsController extends Controller
     private function staffScope(Request $request): array
     {
         $user = $request->user();
-        if (($user->role ?? null) !== 'staff') {
+        if ($user->is_owner ?? false) {
             return [false, null]; // owner — no scoping
         }
-        // Staff: scope to their own staff_id. Null means "forbidden" — a
-        // staff login with no linked staff row matches nothing.
+        // Any non-owner (staff, or a role that drifted): scope to their own
+        // staff_id. Null means "forbidden" — a non-owner login with no linked
+        // staff row matches nothing.
         return [true, $user->staff_id !== null ? (int) $user->staff_id : null];
     }
 

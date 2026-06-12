@@ -40,7 +40,7 @@ class StaffBlockedDatesController extends Controller
     private function selfMatchGuard(Request $request, int $staff): ?JsonResponse
     {
         $user = $request->user();
-        if (($user->role ?? null) !== 'staff') return null; // owner — no scope
+        if ($user->is_owner ?? false) return null; // owner — no scope
         $ownStaffId = $user->staff_id !== null ? (int) $user->staff_id : null;
         if ($ownStaffId === null || $ownStaffId !== $staff) {
             return response()->json(['message' => 'Staff member not found'], 404);

@@ -90,10 +90,30 @@ class StaffInviteController extends Controller
             return response()->json(['message' => 'This invite has already been accepted.'], 409);
         }
 
-        // Flatten the staff snapshot we need (name) before leaving tenant
-        // scope — central-DB work happens outside tenancy.
         $staffId   = (int) $staff->id;
         $staffName = (string) ($staff->name ?? '');
+
+        // Atomic single-use claim. The reads above are advisory (clean
+        // error copy); this conditional update is the real gate. Two
+        // concurrent accepts both pass the check-then-act reads above, but
+        // only the first matches WHERE invite_token = ? AND user_id IS NULL
+        // and clears the token; the loser updates 0 rows and 409s. We null
+        // the token HERE so the write-back later only sets user_id — it must
+        // not null the token again (already done) and must not re-claim.
+        $claimed = DB::table('staff')
+            ->where('id', $staffId)
+            ->where('invite_token', $tokenHash)
+            ->whereNull('user_id')
+            ->update([
+                'invite_token'            => null,
+                'invite_token_expires_at' => null,
+                'updated_at'              => now(),
+            ]);
+
+        if ($claimed !== 1) {
+            tenancy()->end();
+            return response()->json(['message' => 'This invite has already been accepted.'], 409);
+        }
 
         tenancy()->end();
 
@@ -152,17 +172,31 @@ class StaffInviteController extends Controller
             'terms_version'     => RegisterController::TERMS_VERSION,
         ])->save();
 
-        // Write the soft pointer back + clear the invite on the tenant row.
-        tenancy()->initialize($tenant);
-        DB::table('staff')->where('id', $staffId)->update([
-            'user_id'                 => $user->id,
-            'invite_token'            => null,
-            'invite_token_expires_at' => null,
-            'updated_at'              => now(),
-        ]);
-        tenancy()->end();
+        // Write the soft pointer back. The invite token was already nulled
+        // at claim time (FIX A), so this only sets user_id. If it throws,
+        // the freshly created central user is orphaned and unrevocable —
+        // compensate by deleting it (and its tokens) so the owner can
+        // re-invite cleanly. The staff row is left with invite_token NULL
+        // and user_id NULL, which is fine: the owner re-invites and a fresh
+        // token is minted; we deliberately do not restore the old token.
+        try {
+            tenancy()->initialize($tenant);
+            DB::table('staff')->where('id', $staffId)->update([
+                'user_id'    => $user->id,
+                'updated_at' => now(),
+            ]);
+            tenancy()->end();
+        } catch (\Throwable $e) {
+            tenancy()->end();
+            $user->tokens()->delete();
+            $user->delete();
+            return response()->json([
+                'message' => 'We could not finish setting up your staff login. Ask for a new invite and try again.',
+            ], 500);
+        }
 
-        // Same httpOnly Sanctum cookie as owner login.
+        // Same httpOnly Sanctum cookie as owner login. Minted only after the
+        // write-back succeeds so a failed link never hands out a session.
         $token = $user->createToken(
             'staff-accept-invite',
             ['*'],

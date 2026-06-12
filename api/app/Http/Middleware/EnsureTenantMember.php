@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Tenant;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -29,6 +30,19 @@ class EnsureTenantMember
         $isMember = ($user->is_owner ?? false) || ($user->role ?? null) === 'staff';
         if (! $isMember || ! $user->tenant_id) {
             return response()->json(['message' => 'Member access required.'], 403);
+        }
+
+        // KILLSWITCH-1 — master switch is a true kill switch for live staff
+        // sessions. Owners ALWAYS pass; this gate only runs for staff. One
+        // central read per staff request (Tenant lives on the central DB, so
+        // this is safe without tenancy init). Flip staff_login_enabled off
+        // and existing staff are blocked at the member surface immediately.
+        $isStaff = ! ($user->is_owner ?? false) && ($user->role ?? null) === 'staff';
+        if ($isStaff) {
+            $tenant = Tenant::find($user->tenant_id);
+            if (! (bool) ($tenant->staff_login_enabled ?? false)) {
+                return response()->json(['message' => 'Staff logins are turned off for this business.'], 403);
+            }
         }
 
         return $next($request);

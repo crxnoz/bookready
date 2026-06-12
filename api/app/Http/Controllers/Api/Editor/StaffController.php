@@ -59,6 +59,49 @@ class StaffController extends Controller
         return 'none';
     }
 
+    // Shared login teardown for a staff row. MUST be called while tenancy
+    // is ACTIVE for the staff-row writes; it ends tenancy itself before the
+    // central-DB cleanup, since `users` lives in the central DB and querying
+    // it under the tenant connection 500s.
+    //
+    // Steps:
+    //   1. (tenant scope) NULL out the soft pointer + invite columns on the
+    //      staff row. NULL (never 0) so the UNIQUE index allows multiple
+    //      severed rows.
+    //   2. end tenancy.
+    //   3. (central scope) delete the linked users row and revoke its Sanctum
+    //      tokens — scoped to id + tenant_id + role=staff so it can NEVER
+    //      remove an owner or a cross-tenant user.
+    //
+    // Pass the linked user_id captured from the staff row BEFORE the staff
+    // write zeroed it out. Used by both revokeLogin() and destroy().
+    private function tearDownStaffLogin(Tenant $tenant, int $staff, ?int $linkedUserId): void
+    {
+        DB::table('staff')->where('id', $staff)->update([
+            'user_id'                 => null,
+            'invite_token'            => null,
+            'invite_token_expires_at' => null,
+            'invited_at'              => null,
+            'updated_at'              => now(),
+        ]);
+
+        tenancy()->end();
+
+        // Central-DB cleanup: revoke tokens + delete the staff login row.
+        // Only touch a user that is actually a staff login for THIS tenant
+        // — never an owner row, never a cross-tenant row.
+        if ($linkedUserId !== null) {
+            $user = User::where('id', $linkedUserId)
+                ->where('tenant_id', $tenant->id)
+                ->where('role', 'staff')
+                ->first();
+            if ($user) {
+                $user->tokens()->delete();
+                $user->delete();
+            }
+        }
+    }
+
     // GET /editor/staff
     public function index(Request $request): JsonResponse
     {
@@ -156,10 +199,14 @@ class StaffController extends Controller
     public function show(Request $request, int $staff): JsonResponse
     {
         $user       = $request->user();
-        $isStaff    = ($user->role ?? null) === 'staff';
+        // Fail CLOSED: scope/self-match applies to ANY non-owner, computed
+        // from is_owner rather than role === 'staff'. If the role column ever
+        // drifts (NULL/unexpected value), a role-based check would fail OPEN
+        // and expose every staff row; an owner-based check still restricts.
+        $isScoped   = ! ($user->is_owner ?? false);
         $ownStaffId = $user->staff_id !== null ? (int) $user->staff_id : null;
 
-        if ($isStaff && ($ownStaffId === null || $ownStaffId !== $staff)) {
+        if ($isScoped && ($ownStaffId === null || $ownStaffId !== $staff)) {
             return response()->json(['message' => 'Staff member not found'], 404);
         }
 
@@ -201,11 +248,16 @@ class StaffController extends Controller
         // would drift from the central users identity). Resolve role +
         // staff_id from the central users row BEFORE tenancy.
         $user      = $request->user();
-        $isStaff   = ($user->role ?? null) === 'staff';
+        // Fail CLOSED: any caller that is NOT an owner is scoped to their own
+        // row + the bio/phone/photo_url whitelist, computed from is_owner
+        // rather than role === 'staff'. A role-based check would fail OPEN if
+        // the role column drifted (NULL/unexpected) and let a non-owner edit
+        // owner-controlled fields on any row.
+        $isScoped   = ! ($user->is_owner ?? false);
         $ownStaffId = $user->staff_id !== null ? (int) $user->staff_id : null;
 
-        if ($isStaff) {
-            // Self-match: a staff user can only target their own row. 404
+        if ($isScoped) {
+            // Self-match: a non-owner can only target their own row. 404
             // (not 403) so other staff rows aren't enumerable. A null
             // staff_id can never match.
             if ($ownStaffId === null || $ownStaffId !== $staff) {
@@ -266,15 +318,34 @@ class StaffController extends Controller
             return response()->json(['message' => 'Staff member not found'], 404);
         }
 
+        // Capture the linked login BEFORE the teardown nulls user_id, so the
+        // central users row + tokens can be removed. Archiving a staff member
+        // MUST sever their login — otherwise the central session lives on for
+        // its full 30-day window. (DESTROY-1.)
+        $linkedUserId = (Schema::hasColumn('staff', 'user_id') && $row->user_id !== null)
+            ? (int) $row->user_id
+            : null;
+
         DB::table('staff')->where('id', $staff)->update([
             'is_active'  => false,
             'updated_at' => now(),
         ]);
 
+        // Snapshot the archived row for the response BEFORE the shared
+        // teardown ends tenancy. Reflect the severed login on the snapshot so
+        // login_status comes back as 'none' (the teardown about to run nulls
+        // these columns; mirror revokeLogin()'s post-null response shape).
         $updated = DB::table('staff')->find($staff);
-        $result  = $this->format($updated);
+        if ($updated) {
+            $updated->user_id                 = null;
+            $updated->invite_token            = null;
+            $updated->invite_token_expires_at = null;
+        }
+        $result = $this->format($updated);
 
-        tenancy()->end();
+        // Shared teardown: nulls the soft pointer + invite columns, ends
+        // tenancy, then deletes the central login scoped to tenant + staff.
+        $this->tearDownStaffLogin($tenant, $staff, $linkedUserId);
 
         return response()->json($result);
     }
@@ -418,34 +489,17 @@ class StaffController extends Controller
 
         $linkedUserId = $row->user_id !== null ? (int) $row->user_id : null;
 
-        DB::table('staff')->where('id', $staff)->update([
-            'user_id'                 => null,
-            'invite_token'            => null,
-            'invite_token_expires_at' => null,
-            'invited_at'              => null,
-            'updated_at'              => now(),
-        ]);
+        // Flatten the severed-state snapshot before leaving tenant scope so we
+        // can return it. The shared teardown (below) nulls these columns; mirror
+        // the post-null state here so login_status comes back as 'none'.
+        $row->user_id                 = null;
+        $row->invite_token            = null;
+        $row->invite_token_expires_at = null;
+        $result = $this->format($row);
 
-        // Flatten staff snapshot before leaving tenant scope so we can
-        // return it, then operate on the central users table.
-        $updated = DB::table('staff')->find($staff);
-        $result  = $this->format($updated);
-
-        tenancy()->end();
-
-        // Central-DB cleanup: revoke tokens + delete the staff login row.
-        // Only touch a user that is actually a staff login for THIS tenant
-        // — never an owner row, never a cross-tenant row.
-        if ($linkedUserId !== null) {
-            $user = User::where('id', $linkedUserId)
-                ->where('tenant_id', $tenant->id)
-                ->where('role', 'staff')
-                ->first();
-            if ($user) {
-                $user->tokens()->delete();
-                $user->delete();
-            }
-        }
+        // Shared teardown: nulls the soft pointer + invite columns, ends
+        // tenancy, then deletes the central login scoped to tenant + staff.
+        $this->tearDownStaffLogin($tenant, $staff, $linkedUserId);
 
         return response()->json($result);
     }

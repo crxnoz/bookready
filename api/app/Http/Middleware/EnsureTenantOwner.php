@@ -15,7 +15,7 @@ class EnsureTenantOwner
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        if (! ($user->is_owner ?? false) || ! $user->tenant_id) {
+        if (! ($user->is_owner ?? false) || ($user->role ?? null) === 'staff' || ! $user->tenant_id) {
             return response()->json(['message' => 'Owner access required.'], 403);
         }
 
