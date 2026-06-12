@@ -420,18 +420,43 @@ class StaffController extends Controller
 
         tenancy()->end();
 
-        // v1 single-identity refusal: the email must not already be ANY
-        // central user. This check spans every tenant (users is central),
-        // which is exactly the multi-tenant collision we punt to v2. It
-        // MUST run with tenancy ENDED — `users` lives in the central DB, so
-        // querying it while the tenant connection is active 500s with
-        // "Table tenant_*.users doesn't exist". (Wave D bug: this ran in
-        // tenant scope and broke every invite send.)
-        if (User::where('email', $email)->exists()) {
+        // v2 Theme 1 — multi-tenant staff identity (chair-renter case).
+        // Refusals tighten to:
+        //   (a) email already has a User AT THIS TENANT → already linked,
+        //   (b) email's identity is at the per-tier cap → overflow path.
+        //
+        // Cross-tenant linkages (User at a DIFFERENT tenant) are now
+        // ALLOWED if under cap — the staff member signs in with their
+        // existing cross-tenant credential and the dropdown handles
+        // switching context. Per-tier caps live in IdentityCapResolver
+        // and reflect the founder's 1 Solo / 2 Studios policy.
+        //
+        // MUST run with tenancy ENDED — `users` and `tenants` live in the
+        // central DB, so querying them while the tenant connection is
+        // active 500s with "Table tenant_*.users doesn't exist."
+        $userAtThisTenant = User::where('email', $email)
+            ->where('tenant_id', $tenant->id)
+            ->exists();
+        if ($userAtThisTenant) {
             return response()->json([
-                'message' => 'Someone already has an account with this email. They cannot be invited as staff yet.',
-                'code'    => 'email_already_user',
+                'message' => 'This email already has a login at your business. They cannot be invited again.',
+                'code'    => 'email_already_at_this_tenant',
             ], 422);
+        }
+
+        $existingIdentity = Schema::hasTable('identities')
+            ? DB::table('identities')->where('email', $email)->first()
+            : null;
+        if ($existingIdentity) {
+            $tenantTier = \App\Services\PlanFeatures::planOf($tenant);
+            if (! \App\Services\IdentityCapResolver::canAttach((int) $existingIdentity->id, $tenantTier)) {
+                return response()->json([
+                    'message' => \App\Services\IdentityCapResolver::refusalMessage($tenantTier, 'They'),
+                    'code'    => 'identity_cap_reached',
+                    'tier'    => $tenantTier,
+                    'cap'     => \App\Services\IdentityCapResolver::capFor($tenantTier),
+                ], 422);
+            }
         }
 
         // Single-use token: send the PLAIN value in the email, store only

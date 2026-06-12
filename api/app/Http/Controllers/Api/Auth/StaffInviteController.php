@@ -117,25 +117,61 @@ class StaffInviteController extends Controller
 
         tenancy()->end();
 
-        // v1 single-identity refusal: the email must not already be a
-        // central user (owner OR staff, any tenant). This is the
-        // multi-tenant collision we punt to v2.
-        if (User::where('email', $email)->exists()) {
+        // v2 Theme 1 — multi-tenant staff identity (chair-renter case).
+        // Refusal logic:
+        //   - User exists at THIS tenant → already linked (race / replay).
+        //   - Identity exists at OTHER tenants → allowed if under cap AND
+        //     the password matches the existing identity (so a malicious
+        //     invite holder can't shadow someone's existing credential).
+        //   - Identity at cap → overflow path (email hello@).
+        //   - No existing identity → fresh stylist; create everything.
+        $userAtThisTenant = User::where('email', $email)
+            ->where('tenant_id', $tenant->id)
+            ->exists();
+        if ($userAtThisTenant) {
             return response()->json([
-                'message' => 'Someone already has an account with this email. Staff logins do not support shared emails yet.',
-                'code'    => 'email_already_user',
+                'message' => 'This email already has a login at this business.',
+                'code'    => 'already_linked_at_this_tenant',
             ], 422);
+        }
+
+        $existingIdentity = Schema::hasTable('identities')
+            ? DB::table('identities')->where('email', $email)->first()
+            : null;
+
+        if ($existingIdentity) {
+            // Cross-tenant invite. Require the password the staff member
+            // entered to match the existing identity's password. Without
+            // this, anyone who got their hands on the invite link could
+            // pick a new password and quietly take over an existing
+            // BookReady account.
+            if (! Hash::check($validated['password'], $existingIdentity->password)) {
+                return response()->json([
+                    'message' => 'This email already has a BookReady account. Enter your existing BookReady password to add this business to your account.',
+                    'code'    => 'existing_identity_password_mismatch',
+                ], 422);
+            }
+
+            $tenantTier = \App\Services\PlanFeatures::planOf($tenant);
+            if (! \App\Services\IdentityCapResolver::canAttach((int) $existingIdentity->id, $tenantTier)) {
+                return response()->json([
+                    'message' => \App\Services\IdentityCapResolver::refusalMessage($tenantTier, 'You'),
+                    'code'    => 'identity_cap_reached',
+                    'tier'    => $tenantTier,
+                    'cap'     => \App\Services\IdentityCapResolver::capFor($tenantTier),
+                ], 422);
+            }
         }
 
         $hashedPassword = Hash::make($validated['password']);
 
-        // find-or-create the unified identity. A customer may already hold
-        // this email (customer-only identity) — reuse it so the staff
-        // login shares one credential. Create it otherwise. Guarded so the
-        // flow stays bootable where the identities table doesn't exist.
+        // find-or-create the unified identity. A customer or another
+        // tenant's staff/owner may already hold this email — reuse so the
+        // staff login shares one credential across tenants. Create it
+        // otherwise. Guarded so the flow stays bootable where the
+        // identities table doesn't exist.
         $identityId = null;
         if (Schema::hasTable('identities')) {
-            $existingIdentity = DB::table('identities')->where('email', $email)->first();
             if ($existingIdentity) {
                 $identityId = (int) $existingIdentity->id;
             } else {

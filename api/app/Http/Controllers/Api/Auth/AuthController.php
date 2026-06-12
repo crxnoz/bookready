@@ -12,6 +12,7 @@ use App\Support\CustomerAuthCookie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
@@ -183,7 +184,51 @@ class AuthController extends Controller
             'email_verified'     => $emailVerified,
             'is_billing_setup'   => $isBillingSetup,
             'redirect_url'       => self::redirectFor($emailVerified, $isBillingSetup),
+            // v2 Theme 1 — every tenant this identity is linked to, so the
+            // editor sidebar can render the tenant-switch dropdown. Empty
+            // array when the identity has no linkages (single-tenant
+            // user) or no identity_id at all (pre-migration users).
+            'linked_tenants'     => self::linkedTenantsFor($user),
         ]);
+    }
+
+    /**
+     * v2 Theme 1 — return the list of tenants this identity has Users
+     * at, with the bare minimum the dropdown needs to render. business_name
+     * lives in the tenants.data JSON column; we parse it inline so the
+     * frontend doesn't need a per-tenant lookup. Pre-multi-tenant rows
+     * (no identity_id) get an empty array — the dropdown then collapses
+     * to "just this tenant" and is invisible.
+     */
+    private static function linkedTenantsFor(User $user): array
+    {
+        if (! $user->identity_id) {
+            return [];
+        }
+        $rows = DB::table('users')
+            ->join('tenants', 'tenants.id', '=', 'users.tenant_id')
+            ->where('users.identity_id', $user->identity_id)
+            ->select(
+                'tenants.id as tenant_id',
+                'tenants.plan as plan',
+                'tenants.data as data',
+                'users.role as role',
+                'users.is_owner as is_owner',
+            )
+            ->orderBy('tenants.id')
+            ->get();
+
+        return $rows->map(function ($row) use ($user) {
+            $data = is_string($row->data) ? (json_decode($row->data, true) ?: []) : [];
+            return [
+                'tenant_id'     => (string) $row->tenant_id,
+                'business_name' => (string) ($data['business_name'] ?? $row->tenant_id),
+                'plan'          => is_string($row->plan) ? $row->plan : null,
+                'role'          => is_string($row->role) ? $row->role : 'owner',
+                'is_owner'      => (bool) $row->is_owner,
+                'is_current'    => ((string) $row->tenant_id) === ((string) $user->tenant_id),
+            ];
+        })->all();
     }
 
     /**
