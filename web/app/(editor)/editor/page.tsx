@@ -18,7 +18,7 @@ import { useRouter } from 'next/navigation'
 import {
   Calendar, Clock, ExternalLink, Loader2, ChevronRight, CheckCircle2, Circle,
   DollarSign, Activity, Sparkles, AlertCircle, ArrowUpRight,
-  TrendingUp, Users, UserPlus, Crown, Repeat, Lightbulb, Inbox, BarChart3,
+  TrendingUp, TrendingDown, Users, UserPlus, Crown, Repeat, Lightbulb, Inbox, BarChart3,
   X, Plus, CalendarOff, CreditCard, AlertTriangle, Zap, Receipt, ArrowRight,
   Mail,
 } from 'lucide-react'
@@ -235,6 +235,10 @@ function DashboardBody() {
   // staleness (oldest last_appointment_at first) since those are the
   // most at-risk.
   const lapsedCustomers = useMemo(() => computeLapsed(customers),                 [customers])
+  // v2 Theme 8.5 — Per-service this-month vs last-month revenue.
+  // Bucketed by created_at to match the rest of the money-snapshot
+  // family (consistent semantics). Sorted by this-month desc.
+  const serviceRevenue  = useMemo(() => computeServiceRevenue(appts),             [appts])
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -366,6 +370,12 @@ function DashboardBody() {
       </div>
       <WeekStrip days={weekStrip} />
       <MoneySnapshot buckets={moneyBuckets} />
+
+      {/* v2 Theme 8.5 — Per-service revenue breakdown with MoM trend.
+          Sits next to MoneySnapshot because they answer the same
+          question at different resolutions: total money this period vs
+          which service lines are pulling it. */}
+      <ServiceRevenueCard services={serviceRevenue} currency={moneyBuckets.currency} />
 
       {/* Team-this-week breakdown. Studio+ only — on Solo, this would
           collapse to a single row of the owner and add no value. */}
@@ -2099,6 +2109,134 @@ function buildReachOutMailto(c: LapsedCustomer, businessName: string): string {
   const subject = `Hi from ${businessName}`
   const body = `Hi ${firstName},\n\nIt's been a while since we last saw you. Wanted to reach out and let you know we'd love to have you back any time.\n\nLet me know if you'd like to book an appointment.\n\nThanks!`
   return `mailto:${encodeURIComponent(c.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// v2 Theme 8.5 — Service revenue breakdown (this month vs last)
+// ────────────────────────────────────────────────────────────────────────────
+
+interface ServiceRevenueRow {
+  serviceName:  string
+  thisMonth:    number
+  lastMonth:    number
+  /** null when last month was zero (avoid dividing by zero / "infinity%"). */
+  changePct:    number | null
+}
+
+function computeServiceRevenue(appts: Appointment[]): ServiceRevenueRow[] {
+  const now            = new Date()
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(),     1)
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+
+  const buckets: Record<string, { thisMonth: number; lastMonth: number }> = {}
+
+  for (const a of appts) {
+    if (! a.created_at) continue
+    if (a.status === 'cancelled') continue
+    const rev = (a.deposit_paid_amount ?? 0) + (a.balance_paid_amount ?? 0)
+    if (rev <= 0) continue
+    const ts   = new Date(a.created_at)
+    const name = (a.service_name ?? '').trim() || 'Other'
+    if (! buckets[name]) buckets[name] = { thisMonth: 0, lastMonth: 0 }
+    if (ts >= thisMonthStart) {
+      buckets[name].thisMonth += rev
+    } else if (ts >= lastMonthStart && ts < thisMonthStart) {
+      buckets[name].lastMonth += rev
+    }
+  }
+
+  return Object.entries(buckets)
+    .map(([name, b]) => ({
+      serviceName: name,
+      thisMonth:   round2(b.thisMonth),
+      lastMonth:   round2(b.lastMonth),
+      changePct:   b.lastMonth > 0
+        ? round2(((b.thisMonth - b.lastMonth) / b.lastMonth) * 100)
+        : null,
+    }))
+    .filter(r => r.thisMonth > 0 || r.lastMonth > 0)
+    .sort((a, b) => b.thisMonth - a.thisMonth)
+}
+
+function ServiceRevenueCard({
+  services, currency,
+}: {
+  services: ServiceRevenueRow[]
+  currency: string
+}) {
+  const total = services.length
+  const top   = services.slice(0, 8)
+  return (
+    <section>
+      <SectionHeader
+        icon={BarChart3}
+        label="Service revenue"
+        subtitle={total === 0
+          ? "Once payments land, you'll see which services are growing here."
+          : 'This month vs last, per service.'}
+        cta={total > 0 ? { label: 'Open services', href: '/editor/services' } : undefined}
+      />
+      {total === 0 ? (
+        <div className="bg-white border border-hairline-soft p-4">
+          <p className="text-xs text-muted-text">
+            No service revenue this month or last yet.
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white border border-hairline-soft divide-y divide-[rgba(18,18,18,0.06)]">
+          {top.map(s => (
+            <div key={s.serviceName} className="flex items-center gap-3 px-4 py-2.5">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-near-black truncate">{s.serviceName}</p>
+                <p className="text-eyebrow text-muted-text truncate">
+                  {money(s.thisMonth, currency)} this month
+                  {s.lastMonth > 0 && <> · {money(s.lastMonth, currency)} last</>}
+                </p>
+              </div>
+              <ServiceChangeBadge changePct={s.changePct} thisMonth={s.thisMonth} />
+            </div>
+          ))}
+          {total > 8 && (
+            <p className="px-4 py-2.5 text-2xs text-muted-text">+ {total - 8} more services</p>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
+/**
+ * MoM trend badge. Three states:
+ *   - changePct === null (no last-month baseline): "New" tag.
+ *   - |changePct| < 1: "~0%" muted — change is noise, don't shout.
+ *   - otherwise: TrendingUp/Down with success/danger color.
+ *
+ * Edge case: this-month is 0 but last-month had revenue → changePct
+ * comes back as -100. The danger color + arrow handle that correctly
+ * without special-casing, because that's the right signal: the line
+ * actually dropped to zero this month.
+ */
+function ServiceChangeBadge({ changePct, thisMonth }: { changePct: number | null; thisMonth: number }) {
+  if (changePct === null) {
+    return (
+      <span className="text-2xs font-semibold text-muted-text whitespace-nowrap">
+        {thisMonth > 0 ? 'New' : '—'}
+      </span>
+    )
+  }
+  if (Math.abs(changePct) < 1) {
+    return <span className="text-2xs text-muted-text whitespace-nowrap">~0%</span>
+  }
+  const positive = changePct > 0
+  const Icon     = positive ? TrendingUp : TrendingDown
+  return (
+    <span className={cn(
+      'inline-flex items-center gap-1 text-2xs font-semibold tabular-nums whitespace-nowrap',
+      positive ? 'text-success' : 'text-danger',
+    )}>
+      <Icon size={11} /> {positive ? '+' : ''}{Math.round(changePct)}%
+    </span>
+  )
 }
 
 function computeRepeatRatio(appts: Appointment[]): RepeatRatio {
