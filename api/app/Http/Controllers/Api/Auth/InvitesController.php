@@ -182,37 +182,77 @@ class InvitesController extends Controller
 
         if ($claimed !== 1) {
             tenancy()->end();
-            DB::table('staff_invites')->where('id', $id)->delete();
+            // Don't delete the central row here. If the tenant.staff row
+            // is in a half-claimed state from an earlier failed accept
+            // (NULL invite_token + NULL user_id), the central row is
+            // still our recovery anchor. The owner can resend the invite
+            // from /editor/staff, which overwrites the central row with
+            // a fresh token + extends the tenant.staff row, and the next
+            // accept attempt succeeds.
             return response()->json([
-                'message' => 'This invite has already been used or expired.',
+                'message' => 'This invite has already been used or expired. Ask the business owner to resend it.',
                 'code'    => 'already_claimed',
             ], 409);
         }
 
         $staffRow  = DB::table('staff')->find($invite->staff_id);
         $staffName = (string) ($staffRow->name ?? $authedUser->name ?? '');
+        $claimedTokenHash      = (string) $invite->token_hash;
+        $claimedTokenExpiresAt = $invite->expires_at;
         tenancy()->end();
 
         // Create the central User row at the new tenant pointing at the
         // existing identity. Reuse the identity's password column so the
         // new User has a valid credential even though the user didn't
         // enter a password here.
-        $newUser = User::create([
-            'name'        => $staffName !== '' ? $staffName : $authedUser->name,
-            'email'       => strtolower((string) $identity->email),
-            'password'    => (string) $identity->password, // already hashed
-            'tenant_id'   => $tenant->id,
-            'is_owner'    => false,
-            'is_admin'    => false,
-            'role'        => 'staff',
-            'staff_id'    => $invite->staff_id,
-            'identity_id' => $authedUser->identity_id,
-        ]);
-        $newUser->forceFill([
-            'email_verified_at' => now(),
-            'terms_accepted_at' => now(),
-            'terms_version'     => RegisterController::TERMS_VERSION,
-        ])->save();
+        //
+        // Wrap in try/catch so any failure (unique-constraint hit, model
+        // observer error, etc.) UNDOES the tenant.staff row's claim. The
+        // previous behavior left the tenant.staff row with NULL token +
+        // NULL user_id, which we then mis-diagnosed as "already used or
+        // expired" on retry and dropped the central row. This recovery
+        // path keeps both rows intact so the same accept can be retried
+        // cleanly.
+        try {
+            $newUser = User::create([
+                'name'        => $staffName !== '' ? $staffName : $authedUser->name,
+                'email'       => strtolower((string) $identity->email),
+                'password'    => (string) $identity->password, // already hashed
+                'tenant_id'   => $tenant->id,
+                'is_owner'    => false,
+                'is_admin'    => false,
+                'role'        => 'staff',
+                'staff_id'    => $invite->staff_id,
+                'identity_id' => $authedUser->identity_id,
+            ]);
+            $newUser->forceFill([
+                'email_verified_at' => now(),
+                'terms_accepted_at' => now(),
+                'terms_version'     => RegisterController::TERMS_VERSION,
+            ])->save();
+        } catch (\Throwable $e) {
+            // Restore the tenant.staff row's claim state so the invite
+            // can be retried. Best-effort — if the restore itself fails
+            // the owner can re-send the invite as a manual recovery.
+            try {
+                tenancy()->initialize($tenant);
+                DB::table('staff')
+                    ->where('id', $invite->staff_id)
+                    ->whereNull('user_id')
+                    ->update([
+                        'invite_token'            => $claimedTokenHash,
+                        'invite_token_expires_at' => $claimedTokenExpiresAt,
+                        'updated_at'              => now(),
+                    ]);
+                tenancy()->end();
+            } catch (\Throwable $restoreErr) {
+                tenancy()->end();
+            }
+            return response()->json([
+                'message' => 'We could not finish accepting this invite. Ask the business owner to resend it.',
+                'code'    => 'accept_failed',
+            ], 500);
+        }
 
         // Write user_id back. Mirror the email-link compensation: if this
         // throws, undo the central User row + Sanctum tokens so the owner
