@@ -20,6 +20,7 @@ import { cn } from '@/lib/cn'
 import { clearAuth } from '@/lib/auth'
 import { useRole } from '@/components/app/RoleContext'
 import { STAFF_NAV } from '@/lib/editorNav'
+import TenantSwitcher from '@/components/app/TenantSwitcher'
 
 // Business Info, Policies, Gallery, etc. now live as tabs inside /editor/website.
 // Legacy /editor/business and /editor/policies routes redirect to the matching tab.
@@ -127,6 +128,7 @@ export default function AppSidebar({ slug, drawerOpen, onClose }: Props) {
       {/* ── Desktop sidebar (md and above) ─────────────────────────────── */}
       <aside className="hidden md:flex md:flex-col md:w-[220px] md:h-screen md:border-r md:border-hairline-soft md:bg-white md:flex-shrink-0 md:overflow-y-auto">
         <SidebarBrand slug={slug} />
+        <TenantSwitcher />
         <SidebarNav navItems={navItems} variant="desktop" />
         <SidebarBottomActions slug={slug} onCopy={handleCopy} onSignOut={handleSignOut} variant="desktop" />
       </aside>
@@ -167,6 +169,7 @@ export default function AppSidebar({ slug, drawerOpen, onClose }: Props) {
               <X size={14} />
             </button>
           </div>
+          <TenantSwitcher />
           <SidebarNav navItems={navItems} variant="drawer" onItemClick={onClose} />
           <SidebarBottomActions slug={slug} onCopy={handleCopy} onSignOut={handleSignOut} variant="drawer" />
         </aside>

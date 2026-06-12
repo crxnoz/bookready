@@ -295,6 +295,12 @@ Route::prefix('v1')->group(function () {
             // tokenable type to know who's calling.
             Route::post('switch-role',           [IdentityController::class, 'switchRole'])
                 ->middleware('throttle:30,1');
+            // v2 Theme 1 — multi-tenant identity switch. The dropdown
+            // in the editor sidebar posts here when a chair-renter
+            // stylist picks a different Studio they work at. Refuses
+            // if the identity has no User row at the target tenant.
+            Route::post('switch-tenant',         [\App\Http\Controllers\Api\Auth\TenantSwitchController::class, 'switch'])
+                ->middleware('throttle:30,1');
             Route::post('identity/link-customer', [IdentityController::class, 'linkCustomer'])
                 ->middleware('throttle:5,60');
             // Resend the verification email — authed so we don't expose

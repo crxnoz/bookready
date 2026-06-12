@@ -1249,6 +1249,22 @@ export interface PublicBookingResponse {
 }
 
 // Auth
+
+/**
+ * v2 Theme 1 — one entry per tenant this identity has a User row at.
+ * Powers the editor sidebar tenant-switcher dropdown. Empty array
+ * when the user has no identity_id (pre-migration owner rows) or
+ * is genuinely single-tenant; the dropdown collapses gracefully.
+ */
+export interface LinkedTenant {
+  tenant_id:     string
+  business_name: string
+  plan:          'solo' | 'studio' | 'salon' | string | null
+  role:          'owner' | 'staff' | 'admin'
+  is_owner:      boolean
+  is_current:    boolean
+}
+
 export interface AuthUser {
   id: number
   name: string
@@ -1273,6 +1289,11 @@ export interface AuthUser {
   email_verified?: boolean
   is_billing_setup?: boolean
   redirect_url?: string
+  /** v2 Theme 1 — every tenant this identity is linked to. Drives the
+   *  sidebar tenant-switcher dropdown. Empty / undefined when the user
+   *  has no identity_id (pre-multi-tenant) or when only one tenant is
+   *  linked. */
+  linked_tenants?: LinkedTenant[]
 }
 
 export interface RegisterPayload {

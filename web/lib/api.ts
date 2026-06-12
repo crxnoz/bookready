@@ -184,6 +184,26 @@ export async function getCurrentUser(): Promise<AuthUser> {
   return request<AuthUser>('/auth/me')
 }
 
+/**
+ * v2 Theme 1 — switch the active tenant for a multi-tenant identity.
+ * The chair-renter case: stylist works at Studio A and Studio B, picks
+ * Studio B from the sidebar dropdown. Backend revokes the current
+ * Sanctum token, mints a fresh one scoped to the User row at the
+ * target tenant, and replaces the httpOnly cookie. Caller should
+ * reload the editor afterward so React state rebinds to the new
+ * tenant_id.
+ */
+export async function switchTenant(tenantId: string): Promise<{
+  tenant_id:    string
+  user?:        AuthUser
+  redirect_url: string
+}> {
+  return request('/auth/switch-tenant', {
+    method: 'POST',
+    body:   JSON.stringify({ tenant_id: tenantId }),
+  })
+}
+
 // ── Image uploads ────────────────────────────────────────────────────────────
 
 export type UploadKind = 'gallery' | 'results' | 'header' | 'logo' | 'about' | 'staff' | 'service' | 'category' | 'addon' | 'booking_answer'
