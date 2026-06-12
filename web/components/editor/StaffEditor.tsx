@@ -641,7 +641,7 @@ function StaffCard({
               <KeyRound size={11} /> Login
             </span>
             <p className="text-2xs text-muted-text">
-              This is your owner login. Use it at <span className="font-semibold text-near-black">app.bkrdy.me/login</span>.
+              This is your owner login.
             </p>
           </div>
         ) : (
