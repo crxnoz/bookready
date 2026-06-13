@@ -5,16 +5,15 @@ namespace App\Http\Controllers\Api\Auth;
 use App\Http\Controllers\Api\Auth\EmailVerificationController;
 use App\Http\Controllers\Controller;
 use App\Models\Identity;
-use App\Services\PlatformMailer;
-use App\Services\TenantProvisioningService;
+use App\Models\SignupDraft;
+use App\Models\User;
 use App\Support\AuthCookie;
-use App\Support\TemplateDefaults;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Validation\Rule;
 
 class RegisterController extends Controller
 {
@@ -25,10 +24,6 @@ class RegisterController extends Controller
      * existing users to re-accept.
      */
     public const TERMS_VERSION = '2026-06-04';
-
-    public function __construct(
-        private readonly TenantProvisioningService $provisioner
-    ) {}
 
     public function store(Request $request): JsonResponse
     {
@@ -57,48 +52,37 @@ class RegisterController extends Controller
             }
         }
 
+        // Signup redesign v2 — registration is now ONLY identity. No
+        // business name, no template, no tenant provisioning. Steps 3+4
+        // (/signup/business + /signup/website) collect the rest and
+        // provisioning fires at Step 4 submit. This shortens the form
+        // to 4 fields + ToS + Turnstile and drops first-screen friction.
         $data = $request->validate([
             'owner_name'     => ['required', 'string', 'max:100'],
             'email'          => ['required', 'email', 'unique:users,email'],
             'password'       => ['required', 'string', 'min:8', 'confirmed'],
-            'business_name'  => ['required', 'string', 'max:100'],
-            // Accept any of the real template slugs from
-            // TemplateDefaults::KNOWN_SLUGS (single source of truth on
-            // the backend) plus the legacy 'the-fade-room' dashed alias
-            // that /register/page.tsx still emits for thefaderoom.
-            // Provisioning normalizes + re-validates via
-            // TemplateDefaults::normalizeSlug, so an unknown value
-            // still degrades safely to the default; this rule just
-            // rejects junk early. Previously hardcoded only 6 slugs,
-            // which silently 422'd petale / bottega / inkhouse /
-            // clarity signups (caught 2026-06-12).
-            'template'       => [
-                'sometimes',
-                'string',
-                Rule::in(array_merge(TemplateDefaults::KNOWN_SLUGS, ['the-fade-room'])),
-            ],
-            // Selected tier from the marketing CTA (?plan=...). Optional;
-            // provisioning validates against config/plans.php and defaults
-            // to solo when absent. The Stripe webhook re-stamps tenants.plan
-            // on real checkout, so this only seeds the pre-checkout gates.
-            'plan'           => ['sometimes', 'string', 'in:solo,studio,salon'],
-            // Explicit ToS acceptance — must be a truthy (1/true/yes/on)
-            // boolean. Laravel's "accepted" rule covers all of these.
             'terms_accepted' => ['required', 'accepted'],
         ]);
 
-        ['tenant' => $tenant, 'owner' => $owner] = $this->provisioner->provision($data);
-
-        // Stamp the Terms acceptance on the freshly-provisioned user. Done
-        // post-provision (rather than in the provisioner) so existing
-        // service signatures stay stable. timestamp + version both go on
-        // the central users row so an audit can prove what was on screen
-        // when the user clicked. See migration
-        // 2026_06_02_000001_add_terms_acceptance_to_users.
-        DB::table('users')->where('id', $owner->id)->update([
-            'terms_accepted_at' => now(),
-            'terms_version'     => self::TERMS_VERSION,
-        ]);
+        // Create the user with NO tenant. tenant_id stays null until
+        // /signup/website provisions one and updates the row. Use a
+        // central DB::transaction so a mid-step failure rolls back the
+        // user + draft together — no orphan rows.
+        $owner = DB::transaction(function () use ($data) {
+            $owner = User::create([
+                'name'              => $data['owner_name'],
+                'email'             => $data['email'],
+                'password'          => Hash::make($data['password']),
+                'tenant_id'         => null,
+                'is_owner'          => true,
+                'terms_accepted_at' => now(),
+                'terms_version'     => self::TERMS_VERSION,
+            ]);
+            if (Schema::hasTable('signup_drafts')) {
+                SignupDraft::create(['user_id' => $owner->id]);
+            }
+            return $owner;
+        });
 
         // #159 — Create the unified identity row and link the new user
         // to it. Password mirrors the just-hashed users.password so the
@@ -151,17 +135,12 @@ class RegisterController extends Controller
             now()->addMinutes(AuthCookie::TOKEN_TTL_MIN),
         )->plainTextToken;
 
-        // Welcome email — best-effort, never blocks signup. PlatformMailer
-        // catches and logs failures internally.
-        PlatformMailer::sendWelcome(
-            ownerEmail:   $owner->email,
-            ownerName:    $owner->name,
-            businessName: $data['business_name'],
-        );
+        // Welcome email moves to /signup/website (when the site is real
+        // and we have a URL to celebrate). Skipping it here keeps the
+        // registration response fast.
 
-        // Phase S6 part 2 — send the verify-email link. Best-effort; the
-        // user can also resend from the dashboard if the first attempt
-        // bounces or hits spam.
+        // Send the verify-email code. Best-effort; the user can resend
+        // from /verify-email if the first attempt bounces.
         try {
             EmailVerificationController::sendVerificationEmail($owner);
         } catch (\Throwable $e) {
@@ -171,18 +150,18 @@ class RegisterController extends Controller
             ]);
         }
 
-        // Same cookie-attach flow as login. The bearer token is only sent as an httpOnly cookie.
+        // Cookie-attach is identical to login.
         $response = response()
             ->json([
-                'tenant_id' => $tenant->id,
-                'domain'    => $tenant->domains()->first()?->domain,
+                'tenant_id' => null,
+                'domain'    => null,
                 'user'      => [
                     'id'        => $owner->id,
                     'name'      => $owner->name,
                     'email'     => $owner->email,
-                    'tenant_id' => $owner->tenant_id,
-                    'is_owner'  => (bool) ($owner->is_owner ?? false),
-                    'is_admin'  => (bool) ($owner->is_admin ?? false),
+                    'tenant_id' => null,
+                    'is_owner'  => true,
+                    'is_admin'  => false,
                 ],
             ], 201)
             ->withCookie(AuthCookie::make($token));

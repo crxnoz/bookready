@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\Admin\AdminTenantDetailController;
 use App\Http\Controllers\Api\Admin\AdminTenantsController;
 use App\Http\Controllers\Api\TwilioWebhookController;
 use App\Http\Controllers\Api\PlatformAnnouncementsController;
+use App\Http\Controllers\Api\SignupController;
 use App\Http\Controllers\Api\AppointmentPaymentWebhookController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\EmailVerificationController;
@@ -327,6 +328,21 @@ Route::prefix('v1')->group(function () {
             Route::post('verify-email/code', [EmailVerificationController::class, 'verifyCode'])
                 ->middleware('throttle:5,1');
         });
+    });
+
+    // ── Signup redesign v2 — pre-tenant onboarding ────────────────────────
+    // Authed but no tenant_owner middleware: the user exists in central
+    // but has no tenant_id until /signup/website provisions one. Email
+    // verification required before any draft writes (matches the
+    // /verify-email screen the redirect machine bounces unverified
+    // users to).
+    Route::middleware(['auth:sanctum', 'verified_email'])->prefix('signup')->group(function () {
+        Route::get('draft',          [SignupController::class, 'draft']);
+        Route::post('business',      [SignupController::class, 'updateBusiness']);
+        Route::get('subdomain',      [SignupController::class, 'checkSubdomain']);
+        // Provisions the tenant. Rate-limited inside the controller
+        // (5 attempts per 24h per user).
+        Route::post('website',       [SignupController::class, 'updateWebsite']);
     });
 
     // ── Billing / subscription management ─────────────────────────────────

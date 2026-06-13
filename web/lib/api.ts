@@ -585,6 +585,63 @@ export async function skipTrialSetup(): Promise<{ message: string; trial_ends_at
   })
 }
 
+// ── Signup redesign v2 — pre-tenant onboarding helpers ─────────────────
+
+export interface SignupDraftState {
+  business_name: string | null
+  tagline: string | null
+  business_type: string | null
+  services: Array<{ name: string; price_cents: number; duration_minutes: number }> | null
+  selected_subdomain: string | null
+  selected_template: string | null
+  selected_plan: 'solo' | 'studio' | null
+  selected_cycle: 'monthly' | 'annual' | null
+  step_completed: 'business' | 'website' | 'provisioned' | null
+  tenant_id: string | null
+  business_types: Array<{ slug: string; label: string }>
+  service_templates: Record<string, Array<{ name: string; price_cents: number; duration_minutes: number }>>
+}
+
+export async function getSignupDraft(): Promise<SignupDraftState> {
+  return request<SignupDraftState>('/signup/draft')
+}
+
+export async function updateSignupBusiness(payload: {
+  business_name: string
+  tagline?: string | null
+  business_type: string
+  services?: Array<{ name: string; price_cents: number; duration_minutes: number }>
+}): Promise<{ step_completed: string }> {
+  return request<{ step_completed: string }>('/signup/business', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function checkSignupSubdomain(slug: string): Promise<{
+  slug: string
+  available: boolean
+  reason: 'invalid' | 'reserved' | 'taken' | null
+}> {
+  return request(`/signup/subdomain?slug=${encodeURIComponent(slug)}`)
+}
+
+export async function updateSignupWebsite(payload: {
+  subdomain: string
+  template: string
+}): Promise<{
+  tenant_id: string
+  subdomain: string
+  template: string
+  step_completed: string
+  already: boolean
+}> {
+  return request('/signup/website', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
 /**
  * Signup-reorder — stamp the owner's plan + cycle choice on the
  * central tenants row from /checkout/plan. No Stripe call; the next

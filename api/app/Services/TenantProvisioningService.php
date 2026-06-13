@@ -16,6 +16,125 @@ use Illuminate\Support\Str;
 class TenantProvisioningService
 {
     /**
+     * Signup redesign v2 — provision for a pre-existing User row.
+     *
+     * The new signup flow creates the User at /register (with no tenant)
+     * and provisions the tenant at /signup/website. This variant skips
+     * User::create (the user already exists) and updates the existing
+     * user's tenant_id at the end of the transaction. Otherwise mirrors
+     * provision() exactly — same DB creation, same migrations, same
+     * seedDefaults, same compensating rollback.
+     *
+     *   $data: ['slug', 'business_name', 'template', 'plan']
+     *   $services: optional array of {name, price_cents, duration_minutes}
+     *              seeded into the services table after migrations run.
+     */
+    public function provisionForExistingUser(User $owner, array $data, ?array $services = null): Tenant
+    {
+        $slug = $data['slug'];
+
+        $tenant = DB::transaction(function () use ($data, $slug, $owner) {
+            $tenant = Tenant::create([
+                'id'                  => $slug,
+                'plan'                => $this->resolvePlanSlug($data['plan'] ?? null),
+                'business_name'       => $data['business_name'],
+                'staff_login_enabled' => true,
+                // Signup-reorder phase 1 — every fresh tenant lands
+                // pre-trial so writes are allowed during /checkout/plan
+                // + /checkout/trial but the public site stays parked.
+                'subscription_state'  => Tenant::STATE_PRE_TRIAL,
+            ]);
+
+            $baseDomain = env('APP_DOMAIN', 'bkrdy.me');
+            $tenant->domains()->create([
+                'domain' => "{$slug}.{$baseDomain}",
+            ]);
+
+            // Critical difference vs provision(): update existing user
+            // instead of creating a new one. The User was minted at
+            // /register with tenant_id=null.
+            DB::table('users')->where('id', $owner->id)->update([
+                'tenant_id' => $tenant->id,
+                'is_owner'  => true,
+            ]);
+
+            return $tenant;
+        });
+
+        // Same post-transaction DDL block as provision(). Compensating
+        // rollback also clears users.tenant_id back to null so the user
+        // can retry without an orphan FK.
+        try {
+            $tenant->database()->manager()->createDatabase($tenant);
+            Artisan::call('tenants:migrate', [
+                '--tenants' => [$tenant->id],
+                '--force'   => true,
+            ]);
+            tenancy()->initialize($tenant);
+            $this->seedDefaults($data);
+            // Signup redesign v2 — services pre-filled in the draft get
+            // seeded here so the editor + public site render the right
+            // service menu from the first request.
+            if ($services) {
+                $this->seedDraftServices($services);
+            }
+            tenancy()->end();
+        } catch (\Throwable $e) {
+            Log::error('provisionForExistingUser failed post-transaction; rolling back', [
+                'tenant_id' => $tenant->id,
+                'user_id'   => $owner->id,
+                'error'     => $e->getMessage(),
+            ]);
+
+            try { tenancy()->end(); } catch (\Throwable $i) {}
+            try { $tenant->database()->manager()->deleteDatabase($tenant); }
+            catch (\Throwable $i) {
+                try {
+                    $prefix = config('tenancy.database.prefix', env('TENANCY_DB_PREFIX', 'tenant_'));
+                    $dbName = $prefix . $tenant->id;
+                    DB::statement("DROP DATABASE IF EXISTS `{$dbName}`");
+                } catch (\Throwable $i2) {}
+            }
+
+            try { DB::table('users')->where('id', $owner->id)->update(['tenant_id' => null]); } catch (\Throwable $i) {}
+            try { DB::table('domains')->where('tenant_id', $tenant->id)->delete(); } catch (\Throwable $i) {}
+            try { DB::table('tenants')->where('id', $tenant->id)->delete(); } catch (\Throwable $i) {}
+
+            throw $e;
+        }
+
+        return $tenant;
+    }
+
+    /**
+     * Insert the draft's services into the freshly-migrated services
+     * table. Called from provisionForExistingUser only — provision()
+     * (legacy) doesn't use this.
+     */
+    private function seedDraftServices(array $services): void
+    {
+        $this->seedSection('services', function () use ($services) {
+            $rows = [];
+            $now = now();
+            foreach ($services as $i => $svc) {
+                if (! is_array($svc)) continue;
+                $rows[] = [
+                    'name'             => (string) ($svc['name'] ?? 'Service'),
+                    'price_cents'      => (int)    ($svc['price_cents'] ?? 0),
+                    'duration_minutes' => (int)    ($svc['duration_minutes'] ?? 60),
+                    'is_active'        => true,
+                    'sort_order'       => $i,
+                    'created_at'       => $now,
+                    'updated_at'       => $now,
+                ];
+            }
+            if ($rows) {
+                DB::table('services')->insert($rows);
+            }
+        });
+    }
+
+    /**
      * Create a new tenant, its database, run migrations, and seed defaults.
      * Returns the tenant and owner user.
      */

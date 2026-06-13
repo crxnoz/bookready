@@ -4,11 +4,13 @@ namespace App\Console\Commands;
 
 use App\Mail\PreTrialReaperWarningMail;
 use App\Models\Tenant;
+use App\Models\User;
 use App\Support\BillingInternal;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Pre-trial garbage collector.
@@ -105,9 +107,42 @@ class ReapPreTrialTenants extends Command
             $skipped++;
         }
 
+        // Signup redesign v2 — orphan drafts (user provisioned no
+        // tenant) at 21 days. Cheaper to reap than pre-trial tenants
+        // because there's no tenant DB to drop. Delete the user row
+        // too so the same email can re-register cleanly.
+        $orphans = 0;
+        if (Schema::hasTable('signup_drafts')) {
+            $stale = DB::table('signup_drafts')
+                ->whereNull('provisioned_at')
+                ->where('created_at', '<', $deleteThreshold)
+                ->get();
+            foreach ($stale as $draft) {
+                $user = User::find($draft->user_id);
+                if (! $user) {
+                    DB::table('signup_drafts')->where('id', $draft->id)->delete();
+                    continue;
+                }
+                if (BillingInternal::isInternal($user->email)) { $skipped++; continue; }
+
+                $this->line(sprintf('  %s DELETE orphan-draft user_id=%d email=%s', $dry ? '[dry]' : '', $user->id, $user->email));
+                if (! $dry) {
+                    // ON DELETE CASCADE on signup_drafts.user_id takes
+                    // the draft with the user row. tokens / identities
+                    // cleared by FK cascade too.
+                    DB::table('personal_access_tokens')->where('tokenable_type', User::class)->where('tokenable_id', $user->id)->delete();
+                    if (Schema::hasTable('identities') && $user->identity_id) {
+                        DB::table('identities')->where('id', $user->identity_id)->delete();
+                    }
+                    $user->delete();
+                }
+                $orphans++;
+            }
+        }
+
         $this->info(sprintf(
-            '%s — warned=%d deleted=%d skipped=%d',
-            $dry ? 'DRY RUN' : 'DONE', $warned, $deleted, $skipped,
+            '%s — warned=%d deleted=%d orphan_drafts=%d skipped=%d',
+            $dry ? 'DRY RUN' : 'DONE', $warned, $deleted, $orphans, $skipped,
         ));
         return self::SUCCESS;
     }

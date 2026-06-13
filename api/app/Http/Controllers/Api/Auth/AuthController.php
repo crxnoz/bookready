@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\CustomerUser;
 use App\Models\Identity;
+use App\Models\SignupDraft;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\AuthCookie;
@@ -96,11 +97,12 @@ class AuthController extends Controller
         // single source of truth for "what step are they on?" so that
         // signing back out and in can't bypass verify-email + payment.
         // The frontend trusts redirect_url over its own router.push.
-        $emailVerified      = (bool) $user->email_verified_at;
-        $onboardingComplete = self::isOnboardingComplete($user);
-        $planSelected       = self::isPlanSelected($user);
-        $isBillingSetup     = self::isBillingSetup($user);
-        $redirectUrl        = self::redirectFor($emailVerified, $onboardingComplete, $planSelected, $isBillingSetup);
+        $emailVerified  = (bool) $user->email_verified_at;
+        $businessSetup  = self::isBusinessSetup($user);
+        $websiteSetup   = self::isWebsiteSetup($user);
+        $planSelected   = self::isPlanSelected($user);
+        $isBillingSetup = self::isBillingSetup($user);
+        $redirectUrl    = self::redirectFor($emailVerified, $businessSetup, $websiteSetup, $planSelected, $isBillingSetup);
 
         // Phase S6 — also set the token as an httpOnly cookie so the
         // frontend doesn't need to stash it in localStorage. The token
@@ -123,9 +125,10 @@ class AuthController extends Controller
                 // users pick a side every login (per founder decision).
                 'available_roles' => $availableRoles,
                 'current_role'    => 'owner',
-                // Signup-reorder flow signals — frontend routes to redirect_url.
+                // Signup redesign v2 flow signals — frontend routes to redirect_url.
                 'email_verified'      => $emailVerified,
-                'onboarding_complete' => $onboardingComplete ?? false,
+                'business_setup'      => $businessSetup ?? false,
+                'website_setup'       => $websiteSetup ?? false,
                 'plan_selected'       => $planSelected ?? false,
                 'is_billing_setup'    => $isBillingSetup,
                 'redirect_url'        => $redirectUrl,
@@ -165,10 +168,11 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-        $emailVerified      = (bool) $user->email_verified_at;
-        $onboardingComplete = self::isOnboardingComplete($user);
-        $planSelected       = self::isPlanSelected($user);
-        $isBillingSetup     = self::isBillingSetup($user);
+        $emailVerified  = (bool) $user->email_verified_at;
+        $businessSetup  = self::isBusinessSetup($user);
+        $websiteSetup   = self::isWebsiteSetup($user);
+        $planSelected   = self::isPlanSelected($user);
+        $isBillingSetup = self::isBillingSetup($user);
 
         return response()->json([
             'id'                 => $user->id,
@@ -180,15 +184,16 @@ class AuthController extends Controller
             'role'               => $user->role ?? 'owner',
             'staff_id'           => $user->staff_id !== null ? (int) $user->staff_id : null,
             'email_verified_at'  => $user->email_verified_at?->toAtomString(),
-            // Signup-reorder flow signals. EditorGuard + verify-email +
-            // register-complete + onboarding-wizard-finish all consume
-            // redirect_url verbatim and never hand-route — backend is
-            // the single source of truth for ordering.
+            // Signup redesign v2 flow signals. EditorGuard, verify-email,
+            // signup/business, signup/website, checkout/plan,
+            // checkout/trial all consume redirect_url verbatim and never
+            // hand-route — backend is the single source of truth.
             'email_verified'     => $emailVerified,
-            'onboarding_complete'=> $onboardingComplete,
+            'business_setup'     => $businessSetup,
+            'website_setup'      => $websiteSetup,
             'plan_selected'      => $planSelected,
             'is_billing_setup'   => $isBillingSetup,
-            'redirect_url'       => self::redirectFor($emailVerified, $onboardingComplete, $planSelected, $isBillingSetup),
+            'redirect_url'       => self::redirectFor($emailVerified, $businessSetup, $websiteSetup, $planSelected, $isBillingSetup),
             // v2 Theme 1 — every tenant this identity is linked to, so the
             // editor sidebar can render the tenant-switch dropdown. Empty
             // array when the identity has no linkages (single-tenant
@@ -254,24 +259,55 @@ class AuthController extends Controller
     }
 
     /**
+     * Signup redesign v2 — Step 3 done? Sources of truth, in order:
+     *
+     *   1. BillingInternal allowlist → always true (founder/QA bypass)
+     *   2. user.tenant_id set → legacy user past Step 4 already, true
+     *   3. signup_drafts.step_completed != null → draft says Step 3 done
+     *   4. fallthrough → false
+     *
+     * Pre-migration callers (signup_drafts table doesn't exist yet) get
+     * the legacy answer via the tenant_id check, so the redirect machine
+     * never bounces a live tenant into the new pre-tenant pages.
+     */
+    private static function isBusinessSetup(User $user): bool
+    {
+        if (BillingInternal::isInternal($user->email)) return true;
+        if ($user->tenant_id) return true;
+        if (! \Illuminate\Support\Facades\Schema::hasTable('signup_drafts')) return false;
+        $draft = SignupDraft::where('user_id', $user->id)->first();
+        return $draft?->hasBusinessSetup() ?? false;
+    }
+
+    /**
+     * Signup redesign v2 — Step 4 done (tenant provisioned)?
+     *
+     *   1. BillingInternal allowlist → always true
+     *   2. user.tenant_id set → provisioning either ran fresh OR the
+     *      user was minted under the legacy flow; either way, done
+     *   3. fallthrough → false (still on /signup/website)
+     */
+    private static function isWebsiteSetup(User $user): bool
+    {
+        if (BillingInternal::isInternal($user->email)) return true;
+        return (bool) $user->tenant_id;
+    }
+
+    /**
      * Signup-reorder — has the owner finished the onboarding wizard?
      * Reads central tenants.onboarding_completed_at (mirrored from
      * business_profiles.onboarding_completed_at when the wizard
      * Finishes — see BusinessProfileController::completeOnboarding).
      * Internal allowlist short-circuits.
+     *
+     * @deprecated Vestigial after the v2 redesign — the wizard is gone.
+     *   Kept callable so old clients don't crash; ALWAYS returns true
+     *   for users who have a tenant (the new flow has no "wizard
+     *   complete" gate post-provisioning).
      */
     private static function isOnboardingComplete(User $user): bool
     {
-        if (! $user->tenant_id) return false;
-        if (BillingInternal::isInternal($user->email)) return true;
-        $tenant = Tenant::find($user->tenant_id);
-        if (! $tenant) return false;
-        if (! \Illuminate\Support\Facades\Schema::hasColumn('tenants', 'onboarding_completed_at')) {
-            // Pre-migration fallback: treat as complete so existing
-            // live tenants don't get bounced into onboarding.
-            return true;
-        }
-        return (bool) $tenant->onboarding_completed_at;
+        return true;
     }
 
     /**
@@ -299,14 +335,16 @@ class AuthController extends Controller
      */
     private static function redirectFor(
         bool $emailVerified,
-        bool $onboardingComplete,
+        bool $businessSetup,
+        bool $websiteSetup,
         bool $planSelected,
         bool $isBillingSetup,
     ): string {
-        if (! $emailVerified)      return '/verify-email';
-        if (! $onboardingComplete) return '/editor/onboard';
-        if (! $planSelected)       return '/checkout/plan';
-        if (! $isBillingSetup)     return '/checkout/trial';
+        if (! $emailVerified)  return '/verify-email';
+        if (! $businessSetup)  return '/signup/business';
+        if (! $websiteSetup)   return '/signup/website';
+        if (! $planSelected)   return '/checkout/plan';
+        if (! $isBillingSetup) return '/checkout/trial';
         return '/editor';
     }
 }
