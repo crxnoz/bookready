@@ -8,11 +8,13 @@ use App\Models\Identity;
 use App\Services\PlatformMailer;
 use App\Services\TenantProvisioningService;
 use App\Support\AuthCookie;
+use App\Support\TemplateDefaults;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 
 class RegisterController extends Controller
 {
@@ -60,11 +62,21 @@ class RegisterController extends Controller
             'email'          => ['required', 'email', 'unique:users,email'],
             'password'       => ['required', 'string', 'min:8', 'confirmed'],
             'business_name'  => ['required', 'string', 'max:100'],
-            // Accept any of the real template slugs (dash-less canonical or
-            // the legacy "the-fade-room" form). Provisioning normalizes +
-            // re-validates via TemplateDefaults::normalizeSlug, so an unknown
-            // value still degrades safely to the default.
-            'template'       => ['sometimes', 'string', 'in:the-fade-room,thefaderoom,lushstudio,velvettheory,blackline,opaline'],
+            // Accept any of the real template slugs from
+            // TemplateDefaults::KNOWN_SLUGS (single source of truth on
+            // the backend) plus the legacy 'the-fade-room' dashed alias
+            // that /register/page.tsx still emits for thefaderoom.
+            // Provisioning normalizes + re-validates via
+            // TemplateDefaults::normalizeSlug, so an unknown value
+            // still degrades safely to the default; this rule just
+            // rejects junk early. Previously hardcoded only 6 slugs,
+            // which silently 422'd petale / bottega / inkhouse /
+            // clarity signups (caught 2026-06-12).
+            'template'       => [
+                'sometimes',
+                'string',
+                Rule::in(array_merge(TemplateDefaults::KNOWN_SLUGS, ['the-fade-room'])),
+            ],
             // Selected tier from the marketing CTA (?plan=...). Optional;
             // provisioning validates against config/plans.php and defaults
             // to solo when absent. The Stripe webhook re-stamps tenants.plan
