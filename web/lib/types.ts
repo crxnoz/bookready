@@ -1328,14 +1328,11 @@ export interface RegisterPayload {
   email: string
   password: string
   password_confirmation: string
-  business_name: string
+  /** @deprecated dropped in signup v2; backend ignores it. Collected at /signup/business. */
+  business_name?: string
+  /** @deprecated dropped in signup v2; backend ignores it. Picked at /signup/website. */
   template?: string
-  /**
-   * Selected tier from the marketing CTA (?plan=...). Optional; backend
-   * validates against solo|studio|salon and defaults to solo when absent.
-   * Seeds the tenant with the correct tier so email signups don't land on
-   * solo and rely on startTrial to correct it later. Never send "trial".
-   */
+  /** @deprecated dropped in signup v2; backend ignores it. Picked at /checkout/plan. */
   plan?: 'solo' | 'studio' | 'salon'
   /**
    * Pre-launch (#117): explicit ToS acceptance. Backend rejects signup

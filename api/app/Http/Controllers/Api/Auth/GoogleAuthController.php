@@ -229,82 +229,48 @@ class GoogleAuthController extends Controller
             );
         }
 
-        $payload = $this->decodePayload($rawPayload);
-        $businessName = trim((string) ($payload['business_name'] ?? ''));
-        // Honor whatever template the user picked before "Continue with
-        // Google" (forwarded in the OAuth payload). normalizeSlug accepts
-        // every real template and degrades unknown values to the default.
-        $template     = TemplateDefaults::normalizeSlug($payload['template'] ?? null);
-
-        // No business_name in the payload means the user clicked "Continue
-        // with Google" from /register without typing one first. Stash the
-        // verified Google identity server-side and bounce them to a small
-        // form where they pick the business name and finish provisioning.
-        // The cache is the source of truth — the email/name in the URL are
-        // only for displaying "Hi Jane".
-        if ($businessName === '') {
-            $handoff = Str::random(40);
-            Cache::put("google_signup:{$handoff}", [
-                'email'    => $email,
-                'name'     => (string) ($google->getName() ?? ''),
-                'sub'      => (string) ($google->getId() ?? ''),
-                'template' => $template,
-            ], now()->addMinutes(15));
-
-            $qs = http_build_query([
-                'handoff' => $handoff,
-                'email'   => $email,
-                'name'    => (string) ($google->getName() ?? ''),
-            ]);
-            return redirect()->away($base . '/register/complete?' . $qs);
-        }
-
-        if (strlen($businessName) > 100) {
-            return $this->errorBack('signup',
-                'Business name is too long (max 100 characters).',
-                $base,
-            );
-        }
-
-        // Owner name: prefer payload, fall back to Google profile, then email handle.
-        $ownerName = trim((string) ($payload['owner_name'] ?? ''))
-            ?: trim((string) $google->getName())
+        // Signup redesign v2 — Google signup no longer collects business
+        // name or template up-front. Create the User + SignupDraft row,
+        // stamp email_verified_at (Google already verified), and let
+        // /auth/me redirect_url route the user to /signup/business on
+        // next nav. /register/complete is no longer used.
+        $ownerName = trim((string) $google->getName())
             ?: explode('@', $email, 2)[0];
         $ownerName = mb_substr($ownerName, 0, 100);
 
-        // Google users don't pick a password during signup — generate a strong
-        // random one. They can sign in via Google going forward, or use the
-        // password change flow in Settings → Account to set a real password.
+        // Google users don't pick a password — generate a strong random
+        // one. They can sign in via Google going forward, or set a real
+        // password from Settings → Account.
         $generatedPassword = Str::random(32);
 
         try {
-            ['tenant' => $tenant, 'owner' => $owner] = $this->provisioner->provision([
-                'owner_name'    => $ownerName,
-                'email'         => $email,
-                'password'      => $generatedPassword,
-                'business_name' => $businessName,
-                'template'      => $template,
-            ]);
+            $owner = \Illuminate\Support\Facades\DB::transaction(function () use ($email, $ownerName, $generatedPassword) {
+                $owner = User::create([
+                    'name'              => $ownerName,
+                    'email'             => $email,
+                    'password'          => \Illuminate\Support\Facades\Hash::make($generatedPassword),
+                    'tenant_id'         => null,
+                    'is_owner'          => true,
+                    'email_verified_at' => now(),
+                    'terms_accepted_at' => now(),
+                    'terms_version'     => \App\Http\Controllers\Api\Auth\RegisterController::TERMS_VERSION,
+                ]);
+                if (\Illuminate\Support\Facades\Schema::hasTable('signup_drafts')) {
+                    \App\Models\SignupDraft::create(['user_id' => $owner->id]);
+                }
+                return $owner;
+            });
         } catch (\Throwable $e) {
-            Log::error('Google signup provisioning failed', [
+            Log::error('Google signup failed', [
                 'email' => $email,
                 'error' => $e->getMessage(),
             ]);
-            return $this->errorBack('signup', 'Could not finish creating your workspace. Try again.', $base);
+            return $this->errorBack('signup', 'Could not finish creating your account. Try again.', $base);
         }
 
-        // Phase S6 part 2 — Google verified the email, no signup verify
-        // round-trip needed. The provisioner doesn't set this column so
-        // we stamp it here.
-        $owner->email_verified_at = now();
-        $owner->save();
-
-        // Best-effort welcome email (never blocks signup).
-        PlatformMailer::sendWelcome(
-            ownerEmail:   $owner->email,
-            ownerName:    $owner->name,
-            businessName: $businessName,
-        );
+        // Welcome email moves to /signup/website provisioning so the
+        // copy can lean into the real site URL ("Your site is live at
+        // …"). At this point we don't have one yet.
 
         return $this->finishWithUser($owner, 'google-oauth-signup', $base);
     }

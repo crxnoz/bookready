@@ -3,30 +3,23 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Check, X, Loader2 } from 'lucide-react'
-import { register, checkSubdomain, type SubdomainCheckResponse } from '@/lib/api'
-import { setToken, setTenantId } from '@/lib/auth'
-import { SITE_TEMPLATES, normalizeTemplateSlug } from '@/lib/templates'
+import { register } from '@/lib/api'
+import { setToken } from '@/lib/auth'
 import AuthShell from '@/components/auth/AuthShell'
 import PasswordStrength from '@/components/auth/PasswordStrength'
-import CollapsibleTemplatePicker from '@/components/auth/CollapsibleTemplatePicker'
 import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/auth/TurnstileWidget'
 
-const TEMPLATE_KEY = 'br_template'
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
 
 /**
- * Parse the marketing URL params into the canonical `br_signup_intent`
- * shape. Single source of truth for both the email-flow submit handler
- * and the mount effect (which fires for the Google flow too).
- *
- * Defaults are intentional: a user who arrives without `?plan=` still
- * lands on a sensible default plan when /checkout/trial reads this back.
+ * Parse the marketing URL params (?plan=studio&billing=annual&sms=2)
+ * into the canonical `br_signup_intent` shape. /checkout/plan reads
+ * this on mount to pre-select. Template is gone from this surface —
+ * picked at /signup/website now.
  */
 function buildIntent(
   searchParams: ReturnType<typeof useSearchParams>,
-  templateSlug: string,
-): { template: string; plan: 'solo' | 'studio' | 'salon'; billing: 'monthly' | 'annual'; sms_mult: 1 | 2 | 3 } {
+): { plan: 'solo' | 'studio' | 'salon'; billing: 'monthly' | 'annual'; sms_mult: 1 | 2 | 3 } {
   const planRaw = (searchParams?.get('plan') ?? '').toLowerCase()
   const plan: 'solo' | 'studio' | 'salon' =
     planRaw === 'solo' || planRaw === 'salon' ? planRaw : 'studio'
@@ -37,37 +30,18 @@ function buildIntent(
   const smsNum = parseInt(smsRaw.replace(/x$/i, ''), 10)
   const sms_mult: 1 | 2 | 3 = (smsNum === 2 || smsNum === 3 ? smsNum : 1) as 1 | 2 | 3
 
-  return { template: templateSlug, plan, billing, sms_mult }
+  return { plan, billing, sms_mult }
 }
 
 function RegisterForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  // Template choice is now user-controllable via the in-form picker.
-  // Initial seed: ?template= (marketing site CTA) wins over localStorage
-  // (a previous in-flight signup), which wins over the default. The
-  // localStorage sync runs in a useEffect to keep the initial render
-  // SSR-safe.
-  const queryTemplate = searchParams.get('template')
-  const [templateSlug, setTemplateSlug] = useState<string>(
-    queryTemplate ? normalizeTemplateSlug(queryTemplate) : 'thefaderoom',
-  )
-  useEffect(() => {
-    if (queryTemplate) return
-    try {
-      const stored = localStorage.getItem(TEMPLATE_KEY)
-      if (stored) setTemplateSlug(normalizeTemplateSlug(stored))
-    } catch { /* localStorage disabled — keep the default */ }
-    // intentionally only on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   const [form, setForm] = useState({
     owner_name: '',
     email: '',
     password: '',
     password_confirmation: '',
-    business_name: '',
   })
   // Pre-launch (#117): explicit ToS acceptance. Tracked separately
   // from the text fields so it can be a boolean. Submit is disabled
@@ -88,10 +62,6 @@ function RegisterForm() {
   // with a direct sign-in link pointed at the right surface.
   const [conflict, setConflict] = useState<{ role: 'owner' | 'customer'; redirect: string } | null>(null)
   const [loading, setLoading] = useState(false)
-  // A7 — subdomain availability state. Re-computed (debounced) every
-  // time business_name changes; the form's submit button gates on it.
-  const [slugCheck, setSlugCheck] = useState<SubdomainCheckResponse | null>(null)
-  const [slugChecking, setSlugChecking] = useState(false)
 
   // Surface any error bounced back from the Google OAuth bridge.
   useEffect(() => {
@@ -99,85 +69,28 @@ function RegisterForm() {
     if (gerr) setError(gerr)
   }, [searchParams])
 
-  // #167 — persist the signup intent on mount so the Google flow gets
-  // plan/billing/sms too. Previously only the email submit handler
-  // wrote `br_signup_intent`, which meant clicking "Sign up with Google"
-  // BEFORE submitting the form lost the marketing-side context (the
-  // OAuth callback lands on /register/complete which hardcoded defaults).
-  // Writing on mount makes both flows symmetric.
+  // Stash marketing-CTA intent (plan / billing / sms) so /checkout/plan
+  // can pre-pick. Writes on mount so the Google flow gets the same
+  // forwarding (the OAuth callback doesn't see localStorage).
   useEffect(() => {
     if (! searchParams) return
-    const hasIntent =
-      searchParams.get('plan') ||
-      searchParams.get('billing') ||
-      searchParams.get('sms') ||
-      searchParams.get('template')
+    const hasIntent = searchParams.get('plan') || searchParams.get('billing') || searchParams.get('sms')
     if (! hasIntent) return
     try {
-      localStorage.setItem(TEMPLATE_KEY, templateSlug)
-      localStorage.setItem('br_signup_intent', JSON.stringify(buildIntent(searchParams, templateSlug)))
-    } catch { /* localStorage disabled — fall back to in-handler write */ }
-  }, [searchParams, templateSlug])
+      localStorage.setItem('br_signup_intent', JSON.stringify(buildIntent(searchParams)))
+    } catch { /* localStorage disabled — non-fatal */ }
+  }, [searchParams])
 
-  // Google signup is always allowed. If the user typed a business name we
-  // bake it (and the optional owner_name) into the OAuth state so the
-  // callback can provision a tenant immediately. If they didn't, we send
-  // an empty payload and the backend bounces to /register/complete where
-  // they pick a business name after returning from Google.
-  const googleSignupHref = (() => {
-    const bn = form.business_name.trim()
-    const payload = btoa(JSON.stringify({
-      business_name: bn || undefined,
-      template:      templateSlug === 'thefaderoom' ? 'the-fade-room' : templateSlug,
-      owner_name:    form.owner_name.trim() || undefined,
-    }))
-    return `${API_BASE}/auth/google/redirect?intent=signup&payload=${encodeURIComponent(payload)}`
-  })()
+  // Continue-with-Google. No business name or template needed — the
+  // OAuth callback creates a User row with no tenant and routes via
+  // /auth/me's redirect_url to /signup/business, same as the email
+  // flow lands at /verify-email then /signup/business.
+  const googleSignupHref = `${API_BASE}/auth/google/redirect?intent=signup`
 
   function set(key: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm(prev => ({ ...prev, [key]: e.target.value }))
   }
-
-  const slugPreview = form.business_name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'yourbusiness'
-
-  // A7 — debounced availability check. Re-runs on every business_name
-  // edit but waits 400ms after the last keystroke so we don't hammer
-  // the backend mid-type. Also clears prior result + flips checking
-  // state so the indicator reflects the live input, not stale data.
-  useEffect(() => {
-    const slug = form.business_name.toLowerCase().replace(/[^a-z0-9]/g, '')
-    if (slug.length < 3) {
-      setSlugCheck(null)
-      setSlugChecking(false)
-      return
-    }
-    setSlugChecking(true)
-    setSlugCheck(null)
-    const handle = setTimeout(() => {
-      let cancelled = false
-      checkSubdomain(slug)
-        .then(res => {
-          if (! cancelled) {
-            // Only apply if this is still the latest query — the slug
-            // may have changed between debounce fire + response.
-            const liveSlug = form.business_name.toLowerCase().replace(/[^a-z0-9]/g, '')
-            if (liveSlug === slug) {
-              setSlugCheck(res)
-              setSlugChecking(false)
-            }
-          }
-        })
-        .catch(() => {
-          if (! cancelled) {
-            setSlugCheck(null)
-            setSlugChecking(false)
-          }
-        })
-      return () => { cancelled = true }
-    }, 400)
-    return () => clearTimeout(handle)
-  }, [form.business_name])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -197,51 +110,23 @@ function RegisterForm() {
     setConflict(null)
     setLoading(true)
     try {
-      // Seed the tenant with the tier the user picked on the marketing
-      // CTA (?plan=...). Only forward a recognized tier; an absent or
-      // unknown value is omitted so the backend default (solo) applies.
-      // Never send "trial" — that's a billing state, not a tier. The
-      // Stripe webhook re-stamps tenants.plan on real checkout, so this
-      // just makes the pre-checkout gates correct from signup.
-      const planRaw = (searchParams?.get('plan') ?? '').toLowerCase()
-      const plan =
-        planRaw === 'solo' || planRaw === 'studio' || planRaw === 'salon'
-          ? (planRaw as 'solo' | 'studio' | 'salon')
-          : undefined
-      const res = await register({
+      await register({
         owner_name: form.owner_name,
         email: form.email,
         password: form.password,
         password_confirmation: form.password_confirmation,
-        business_name: form.business_name,
-        // Seed the tenant with the template the user arrived with. The
-        // checkout step can still change it (and re-applies via
-        // selectActiveTemplate), but this makes the default correct when the
-        // user came in from a template gallery link (?template=…).
-        template: templateSlug,
-        ...(plan ? { plan } : {}),
         terms_accepted: termsAccepted,
         turnstile_token: turnstileToken,
       })
       setToken()
-      const tenantId = res.tenant_id ?? res.user.tenant_id
-      setTenantId(tenantId)
-      localStorage.setItem(TEMPLATE_KEY, templateSlug)
-      // #155 / #156 — persist the signup intent (template + plan +
-      // billing + sms_mult) from the marketing URL into localStorage
-      // so /checkout/trial can read it without re-asking the user.
-      // Falls back to sensible defaults when params are missing.
-      // Same intent shape the mount effect writes — kept here as the
-      // authoritative final write (form data may have changed since mount).
+      // Forward marketing intent (plan / billing / sms) to /checkout/plan
+      // so it can pre-pick. Best-effort.
       try {
-        localStorage.setItem('br_signup_intent', JSON.stringify(buildIntent(searchParams, templateSlug)))
+        localStorage.setItem('br_signup_intent', JSON.stringify(buildIntent(searchParams)))
       } catch { /* localStorage disabled */ }
-      // #160 — send to the verify-email waiting screen first. That
-      // screen polls /auth/me and advances to /checkout/trial once
-      // the user clicks the link in their email. Google signups skip
-      // /verify-email because Google has already verified the address
-      // (their flow runs through GoogleAuthController::exchange and
-      // /auth/google/complete instead of this handler).
+      // Land on the verify-email screen. /auth/me's redirect_url advances
+      // through /signup/business → /signup/website → /checkout/plan →
+      // /checkout/trial → /editor.
       router.push('/verify-email')
     } catch (err: unknown) {
       // #159 — backend 422s with existing_role + redirect_url when the
@@ -383,66 +268,6 @@ function RegisterForm() {
           />
         </Field>
 
-        <Field
-          label="Business name"
-          hint={
-            <span>
-              Your site will be at{' '}
-              <span className="font-semibold text-near-black">{slugPreview}.bkrdy.me</span>
-              {/* A7 — live availability indicator. ✓ available / ✗ taken /
-                  spinner while checking. Suggests an alternative when taken. */}
-              <span className="ml-2 inline-flex items-center gap-1 align-middle">
-                {slugChecking && form.business_name.length >= 3 && (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-muted-text">
-                    <Loader2 size={10} className="animate-spin" /> Checking…
-                  </span>
-                )}
-                {! slugChecking && slugCheck?.available && (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-[#0f6f3d] font-semibold">
-                    <Check size={11} strokeWidth={2.5} /> Available
-                  </span>
-                )}
-                {! slugChecking && slugCheck && ! slugCheck.available && (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-[#b42828] font-semibold">
-                    <X size={11} strokeWidth={2.5} />
-                    {slugCheck.reason === 'reserved' ? 'Reserved' : 'Taken'}
-                  </span>
-                )}
-              </span>
-              {/* Show suggested alternative when current pick is taken. */}
-              {! slugChecking && slugCheck?.suggested && (
-                <span className="block text-[10px] text-muted-text mt-1">
-                  Try{' '}
-                  <span className="font-semibold text-near-black">{slugCheck.suggested}.bkrdy.me</span>
-                  {' '}— available.
-                </span>
-              )}
-              <span className="block text-[10px] text-muted-text mt-0.5">
-                Letters and numbers only, no dashes.
-              </span>
-            </span>
-          }
-        >
-          <input
-            type="text"
-            required
-            value={form.business_name}
-            onChange={set('business_name')}
-            className={inputCls}
-            placeholder="Lush Studio"
-          />
-        </Field>
-
-        {/* Collapsible template picker — shows the current selection
-            inline + an expand affordance for the other 8 templates so
-            the email signup gets the same proper picker as the Google
-            flow (was previously hidden behind a limited 3-option
-            dropdown on /checkout/trial). */}
-        <CollapsibleTemplatePicker
-          value={templateSlug}
-          onChange={setTemplateSlug}
-        />
-
         {/* Pre-launch (#117): explicit ToS checkbox. Unchecked by
             default; submit stays disabled until ticked. Stronger CYA
             than passive "by signing up you agree" copy under the
@@ -491,13 +316,7 @@ function RegisterForm() {
             window), the provisioner stays authoritative. */}
         <button
           type="submit"
-          disabled={
-            loading
-            || !termsAccepted
-            || !turnstileToken
-            || (slugCheck != null && !slugCheck.available)
-            || slugChecking
-          }
+          disabled={loading || !termsAccepted || !turnstileToken}
           className={submitCls}
         >
           {loading ? 'Creating account…' : 'Create account'}
@@ -594,56 +413,25 @@ function Field({
  * pick a different one without losing the rest of the intent.
  */
 function IntentSummary({ searchParams }: { searchParams: ReturnType<typeof useSearchParams> }) {
-  const plan     = searchParams?.get('plan')
-  const billing  = searchParams?.get('billing')
-  const template = searchParams?.get('template')
-  const sms      = searchParams?.get('sms')
-  if (! plan && ! billing && ! template) return null
-
-  // Resolve the slug to its catalog entry so we can render label + swatch.
-  // Falls back to a generic chip if marketing forwarded an unknown slug
-  // (e.g. typo) — better to show something honest than crash.
-  const tplEntry = template
-    ? SITE_TEMPLATES.find(t => t.slug === template)
-    : null
+  // Template intent no longer renders here — it's picked at
+  // /signup/website. Plan / billing / sms still surface so the
+  // marketing-CTA → checkout handoff is visible to the user.
+  const plan    = searchParams?.get('plan')
+  const billing = searchParams?.get('billing')
+  const sms     = searchParams?.get('sms')
+  if (! plan && ! billing && ! sms) return null
 
   const sideParts: string[] = []
-  if (plan)     sideParts.push(plan.charAt(0).toUpperCase() + plan.slice(1))
-  if (billing)  sideParts.push(billing === 'annual' ? 'annual' : 'monthly')
+  if (plan)    sideParts.push(plan.charAt(0).toUpperCase() + plan.slice(1))
+  if (billing) sideParts.push(billing === 'annual' ? 'annual' : 'monthly')
   if (sms && sms !== '1x') sideParts.push(`${sms} SMS`)
 
   return (
     <div className="mb-5 px-3 py-2.5 bg-cream border border-[rgba(18,18,18,0.10)] flex items-center gap-3">
       <span className="text-near-black font-bold tracking-[0.08em] uppercase text-[9px]">Starting with</span>
-
-      {tplEntry && (
-        <>
-          <span
-            className="w-5 h-5 flex-shrink-0 border border-[rgba(18,18,18,0.15)]"
-            style={{ background: tplEntry.color }}
-            aria-hidden
-          />
-          <span className="text-[12px] font-semibold text-near-black">{tplEntry.label}</span>
-        </>
-      )}
-      {/* Unknown slug forwarded — keep the message honest. */}
-      {! tplEntry && template && (
-        <span className="text-[12px] font-semibold text-near-black">{template} template</span>
-      )}
-
       {sideParts.length > 0 && (
-        <span className="text-[11px] text-muted-text">
-          · {sideParts.join(' · ')}
-        </span>
+        <span className="text-[11px] text-muted-text">{sideParts.join(' · ')}</span>
       )}
-
-      <Link
-        href="/templates"
-        className="ml-auto text-[10px] font-semibold tracking-[0.06em] uppercase text-muted-text hover:text-near-black"
-        title="Switch template before signing up"
-      >
-        change
-      </Link>
     </div>
   )
 }
