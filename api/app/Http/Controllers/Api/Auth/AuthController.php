@@ -96,9 +96,11 @@ class AuthController extends Controller
         // single source of truth for "what step are they on?" so that
         // signing back out and in can't bypass verify-email + payment.
         // The frontend trusts redirect_url over its own router.push.
-        $emailVerified = (bool) $user->email_verified_at;
-        $isBillingSetup = self::isBillingSetup($user);
-        $redirectUrl = self::redirectFor($emailVerified, $isBillingSetup);
+        $emailVerified      = (bool) $user->email_verified_at;
+        $onboardingComplete = self::isOnboardingComplete($user);
+        $planSelected       = self::isPlanSelected($user);
+        $isBillingSetup     = self::isBillingSetup($user);
+        $redirectUrl        = self::redirectFor($emailVerified, $onboardingComplete, $planSelected, $isBillingSetup);
 
         // Phase S6 — also set the token as an httpOnly cookie so the
         // frontend doesn't need to stash it in localStorage. The token
@@ -121,10 +123,12 @@ class AuthController extends Controller
                 // users pick a side every login (per founder decision).
                 'available_roles' => $availableRoles,
                 'current_role'    => 'owner',
-                // A5 — onboarding state. Frontend routes to redirect_url.
-                'email_verified'    => $emailVerified,
-                'is_billing_setup'  => $isBillingSetup,
-                'redirect_url'      => $redirectUrl,
+                // Signup-reorder flow signals — frontend routes to redirect_url.
+                'email_verified'      => $emailVerified,
+                'onboarding_complete' => $onboardingComplete ?? false,
+                'plan_selected'       => $planSelected ?? false,
+                'is_billing_setup'    => $isBillingSetup,
+                'redirect_url'        => $redirectUrl,
             ])
             ->withCookie(AuthCookie::make($token, $remember));
 
@@ -161,8 +165,10 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-        $emailVerified = (bool) $user->email_verified_at;
-        $isBillingSetup = self::isBillingSetup($user);
+        $emailVerified      = (bool) $user->email_verified_at;
+        $onboardingComplete = self::isOnboardingComplete($user);
+        $planSelected       = self::isPlanSelected($user);
+        $isBillingSetup     = self::isBillingSetup($user);
 
         return response()->json([
             'id'                 => $user->id,
@@ -171,20 +177,18 @@ class AuthController extends Controller
             'tenant_id'          => $user->tenant_id,
             'is_owner'           => $user->is_owner,
             'is_admin'           => (bool) ($user->is_admin ?? false),
-            // Wave D — role + staff_id let the frontend branch between the
-            // full owner editor and the scoped staff view. role defaults
-            // to 'owner' (column default); staff_id is null for owners.
             'role'               => $user->role ?? 'owner',
             'staff_id'           => $user->staff_id !== null ? (int) $user->staff_id : null,
-            // Phase S6 part 2 — frontend nag banner gates on this.
             'email_verified_at'  => $user->email_verified_at?->toAtomString(),
-            // A5 — onboarding state. EditorGuard reads these to bounce
-            // unverified / cardless users back to the missing step
-            // (so a direct nav to /editor can't bypass /verify-email
-            // or /checkout/trial).
+            // Signup-reorder flow signals. EditorGuard + verify-email +
+            // register-complete + onboarding-wizard-finish all consume
+            // redirect_url verbatim and never hand-route — backend is
+            // the single source of truth for ordering.
             'email_verified'     => $emailVerified,
+            'onboarding_complete'=> $onboardingComplete,
+            'plan_selected'      => $planSelected,
             'is_billing_setup'   => $isBillingSetup,
-            'redirect_url'       => self::redirectFor($emailVerified, $isBillingSetup),
+            'redirect_url'       => self::redirectFor($emailVerified, $onboardingComplete, $planSelected, $isBillingSetup),
             // v2 Theme 1 — every tenant this identity is linked to, so the
             // editor sidebar can render the tenant-switch dropdown. Empty
             // array when the identity has no linkages (single-tenant
@@ -233,47 +237,76 @@ class AuthController extends Controller
     }
 
     /**
-     * A5 refinement — has this owner been through /checkout/trial?
-     * Only valid signal is trial_acknowledged_at, which is set by
-     * EITHER button on that page (Start free trial OR Skip for now).
-     *
-     * The earlier (stripe_id || subscription_state) heuristic broke
-     * because BillingController::startTrial sets both optimistically
-     * BEFORE the user finishes Stripe Checkout — a user who bailed
-     * mid-flow would have those set and skip the gate on next login.
-     *
-     * Falls back to the old check when the column doesn't exist
-     * (mid-deploy / fresh test envs).
+     * Has this owner been through /checkout/trial? Set by Start trial
+     * on that page (the Skip button was killed in the signup-reorder).
+     * Internal allowlist short-circuits — no card required ever.
      */
     private static function isBillingSetup(User $user): bool
     {
         if (! $user->tenant_id) return false;
-        // Internal allowlist — founder / QA accounts bypass the
-        // /checkout/trial card-capture step entirely so they can
-        // sign up and edit freely without a real card on file. See
-        // App\Support\BillingInternal + BILLING_INTERNAL_EMAILS.
         if (BillingInternal::isInternal($user->email)) return true;
         $tenant = Tenant::find($user->tenant_id);
         if (! $tenant) return false;
         if (\Illuminate\Support\Facades\Schema::hasColumn('tenants', 'trial_acknowledged_at')) {
             return (bool) $tenant->trial_acknowledged_at;
         }
-        // Pre-migration fallback only.
         return (bool) ($tenant->stripe_id || $tenant->subscription_state);
     }
 
     /**
-     * A5 — single source of truth for "what step is this user on?".
-     * Called from login + /me so the frontend can't disagree with the
-     * backend about where to land. Order matters:
-     *   1. Unverified email → /verify-email
-     *   2. Verified but no card → /checkout/trial
-     *   3. All set → /editor
+     * Signup-reorder — has the owner finished the onboarding wizard?
+     * Reads central tenants.onboarding_completed_at (mirrored from
+     * business_profiles.onboarding_completed_at when the wizard
+     * Finishes — see BusinessProfileController::completeOnboarding).
+     * Internal allowlist short-circuits.
      */
-    private static function redirectFor(bool $emailVerified, bool $isBillingSetup): string
+    private static function isOnboardingComplete(User $user): bool
     {
-        if (! $emailVerified) return '/verify-email';
-        if (! $isBillingSetup) return '/checkout/trial';
+        if (! $user->tenant_id) return false;
+        if (BillingInternal::isInternal($user->email)) return true;
+        $tenant = Tenant::find($user->tenant_id);
+        if (! $tenant) return false;
+        if (! \Illuminate\Support\Facades\Schema::hasColumn('tenants', 'onboarding_completed_at')) {
+            // Pre-migration fallback: treat as complete so existing
+            // live tenants don't get bounced into onboarding.
+            return true;
+        }
+        return (bool) $tenant->onboarding_completed_at;
+    }
+
+    /**
+     * Signup-reorder — has the owner picked a plan via /checkout/plan?
+     * Internal allowlist short-circuits.
+     */
+    private static function isPlanSelected(User $user): bool
+    {
+        if (! $user->tenant_id) return false;
+        if (BillingInternal::isInternal($user->email)) return true;
+        $tenant = Tenant::find($user->tenant_id);
+        if (! $tenant) return false;
+        if (! \Illuminate\Support\Facades\Schema::hasColumn('tenants', 'plan_selected_at')) {
+            return true;
+        }
+        return (bool) $tenant->plan_selected_at;
+    }
+
+    /**
+     * Signup-reorder — single source of truth for "where should this
+     * user be right now?". Order matters; do not reshuffle without
+     * updating EditorGuard + the verify-email / register-complete
+     * pages that all consume this. Onboarding precedes billing so the
+     * owner invests time in their site before being asked for a card.
+     */
+    private static function redirectFor(
+        bool $emailVerified,
+        bool $onboardingComplete,
+        bool $planSelected,
+        bool $isBillingSetup,
+    ): string {
+        if (! $emailVerified)      return '/verify-email';
+        if (! $onboardingComplete) return '/editor/onboard';
+        if (! $planSelected)       return '/checkout/plan';
+        if (! $isBillingSetup)     return '/checkout/trial';
         return '/editor';
     }
 }

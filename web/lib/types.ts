@@ -1305,9 +1305,13 @@ export interface AuthUser {
   // Phase S6 part 2 — ISO 8601 string when the user has verified, or
   // null/undefined for unverified accounts. Drives the dashboard nag.
   email_verified_at?: string | null
-  // A5 — set on /auth/me; EditorGuard reads these to bounce unverified
-  // / cardless users back to the missing step before rendering.
+  // Signup-reorder flow signals — set on /auth/me. Frontend gates
+  // (EditorGuard, verify-email, register/complete, onboarding finale)
+  // all follow `redirect_url` verbatim; the named booleans are exposed
+  // so a page can branch its own copy without re-deriving them.
   email_verified?: boolean
+  onboarding_complete?: boolean
+  plan_selected?: boolean
   is_billing_setup?: boolean
   redirect_url?: string
   /** v2 Theme 1 — every tenant this identity is linked to. Drives the

@@ -80,3 +80,12 @@ Schedule::command('admin:activity-digest')
     ->dailyAt('14:00')
     ->withoutOverlapping(10)
     ->runInBackground();
+
+// Signup-reorder — daily reaper for pre-trial tenants. Warns at day 14,
+// deletes at day 21. Runs at 04:00 UTC (~midnight ET) so the email
+// lands the next morning. Skipping with --force isn't needed; the
+// command already idempotently no-ops on days when no tenant is due.
+Schedule::command('signup:reap-pre-trial')
+    ->dailyAt('04:00')
+    ->withoutOverlapping(10)
+    ->runInBackground();

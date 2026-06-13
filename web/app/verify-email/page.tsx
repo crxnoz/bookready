@@ -52,8 +52,11 @@ export default function VerifyEmailPage() {
         advancingRef.current = true
         setStatus('verified')
         // Brief "Verified! Continue →" moment so the user sees what
-        // happened. Then onward to the trial card-capture screen.
-        setTimeout(() => router.replace('/checkout/trial'), 900)
+        // happened, then follow the backend's redirect_url — usually
+        // /editor/onboard now (signup-reorder), but could be any
+        // later step if the user is mid-flow on a re-login.
+        const next = u.redirect_url && u.redirect_url !== '/verify-email' ? u.redirect_url : '/editor/onboard'
+        setTimeout(() => router.replace(next), 900)
       }
     } catch (e) {
       // If /auth/me 401s we lost the session — likely a stale page

@@ -316,16 +316,60 @@ class BillingController extends Controller
     }
 
     /**
-     * A5 refinement — POST /billing/skip-trial.
+     * Signup-reorder — POST /billing/select-plan.
      *
-     * "Skip for now" button on /checkout/trial. Card capture is
-     * optional but the trial-info page is mandatory; clicking this
-     * stamps trial_acknowledged_at so the post-login redirect lets
-     * the tenant through to /editor.
+     * Owner picks Solo/Studio + monthly/annual on /checkout/plan. This
+     * just STAMPS the choice on the central tenants row — no Stripe
+     * call yet. /checkout/trial reads selected_plan + selected_cycle
+     * to build the Stripe Checkout Session. Idempotent: re-posting
+     * with a different choice updates the row in place.
      *
-     * Trial countdown still starts on subscription_state for the
-     * existing EnforceWriteGate / parked-page machinery — same 14-day
-     * window, same eventual force-add-card path.
+     * AuthController::isPlanSelected reads plan_selected_at and gates
+     * the redirect from /editor/onboard → /checkout/plan → /checkout/trial.
+     */
+    public function selectPlan(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'plan'          => ['required', 'string', 'in:solo,studio'],
+            'billing_cycle' => ['required', 'string', 'in:monthly,annual'],
+        ]);
+
+        $user = $request->user();
+        $tenant = $user->tenant_id ? Tenant::find($user->tenant_id) : null;
+        if (! $tenant) {
+            return response()->json(['message' => 'No active workspace for this account.'], 400);
+        }
+
+        // Defensive Schema guards — the columns ship in the same deploy
+        // as this endpoint but we don't want a webhook burst during the
+        // migration step to crash here. Falls back to a successful no-op
+        // if any column hasn't landed yet.
+        $updates = [];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('tenants', 'selected_plan')) {
+            $updates['selected_plan'] = $data['plan'];
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('tenants', 'selected_cycle')) {
+            $updates['selected_cycle'] = $data['billing_cycle'];
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('tenants', 'plan_selected_at')) {
+            $updates['plan_selected_at'] = now();
+        }
+        if ($updates) {
+            Tenant::where('id', $tenant->id)->update($updates);
+        }
+
+        return response()->json([
+            'plan'          => $data['plan'],
+            'billing_cycle' => $data['billing_cycle'],
+        ]);
+    }
+
+    /**
+     * Legacy "Skip for now" — kept callable but no longer surfaced in
+     * the UI (signup-reorder killed the button on /checkout/trial).
+     * Internal callers may still use it. New flow: onboarding-then-
+     * plan-then-card means there's nothing to skip before Stripe sees
+     * the user.
      */
     public function skipTrial(Request $request): JsonResponse
     {
@@ -457,6 +501,15 @@ class BillingController extends Controller
             return $this->bypassSubscriptionResponse($tenant);
         }
 
+        // Signup-reorder — pre-trial tenants have no Stripe subscription
+        // yet (just signed up + onboarded + picked a plan). Synthesize
+        // the response from tenants.selected_plan / selected_cycle so
+        // the new /checkout/trial page can render the chosen plan
+        // without re-prompting.
+        if ($tenant->subscription_state === Tenant::STATE_PRE_TRIAL) {
+            return $this->preTrialSubscriptionResponse($tenant);
+        }
+
         // Read the subscription straight from Stripe (the local Cashier
         // mirror isn't reliable for the Tenant billable), keyed off the
         // tenant's Stripe customer id.
@@ -575,6 +628,40 @@ class BillingController extends Controller
             'is_alive'             => in_array($state, Tenant::STATES_ALIVE, true),
             'trial_days_remaining' => $trialDaysRemaining,
             'current_period_end'   => $row?->current_period_ends_at ? $row->current_period_ends_at->toIso8601String() : null,
+            'current_period_start' => null,
+            'cancel_at_period_end' => false,
+            'paused'               => false,
+            'card'                 => null,
+        ]);
+    }
+
+    /**
+     * Synthesize a pre-trial subscription response so /checkout/trial
+     * can render the plan the owner picked on /checkout/plan without
+     * a Stripe round-trip. No real subscription exists yet — startTrial
+     * will create it.
+     */
+    private function preTrialSubscriptionResponse(Tenant $tenant): JsonResponse
+    {
+        $plan        = $tenant->selected_plan ?? 'studio';
+        $cycle       = $tenant->selected_cycle ?? 'monthly';
+        $mult        = 1;
+        $smsIncluded = (int) (config("plans.plans.{$plan}.sms_base", 0) * $mult);
+
+        return response()->json([
+            'subscribed'           => false,
+            'on_trial'             => false,
+            'trial_ends'           => null,
+            'subscription'         => null,
+            'plan'                 => $plan,
+            'sms_mult'             => $mult,
+            'sms_included'         => $smsIncluded,
+            'billing_cycle'        => $cycle,
+            'subscription_state'   => Tenant::STATE_PRE_TRIAL,
+            'is_trialing'          => false,
+            'is_alive'             => true,
+            'trial_days_remaining' => null,
+            'current_period_end'   => null,
             'current_period_start' => null,
             'cancel_at_period_end' => false,
             'paused'               => false,

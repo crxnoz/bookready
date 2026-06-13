@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Check, X, Loader2 } from 'lucide-react'
-import { completeGoogleSignup, checkSubdomain, type SubdomainCheckResponse } from '@/lib/api'
+import { completeGoogleSignup, checkSubdomain, getCurrentUser, type SubdomainCheckResponse } from '@/lib/api'
 import { setToken, setTenantId } from '@/lib/auth'
 import { normalizeTemplateSlug } from '@/lib/templates'
 import CollapsibleTemplatePicker from '@/components/auth/CollapsibleTemplatePicker'
@@ -152,9 +152,17 @@ function CompleteInner() {
         }))
       } catch { /* ignore */ }
       // Google completeSignup already marks email_verified_at on the
-      // backend (Google did the verification), so we skip /verify-email
-      // and jump straight to the trial card-capture screen.
-      router.push('/checkout/trial')
+      // backend, so verify-email is skipped. Signup-reorder routes
+      // Google signups through /editor/onboard → /checkout/plan →
+      // /checkout/trial the same as email signups. Follow the
+      // backend's redirect_url verbatim so the order stays in one
+      // place (AuthController::redirectFor).
+      try {
+        const me = await getCurrentUser()
+        router.push(me.redirect_url || '/editor/onboard')
+      } catch {
+        router.push('/editor/onboard')
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Could not finish signup.')
     } finally {

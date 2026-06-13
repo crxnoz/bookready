@@ -339,6 +339,10 @@ Route::prefix('v1')->group(function () {
         Route::post('checkout',                          [BillingController::class, 'checkout']);
         // #155 — 14-day trial flow. Creates a Stripe Checkout Session
         // with trial_period_days set; tenant flipped to 'trialing'.
+        // Signup-reorder — owner picks Solo/Studio + monthly/annual on
+        // /checkout/plan. Stamps tenants.selected_plan + selected_cycle
+        // + plan_selected_at. No Stripe call; that happens on next step.
+        Route::post('select-plan',                       [BillingController::class, 'selectPlan']);
         Route::post('start-trial',                       [BillingController::class, 'startTrial']);
         // A5 refinement — "Skip for now" button on /checkout/trial.
         // Card capture is optional; this stamps trial_acknowledged_at +

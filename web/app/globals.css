@@ -80,3 +80,25 @@ input[type='datetime-local']::-webkit-date-and-time-value {
   text-align: left;
   min-height: 1.25rem;
 }
+
+/*
+ * iOS Safari focus-zoom fix.
+ *
+ * iOS zooms the viewport when an input's effective font-size is
+ * below 16px. The editor and signup forms use 14px / 13px copy
+ * sizing throughout (text-sm / text-xs), which triggers the zoom
+ * every time the keyboard opens on a phone. Annoying enough that
+ * users think the page is broken.
+ *
+ * Fix: pin form-control font-size to 16px on small screens only.
+ * Desktop sizing is untouched. Pinch-zoom remains available (we
+ * don't lock the viewport meta) for accessibility — only the
+ * focus-zoom is killed.
+ */
+@media (max-width: 640px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}

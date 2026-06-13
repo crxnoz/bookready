@@ -212,6 +212,17 @@ class BusinessProfileController extends Controller
 
         tenancy()->end();
 
+        // Signup-reorder phase 1 — mirror the flag onto the CENTRAL
+        // tenants row. AuthController::redirectFor reads this without
+        // initializing tenancy to decide between /editor/onboard and
+        // /checkout/plan on every /auth/me poll. Idempotent.
+        if (\Illuminate\Support\Facades\Schema::hasColumn('tenants', 'onboarding_completed_at')) {
+            \Illuminate\Support\Facades\DB::table('tenants')
+                ->where('id', $tenant->id)
+                ->whereNull('onboarding_completed_at')
+                ->update(['onboarding_completed_at' => now()]);
+        }
+
         return response()->json(['onboarding_completed_at' => $completedAt]);
     }
 }

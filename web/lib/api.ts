@@ -576,13 +576,28 @@ export async function startTrial(
   })
 }
 
-// A5 refinement — "Skip for now" on /checkout/trial. Sets
-// trial_acknowledged_at on the tenant so the post-login redirect lets
-// the user through to /editor without requiring a card. Trial countdown
-// still starts so the existing 14-day gate kicks in eventually.
+// Legacy "Skip for now" — the Skip button was removed from
+// /checkout/trial in the signup-reorder. Endpoint is still callable
+// for internal tooling.
 export async function skipTrialSetup(): Promise<{ message: string; trial_ends_at: string | null }> {
   return request<{ message: string; trial_ends_at: string | null }>('/billing/skip-trial', {
     method: 'POST',
+  })
+}
+
+/**
+ * Signup-reorder — stamp the owner's plan + cycle choice on the
+ * central tenants row from /checkout/plan. No Stripe call; the next
+ * step (/checkout/trial) reads selected_plan + selected_cycle and
+ * creates the Stripe Checkout Session.
+ */
+export async function selectBillingPlan(
+  plan: 'solo' | 'studio',
+  billingCycle: BillingCycle,
+): Promise<{ plan: string; billing_cycle: BillingCycle }> {
+  return request<{ plan: string; billing_cycle: BillingCycle }>('/billing/select-plan', {
+    method: 'POST',
+    body: JSON.stringify({ plan, billing_cycle: billingCycle }),
   })
 }
 

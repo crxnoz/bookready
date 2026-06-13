@@ -18,6 +18,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
      * EnforceWriteGate middleware, the BillingController, the webhook
      * handlers, and PublicSiteController's parked-page check.
      */
+    public const STATE_PRE_TRIAL     = 'pre_trial';   // signup → onboarding → plan-pick window
     public const STATE_TRIALING      = 'trialing';
     public const STATE_ACTIVE        = 'active';
     public const STATE_PAST_DUE      = 'past_due';
@@ -25,16 +26,31 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     public const STATE_CANCELLED     = 'cancelled';
 
     /**
-     * States that LET the tenant continue using the product (read +
-     * write + public site live). past_due is included on purpose:
-     * Stripe is still retrying the card and we want the owner to
-     * fix it from inside the editor.
+     * States where the owner can WRITE to /editor/*. Includes
+     * STATE_PRE_TRIAL so the onboarding wizard can save before any
+     * payment method is on file. EnforceWriteGate consults this.
      */
-    public const STATES_ALIVE = [
+    public const STATES_CAN_WRITE = [
+        self::STATE_PRE_TRIAL,
         self::STATE_TRIALING,
         self::STATE_ACTIVE,
         self::STATE_PAST_DUE,
     ];
+
+    /**
+     * States where the PUBLIC site at {slug}.bkrdy.me is live. Excludes
+     * STATE_PRE_TRIAL — pre-trial tenants get the parked "coming soon"
+     * payload from PublicSiteController so the subdomain isn't squatted
+     * with a half-finished site before billing is set up.
+     */
+    public const STATES_PUBLIC_LIVE = [
+        self::STATE_TRIALING,
+        self::STATE_ACTIVE,
+        self::STATE_PAST_DUE,
+    ];
+
+    /** @deprecated kept for back-compat with any out-of-tree caller. Use STATES_CAN_WRITE. */
+    public const STATES_ALIVE = self::STATES_CAN_WRITE;
 
     /**
      * Extra data stored in the tenants.data JSON column.
@@ -49,15 +65,21 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         // master kill switch for staff logins), so it must be listed
         // here or stancl/tenancy would treat it as a virtual data-JSON
         // attribute and fail to read/write the actual column.
-        return ['id', 'plan', 'subscription_state', 'stripe_id', 'trial_ends_at', 'trial_acknowledged_at', 'staff_login_enabled', 'created_at', 'updated_at'];
+        return [
+            'id', 'plan', 'subscription_state', 'stripe_id', 'trial_ends_at', 'trial_acknowledged_at',
+            'onboarding_completed_at', 'plan_selected_at', 'selected_plan', 'selected_cycle',
+            'staff_login_enabled', 'created_at', 'updated_at',
+        ];
     }
 
     protected $casts = [
-        'trial_ends_at'         => 'datetime',
-        'trial_acknowledged_at' => 'datetime',
+        'trial_ends_at'           => 'datetime',
+        'trial_acknowledged_at'   => 'datetime',
+        'onboarding_completed_at' => 'datetime',
+        'plan_selected_at'        => 'datetime',
         // Wave D — master kill switch for staff logins. Default FALSE;
         // when false the feature is entirely off for the tenant.
-        'staff_login_enabled'   => 'boolean',
+        'staff_login_enabled'     => 'boolean',
     ];
 
     public function users()
@@ -88,21 +110,24 @@ class Tenant extends BaseTenant implements TenantWithDatabase
     }
 
     /**
-     * Tenant is "alive" — editor read+write, public site live.
-     * Anything outside STATES_ALIVE locks writes + parks the site.
+     * Owner can write to /editor/*. Includes STATE_PRE_TRIAL so the
+     * onboarding wizard can save before billing setup. EnforceWriteGate
+     * consults this.
      */
     public function canWrite(): bool
     {
-        return in_array($this->subscription_state, self::STATES_ALIVE, true);
+        return in_array($this->subscription_state, self::STATES_CAN_WRITE, true);
     }
 
     /**
-     * Public site stays live in any "alive" state. Trial expired or
-     * cancelled tenants serve the parked page instead.
+     * Public booking site at {slug}.bkrdy.me is live. NARROWER than
+     * canWrite — pre-trial tenants can build their site privately in
+     * the editor but the public URL serves a parked "coming soon"
+     * payload until billing is set up.
      */
     public function publicSiteLive(): bool
     {
-        return $this->canWrite();
+        return in_array($this->subscription_state, self::STATES_PUBLIC_LIVE, true);
     }
 
     /**

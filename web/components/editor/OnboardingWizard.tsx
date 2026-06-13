@@ -287,9 +287,22 @@ export default function OnboardingWizard() {
     setSaving(true)
     try {
       await completeOnboarding()
-      router.replace('/editor')
+      await advanceFromBackend()
     } catch {
-      // Even if the flag write fails, get them into the editor.
+      // Even if the flag write fails, get them somewhere usable.
+      router.replace('/editor')
+    }
+  }
+
+  // Signup-reorder — onboarding done. Where to next is the backend's
+  // decision (verify-email / checkout-plan / checkout-trial / editor).
+  // Re-fetch /auth/me to get the fresh redirect_url instead of
+  // hand-coding /checkout/plan here.
+  async function advanceFromBackend() {
+    try {
+      const me = await getCurrentUser()
+      router.replace(me.redirect_url || '/editor')
+    } catch {
       router.replace('/editor')
     }
   }
@@ -331,7 +344,7 @@ export default function OnboardingWizard() {
         businessName={bizName}
         tenantId={tenantId}
         stripeConnected={stripeConnected}
-        onContinue={() => router.replace('/editor')}
+        onContinue={advanceFromBackend}
       />
     )
   }

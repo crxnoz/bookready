@@ -133,16 +133,33 @@ class TenantProvisioningService
 
         $owner = User::where('tenant_id', $tenant->id)->where('is_owner', true)->first();
 
-        // Internal allowlist — founder / QA accounts skip the
-        // /checkout/trial step entirely. Mark the tenant alive so
-        // EnforceWriteGate lets writes through and AuthController::
-        // isBillingSetup short-circuits to /editor on next login.
-        // See App\Support\BillingInternal + BILLING_INTERNAL_EMAILS.
-        if ($owner && BillingInternal::isInternal($owner->email)) {
+        // Signup-reorder phase 1 — every fresh tenant lands in
+        // STATE_PRE_TRIAL so the EnforceWriteGate lets the owner save
+        // through the onboarding wizard without a payment method on
+        // file. STATE_PRE_TRIAL also keeps the public site at
+        // {slug}.bkrdy.me parked until billing is set up (see
+        // Tenant::publicSiteLive + PublicSiteController). The state
+        // transitions to STATE_TRIALING when /billing/start-trial fires.
+        if (Schema::hasColumn('tenants', 'subscription_state')) {
             DB::table('tenants')->where('id', $tenant->id)->update([
-                'subscription_state'    => Tenant::STATE_ACTIVE,
-                'trial_acknowledged_at' => now(),
+                'subscription_state' => Tenant::STATE_PRE_TRIAL,
             ]);
+        }
+
+        // Internal allowlist — founder / QA accounts skip onboarding +
+        // plan-pick + card-capture. Mark every signup-flow column so
+        // AuthController::redirectFor lands them directly in /editor.
+        if ($owner && BillingInternal::isInternal($owner->email)) {
+            $columns = ['subscription_state' => Tenant::STATE_ACTIVE, 'trial_acknowledged_at' => now()];
+            if (Schema::hasColumn('tenants', 'onboarding_completed_at')) {
+                $columns['onboarding_completed_at'] = now();
+            }
+            if (Schema::hasColumn('tenants', 'plan_selected_at')) {
+                $columns['plan_selected_at'] = now();
+                $columns['selected_plan']    = $tenant->plan ?? 'solo';
+                $columns['selected_cycle']   = 'monthly';
+            }
+            DB::table('tenants')->where('id', $tenant->id)->update($columns);
         }
 
         return compact('tenant', 'owner');

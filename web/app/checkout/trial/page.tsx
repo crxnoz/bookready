@@ -23,7 +23,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CheckCircle2, CreditCard, ShieldCheck, Loader2, AlertCircle, ChevronLeft, Pencil, X } from 'lucide-react'
-import { startTrial, getBillingPlans, selectActiveTemplate, skipTrialSetup, type BillingPlansResponse } from '@/lib/api'
+import { startTrial, getBillingPlans, selectActiveTemplate, type BillingPlansResponse } from '@/lib/api'
 import { isLoggedIn } from '@/lib/auth'
 import type { BillingCycle } from '@/lib/types'
 
@@ -61,9 +61,10 @@ function Inner() {
   // focused on "start trial". Open click reveals plan/billing/sms/template
   // selects that mutate intent + persist back to localStorage on every change.
   const [pickerOpen, setPickerOpen] = useState(false)
-  // A5 refinement — "Skip for now" busy/error state. Distinct from
-  // `loading` (Start free trial) so the spinner shows on the right button.
-  const [skipping, setSkipping] = useState(false)
+  // Skip button was removed in the signup-reorder — there's nothing
+  // to "skip" once the owner has finished onboarding and picked a plan.
+  // Setup-mode Stripe Checkout is the only path forward from here.
+  const skipping = false
 
   // Boot: confirm signed-in, read intent, pull plan catalog.
   useEffect(() => {
@@ -148,25 +149,6 @@ function Inner() {
       try { localStorage.setItem(INTENT_KEY, JSON.stringify(next)) } catch { /* ignore */ }
       return next
     })
-  }
-
-  // A5 refinement — "Skip for now" button. Stamps trial_acknowledged_at
-  // so the post-login redirect won't bounce us back here, then advances
-  // to /editor. Selecting the chosen template still runs so the editor
-  // opens to the right skin.
-  async function handleSkip() {
-    if (skipping) return
-    setSkipping(true); setError('')
-    try {
-      if (intent.template) {
-        try { await selectActiveTemplate(intent.template) } catch { /* non-fatal */ }
-      }
-      await skipTrialSetup()
-      router.replace('/editor')
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Could not skip the trial setup. Try again.')
-      setSkipping(false)
-    }
   }
 
   async function handleStartTrial() {
@@ -338,30 +320,9 @@ function Inner() {
         We&rsquo;ll email you 3 days before your trial ends.
       </p>
 
-      {/* A5 refinement — explicit Skip-for-now path. Card capture is
-          optional, but the trial-info screen is mandatory; the only way
-          to bypass it is this button (NOT signing out + back in, which
-          now correctly bounces back here). 14-day trial countdown still
-          starts; the existing /editor/billing flow handles adding a
-          card later. */}
-      <div className="mt-6 pt-5 border-t border-[rgba(18,18,18,0.08)] text-center">
-        <p className="text-[11px] text-muted-text mb-2 leading-relaxed">
-          Want to add your card later? Your 14-day trial still starts now.
-        </p>
-        <button
-          type="button"
-          onClick={() => void handleSkip()}
-          disabled={loading || skipping}
-          className="text-[11px] font-bold tracking-[0.14em] uppercase text-near-black hover:opacity-70 disabled:opacity-50 inline-flex items-center gap-1.5"
-        >
-          {skipping ? <Spinner /> : null}
-          {skipping ? 'Skipping…' : 'Skip for now →'}
-        </button>
-      </div>
-
       <div className="mt-6 text-center">
-        <Link href="/login" className="text-xs text-muted-text hover:text-near-black inline-flex items-center gap-1">
-          <ChevronLeft size={11} /> Back to login
+        <Link href="/checkout/plan" className="text-xs text-muted-text hover:text-near-black inline-flex items-center gap-1">
+          <ChevronLeft size={11} /> Change your plan
         </Link>
       </div>
     </TrialShell>
