@@ -232,12 +232,21 @@ export default function BillingHub() {
     setCheckoutLoading(true)
     setErr(null)
     try {
-      const { checkout_url } = await createCheckoutSession(
+      const res = await createCheckoutSession(
         pickedCycle,
-        'thefaderoom', // template stamp — doesn't affect billing
+        'thefaderoom',
         { plan: pickedPlan, smsMult: pickedMult },
       )
-      window.location.href = checkout_url
+      // Bypass path (internal-allowlist owner or staging env). Stripe
+      // never minted this session — no Checkout to redirect to, the
+      // plan is already applied on the backend. Hard-reload the editor
+      // so every component (sidebar plan label, PlanFeatures gates,
+      // dashboard) picks up tenants.plan in one shot.
+      if (res.bypassed) {
+        window.location.href = '/editor/billing?plan_applied=1'
+        return
+      }
+      window.location.href = res.checkout_url
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Could not start checkout')
       setCheckoutLoading(false)

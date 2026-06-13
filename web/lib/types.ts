@@ -331,6 +331,12 @@ export interface CheckoutPayload {
 
 export interface CheckoutResponse {
   checkout_url: string
+  // Internal-allowlist + staging bypass: plan was granted directly,
+  // no Stripe session to redirect to. Frontend short-circuits to a
+  // local reload that re-fetches the new plan everywhere.
+  bypassed?: boolean
+  plan?: 'solo' | 'studio' | 'salon'
+  billing_cycle?: BillingCycle
 }
 
 export interface CheckoutSessionData {

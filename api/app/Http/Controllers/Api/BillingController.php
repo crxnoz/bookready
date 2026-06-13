@@ -894,7 +894,16 @@ class BillingController extends Controller
         }
 
         $suffix   = $trial ? '&trial=1&bypass=1' : '&bypass=1';
-        $response = ['checkout_url' => "{$frontendUrl}/checkout/success?session_id={$sessionId}{$suffix}"];
+        $response = [
+            // bypassed:true tells the frontend to refresh state in place
+            // instead of redirecting to checkout_url — Stripe never minted
+            // this session and there's nothing to confirm. checkout_url is
+            // still populated as a fallback for older builds.
+            'bypassed'     => true,
+            'plan'         => $plan,
+            'billing_cycle' => $cycle,
+            'checkout_url' => "{$frontendUrl}/checkout/success?session_id={$sessionId}{$suffix}",
+        ];
         if ($trial) {
             $response['trial_ends_at'] = now()->addDays($trialDays)->toIso8601String();
         }
