@@ -10,6 +10,30 @@ use Illuminate\Support\Facades\Schema;
 use Laravel\Cashier\Http\Controllers\WebhookController as CashierWebhookController;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * Stripe platform-subscription webhook (Cashier rail).
+ *
+ * Mounted at POST /api/v1/webhooks/stripe, secret in env
+ * STRIPE_WEBHOOK_SECRET. The Stripe Dashboard endpoint
+ * (we_1Tgd0s... in live mode) MUST be subscribed to ALL of:
+ *
+ *   checkout.session.completed
+ *   customer.subscription.created
+ *   customer.subscription.updated
+ *   customer.subscription.deleted
+ *   customer.subscription.trial_will_end
+ *   invoice.payment_failed
+ *   invoice.payment_succeeded
+ *
+ * Forgetting checkout.session.completed is the bug that bit us
+ * on 2026-06-13: every owner signup landed on tenants.plan = solo
+ * regardless of which plan they actually paid for, because no
+ * other event carries the bookready_plan metadata. The appointment
+ * webhook (we_1Tgd2P...) is ALSO subscribed to that same event
+ * for Connect destination charges, and gracefully ignores any
+ * session without purpose=appointment-deposit metadata — so both
+ * endpoints can safely share the subscription without conflict.
+ */
 class WebhookController extends CashierWebhookController
 {
     /**
@@ -17,7 +41,7 @@ class WebhookController extends CashierWebhookController
      * This is our primary trigger for activating a tenant's subscription record.
      *
      * Metadata set on the Checkout Session:
-     *   user_id, tenant_id, template_slug, billing_cycle, flow (optional)
+     *   user_id, tenant_id, template_slug, billing_cycle, bookready_plan, flow (optional)
      */
     public function handleCheckoutSessionCompleted(array $payload): Response
     {
