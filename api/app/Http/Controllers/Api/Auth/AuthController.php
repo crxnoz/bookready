@@ -8,6 +8,7 @@ use App\Models\Identity;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\AuthCookie;
+use App\Support\BillingInternal;
 use App\Support\CustomerAuthCookie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -247,6 +248,11 @@ class AuthController extends Controller
     private static function isBillingSetup(User $user): bool
     {
         if (! $user->tenant_id) return false;
+        // Internal allowlist — founder / QA accounts bypass the
+        // /checkout/trial card-capture step entirely so they can
+        // sign up and edit freely without a real card on file. See
+        // App\Support\BillingInternal + BILLING_INTERNAL_EMAILS.
+        if (BillingInternal::isInternal($user->email)) return true;
         $tenant = Tenant::find($user->tenant_id);
         if (! $tenant) return false;
         if (\Illuminate\Support\Facades\Schema::hasColumn('tenants', 'trial_acknowledged_at')) {

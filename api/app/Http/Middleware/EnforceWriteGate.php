@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Tenant;
+use App\Support\BillingInternal;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -49,6 +50,13 @@ class EnforceWriteGate
             // un-authed / no-tenant cases. If we somehow reach here
             // without those, let the downstream auth chain produce
             // its standard 401/403.
+            return $next($request);
+        }
+
+        // Internal allowlist — founder / QA accounts bypass the gate
+        // entirely so they can edit freely without a real card on
+        // file. See App\Support\BillingInternal + BILLING_INTERNAL_EMAILS.
+        if (BillingInternal::isInternal($user->email)) {
             return $next($request);
         }
 

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\BillingInternal;
 use App\Support\TemplateDefaults;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -131,6 +132,18 @@ class TenantProvisioningService
         }
 
         $owner = User::where('tenant_id', $tenant->id)->where('is_owner', true)->first();
+
+        // Internal allowlist — founder / QA accounts skip the
+        // /checkout/trial step entirely. Mark the tenant alive so
+        // EnforceWriteGate lets writes through and AuthController::
+        // isBillingSetup short-circuits to /editor on next login.
+        // See App\Support\BillingInternal + BILLING_INTERNAL_EMAILS.
+        if ($owner && BillingInternal::isInternal($owner->email)) {
+            DB::table('tenants')->where('id', $tenant->id)->update([
+                'subscription_state'    => Tenant::STATE_ACTIVE,
+                'trial_acknowledged_at' => now(),
+            ]);
+        }
 
         return compact('tenant', 'owner');
     }
