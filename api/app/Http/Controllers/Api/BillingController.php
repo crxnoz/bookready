@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\TenantSubscription;
+use App\Support\BillingInternal;
 use App\Support\TemplateDefaults;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -104,7 +105,7 @@ class BillingController extends Controller
 
         // The bypass path (below) never touches Stripe, so it must not be
         // blocked by a missing/unreachable price either.
-        if (! $priceId && ! $this->bypassCheckoutActive()) {
+        if (! $priceId && ! $this->shouldBypassCheckout($request)) {
             return response()->json([
                 'message' => "No Stripe price configured for plan='{$plan}' cycle='{$cycle}' mult='{$mult}'.",
             ], 500);
@@ -124,11 +125,11 @@ class BillingController extends Controller
         $successUrl  = "{$frontendUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}";
         $cancelUrl   = "{$frontendUrl}/checkout?cancelled=1";
 
-        // Staging-only bypass — grant the plan without Stripe Checkout.
-        // Gated on BILLING_BYPASS_CHECKOUT AND a hard non-production
-        // check inside bypassCheckoutActive(), so the flag leaking into
-        // the prod .env can never skip payment for a real tenant.
-        if ($this->bypassCheckoutActive()) {
+        // Bypass path — grant the plan without Stripe Checkout. Two ways
+        // in: the staging-only BILLING_BYPASS_CHECKOUT env flag, OR an
+        // internal-allowlist user (founder / QA emails switching plans
+        // freely on /editor/billing). See shouldBypassCheckout().
+        if ($this->shouldBypassCheckout($request)) {
             return $this->grantBypassSubscription(
                 $request, $tenant, $plan, $cycle, $priceId, $data['template_slug'], $frontendUrl, trial: false,
             );
@@ -213,8 +214,9 @@ class BillingController extends Controller
         }
 
         // Same bypass carve-out as checkout() — no Stripe price needed
-        // when the staging bypass grants the trial directly.
-        if (! $priceId && ! $this->bypassCheckoutActive()) {
+        // when the bypass (staging env OR internal-allowlist user)
+        // grants the trial directly.
+        if (! $priceId && ! $this->shouldBypassCheckout($request)) {
             return response()->json([
                 'message' => "No Stripe price configured for plan='{$plan}' cycle='{$cycle}' mult='{$mult}'.",
             ], 500);
@@ -234,9 +236,10 @@ class BillingController extends Controller
         $successUrl  = "{$frontendUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}&trial=1";
         $cancelUrl   = "{$frontendUrl}/checkout/trial?cancelled=1";
 
-        // Staging-only bypass — same short-circuit as checkout(), landing
-        // in the trialing state instead of active.
-        if ($this->bypassCheckoutActive()) {
+        // Bypass — same short-circuit as checkout(), landing in the
+        // trialing state instead of active. Two ways in: staging env
+        // flag OR internal-allowlist user.
+        if ($this->shouldBypassCheckout($request)) {
             return $this->grantBypassSubscription(
                 $request, $tenant, $plan, $cycle, $priceId, $data['template_slug'], $frontendUrl, trial: true,
             );
@@ -364,12 +367,13 @@ class BillingController extends Controller
      */
     public function checkoutSession(Request $request, string $sessionId): JsonResponse
     {
-        // Staging bypass — cs_bypass_* sessions never existed on Stripe.
-        // Fake the completed shape the success page reads (same keys as
-        // the real return below). Gated on the same flag + non-production
-        // guard as the grant itself; in production a fake id falls through
-        // to the real Stripe lookup, which 404s it.
-        if (str_starts_with($sessionId, 'cs_bypass_') && $this->bypassCheckoutActive()) {
+        // Bypass — cs_bypass_* sessions never existed on Stripe. Fake the
+        // completed shape the success page reads. Prefix match alone is
+        // safe: real Stripe session ids are cs_live_* / cs_test_*, never
+        // cs_bypass_*, so this can't collide with a real flow regardless
+        // of which bypass route (staging env OR internal-allowlist user)
+        // created the id.
+        if (str_starts_with($sessionId, 'cs_bypass_')) {
             $tenantId = (string) ($request->user()->tenant_id ?? '');
             return response()->json([
                 'id'             => $sessionId,
@@ -442,6 +446,15 @@ class BillingController extends Controller
                 'sms_included'   => 0,
                 'billing_cycle'  => null,
             ]);
+        }
+
+        // Bypass tenants (staging env OR internal allowlist) have
+        // sub_bypass_* / cus_bypass_* ids that Stripe never minted, so
+        // skip the live lookup and synthesize the response from local
+        // state. tenants.plan + tenant_subscriptions row are the source
+        // of truth for these — they're what the picker just wrote.
+        if ($this->isBypassSubscription($tenant)) {
+            return $this->bypassSubscriptionResponse($tenant);
         }
 
         // Read the subscription straight from Stripe (the local Cashier
@@ -524,6 +537,48 @@ class BillingController extends Controller
             'cancel_at_period_end' => $cancelAtPeriodEnd,
             'paused'               => $paused,
             'card'                 => $card,
+        ]);
+    }
+
+    /**
+     * Synthesize the subscription() response for a bypass tenant from
+     * local state — Stripe never minted these ids, so the live lookup
+     * would return null and the editor billing page would render the
+     * tenant as "not subscribed" even after a successful plan grant.
+     * Reads tenants.plan + the bypass row written by
+     * grantBypassSubscription(), exposes the same shape as the real
+     * Stripe path.
+     */
+    private function bypassSubscriptionResponse(Tenant $tenant): JsonResponse
+    {
+        $row = TenantSubscription::where('tenant_id', $tenant->id)->first();
+
+        $plan        = $tenant->plan ?? 'solo';
+        $cycle       = $row->billing_cycle ?? 'monthly';
+        $mult        = 1;
+        $smsIncluded = (int) (config("plans.plans.{$plan}.sms_base", 0) * $mult);
+
+        $state              = $tenant->subscription_state ?? Tenant::STATE_ACTIVE;
+        $trialDaysRemaining = $tenant->trialDaysRemaining();
+
+        return response()->json([
+            'subscribed'           => in_array($state, Tenant::STATES_ALIVE, true),
+            'on_trial'             => $state === Tenant::STATE_TRIALING,
+            'trial_ends'           => $tenant->trial_ends_at,
+            'subscription'         => $row?->stripe_subscription_id,
+            'plan'                 => $plan,
+            'sms_mult'             => $mult,
+            'sms_included'         => $smsIncluded,
+            'billing_cycle'        => $cycle,
+            'subscription_state'   => $state,
+            'is_trialing'          => $state === Tenant::STATE_TRIALING,
+            'is_alive'             => in_array($state, Tenant::STATES_ALIVE, true),
+            'trial_days_remaining' => $trialDaysRemaining,
+            'current_period_end'   => $row?->current_period_ends_at ? $row->current_period_ends_at->toIso8601String() : null,
+            'current_period_start' => null,
+            'cancel_at_period_end' => false,
+            'paused'               => false,
+            'card'                 => null,
         ]);
     }
 
@@ -739,17 +794,31 @@ class BillingController extends Controller
     }
 
     /**
+     * True when this request should skip Stripe and grant the plan
+     * directly. EITHER the staging-only env bypass is on (above), OR
+     * the authed user is on the BillingInternal allowlist — founder /
+     * QA accounts can switch plans on /editor/billing without going
+     * through Stripe Checkout. See App\Support\BillingInternal +
+     * BILLING_INTERNAL_EMAILS.
+     */
+    private function shouldBypassCheckout(?Request $request): bool
+    {
+        if ($this->bypassCheckoutActive()) return true;
+        $email = $request?->user()?->email;
+        return BillingInternal::isInternal($email);
+    }
+
+    /**
      * True when this tenant's subscription was granted by the bypass
      * (fake sub_bypass_* id). The lifecycle endpoints skip the Stripe
-     * call entirely for these so staging testing never 500s on an id
-     * Stripe has never heard of.
+     * call entirely for these so testing never 500s on an id Stripe
+     * has never heard of. Prefix match alone is sufficient — real
+     * Stripe sub ids are sub_1*, never sub_bypass_*, so this is safe
+     * regardless of environment (matters for the internal-allowlist
+     * bypass which can grant sub_bypass_* ids in production).
      */
     private function isBypassSubscription(Tenant $tenant): bool
     {
-        if (! $this->bypassCheckoutActive()) {
-            return false;
-        }
-
         $stored = TenantSubscription::where('tenant_id', $tenant->id)->value('stripe_subscription_id');
 
         return is_string($stored) && str_starts_with($stored, 'sub_bypass_');
